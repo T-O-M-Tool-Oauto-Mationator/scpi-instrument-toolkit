@@ -53,19 +53,23 @@ The REPL lets you discover connected instruments and send commands interactively
 python repl.py
 ```
 
-**Using it from your own personal lab repo:**
+**Using it from your own personal lab repo (recommended):**
 
-After running setup, `lab_instruments` is installed in your venv as a proper package. That means you can copy `repl.py` into your personal repo and run it from there — `.repl_scripts.json` will be saved in your repo's root directory where it belongs.
+Add this toolkit as a git submodule in your personal repo, then use the provided wrapper so `.repl_scripts.json` is saved in your repo root and the submodule stays clean.
 
 ```bash
-# One-time: copy repl.py to your personal repo
-cp repl.py ~/your-lab-repo/repl.py
+# 1. In your personal repo, add this toolkit as a submodule
+git submodule add https://github.com/bsikar/scpi-instrument-toolkit.git
+git submodule update --init
 
-# Then from your personal repo root (venv active):
+# 2. Copy the wrapper to your personal repo root and rename it
+cp scpi-instrument-toolkit/repl_wrapper.py repl.py
+
+# 3. Run from your personal repo root — that's it
 python repl.py
 ```
 
-The only requirement is that `lab_instruments` is installed in whichever venv you're using. Running `setup.ps1` / `setup.py` from this toolkit repo handles that.
+The wrapper (`repl_wrapper.py`) adds the submodule to `sys.path` at runtime so no pip install or path configuration is needed. Your `.repl_scripts.json` is saved in your personal repo root, not inside the submodule.
 
 Common commands:
 ```
@@ -117,6 +121,7 @@ scpi-instrument-toolkit/
 │   └── src/                # Individual instrument drivers
 ├── tests/                  # Unit tests for each driver
 ├── repl.py                 # Interactive REPL
+├── repl_wrapper.py         # Copy this to your personal repo root, rename to repl.py
 ├── setup.py                # Linux/Mac environment setup
 ├── setup.ps1               # Windows environment setup
 └── requirements.txt        # Python dependencies
