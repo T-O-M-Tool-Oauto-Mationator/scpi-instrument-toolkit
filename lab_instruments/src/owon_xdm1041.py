@@ -61,6 +61,14 @@ class Owon_XDM1041(DeviceManager):
     # Configuration Methods
     # ========================================================================
 
+    def stop(self):
+        """Stop continuous measurement (freeze reading)."""
+        self.send_command(":TRIG:STAT STOP")
+
+    def run(self):
+        """Resume continuous measurement."""
+        self.send_command(":TRIG:STAT RUN")
+
     def configure_dc_voltage(self, range_val: float = None):
         """
         Configure for DC voltage measurement.
