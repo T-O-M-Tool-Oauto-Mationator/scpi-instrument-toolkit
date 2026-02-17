@@ -36,11 +36,7 @@ python repl.py
 If you want to use the drivers in your own scripts without cloning this repo:
 
 ```bash
-# Latest stable:
-pip install git+https://github.com/bsikar/scpi-instrument-toolkit.git@main
-
-# Pin to a specific version (check releases for the latest tag):
-pip install git+https://github.com/bsikar/scpi-instrument-toolkit.git@v0.1.1
+pip install git+https://github.com/bsikar/scpi-instrument-toolkit.git@v0.1.0
 ```
 
 Then in your code:

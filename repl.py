@@ -650,8 +650,6 @@ class InstrumentRepl(cmd.Cmd):
                                 pass  # Some scopes may have fewer channels
                 # DMM devices (dmm, dmm_owon)
                 elif name.startswith("dmm"):
-                    if hasattr(dev, 'stop'):
-                        dev.stop()
                     if hasattr(dev, 'reset'):
                         dev.reset()
                 ColorPrinter.success(f"{name}: safe state applied")
@@ -699,9 +697,6 @@ class InstrumentRepl(cmd.Cmd):
                         ColorPrinter.success(f"{name}: all channels (1-4) disabled")
                 # DMM devices (dmm, dmm_owon)
                 elif name.startswith("dmm"):
-                    if hasattr(dev, 'stop'):
-                        dev.stop()
-                        ColorPrinter.success(f"{name}: measurement stopped")
                     if hasattr(dev, 'reset'):
                         dev.reset()
                         ColorPrinter.success(f"{name}: reset")
