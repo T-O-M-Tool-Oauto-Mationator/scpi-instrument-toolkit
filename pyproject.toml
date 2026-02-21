@@ -35,4 +35,17 @@ Issues = "https://github.com/bsikar/scpi-instrument-toolkit/issues"
 include = ["lab_instruments*"]
 
 [tool.setuptools.package-data]
-lab_instruments = ["site/**/*"]
+lab_instruments = [
+    "site/*.html",
+    "site/*.xml",
+    "site/*.gz",
+    "site/assets/stylesheets/*.css",
+    "site/assets/stylesheets/*.map",
+    "site/assets/javascripts/*.js",
+    "site/assets/javascripts/*.map",
+    "site/assets/javascripts/lunr/*.js",
+    "site/assets/javascripts/lunr/min/*.js",
+    "site/assets/javascripts/workers/*.js",
+    "site/assets/javascripts/workers/*.map",
+    "site/search/*.json",
+]

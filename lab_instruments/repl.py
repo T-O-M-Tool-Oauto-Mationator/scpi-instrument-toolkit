@@ -862,25 +862,32 @@ class InstrumentRepl(cmd.Cmd):
         self._print_devices()
 
     def do_use(self, arg):
-        "use <name>: set active instrument (scope, psu, awg, dmm)"
+        "use <name>: when multiple instruments of the same type are connected, set which one bare commands target"
         args = self._parse_args(arg)
         if self._is_help(args) or not args:
-            self._print_usage(
+            self._print_colored_usage(
                 [
+                    "# USE — select active instrument",
+                    "",
                     "use <name>",
-                    "  - name: scope|psu|awg|dmm",
-                    "  - example: use dmm",
-                    "  - after use dmm, you can run: idn  (same as: idn dmm)",
+                    "  - With one PSU connected, bare 'psu' commands work automatically.",
+                    "  - With two PSUs (psu1, psu2), you must be explicit:",
+                    "    - Either prefix every command:  psu1 set 5.0  /  psu2 set 12.0",
+                    "    - Or pick one with 'use':  use psu1  then  psu set 5.0  (acts on psu1)",
+                    "  - 'use' only affects bare commands — psu1/psu2 prefixes always work.",
+                    "",
+                    "  - example: use psu1   then: psu set 5.0   psu meas v",
+                    "  - example: use dmm1   then: dmm meas vdc",
                 ]
             )
             self._print_devices()
             return
         name = args[0]
         if name not in self.devices:
-            ColorPrinter.warning(f"Unknown instrument '{name}'.")
+            ColorPrinter.warning(f"Unknown instrument '{name}'. Connected: {list(self.devices.keys())}")
             return
         self.selected = name
-        ColorPrinter.success(f"Selected: {name}")
+        ColorPrinter.success(f"Active: {name}  (bare commands now target this instrument)")
 
     def default(self, line):
         """Handle numbered device names like 'awg1', 'scope2', 'psu1', 'dmm3'."""
@@ -949,6 +956,7 @@ class InstrumentRepl(cmd.Cmd):
                 ColorPrinter.cyan(dev.query(cmd_str))
             else:
                 dev.send_command(cmd_str)
+                ColorPrinter.success(f"Sent: {cmd_str}")
         except Exception as exc:
             ColorPrinter.error(str(exc))
 
@@ -1076,25 +1084,43 @@ class InstrumentRepl(cmd.Cmd):
         self._print_devices()
 
     def do_sleep(self, arg):
-        "sleep <seconds>: pause between actions"
+        "sleep <duration>[us|ms|s|m]: pause between actions"
         args = self._parse_args(arg)
         args, help_flag = self._strip_help(args)
         if not args or help_flag:
             self._print_usage(
                 [
-                    "sleep <seconds>",
-                    "  - example: sleep 0.5",
+                    "sleep <duration>[us|ms|s|m]",
+                    "  - sleep 500ms   (500 milliseconds)",
+                    "  - sleep 1.5     (1.5 seconds, default unit)",
+                    "  - sleep 100us   (100 microseconds)",
+                    "  - sleep 2m      (2 minutes)",
                 ]
             )
             return
-        try:
-            delay = float(args[0])
-        except ValueError:
-            ColorPrinter.warning("sleep expects a number of seconds.")
-            return
+        raw = args[0].strip()
+        _suffix_map = [("us", 1e-6), ("ms", 1e-3), ("min", 60.0), ("m", 60.0), ("s", 1.0)]
+        delay = None
+        label = raw
+        for suffix, factor in _suffix_map:
+            if raw.lower().endswith(suffix):
+                try:
+                    delay = float(raw[:-len(suffix)]) * factor
+                    label = raw
+                    break
+                except ValueError:
+                    pass
+        if delay is None:
+            try:
+                delay = float(raw)
+                label = f"{raw}s"
+            except ValueError:
+                ColorPrinter.warning(f"sleep: invalid duration '{raw}'. Examples: 0.5  500ms  100us  2m")
+                return
         if delay < 0:
-            ColorPrinter.warning("sleep expects a non-negative number.")
+            ColorPrinter.warning("sleep expects a non-negative duration.")
             return
+        ColorPrinter.info(f"Sleeping {label}...")
         end_time = time.time() + delay
         while True:
             remaining = end_time - time.time()
@@ -1104,7 +1130,7 @@ class InstrumentRepl(cmd.Cmd):
             time.sleep(min(0.05, remaining))
 
     def do_wait(self, arg):
-        "wait <seconds>: alias for sleep"
+        "wait <duration>[us|ms|s|m]: alias for sleep"
         return self.do_sleep(arg)
 
     def do_print(self, arg):
@@ -1371,8 +1397,14 @@ class InstrumentRepl(cmd.Cmd):
                 ColorPrinter.warning(f"mkdocs build failed: {err[:200]}")
 
         if bundled_index.exists():
-            webbrowser.open(bundled_index.as_uri())
-            ColorPrinter.success(f"Docs opened: {bundled_index}")
+            # Copy site to a tempdir to avoid file-permission issues with pip-installed packages on Linux
+            import tempfile, shutil
+            tmp_site = Path(tempfile.gettempdir()) / "scpi_toolkit_site"
+            if not (tmp_site / "index.html").exists():
+                shutil.copytree(str(bundled_index.parent), str(tmp_site), dirs_exist_ok=True)
+            tmp_index = tmp_site / "index.html"
+            webbrowser.open(tmp_index.as_uri())
+            ColorPrinter.success(f"Docs opened.")
             return
 
         # Fallback: single-page HTML (always works, no dependencies)
@@ -2614,10 +2646,6 @@ allTargets.forEach(t => io.observe(t));
         "exit: quit the REPL"
         return True
 
-    def do_quit(self, arg):
-        "quit: quit the REPL"
-        return True
-
     def do_EOF(self, arg):
         print()
         return True
@@ -3163,18 +3191,27 @@ allTargets.forEach(t => io.observe(t));
         # Show ranges (HP DMM only)
         if cmd_name in ("ranges", "limits"):
             if not is_owon:
-                self._print_usage(
-                    [
-                        "Valid DMM ranges/res/nplc (HP 34401A):",
-                        "vdc: range 0.1|1|10|100|1000 or MIN/MAX/DEF/AUTO, res numeric, nplc 0.02|0.2|1|10|100",
-                        "vac: range 0.1|1|10|100|750 or MIN/MAX/DEF/AUTO, res numeric",
-                        "idc: range 0.01|0.1|1|3 or MIN/MAX/DEF/AUTO, res numeric, nplc 0.02|0.2|1|10|100",
-                        "iac: range 0.01|0.1|1|3 or MIN/MAX/DEF/AUTO, res numeric",
-                        "res/fres: range 100|1e3|10e3|100e3|1e6|10e6|100e6 or MIN/MAX/DEF/AUTO, res numeric",
-                        "freq/per: range 0.1|1|10|100|750 or MIN/MAX/DEF/AUTO, res numeric",
-                        "cont/diode: fixed range (no range/res args)",
-                    ]
-                )
+                C = ColorPrinter.CYAN
+                Y = ColorPrinter.YELLOW
+                G = ColorPrinter.GREEN
+                R = ColorPrinter.RESET
+                B = ColorPrinter.BOLD
+                print(f"\n{B}Valid DMM ranges / res / nplc  (HP 34401A){R}\n")
+                rows = [
+                    ("vdc",      "0.1 | 1 | 10 | 100 | 1000",          "numeric",  "0.02 | 0.2 | 1 | 10 | 100"),
+                    ("vac",      "0.1 | 1 | 10 | 100 | 750",           "numeric",  "—"),
+                    ("idc",      "0.01 | 0.1 | 1 | 3",                 "numeric",  "0.02 | 0.2 | 1 | 10 | 100"),
+                    ("iac",      "0.01 | 0.1 | 1 | 3",                 "numeric",  "—"),
+                    ("res/fres", "100 | 1k | 10k | 100k | 1M | 10M | 100M", "numeric", "—"),
+                    ("freq/per", "0.1 | 1 | 10 | 100 | 750",           "numeric",  "—"),
+                    ("cont/diode","fixed (no args)",                    "—",        "—"),
+                ]
+                hdr = f"  {Y}{'Mode':<10}{R} {G}{'Range':<42}{R} {'Res':<10} {'nplc'}"
+                print(hdr)
+                print(f"  {Y}{'-'*10}{R} {G}{'-'*42}{R} {'-'*10} {'-'*26}")
+                for mode, rng, res, nplc in rows:
+                    print(f"  {C}{mode:<10}{R} {rng:<42} {res:<10} {nplc}")
+                print(f"\n  All range/res args also accept: {Y}MIN | MAX | DEF | AUTO{R}\n")
             else:
                 ColorPrinter.info("Owon DMM auto-configures ranges. No manual range specification needed.")
             return
