@@ -2633,6 +2633,7 @@ def main():
         args = [a for a in args if a != "--mock"]
         from lab_instruments import mock_instruments
         from lab_instruments.src import discovery as _disc
+        _disc.InstrumentDiscovery.__init__ = lambda self: None
         _disc.InstrumentDiscovery.scan = lambda self, verbose=True: mock_instruments.get_mock_devices(verbose)
 
     repl = InstrumentRepl()
