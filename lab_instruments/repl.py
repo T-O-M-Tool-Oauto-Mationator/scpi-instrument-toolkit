@@ -1374,15 +1374,16 @@ class InstrumentRepl(cmd.Cmd):
         "docs: open the full command reference in your browser"
         import subprocess
         import webbrowser
+        import threading
+        import http.server
+        import socket
         from pathlib import Path
 
         repl_dir = Path(__file__).resolve().parent
         repo_root = repl_dir.parent
-
-        # 1. Bundled site inside the package (installed or repo with pre-built site)
         bundled_index = repl_dir / "site" / "index.html"
 
-        # 2. If running from the repo and the site hasn't been built yet, build it
+        # Build if needed (repo dev mode only, not for pip-installed users)
         mkdocs_yml = repo_root / "mkdocs.yml"
         if not bundled_index.exists() and mkdocs_yml.exists():
             ColorPrinter.info("Building docs (first run — takes a few seconds)...")
@@ -1397,18 +1398,28 @@ class InstrumentRepl(cmd.Cmd):
                 ColorPrinter.warning(f"mkdocs build failed: {err[:200]}")
 
         if bundled_index.exists():
-            import tempfile, shutil
-            tmp_site = Path(tempfile.gettempdir()) / "scpi_toolkit_site"
-            try:
-                if tmp_site.exists():
-                    shutil.rmtree(str(tmp_site))
-                shutil.copytree(str(bundled_index.parent), str(tmp_site))
-                tmp_index = tmp_site / "index.html"
-                webbrowser.open(tmp_index.as_uri())
-                ColorPrinter.success("Docs opened.")
-                return
-            except Exception as exc:
-                ColorPrinter.warning(f"Could not copy docs to temp dir: {exc}")
+            site_dir = str(bundled_index.parent)
+
+            # Reuse existing local server if already started this session
+            if not getattr(self, "_docs_port", None):
+                with socket.socket() as s:
+                    s.bind(("127.0.0.1", 0))
+                    port = s.getsockname()[1]
+
+                class _QuietHandler(http.server.SimpleHTTPRequestHandler):
+                    def log_message(self, format, *args):
+                        pass
+                    def __init__(self, *args, **kwargs):
+                        super().__init__(*args, directory=site_dir, **kwargs)
+
+                srv = http.server.HTTPServer(("127.0.0.1", port), _QuietHandler)
+                threading.Thread(target=srv.serve_forever, daemon=True).start()
+                self._docs_port = port
+
+            url = f"http://127.0.0.1:{self._docs_port}/index.html"
+            webbrowser.open(url)
+            ColorPrinter.success(f"Docs opened at {url}")
+            return
 
         # Fallback: single-page HTML (always works, no dependencies)
         import tempfile
