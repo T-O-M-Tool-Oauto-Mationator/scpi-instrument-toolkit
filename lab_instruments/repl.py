@@ -84,10 +84,17 @@ def _check_and_update():
             from lab_instruments.src.terminal import ColorPrinter as _CP
             _CP.info(f"Update available: v{_REPL_VERSION} → v{latest}. Installing...")
             git_url = f"git+https://github.com/{_GITHUB_REPO}.git@{latest_tag}"
+            cmd_base = [sys.executable, "-m", "pip", "install", "--upgrade"]
             result = subprocess.run(
-                [sys.executable, "-m", "pip", "install", "--upgrade", git_url, "--quiet"],
+                cmd_base + [git_url, "--quiet"],
                 capture_output=True,
             )
+            # PEP 668: Debian/Ubuntu/Arch system Python rejects pip without this flag
+            if result.returncode != 0 and b"externally-managed-environment" in result.stderr:
+                result = subprocess.run(
+                    cmd_base + [git_url, "--quiet", "--break-system-packages"],
+                    capture_output=True,
+                )
             stdout = result.stdout.decode(errors="replace").strip()
             stderr = result.stderr.decode(errors="replace").strip()
             if result.returncode == 0:
