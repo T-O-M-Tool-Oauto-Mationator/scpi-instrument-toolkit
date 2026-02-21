@@ -30,6 +30,50 @@ try:
 except Exception:
     _REPL_VERSION = "unknown"
 
+_GITHUB_REPO = "T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit"
+
+
+def _check_and_update():
+    """Check GitHub tags for a newer version. If found, pip-install and restart."""
+    if _REPL_VERSION == "unknown":
+        return  # running from source, skip
+
+    import urllib.request
+    import json
+    import subprocess
+
+    try:
+        url = f"https://api.github.com/repos/{_GITHUB_REPO}/tags"
+        req = urllib.request.Request(url, headers={"User-Agent": "scpi-instrument-toolkit"})
+        with urllib.request.urlopen(req, timeout=2) as resp:
+            tags = json.loads(resp.read())
+
+        if not tags:
+            return
+
+        # GitHub returns tags newest-first; first entry is the latest
+        latest_tag = tags[0]["name"]        # e.g. "v0.1.9"
+        latest = latest_tag.lstrip("v")     # e.g. "0.1.9"
+
+        def _vtuple(v):
+            return tuple(int(x) for x in v.split("."))
+
+        if _vtuple(latest) > _vtuple(_REPL_VERSION):
+            from lab_instruments.src.terminal import ColorPrinter as _CP
+            _CP.info(f"Update available: v{_REPL_VERSION} → v{latest}. Installing...")
+            git_url = f"git+https://github.com/{_GITHUB_REPO}.git@{latest_tag}"
+            result = subprocess.run(
+                [sys.executable, "-m", "pip", "install", "--upgrade", git_url, "--quiet"],
+                capture_output=True,
+            )
+            if result.returncode == 0:
+                _CP.success(f"Updated to v{latest}. Restarting...")
+                os.execv(sys.executable, [sys.executable] + sys.argv)
+            else:
+                _CP.warning("Update install failed. Continuing with current version.")
+    except Exception:
+        pass  # network down, GitHub unreachable, parse error — just continue
+
 from lab_instruments import InstrumentDiscovery, ColorPrinter
 
 
@@ -4070,6 +4114,8 @@ allTargets.forEach(t => io.observe(t));
 
 
 def main():
+    _check_and_update()
+
     args = sys.argv[1:]
 
     if "--mock" in args:
