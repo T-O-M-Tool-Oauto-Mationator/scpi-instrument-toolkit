@@ -4067,12 +4067,14 @@ allTargets.forEach(t => io.observe(t));
         ColorPrinter.warning("Unknown log command. Use: log print|save|clear")
 
     def do_calc(self, arg):
-        "calc <label> <expr> [unit=]: compute a value from logged measurements"
+        "calc is short for calculator: compute a value from logged measurements"
         args = self._parse_args(arg)
         args, help_flag = self._strip_help(args)
         if help_flag or len(args) < 2:
-            self._print_usage(
+            self._print_colored_usage(
                 [
+                    "# CALC (calculator)",
+                    "",
                     "calc <label> <expr> [unit=]",
                     "  - expr can use m[\"label\"], last, and variables like pi",
                     "  - functions: abs, min, max, round",
