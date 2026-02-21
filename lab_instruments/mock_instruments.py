@@ -319,10 +319,14 @@ def get_mock_devices(verbose=True):
     from lab_instruments import ColorPrinter
     if verbose:
         ColorPrinter.warning("Mock mode — no real instruments connected")
-        ColorPrinter.info("Injecting: psu (MockPSU), awg (MockAWG), dmm (MockDMM), scope (MockScope)")
+        ColorPrinter.info("Injecting: psu1, psu2 (MockPSU), awg1, awg2 (MockAWG), dmm1, dmm2 (MockDMM), scope1, scope2 (MockScope)")
     return {
-        "psu": MockPSU(),
-        "awg": MockAWG(),
-        "dmm": MockDMM(),
-        "scope": MockScope(),
+        "psu1": MockPSU(),
+        "psu2": MockPSU(),
+        "awg1": MockAWG(),
+        "awg2": MockAWG(),
+        "dmm1": MockDMM(),
+        "dmm2": MockDMM(),
+        "scope1": MockScope(),
+        "scope2": MockScope(),
     }

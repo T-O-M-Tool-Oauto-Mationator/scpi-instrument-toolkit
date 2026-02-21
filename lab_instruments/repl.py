@@ -24,6 +24,11 @@ import traceback
 import signal
 import atexit
 from typing import Dict, Any, Optional
+try:
+    from importlib.metadata import version as _pkg_version
+    _REPL_VERSION = _pkg_version("scpi-instrument-toolkit")
+except Exception:
+    _REPL_VERSION = "unknown"
 
 from lab_instruments import InstrumentDiscovery, ColorPrinter
 
@@ -86,7 +91,7 @@ DMM_MODE_ALIASES = {
 
 
 class InstrumentRepl(cmd.Cmd):
-    intro = "ESET Instrument REPL. Type 'help' for commands."
+    intro = f"ESET Instrument REPL v{_REPL_VERSION}. Type 'help' for commands."
     prompt = "eset> "
 
     def __init__(self):
@@ -207,7 +212,12 @@ class InstrumentRepl(cmd.Cmd):
         if len(candidates) == 1:
             return candidates[0]
 
-        # Multiple devices — require explicit naming
+        # Multiple devices — if the currently selected instrument is one of the
+        # candidates, use it automatically (respects 'use <name>' selection).
+        if self.selected and self.selected in candidates:
+            return self.selected
+
+        # No active selection matches — require explicit naming
         ColorPrinter.warning(
             f"Multiple {device_type.upper()}s found: {candidates}. "
             f"Use explicit name, e.g. '{candidates[0]}'."
@@ -811,6 +821,10 @@ class InstrumentRepl(cmd.Cmd):
             return
         self.scan()
 
+    def do_version(self, arg):
+        "version: show the scpi-instrument-toolkit version"
+        ColorPrinter.info(f"scpi-instrument-toolkit v{_REPL_VERSION}")
+
     def do_clear(self, arg):
         "clear: clear the terminal screen"
         os.system('cls' if os.name == 'nt' else 'clear')
@@ -1292,7 +1306,7 @@ class InstrumentRepl(cmd.Cmd):
         def cmd_line(name, desc):
             print(f"  {C}{name:<12}{R} {desc}")
 
-        print(f"{B}ESET Instrument REPL{R}  —  type {C}help <command>{R} for details\n")
+        print(f"{B}ESET Instrument REPL{R} {Y}v{_REPL_VERSION}{R}  —  type {C}help <command>{R} for details\n")
 
         section("GENERAL")
         cmd_line("scan",    "discover and connect to instruments")
@@ -1306,6 +1320,7 @@ class InstrumentRepl(cmd.Cmd):
         cmd_line("raw",     "send raw SCPI command or query")
         cmd_line("sleep",   "pause between actions  (sleep <seconds>)")
         cmd_line("wait",    "alias for sleep")
+        cmd_line("version", "show toolkit version")
         cmd_line("close",   "disconnect all instruments")
         cmd_line("exit",    "quit the REPL")
         cmd_line("quit",    "quit the REPL")
@@ -1355,9 +1370,9 @@ class InstrumentRepl(cmd.Cmd):
 
         if not args:
             if is_single_channel:
-                self._print_usage(
+                self._print_colored_usage(
                     [
-                        "# UNIFIED PSU COMMANDS (single-channel PSU)",
+                        "# PSU",
                         "",
                         "psu output on|off",
                         "psu set <voltage> [current]",
@@ -1370,9 +1385,9 @@ class InstrumentRepl(cmd.Cmd):
                     ]
                 )
             else:
-                self._print_usage(
+                self._print_colored_usage(
                     [
-                        "# UNIFIED PSU COMMANDS (multi-channel PSU)",
+                        "# PSU",
                         "",
                         "psu output on|off",
                         "psu set <channel> <voltage> [current]",
@@ -1572,7 +1587,7 @@ class InstrumentRepl(cmd.Cmd):
         if not args or help_flag:
             self._print_colored_usage(
                 [
-                    "# AWG COMMANDS (works with all AWG/DDS models)",
+                    "# AWG",
                     "",
                     "awg chan <1|2|all> on|off",
                     "awg wave <1|2|all> <type> [freq=] [amp=] [offset=] [duty=] [phase=]",
@@ -1763,9 +1778,9 @@ class InstrumentRepl(cmd.Cmd):
         args, help_flag = self._strip_help(args)
 
         if not args:
-            self._print_usage(
+            self._print_colored_usage(
                 [
-                    "# UNIFIED DMM COMMANDS (works with all multimeter models)",
+                    "# DMM",
                     "",
                     "dmm config <vdc|vac|idc|iac|res|fres|freq|per|cont|diode|cap|temp> [range] [res] [nplc=]",
                     "  - range/res/nplc are optional (auto-configured if not specified)",
@@ -1779,10 +1794,8 @@ class InstrumentRepl(cmd.Cmd):
                     "dmm meas <mode> [range] [res]",
                     "dmm beep",
                     "dmm display on|off",
-                    "",
-                    "# Advanced (HP DMM only):",
                     "dmm text <message> [scroll=auto|on|off] [delay=] [loops=] [pad=] [width=]",
-                    "dmm ranges  # show valid ranges/res/nplc",
+                    "dmm ranges",
                     "dmm state safe|reset",
                 ]
             )
@@ -2037,7 +2050,7 @@ class InstrumentRepl(cmd.Cmd):
         if not args:
             self._print_colored_usage(
                 [
-                    "# OSCILLOSCOPE COMMANDS",
+                    "# SCOPE",
                     "",
                     "scope autoset",
                     "scope run - start/resume continuous acquisition",
@@ -2288,7 +2301,7 @@ class InstrumentRepl(cmd.Cmd):
         if not args:
             self._print_colored_usage(
                 [
-                    "# BUILT-IN AWG CONTROL (DHO914S/DHO924S)",
+                    "# SCOPE AWG",
                     "",
                     "scope awg output on|off - enable/disable AWG output",
                     "scope awg set <func> <freq> <amp> [offset=0] - quick config",
@@ -2386,7 +2399,7 @@ class InstrumentRepl(cmd.Cmd):
         if not args:
             self._print_colored_usage(
                 [
-                    "# FREQUENCY COUNTER",
+                    "# SCOPE COUNTER",
                     "",
                     "scope counter on|off - enable/disable counter",
                     "scope counter read - read current frequency",
@@ -2430,7 +2443,7 @@ class InstrumentRepl(cmd.Cmd):
         if not args:
             self._print_colored_usage(
                 [
-                    "# DIGITAL VOLTMETER",
+                    "# SCOPE DVM",
                     "",
                     "scope dvm on|off - enable/disable DVM",
                     "scope dvm read - read current voltage",
