@@ -8,6 +8,8 @@ Use to discover instruments, send commands, and place devices into known states.
 # Use NI-VISA backend for USB device support (pyvisa-py doesn't support USB-TMC)
 # The discovery code has been updated with timeouts to prevent hanging
 import os
+import re
+import sys
 # os.environ['PYVISA_LIBRARY'] = '@py'  # Disabled - need NI-VISA for USB
 
 import cmd
@@ -17,6 +19,7 @@ import subprocess
 import tempfile
 import time
 import ast
+import inspect
 import traceback
 import signal
 import atexit
@@ -102,9 +105,12 @@ class InstrumentRepl(cmd.Cmd):
         self._device_override: Optional[str] = None  # set by default() for awg1, scope2, etc.
         self._cleanup_done = False
 
-        print("Scanning for instruments... (Ctrl+C to cancel)")
+        ColorPrinter.info("Scanning for instruments... (Ctrl+C to cancel)")
         self.scan()
-        print(f"Found {len(self.devices)} device(s)")
+        if self.devices:
+            ColorPrinter.success(f"Found {len(self.devices)} device(s)")
+        else:
+            ColorPrinter.warning(f"Found {len(self.devices)} device(s)")
 
         # Register cleanup handlers AFTER scan completes (so Ctrl+C works during scan)
         if self.devices:
@@ -120,7 +126,6 @@ class InstrumentRepl(cmd.Cmd):
                 print()  # Add blank line after startup
             except Exception as exc:
                 ColorPrinter.error(f"Error during startup safety check: {exc}")
-                import traceback
                 traceback.print_exc()
 
     def _cleanup_on_exit(self):
@@ -183,8 +188,6 @@ class InstrumentRepl(cmd.Cmd):
 
         Returns the assigned device name string, or None if not found.
         """
-        import re
-
         # If a specific device was pre-selected by default() routing, use it directly
         if self._device_override and self._device_override in self.devices:
             return self._device_override
@@ -253,19 +256,36 @@ class InstrumentRepl(cmd.Cmd):
         except Exception as exc:
             ColorPrinter.error(f"Failed to save scripts: {exc}")
     
-    def _edit_script_in_editor(self, current_lines):
+    def _edit_script_in_editor(self, name, current_lines):
         editor = os.environ.get("EDITOR")
         if not editor:
-            editor = "notepad" if os.name == "nt" else "vi"
+            editor = "notepad" if os.name == "nt" else "nano"
         tmp_path = None
         try:
-            with tempfile.NamedTemporaryFile(mode="w", delete=False, encoding="utf-8", newline="\n") as handle:
+            with tempfile.NamedTemporaryFile(
+                mode="w", delete=False, suffix=".repl", encoding="utf-8", newline="\n"
+            ) as handle:
                 tmp_path = handle.name
+                handle.write(f"# Script: {name}\n")
+                handle.write("# Syntax: set <var> <val>  |  ${var}  |  repeat <n> ... end  |  for <var> v1 v2 ... end  |  call <name>\n")
+                handle.write("#\n")
                 for line in current_lines:
                     handle.write(f"{line}\n")
-            os.system(f'{editor} "{tmp_path}"')
+            try:
+                subprocess.run([editor, tmp_path])
+            except FileNotFoundError:
+                ColorPrinter.error(f"Editor '{editor}' not found. Set $EDITOR to a valid editor.")
+                return list(current_lines)
             with open(tmp_path, "r", encoding="utf-8") as handle:
-                return [line.rstrip("\n") for line in handle.readlines()]
+                lines = [line.rstrip("\n") for line in handle.readlines()]
+            # Strip comment header lines added by this editor
+            result = []
+            for line in lines:
+                stripped = line.strip()
+                if stripped.startswith("# Script:") or stripped.startswith("# Syntax:") or stripped == "#":
+                    continue
+                result.append(line)
+            return result
         finally:
             if tmp_path and os.path.exists(tmp_path):
                 try:
@@ -441,7 +461,10 @@ class InstrumentRepl(cmd.Cmd):
             result = result.replace(f"${{{name}}}", str(value))
         return result
 
-    def _expand_script_lines(self, lines, variables):
+    def _expand_script_lines(self, lines, variables, depth=0):
+        if depth > 10:
+            ColorPrinter.error("Maximum script call depth (10) exceeded.")
+            return []
         expanded = []
         idx = 0
         while idx < len(lines):
@@ -455,13 +478,39 @@ class InstrumentRepl(cmd.Cmd):
             head = tokens[0].lower()
             if head == "set" and len(tokens) >= 3:
                 key = tokens[1]
-                value = self._substitute_vars(" ".join(tokens[2:]), variables)
-                variables[key] = value
+                raw_val = self._substitute_vars(" ".join(tokens[2:]), variables)
+                try:
+                    num_vars = {}
+                    for k, v in variables.items():
+                        try:
+                            num_vars[k] = float(v)
+                        except (TypeError, ValueError):
+                            pass
+                    result = self._safe_eval(raw_val, num_vars)
+                    variables[key] = str(result)
+                except Exception:
+                    variables[key] = raw_val
+                continue
+            if head == "call" and len(tokens) >= 2:
+                script_name = tokens[1]
+                if script_name not in self.scripts:
+                    ColorPrinter.error(f"call: script '{script_name}' not found.")
+                    continue
+                call_params = dict(variables)
+                for token in tokens[2:]:
+                    if "=" in token:
+                        k, v = token.split("=", 1)
+                        call_params[k] = v
+                expanded.extend(self._expand_script_lines(self.scripts[script_name], call_params, depth + 1))
                 continue
             if head == "repeat" and len(tokens) >= 2:
-                count = int(tokens[1])
+                try:
+                    count = int(tokens[1])
+                except ValueError:
+                    ColorPrinter.error(f"repeat: expected integer count, got '{tokens[1]}'")
+                    continue
                 block = []
-                depth = 1
+                depth_inner = 1
                 while idx < len(lines):
                     line = lines[idx].strip()
                     idx += 1
@@ -471,20 +520,20 @@ class InstrumentRepl(cmd.Cmd):
                     if not line_tokens:
                         continue
                     if line_tokens[0].lower() in ("repeat", "for"):
-                        depth += 1
+                        depth_inner += 1
                     elif line_tokens[0].lower() == "end":
-                        depth -= 1
-                        if depth == 0:
+                        depth_inner -= 1
+                        if depth_inner == 0:
                             break
                     block.append(line)
                 for _ in range(count):
-                    expanded.extend(self._expand_script_lines(block, dict(variables)))
+                    expanded.extend(self._expand_script_lines(block, dict(variables), depth))
                 continue
             if head == "for" and len(tokens) >= 3:
                 key = tokens[1]
                 values = tokens[2:]
                 block = []
-                depth = 1
+                depth_inner = 1
                 while idx < len(lines):
                     line = lines[idx].strip()
                     idx += 1
@@ -494,10 +543,10 @@ class InstrumentRepl(cmd.Cmd):
                     if not line_tokens:
                         continue
                     if line_tokens[0].lower() in ("repeat", "for"):
-                        depth += 1
+                        depth_inner += 1
                     elif line_tokens[0].lower() == "end":
-                        depth -= 1
-                        if depth == 0:
+                        depth_inner -= 1
+                        if depth_inner == 0:
                             break
                     block.append(line)
                 if "," in key:
@@ -505,16 +554,17 @@ class InstrumentRepl(cmd.Cmd):
                     for value in values:
                         parts = value.split(",")
                         if len(parts) != len(keys):
-                            raise ValueError("for var list and value list length mismatch.")
+                            ColorPrinter.error("for: var list and value list length mismatch.")
+                            break
                         local_vars = dict(variables)
                         for name, val in zip(keys, parts):
                             local_vars[name] = self._substitute_vars(val, variables)
-                        expanded.extend(self._expand_script_lines(block, local_vars))
+                        expanded.extend(self._expand_script_lines(block, local_vars, depth))
                 else:
                     for value in values:
                         local_vars = dict(variables)
                         local_vars[key] = self._substitute_vars(value, variables)
-                        expanded.extend(self._expand_script_lines(block, local_vars))
+                        expanded.extend(self._expand_script_lines(block, local_vars, depth))
                 continue
             if head == "end":
                 continue
@@ -533,7 +583,6 @@ class InstrumentRepl(cmd.Cmd):
         return False
 
     def _onecmd_single(self, line):
-        import re
         tokens = self._parse_args(line)
         if len(tokens) >= 3 and tokens[0].lower() == "repeat":
             try:
@@ -712,7 +761,10 @@ class InstrumentRepl(cmd.Cmd):
                         ColorPrinter.success(f"{name}: channels disabled")
                     elif hasattr(dev, 'disable_channel'):
                         for ch in range(1, 5):
-                            dev.disable_channel(ch)
+                            try:
+                                dev.disable_channel(ch)
+                            except Exception:
+                                pass
                         ColorPrinter.success(f"{name}: all channels (1-4) disabled")
                 # DMM devices (dmm, dmm1, dmm2, ...)
                 elif name.startswith("dmm"):
@@ -744,9 +796,7 @@ class InstrumentRepl(cmd.Cmd):
                     if hasattr(dev, 'enable_all_channels'):
                         dev.enable_all_channels()
                         ColorPrinter.success(f"{name}: channels enabled")
-                # DMM devices - no "on" state
-                elif name.startswith("dmm"):
-                    ColorPrinter.info(f"{name}: no output to enable")
+                # DMM devices - no "on" state, nothing to do
             except Exception as exc:
                 ColorPrinter.error(f"{name}: {exc}")
 
@@ -763,9 +813,6 @@ class InstrumentRepl(cmd.Cmd):
 
     def do_reload(self, arg):
         "reload: restart the REPL process to pick up changes to repl.py and lab_instruments"
-        import os
-        import sys
-
         ColorPrinter.info("Disconnecting all instruments...")
         for dev in list(self.devices.values()):
             try:
@@ -807,7 +854,6 @@ class InstrumentRepl(cmd.Cmd):
 
     def default(self, line):
         """Handle numbered device names like 'awg1', 'scope2', 'psu1', 'dmm3'."""
-        import re
         parts = line.split(None, 1)
         cmd_token = parts[0]
         rest = parts[1] if len(parts) > 1 else ""
@@ -824,7 +870,7 @@ class InstrumentRepl(cmd.Cmd):
                     self._device_override = None
                 return
 
-        print(f"*** Unknown syntax: {line}")
+        ColorPrinter.error(f"Unknown syntax: {line}")
 
     def do_idn(self, arg):
         "idn [name]: query *IDN? for selected or named instrument"
@@ -843,7 +889,7 @@ class InstrumentRepl(cmd.Cmd):
         if not dev:
             return
         try:
-            print(dev.query("*IDN?"))
+            ColorPrinter.cyan(dev.query("*IDN?"))
         except Exception as exc:
             ColorPrinter.error(str(exc))
 
@@ -870,7 +916,7 @@ class InstrumentRepl(cmd.Cmd):
         cmd_str = " ".join(args)
         try:
             if cmd_str.strip().endswith("?"):
-                print(dev.query(cmd_str))
+                ColorPrinter.cyan(dev.query(cmd_str))
             else:
                 dev.send_command(cmd_str)
         except Exception as exc:
@@ -985,7 +1031,7 @@ class InstrumentRepl(cmd.Cmd):
         if not self.devices:
             ColorPrinter.warning("No instruments connected.")
             return
-        print(f"Selected: {self.selected}")
+        ColorPrinter.info(f"Selected: {self.selected}")
         self._print_devices()
 
     def do_sleep(self, arg):
@@ -1020,224 +1066,143 @@ class InstrumentRepl(cmd.Cmd):
         "wait <seconds>: alias for sleep"
         return self.do_sleep(arg)
 
-    def do_named_script(self, arg):
-        "named_script <name>: create or overwrite a named script"
+    def do_script(self, arg):
+        "script <new|run|edit|list|rm|show|import|load|save> [args]: manage and run scripts"
         args = self._parse_args(arg)
         args, help_flag = self._strip_help(args)
+
+        usage = [
+            "script new  <name>                   # create new script in editor",
+            "script run  <name> [key=val ...]      # execute with optional params",
+            "script edit <name>                    # edit existing script in editor",
+            "script list                           # show all scripts",
+            "script rm   <name>                    # delete",
+            "script show <name>                    # print script lines",
+            "script import <name> <path>           # import from .txt file",
+            "script load [path]                    # load JSON file",
+            "script save [path]                    # save JSON file",
+        ]
+
         if not args or help_flag:
-            self._print_usage(
-                [
-                    "named_script <name>",
-                    "  - finish with a line containing only: .end",
-                    "  - supports: set <var> <value>, repeat <n> ... end, for <var> <v1> <v2> ... end",
-                    "  - multi-var loop: for v1,v2 a,b c,d ... end",
-                    "  - variables use ${name} substitution",
-                    "  - example: named_script test",
-                ]
-            )
+            self._print_usage(usage)
             return
-        name = args[0]
-        print("Enter script lines (end with .end).")
-        lines = []
-        while True:
-            try:
-                line = input()
-            except EOFError:
-                print()
-                break
-            if line.strip() == ".end":
-                break
-            lines.append(line.rstrip())
-        self.scripts[name] = lines
-        self._save_scripts()
-        ColorPrinter.success(f"Saved script '{name}' ({len(lines)} lines).")
 
-    def do_call_script(self, arg):
-        "call_script <name>: run a named script"
-        args = self._parse_args(arg)
-        args, help_flag = self._strip_help(args)
-        if not args or help_flag:
-            self._print_usage(
-                [
-                    "call_script <name>",
-                    "  - example: call_script test",
-                ]
-            )
-            return
-        name = args[0]
-        lines = self.scripts.get(name)
-        if lines is None:
-            ColorPrinter.warning(f"Script '{name}' not found.")
-            return
-        self._run_script_lines(lines)
+        subcmd = args[0].lower()
 
-    def do_delete_script(self, arg):
-        "delete_script <name>: delete a named script"
-        args = self._parse_args(arg)
-        args, help_flag = self._strip_help(args)
-        if not args or help_flag:
-            self._print_usage(
-                [
-                    "delete_script <name>",
-                    "  - example: delete_script test",
-                ]
-            )
-            return
-        name = args[0]
-        if name not in self.scripts:
-            ColorPrinter.warning(f"Script '{name}' not found.")
-            return
-        del self.scripts[name]
-        self._save_scripts()
-        ColorPrinter.success(f"Deleted script '{name}'.")
-
-    def do_list_scripts(self, arg):
-        "list_scripts: list saved scripts"
-        args = self._parse_args(arg)
-        if self._is_help(args):
-            self._print_usage(["list_scripts  # list saved scripts"])
-            return
-        if not self.scripts:
-            ColorPrinter.warning("No scripts saved.")
-            return
-        for name in sorted(self.scripts.keys()):
-            print(name)
-
-    def do_edit_script(self, arg):
-        "edit_script <name> [--inline]: edit a named script"
-        args = self._parse_args(arg)
-        args, help_flag = self._strip_help(args)
-        if not args or help_flag:
-            self._print_usage(
-                [
-                    "edit_script <name> [--inline]",
-                    "  - default: opens $EDITOR (or Notepad on Windows)",
-                    "  - --inline: finish with a line containing only: .end",
-                    "  - example: edit_script test",
-                ]
-            )
-            return
-        inline = False
-        if "--inline" in args:
-            inline = True
-            args = [token for token in args if token != "--inline"]
-        name = args[0] if args else None
-        if not name:
-            ColorPrinter.warning("Usage: edit_script <name> [--inline]")
-            return
-        if name not in self.scripts:
-            ColorPrinter.warning(f"Script '{name}' not found.")
-            return
-        current = self.scripts.get(name, [])
-        if inline:
-            if current:
-                print("Current script:")
-                for line in current:
-                    print(line)
-            print("Enter new script lines (end with .end).")
-            lines = []
-            while True:
-                try:
-                    line = input()
-                except EOFError:
-                    print()
-                    break
-                if line.strip() == ".end":
-                    break
-                lines.append(line.rstrip())
-        else:
-            lines = self._edit_script_in_editor(current)
-        self.scripts[name] = lines
-        self._save_scripts()
-        ColorPrinter.success(f"Updated script '{name}' ({len(lines)} lines).")
-
-    def do_open_script(self, arg):
-        "open_script <name> [path]: open a script in an editor without blocking"
-        args = self._parse_args(arg)
-        args, help_flag = self._strip_help(args)
-        if not args or help_flag:
-            self._print_usage(
-                [
-                    "open_script <name> [path]",
-                    "  - default path: <name>.repl.txt",
-                    "  - edits are not auto-imported; use import_script to load changes",
-                ]
-            )
-            return
-        name = args[0]
-        if name not in self.scripts:
-            ColorPrinter.warning(f"Script '{name}' not found.")
-            return
-        path = args[1] if len(args) >= 2 else f"{name}.repl.txt"
-        try:
-            with open(path, "w", encoding="utf-8", newline="\n") as handle:
-                for line in self.scripts.get(name, []):
-                    handle.write(f"{line}\n")
-            self._open_file_nonblocking(path)
-            ColorPrinter.success(f"Opened {path}.")
-        except Exception as exc:
-            ColorPrinter.error(f"Failed to open script: {exc}")
-
-    def do_import_script(self, arg):
-        "import_script <name> <path>: import a script from disk"
-        args = self._parse_args(arg)
-        args, help_flag = self._strip_help(args)
-        if help_flag or len(args) < 2:
-            self._print_usage(
-                [
-                    "import_script <name> <path>",
-                    "  - example: import_script test test.repl.txt",
-                ]
-            )
-            return
-        name = args[0]
-        path = args[1]
-        try:
-            with open(path, "r", encoding="utf-8") as handle:
-                lines = [line.rstrip("\n") for line in handle.readlines()]
+        if subcmd == "new":
+            if len(args) < 2:
+                ColorPrinter.warning("Usage: script new <name>")
+                return
+            name = args[1]
+            if name in self.scripts:
+                ColorPrinter.warning(f"Script '{name}' already exists — opening for edit. Use 'script rm {name}' first to start fresh.")
+            lines = self._edit_script_in_editor(name, self.scripts.get(name, []))
             self.scripts[name] = lines
             self._save_scripts()
-            ColorPrinter.success(f"Imported script '{name}' ({len(lines)} lines).")
-        except Exception as exc:
-            ColorPrinter.error(f"Failed to import script: {exc}")
+            ColorPrinter.success(f"Saved script '{name}' ({len(lines)} lines).")
 
-    def do_load_scripts(self, arg):
-        "load_scripts [path]: load named scripts from disk"
-        args = self._parse_args(arg)
-        args, help_flag = self._strip_help(args)
-        if help_flag:
-            self._print_usage(
-                [
-                    "load_scripts [path]",
-                    "  - default: .repl_scripts.json",
-                    "  - example: load_scripts my_scripts.json",
-                ]
-            )
-            return
-        path = args[0] if args else None
-        data = self._load_scripts(path)
-        if not data:
-            ColorPrinter.warning("No scripts loaded.")
-            return
-        self.scripts = data
-        ColorPrinter.success(f"Loaded {len(self.scripts)} scripts.")
+        elif subcmd == "run":
+            if len(args) < 2:
+                ColorPrinter.warning("Usage: script run <name> [key=val ...]")
+                return
+            name = args[1]
+            lines = self.scripts.get(name)
+            if lines is None:
+                ColorPrinter.warning(f"Script '{name}' not found.")
+                return
+            params = {}
+            for token in args[2:]:
+                if "=" in token:
+                    key, value = token.split("=", 1)
+                    params[key] = value
+            expanded = self._expand_script_lines(lines, params)
+            for raw_line in expanded:
+                line = raw_line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                self._tick_dmm_text_loop()
+                if self.onecmd(line):
+                    return True
+            return False
 
-    def do_save_scripts(self, arg):
-        "save_scripts [path]: save named scripts to disk"
-        args = self._parse_args(arg)
-        args, help_flag = self._strip_help(args)
-        if help_flag:
-            self._print_usage(
-                [
-                    "save_scripts [path]",
-                    "  - default: .repl_scripts.json",
-                    "  - example: save_scripts my_scripts.json",
-                ]
-            )
-            return
-        path = args[0] if args else None
-        self._save_scripts(path)
-        ColorPrinter.success("Scripts saved.")
+        elif subcmd == "edit":
+            if len(args) < 2:
+                ColorPrinter.warning("Usage: script edit <name>")
+                return
+            name = args[1]
+            if name not in self.scripts:
+                ColorPrinter.warning(f"Script '{name}' not found.")
+                return
+            lines = self._edit_script_in_editor(name, self.scripts[name])
+            self.scripts[name] = lines
+            self._save_scripts()
+            ColorPrinter.success(f"Updated script '{name}' ({len(lines)} lines).")
+
+        elif subcmd == "list":
+            if not self.scripts:
+                ColorPrinter.warning("No scripts saved.")
+                return
+            for name in sorted(self.scripts.keys()):
+                lines = self.scripts[name]
+                count = f"{len(lines)} lines" if lines else "empty"
+                print(f"  {name}  ({count})")
+
+        elif subcmd == "rm":
+            if len(args) < 2:
+                ColorPrinter.warning("Usage: script rm <name>")
+                return
+            name = args[1]
+            if name not in self.scripts:
+                ColorPrinter.warning(f"Script '{name}' not found.")
+                return
+            del self.scripts[name]
+            self._save_scripts()
+            ColorPrinter.success(f"Deleted script '{name}'.")
+
+        elif subcmd == "show":
+            if len(args) < 2:
+                ColorPrinter.warning("Usage: script show <name>")
+                return
+            name = args[1]
+            if name not in self.scripts:
+                ColorPrinter.warning(f"Script '{name}' not found.")
+                return
+            ColorPrinter.info(f"Script '{name}':")
+            for line in self.scripts[name]:
+                print(f"  {line}")
+
+        elif subcmd == "import":
+            if len(args) < 3:
+                ColorPrinter.warning("Usage: script import <name> <path>")
+                return
+            name = args[1]
+            path = args[2]
+            try:
+                with open(path, "r", encoding="utf-8") as handle:
+                    lines = [line.rstrip("\n") for line in handle.readlines()]
+                self.scripts[name] = lines
+                self._save_scripts()
+                ColorPrinter.success(f"Imported script '{name}' ({len(lines)} lines).")
+            except Exception as exc:
+                ColorPrinter.error(f"Failed to import script: {exc}")
+
+        elif subcmd == "load":
+            path = args[1] if len(args) >= 2 else None
+            data = self._load_scripts(path)
+            if not data:
+                ColorPrinter.warning("No scripts loaded.")
+                return
+            self.scripts = data
+            ColorPrinter.success(f"Loaded {len(self.scripts)} scripts.")
+
+        elif subcmd == "save":
+            path = args[1] if len(args) >= 2 else None
+            self._save_scripts(path)
+            ColorPrinter.success("Scripts saved.")
+
+        else:
+            ColorPrinter.warning(f"Unknown subcommand '{subcmd}'.")
+            self._print_usage(usage)
 
     def do_all(self, arg):
         "all <on|off|safe|reset>: apply a state to all instruments"
@@ -1277,6 +1242,78 @@ class InstrumentRepl(cmd.Cmd):
         print()
         return True
 
+    def do_help(self, arg):
+        "help [command]: show help for a command, or list all commands"
+        if arg:
+            # Per-command help: show docstring, colorized
+            try:
+                func = getattr(self, f"help_{arg}")
+                func()
+                return
+            except AttributeError:
+                pass
+            try:
+                doc = getattr(self, f"do_{arg}").__doc__
+            except AttributeError:
+                doc = None
+            if doc:
+                # First token of docstring is the usage signature — print it in cyan
+                lines = doc.strip().splitlines()
+                first = lines[0]
+                rest = lines[1:]
+                print(f"{ColorPrinter.CYAN}{first}{ColorPrinter.RESET}")
+                for line in rest:
+                    print(line)
+            else:
+                ColorPrinter.warning(f"No help for '{arg}'.")
+            return
+
+        # Full listing — grouped by category
+        C = ColorPrinter.CYAN
+        Y = ColorPrinter.YELLOW
+        B = ColorPrinter.BOLD
+        R = ColorPrinter.RESET
+
+        def section(title):
+            print(f"\n{Y}{B}{title}{R}")
+
+        def cmd_line(name, desc):
+            print(f"  {C}{name:<12}{R} {desc}")
+
+        print(f"{B}ESET-452 Instrument REPL{R}  —  type {C}help <command>{R} for details\n")
+
+        section("GENERAL")
+        cmd_line("scan",    "discover and connect to instruments")
+        cmd_line("reload",  "restart the REPL process")
+        cmd_line("list",    "show connected instruments")
+        cmd_line("use",     "set active instrument  (use <name>)")
+        cmd_line("status",  "show current selection")
+        cmd_line("state",   "set instrument state  (safe/reset/on/off)")
+        cmd_line("all",     "apply state to all instruments")
+        cmd_line("idn",     "query *IDN?")
+        cmd_line("raw",     "send raw SCPI command or query")
+        cmd_line("sleep",   "pause between actions  (sleep <seconds>)")
+        cmd_line("wait",    "alias for sleep")
+        cmd_line("close",   "disconnect all instruments")
+        cmd_line("exit",    "quit the REPL")
+        cmd_line("quit",    "quit the REPL")
+
+        section("INSTRUMENTS")
+        cmd_line("psu",     "power supply  (output, set, meas, track, save, recall)")
+        cmd_line("awg",     "function generator  (wave, freq, amp, offset, duty, phase)")
+        cmd_line("dmm",     "multimeter  (config, read, fetch, meas, beep, display)")
+        cmd_line("scope",   "oscilloscope  (chan, measure, save, trigger, awg, dvm, counter)")
+
+        section("SCRIPTING")
+        cmd_line("script",  "manage and run named scripts  (new, run, edit, list, rm, show, import, load, save)")
+        cmd_line("python",  "execute an external Python script with REPL context")
+
+        section("LOGGING & MATH")
+        cmd_line("log",     "show or save recorded measurements  (print, save, clear)")
+        cmd_line("calc",    "compute a value from logged measurements")
+
+        print()
+
     # --------------------------
     # PSU commands
     # --------------------------
@@ -1291,8 +1328,12 @@ class InstrumentRepl(cmd.Cmd):
         if not dev:
             return
 
-        # Use unified handler for all PSU types
-        is_single_channel = psu_name == "psu_matrix"
+        # Detect single-channel by checking if measure_voltage() takes a channel arg
+        try:
+            sig = inspect.signature(dev.measure_voltage)
+            is_single_channel = "channel" not in sig.parameters
+        except (ValueError, TypeError):
+            is_single_channel = False
         return self._handle_psu_unified(arg, dev, psu_name, is_single_channel)
 
     def _handle_psu_unified(self, arg, dev, psu_name, is_single_channel):
@@ -1385,10 +1426,10 @@ class InstrumentRepl(cmd.Cmd):
                     mode = args[1].lower()
                     if mode in ("v", "volt", "voltage"):
                         value = dev.measure_voltage()
-                        print(f"{value:.6f}V")
+                        ColorPrinter.cyan(f"{value:.6f}V")
                     elif mode in ("i", "curr", "current"):
                         value = dev.measure_current()
-                        print(f"{value:.6f}A")
+                        ColorPrinter.cyan(f"{value:.6f}A")
                     else:
                         ColorPrinter.warning("psu meas v|i")
                 else:
@@ -1402,9 +1443,9 @@ class InstrumentRepl(cmd.Cmd):
                         ColorPrinter.warning("Invalid channel. Use 1, 2, or 3")
                         return
                     if mode in ("v", "volt", "voltage"):
-                        print(dev.measure_voltage(channel))
+                        ColorPrinter.cyan(str(dev.measure_voltage(channel)))
                     elif mode in ("i", "curr", "current"):
-                        print(dev.measure_current(channel))
+                        ColorPrinter.cyan(str(dev.measure_current(channel)))
                     else:
                         ColorPrinter.warning("psu meas v|i <channel>")
 
@@ -1431,7 +1472,7 @@ class InstrumentRepl(cmd.Cmd):
                         ColorPrinter.warning("psu meas_store v|i <label>")
                         return
                     self._record_measurement(label, value, unit, "psu.meas")
-                    print(value)
+                    ColorPrinter.cyan(str(value))
                 else:
                     # Multi-channel: psu meas_store v|i <channel> <label> [unit=]
                     if len(args) < 4:
@@ -1455,7 +1496,7 @@ class InstrumentRepl(cmd.Cmd):
                         ColorPrinter.warning("psu meas_store v|i <channel> <label>")
                         return
                     self._record_measurement(label, value, unit, "psu.meas")
-                    print(value)
+                    ColorPrinter.cyan(str(value))
 
             # GET COMMAND (single-channel only)
             elif cmd_name == "get":
@@ -1463,7 +1504,7 @@ class InstrumentRepl(cmd.Cmd):
                     v = dev.get_voltage_setpoint()
                     i = dev.get_current_limit()
                     out = "ON" if dev.get_output_state() else "OFF"
-                    print(f"Setpoint: {v}V @ {i}A, Output: {out}")
+                    ColorPrinter.info(f"Setpoint: {v}V @ {i}A, Output: {out}")
                 else:
                     ColorPrinter.warning("'get' command not available for multi-channel PSU")
 
@@ -1495,189 +1536,6 @@ class InstrumentRepl(cmd.Cmd):
 
         except Exception as exc:
             ColorPrinter.error(str(exc))
-
-    def _handle_psu_multichannel(self, arg, dev):
-        """Handle HP E3631A multi-channel PSU commands"""
-        args = self._parse_args(arg)
-        args, help_flag = self._strip_help(args)
-        if not args:
-            self._print_usage(
-                [
-                    "psu output on|off",
-                    "psu set <p6v|p25v|n25v> <voltage> [current]",
-                    "  - example: psu set p6v 5.0 0.2",
-                    "psu meas v|i <p6v|p25v|n25v>",
-                    "psu meas_store v|i <p6v|p25v|n25v> <label> [unit=]",
-                    "psu track on|off",
-                    "psu save <1-3>",
-                    "psu recall <1-3>",
-                    "psu state on|off|safe|reset",
-                ]
-            )
-            return
-
-        cmd_name = args[0].lower()
-        if help_flag:
-            if cmd_name == "set":
-                self._print_usage(
-                    [
-                        "psu set <p6v|p25v|n25v> <voltage> [current]",
-                        "  - voltage in Volts, current in Amps",
-                        "  - example: psu set p25v 12.0 0.5",
-                    ]
-                )
-                return
-            if cmd_name == "meas":
-                self._print_usage(
-                    [
-                        "psu meas v|i <p6v|p25v|n25v>",
-                        "  - v measures voltage, i measures current",
-                        "  - example: psu meas v p6v",
-                        "psu meas_store v|i <p6v|p25v|n25v> <label> [unit=]",
-                    ]
-                )
-                return
-            self._print_usage(
-                [
-                    "psu output on|off",
-                    "psu set <p6v|p25v|n25v> <voltage> [current]",
-                    "psu meas v|i <p6v|p25v|n25v>",
-                    "psu meas_store v|i <p6v|p25v|n25v> <label> [unit=]",
-                    "psu track on|off",
-                    "psu save <1-3>",
-                    "psu recall <1-3>",
-                    "psu state on|off|safe|reset",
-                ]
-            )
-            return
-        try:
-            if cmd_name == "output" and len(args) >= 2:
-                dev.enable_output(args[1].lower() == "on")
-            elif cmd_name == "set" and len(args) >= 3:
-                channel = PSU_CHANNEL_ALIASES.get(args[1].lower())
-                if not channel:
-                    ColorPrinter.warning("Invalid channel. Use 1, 2, or 3")
-                    return
-                voltage = float(args[2])
-                current = float(args[3]) if len(args) >= 4 else None
-                dev.set_output_channel(channel, voltage, current)
-            elif cmd_name == "meas" and len(args) >= 3:
-                mode = args[1].lower()
-                channel = PSU_CHANNEL_ALIASES.get(args[2].lower())
-                if not channel:
-                    ColorPrinter.warning("Invalid channel. Use 1, 2, or 3")
-                    return
-                if mode in ("v", "volt", "voltage"):
-                    print(dev.measure_voltage(channel))
-                elif mode in ("i", "curr", "current"):
-                    print(dev.measure_current(channel))
-                else:
-                    ColorPrinter.warning("psu meas v|i <channel>")
-            elif cmd_name == "meas_store" and len(args) >= 4:
-                mode = args[1].lower()
-                channel = PSU_CHANNEL_ALIASES.get(args[2].lower())
-                label = args[3]
-                unit = ""
-                for token in args[4:]:
-                    token_lower = token.lower()
-                    if token_lower.startswith("unit="):
-                        unit = token.split("=", 1)[1]
-                if not channel:
-                    ColorPrinter.warning("Invalid channel. Use 1, 2, or 3")
-                    return
-                if mode in ("v", "volt", "voltage"):
-                    value = dev.measure_voltage(channel)
-                elif mode in ("i", "curr", "current"):
-                    value = dev.measure_current(channel)
-                else:
-                    ColorPrinter.warning("psu meas_store v|i <channel> <label>")
-                    return
-                self._record_measurement(label, value, unit, "psu.meas")
-                print(value)
-            elif cmd_name == "track" and len(args) >= 2:
-                dev.set_tracking(args[1].lower() == "on")
-            elif cmd_name == "save" and len(args) >= 2:
-                dev.save_state(int(args[1]))
-            elif cmd_name == "recall" and len(args) >= 2:
-                dev.recall_state(int(args[1]))
-            elif cmd_name == "state" and len(args) >= 2:
-                self.do_state(f"psu {args[1]}")
-            else:
-                ColorPrinter.warning("Unknown PSU command. Type 'psu' for help.")
-        except Exception as exc:
-            ColorPrinter.error(str(exc))
-
-    def _handle_psu_matrix(self, arg, dev):
-        """Handle MATRIX MPS-6010H-1C single-channel PSU commands"""
-        args = self._parse_args(arg)
-        args, help_flag = self._strip_help(args)
-        if not args:
-            self._print_usage(
-                [
-                    "psu output on|off",
-                    "psu set <voltage> [current]",
-                    "  - voltage: 0-60V, current: 0-10A",
-                    "  - example: psu set 5.0 1.0",
-                    "psu meas v|i",
-                    "  - example: psu meas v  (measures voltage)",
-                    "psu meas_store v|i <label> [unit=]",
-                    "psu get  (show setpoints)",
-                ]
-            )
-            return
-
-        cmd_name = args[0].lower()
-        try:
-            if cmd_name == "output" and len(args) >= 2:
-                dev.enable_output(args[1].lower() == "on")
-                ColorPrinter.success(f"Output {'enabled' if args[1].lower() == 'on' else 'disabled'}")
-            elif cmd_name == "set" and len(args) >= 2:
-                voltage = float(args[1])
-                current = float(args[2]) if len(args) >= 3 else None
-                dev.set_voltage(voltage)
-                if current is not None:
-                    dev.set_current_limit(current)
-                ColorPrinter.success(
-                    f"Set: {voltage}V @ {current if current else dev.get_current_limit()}A"
-                )
-            elif cmd_name == "meas" and len(args) >= 2:
-                mode = args[1].lower()
-                if mode in ("v", "volt", "voltage"):
-                    value = dev.measure_voltage()
-                    print(f"{value:.6f}V")
-                elif mode in ("i", "curr", "current"):
-                    value = dev.measure_current()
-                    print(f"{value:.6f}A")
-                else:
-                    ColorPrinter.warning("psu meas v|i")
-            elif cmd_name == "meas_store" and len(args) >= 3:
-                mode = args[1].lower()
-                label = args[2]
-                unit = ""
-                for token in args[3:]:
-                    if token.lower().startswith("unit="):
-                        unit = token.split("=", 1)[1]
-                if mode in ("v", "volt", "voltage"):
-                    value = dev.measure_voltage()
-                    unit = unit or "V"
-                elif mode in ("i", "curr", "current"):
-                    value = dev.measure_current()
-                    unit = unit or "A"
-                else:
-                    ColorPrinter.warning("psu meas_store v|i <label>")
-                    return
-                self._record_measurement(label, value, unit, "psu.meas")
-                print(value)
-            elif cmd_name == "get":
-                v = dev.get_voltage_setpoint()
-                i = dev.get_current_limit()
-                out = "ON" if dev.get_output_state() else "OFF"
-                print(f"Setpoint: {v}V @ {i}A, Output: {out}")
-            else:
-                ColorPrinter.warning("Unknown command. Type 'psu' for help.")
-        except Exception as exc:
-            ColorPrinter.error(str(exc))
-
 
     # --------------------------
     # AWG commands
@@ -1997,7 +1855,7 @@ class InstrumentRepl(cmd.Cmd):
 
             # READ COMMAND
             elif cmd_name == "read":
-                print(dev.read())
+                ColorPrinter.cyan(str(dev.read()))
 
             # READ_STORE COMMAND
             elif cmd_name == "read_store" and len(args) >= 2:
@@ -2013,12 +1871,12 @@ class InstrumentRepl(cmd.Cmd):
                 value = dev.read()
                 scaled = value * scale
                 self._record_measurement(label, scaled, unit, "dmm.read")
-                print(scaled)
+                ColorPrinter.cyan(str(scaled))
 
             # FETCH COMMAND (HP only)
             elif cmd_name == "fetch":
                 if hasattr(dev, 'fetch'):
-                    print(dev.fetch())
+                    ColorPrinter.cyan(str(dev.fetch()))
                 else:
                     ColorPrinter.warning("'fetch' command not available on this DMM")
 
@@ -2030,7 +1888,7 @@ class InstrumentRepl(cmd.Cmd):
                 if is_owon:
                     # Owon: Set mode then read
                     dev.set_mode(mode_arg)
-                    print(dev.read())
+                    ColorPrinter.cyan(str(dev.read()))
                 else:
                     # HP: Use measure function
                     if not mode or mode not in DMM_MODE_ALIASES.values():
@@ -2046,9 +1904,9 @@ class InstrumentRepl(cmd.Cmd):
                     resolution = args[3] if len(args) >= 4 else "DEF"
 
                     if "continuity" in mode or "diode" in mode:
-                        print(func())
+                        ColorPrinter.cyan(str(func()))
                     else:
-                        print(func(range_val, resolution))
+                        ColorPrinter.cyan(str(func(range_val, resolution)))
 
             # BEEP COMMAND
             elif cmd_name == "beep":
@@ -2147,282 +2005,6 @@ class InstrumentRepl(cmd.Cmd):
 
         except Exception as exc:
             ColorPrinter.error(str(exc))
-
-    def _handle_dmm_hp(self, arg, dev):
-        """Handle HP 34401A DMM commands"""
-        args = self._parse_args(arg)
-        args, help_flag = self._strip_help(args)
-        if not args:
-            self._print_usage(
-                [
-                    "dmm config <vdc|vac|idc|iac|res|fres|freq|per|cont|diode> [range] [res] [nplc=]",
-                    "  - range/res accept numeric or DEF/MIN/MAX/AUTO",
-                    "  - nplc=0.02|0.2|1|10|100 (DC only)",
-                    "  - example: dmm config vdc 10 0.001 nplc=10",
-                    "dmm ranges  # show valid ranges/res/nplc",
-                    "dmm read",
-                    "dmm read_store <label> [scale=] [unit=]",
-                    "dmm fetch",
-                    "dmm meas <mode> [range] [res]",
-                    "  - example: dmm meas vdc 10 0.001",
-                    "dmm beep",
-                    "dmm display on|off",
-                    "dmm text <message> [scroll=auto|on|off] [delay=] [loops=] [pad=] [width=]",
-                    "dmm text_loop <message> [delay=] [pad=] [width=]",
-                    "dmm text_loop off",
-                    "dmm cleartext",
-                    "dmm state safe|reset",
-                ]
-            )
-            return
-
-        cmd_name = args[0].lower()
-        if help_flag:
-            if cmd_name == "config":
-                mode = DMM_MODE_ALIASES.get(args[1].lower()) if len(args) > 1 else None
-                if mode in ("dc_voltage", "dc_current", "resistance_2wire", "resistance_4wire"):
-                    self._print_usage(
-                        [
-                            "dmm config <vdc|idc|res|fres> [range] [res] [nplc=]",
-                            "  - range: numeric or DEF/MIN/MAX/AUTO",
-                            "  - res: numeric resolution or DEF",
-                            "  - nplc: 0.02|0.2|1|10|100 (higher = slower, cleaner)",
-                            "  - example: dmm config vdc 10 0.001 nplc=10",
-                        ]
-                    )
-                    return
-                if mode in ("ac_voltage", "ac_current", "frequency", "period"):
-                    self._print_usage(
-                        [
-                            "dmm config <vac|iac|freq|per> [range] [res]",
-                            "  - example: dmm config vac 10 0.01",
-                        ]
-                    )
-                    return
-                if mode in ("continuity", "diode"):
-                    self._print_usage(
-                        [
-                            "dmm config <cont|diode>",
-                            "  - example: dmm config cont",
-                        ]
-                    )
-                    return
-            if cmd_name == "meas":
-                self._print_usage(
-                    [
-                        "dmm meas <mode> [range] [res]",
-                        "  - example: dmm meas vdc 10 0.001",
-                        "  - example: dmm meas cont",
-                    ]
-                )
-                return
-            self._print_usage(
-                [
-                    "dmm config <vdc|vac|idc|iac|res|fres|freq|per|cont|diode> [range] [res] [nplc=]",
-                    "dmm read",
-                    "dmm read_store <label> [scale=] [unit=]",
-                    "dmm fetch",
-                    "dmm meas <mode> [range] [res]",
-                    "dmm beep",
-                    "dmm display on|off",
-                    "dmm text <message> [scroll=auto|on|off] [delay=] [loops=] [pad=] [width=]",
-                    "dmm text_loop <message> [delay=] [pad=] [width=]",
-                    "dmm text_loop off",
-                    "dmm cleartext",
-                    "dmm state safe|reset",
-                    "dmm ranges",
-                ]
-            )
-            return
-        if cmd_name in ("ranges", "limits"):
-            self._print_usage(
-                [
-                    "Valid DMM ranges/res/nplc (HP 34401A):",
-                    "vdc: range 0.1|1|10|100|1000 or MIN/MAX/DEF/AUTO, res numeric, nplc 0.02|0.2|1|10|100",
-                    "vac: range 0.1|1|10|100|750 or MIN/MAX/DEF/AUTO, res numeric",
-                    "idc: range 0.01|0.1|1|3 or MIN/MAX/DEF/AUTO, res numeric, nplc 0.02|0.2|1|10|100",
-                    "iac: range 0.01|0.1|1|3 or MIN/MAX/DEF/AUTO, res numeric",
-                    "res/fres: range 100|1e3|10e3|100e3|1e6|10e6|100e6 or MIN/MAX/DEF/AUTO, res numeric, nplc 0.02|0.2|1|10|100",
-                    "freq/per: range 0.1|1|10|100|750 or MIN/MAX/DEF/AUTO, res numeric",
-                    "cont/diode: fixed range (no range/res args)",
-                ]
-            )
-            return
-        try:
-            if cmd_name == "config" and len(args) >= 2:
-                mode = DMM_MODE_ALIASES.get(args[1].lower())
-                if not mode:
-                    ColorPrinter.warning("Invalid mode. Type 'dmm' for options.")
-                    return
-                func = getattr(dev, f"configure_{mode}")
-                if mode in ("continuity", "diode"):
-                    func()
-                    return
-                range_val = "DEF"
-                resolution = "DEF"
-                nplc = None
-                positional = []
-                for token in args[2:]:
-                    token_lower = token.lower()
-                    if token_lower.startswith("nplc="):
-                        nplc = float(token.split("=", 1)[1])
-                        continue
-                    if token_lower.startswith("range="):
-                        range_val = token.split("=", 1)[1]
-                        continue
-                    if token_lower.startswith(("res=", "resolution=")):
-                        resolution = token.split("=", 1)[1]
-                        continue
-                    positional.append(token)
-                if positional:
-                    range_val = positional[0]
-                if len(positional) >= 2:
-                    resolution = positional[1]
-                if len(positional) >= 3:
-                    ColorPrinter.warning("Ignoring extra DMM config arguments after range/res.")
-                if nplc is not None:
-                    func(range_val, resolution, nplc)
-                else:
-                    func(range_val, resolution)
-            elif cmd_name == "read":
-                print(dev.read())
-            elif cmd_name == "read_store" and len(args) >= 2:
-                label = args[1]
-                scale = 1.0
-                unit = ""
-                for token in args[2:]:
-                    token_lower = token.lower()
-                    if token_lower.startswith("scale="):
-                        scale = float(token.split("=", 1)[1])
-                    elif token_lower.startswith("unit="):
-                        unit = token.split("=", 1)[1]
-                value = dev.read()
-                scaled = value * scale
-                self._record_measurement(label, scaled, unit, "dmm.read")
-                print(scaled)
-            elif cmd_name == "fetch":
-                print(dev.fetch())
-            elif cmd_name == "meas" and len(args) >= 2:
-                mode = DMM_MODE_ALIASES.get(args[1].lower())
-                if not mode:
-                    ColorPrinter.warning("Invalid mode. Type 'dmm' for options.")
-                    return
-                range_val = args[2] if len(args) >= 3 else "DEF"
-                resolution = args[3] if len(args) >= 4 else "DEF"
-                func = getattr(dev, f"measure_{mode}")
-                print(func(range_val, resolution) if "continuity" not in mode and "diode" not in mode else func())
-            elif cmd_name == "beep":
-                dev.beep()
-            elif cmd_name == "display" and len(args) >= 2:
-                dev.set_display(args[1].lower() == "on")
-            elif cmd_name == "text" and len(args) >= 2:
-                msg_parts = []
-                options = {}
-                for token in args[1:]:
-                    if "=" in token:
-                        key, value = token.split("=", 1)
-                        options[key.lower()] = value
-                    else:
-                        msg_parts.append(token)
-                message = " ".join(msg_parts)
-                scroll_mode = options.get("scroll", "auto").lower()
-                width = int(options.get("width", 12))
-                delay = float(options.get("delay", 0.2))
-                pad = int(options.get("pad", 4))
-                loops = int(options.get("loops", 1))
-                if scroll_mode == "off":
-                    dev.display_text(message)
-                elif scroll_mode == "on" or len(message) > width:
-                    dev.display_text_rolling(
-                        message, width=width, delay=delay, pad=pad, loops=loops
-                    )
-                else:
-                    dev.display_text(message)
-            elif cmd_name == "text_loop" and len(args) >= 2:
-                if args[1].lower() == "off":
-                    self._stop_dmm_text_loop()
-                    try:
-                        dev.clear_display_text()
-                    except Exception:
-                        pass
-                    return
-                msg_parts = []
-                options = {}
-                for token in args[1:]:
-                    if "=" in token:
-                        key, value = token.split("=", 1)
-                        options[key.lower()] = value
-                    else:
-                        msg_parts.append(token)
-                message = " ".join(msg_parts)
-                width = int(options.get("width", 12))
-                delay = float(options.get("delay", 0.2))
-                pad = int(options.get("pad", 4))
-                self._start_dmm_text_loop(message, width=width, delay=delay, pad=pad)
-            elif cmd_name == "cleartext":
-                dev.clear_display_text()
-            elif cmd_name == "state" and len(args) >= 2:
-                self.do_state(f"dmm {args[1]}")
-            else:
-                ColorPrinter.warning("Unknown DMM command. Type 'dmm' for help.")
-        except Exception as exc:
-            ColorPrinter.error(str(exc))
-
-    def _handle_dmm_owon(self, arg, dev):
-        """Handle Owon XDM1041 DMM commands"""
-        args = self._parse_args(arg)
-        args, help_flag = self._strip_help(args)
-        if not args:
-            self._print_usage(
-                [
-                    "dmm config <vdc|vac|idc|iac|res|fres|freq|cap|temp>",
-                    "  - vdc:  DC voltage",
-                    "  - vac:  AC voltage",
-                    "  - idc:  DC current",
-                    "  - iac:  AC current",
-                    "  - res:  2-wire resistance",
-                    "  - fres: 4-wire resistance",
-                    "  - freq: Frequency",
-                    "  - cap:  Capacitance",
-                    "  - temp: Temperature",
-                    "dmm read",
-                    "  - takes measurement in current mode",
-                    "dmm read_store <label> [scale=] [unit=]",
-                    "Example:",
-                    "  dmm config vdc",
-                    "  dmm read",
-                ]
-            )
-            return
-
-        cmd_name = args[0].lower()
-        try:
-            if cmd_name in ("mode", "config") and len(args) >= 2:
-                mode = args[1].lower()
-                dev.set_mode(mode)
-                ColorPrinter.success(f"Mode set to: {mode}")
-            elif cmd_name == "read":
-                value = dev.read()
-                print(f"{value}")
-            elif cmd_name == "read_store" and len(args) >= 2:
-                label = args[1]
-                scale = 1.0
-                unit = ""
-                for token in args[2:]:
-                    token_lower = token.lower()
-                    if token_lower.startswith("scale="):
-                        scale = float(token.split("=", 1)[1])
-                    elif token_lower.startswith("unit="):
-                        unit = token.split("=", 1)[1]
-                value = dev.read()
-                scaled_value = value * scale
-                self._record_measurement(label, scaled_value, unit, "dmm.read")
-                print(scaled_value)
-            else:
-                ColorPrinter.warning("Unknown command. Type 'dmm' for help.")
-        except Exception as exc:
-            ColorPrinter.error(str(exc))
-
 
     # --------------------------
     # Scope commands
@@ -2599,7 +2181,7 @@ class InstrumentRepl(cmd.Cmd):
                     channel = int(args[1])
                     measure_type = args[2]
                     result = dev.measure_bnf(channel, measure_type)
-                    ColorPrinter.success(f"CH{channel} {measure_type}: {result}")
+                    ColorPrinter.cyan(f"CH{channel} {measure_type}: {result}")
             elif cmd_name == "measure_store" and len(args) >= 4:
                 channel = int(args[1])
                 measure_type = args[2]
@@ -2617,7 +2199,7 @@ class InstrumentRepl(cmd.Cmd):
                 edge1 = args[3].upper() if len(args) >= 4 else "RISE"
                 edge2 = args[4].upper() if len(args) >= 5 else "RISE"
                 direction = args[5].upper() if len(args) >= 6 else "FORWARDS"
-                print(dev.measure_delay(ch1, ch2, edge1, edge2, direction))
+                ColorPrinter.cyan(str(dev.measure_delay(ch1, ch2, edge1, edge2, direction)))
             elif cmd_name == "measure_delay_store" and len(args) >= 4:
                 ch1 = int(args[1])
                 ch2 = int(args[2])
@@ -2640,7 +2222,7 @@ class InstrumentRepl(cmd.Cmd):
 
                 val = dev.measure_delay(ch1, ch2, edge1, edge2, direction)
                 self._record_measurement(label, val, unit, "scope.meas.delay")
-                print(val)
+                ColorPrinter.cyan(str(val))
             elif cmd_name == "save" and len(args) >= 3:
                 channels_str = args[1]
                 filename = args[2]
@@ -2811,7 +2393,7 @@ class InstrumentRepl(cmd.Cmd):
 
             elif cmd == "read":
                 value = dev.get_counter_current()
-                print(f"Counter: {value}")
+                ColorPrinter.cyan(f"Counter: {value}")
 
             elif cmd == "source" and len(args) >= 2:
                 channel = int(args[1])
@@ -2854,7 +2436,7 @@ class InstrumentRepl(cmd.Cmd):
 
             elif cmd == "read":
                 value = dev.get_dvm_current()
-                print(f"DVM: {value} V")
+                ColorPrinter.cyan(f"DVM: {value} V")
 
             elif cmd == "source" and len(args) >= 2:
                 channel = int(args[1])
@@ -2967,13 +2549,16 @@ class InstrumentRepl(cmd.Cmd):
         if not expr:
             ColorPrinter.warning("calc expects an expression.")
             return
+        if not self.measurements:
+            ColorPrinter.warning("No measurements recorded. Use meas_store/read_store/measure_store first.")
+            return
         m = {entry["label"]: entry["value"] for entry in self.measurements}
-        last = self.measurements[-1]["value"] if self.measurements else None
+        last = self.measurements[-1]["value"]
         names = {"m": m, "last": last}
         try:
             value = self._safe_eval(expr, names)
             self._record_measurement(label, value, unit, "calc")
-            print(value)
+            ColorPrinter.cyan(str(value))
         except Exception as exc:
             ColorPrinter.error(f"calc failed: {exc}")
 
@@ -3038,12 +2623,29 @@ class InstrumentRepl(cmd.Cmd):
             ColorPrinter.success(f"Script {filename} executed successfully")
         except Exception as exc:
             ColorPrinter.error(f"Script execution failed: {exc}")
-            import traceback
             traceback.print_exc()
 
 
 def main():
+    args = sys.argv[1:]
+
+    if "--mock" in args:
+        args = [a for a in args if a != "--mock"]
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import mock_instruments
+        from lab_instruments.src import discovery as _disc
+        _disc.InstrumentDiscovery.scan = lambda self, verbose=True: mock_instruments.get_mock_devices(verbose)
+
     repl = InstrumentRepl()
+
+    if args:
+        script_name = args[0]
+        if script_name not in repl.scripts:
+            ColorPrinter.error(f"Script '{script_name}' not found.")
+            sys.exit(1)
+        repl._run_script_lines(repl.scripts[script_name])
+        return
+
     repl.cmdloop()
 
 
