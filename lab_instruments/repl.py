@@ -190,6 +190,17 @@ class InstrumentRepl(cmd.Cmd):
         self._cleanup_done = False
         self._script_vars: Dict[str, str] = {}  # runtime variables set by 'input' during scripts
 
+        # Save terminal state so we can restore it on any exit path
+        self._term_fd = None
+        self._term_settings = None
+        try:
+            import termios
+            fd = sys.stdin.fileno()
+            self._term_fd = fd
+            self._term_settings = termios.tcgetattr(fd)
+        except Exception:
+            pass  # Windows or non-tty stdin — no-op
+
         ColorPrinter.info("Scanning for instruments... (Ctrl+C to cancel)")
         self.scan()
         if self.devices:
@@ -198,11 +209,10 @@ class InstrumentRepl(cmd.Cmd):
             ColorPrinter.warning(f"Found {len(self.devices)} device(s)")
 
         # Register cleanup handlers AFTER scan completes (so Ctrl+C works during scan)
-        if self.devices:
-            atexit.register(self._cleanup_on_exit)
-            signal.signal(signal.SIGINT, self._cleanup_on_interrupt)
-            if hasattr(signal, 'SIGTERM'):
-                signal.signal(signal.SIGTERM, self._cleanup_on_interrupt)
+        atexit.register(self._cleanup_on_exit)
+        signal.signal(signal.SIGINT, self._cleanup_on_interrupt)
+        if hasattr(signal, 'SIGTERM'):
+            signal.signal(signal.SIGTERM, self._cleanup_on_interrupt)
 
             # Ensure all instruments start in safe/off state
             try:
@@ -213,6 +223,15 @@ class InstrumentRepl(cmd.Cmd):
                 ColorPrinter.error(f"Error during startup safety check: {exc}")
                 traceback.print_exc()
 
+    def _restore_terminal(self):
+        """Restore terminal settings saved at startup (no-op on Windows)."""
+        try:
+            if self._term_settings is not None:
+                import termios
+                termios.tcsetattr(self._term_fd, termios.TCSADRAIN, self._term_settings)
+        except Exception:
+            pass
+
     def _cleanup_on_exit(self):
         """Called automatically on normal program exit (via atexit)."""
         if not self._cleanup_done and self.devices:
@@ -222,6 +241,7 @@ class InstrumentRepl(cmd.Cmd):
                 self._safe_all()
             except Exception as exc:
                 ColorPrinter.error(f"Error during cleanup: {exc}")
+        self._restore_terminal()
 
     def _cleanup_on_interrupt(self, signum, frame):
         """Called when Ctrl+C or termination signal is received."""
@@ -232,9 +252,9 @@ class InstrumentRepl(cmd.Cmd):
                 self._safe_all()
             except Exception as exc:
                 ColorPrinter.error(f"Error during cleanup: {exc}")
-        # Exit gracefully
         print("\nGoodbye!")
-        os._exit(0)
+        self._restore_terminal()
+        sys.exit(0)
 
     # --------------------------
     # Core helpers
