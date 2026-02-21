@@ -109,6 +109,7 @@ class InstrumentRepl(cmd.Cmd):
         self._dmm_text_last = 0.0
         self._device_override: Optional[str] = None  # set by default() for awg1, scope2, etc.
         self._cleanup_done = False
+        self._script_vars: Dict[str, str] = {}  # runtime variables set by 'input' during scripts
 
         ColorPrinter.info("Scanning for instruments... (Ctrl+C to cancel)")
         self.scan()
@@ -330,27 +331,21 @@ class InstrumentRepl(cmd.Cmd):
     def _print_colored_usage(self, lines):
         """Print colorful usage help for a command."""
         for line in lines:
-            # Apply color coding based on content patterns
             if line.strip().startswith("#"):
                 # Section headers
                 ColorPrinter.header(line.strip("# ").strip())
             elif line.strip().startswith("-"):
-                # Examples and sub-items in yellow
+                # Notes and examples in yellow
                 print(f"{ColorPrinter.YELLOW}{line}{ColorPrinter.RESET}")
-            elif "<" in line and ">" in line:
-                # Commands with parameters - highlight command in cyan
+            elif line.strip() and not line.startswith(" "):
+                # Top-level command line — first word (command name) cyan, rest plain
                 parts = line.split(" ", 1)
                 if len(parts) == 2:
-                    cmd = parts[0]
-                    rest = parts[1]
-                    print(f"{ColorPrinter.CYAN}{cmd}{ColorPrinter.RESET} {rest}")
+                    print(f"{ColorPrinter.CYAN}{parts[0]}{ColorPrinter.RESET} {parts[1]}")
                 else:
                     print(f"{ColorPrinter.CYAN}{line}{ColorPrinter.RESET}")
-            elif line.strip() and not line.startswith(" "):
-                # Top-level commands in cyan
-                print(f"{ColorPrinter.CYAN}{line}{ColorPrinter.RESET}")
             else:
-                # Regular text
+                # Indented / blank lines
                 print(line)
 
     def _stop_dmm_text_loop(self):
@@ -510,7 +505,7 @@ class InstrumentRepl(cmd.Cmd):
                 for token in tokens[2:]:
                     if "=" in token:
                         k, v = token.split("=", 1)
-                        call_params[k] = v
+                        call_params[k] = self._substitute_vars(v, variables)
                 expanded.extend(self._expand_script_lines(self.scripts[script_name], call_params, depth + 1))
                 continue
             if head == "repeat" and len(tokens) >= 2:
@@ -584,6 +579,7 @@ class InstrumentRepl(cmd.Cmd):
     def _run_script_lines(self, lines):
         expanded = self._expand_script_lines(lines, {})
         for raw_line in expanded:
+            raw_line = self._substitute_vars(raw_line, self._script_vars)
             line = raw_line.strip()
             if not line or line.startswith("#"):
                 continue
@@ -1090,25 +1086,74 @@ class InstrumentRepl(cmd.Cmd):
         "wait <seconds>: alias for sleep"
         return self.do_sleep(arg)
 
+    def do_print(self, arg):
+        "print <message>: display a message (useful in scripts)"
+        import builtins
+        args = self._parse_args(arg)
+        msg = " ".join(args) if args else ""
+        builtins.print(f"{ColorPrinter.CYAN}{msg}{ColorPrinter.RESET}")
+
+    def do_pause(self, arg):
+        "pause [message]: wait for Enter (useful in scripts to prompt operator)"
+        import builtins
+        args = self._parse_args(arg)
+        prompt = " ".join(args) if args else "Press Enter to continue..."
+        builtins.input(f"{ColorPrinter.YELLOW}{prompt}{ColorPrinter.RESET} ")
+
+    def do_input(self, arg):
+        "input <varname> [prompt]: read a value from the user and store in ${varname} for use in scripts"
+        import builtins
+        args = self._parse_args(arg)
+        if not args:
+            ColorPrinter.warning("Usage: input <varname> [prompt]")
+            return
+        varname = args[0]
+        prompt = " ".join(args[1:]) if len(args) > 1 else f"{varname}: "
+        value = builtins.input(f"{ColorPrinter.YELLOW}{prompt}{ColorPrinter.RESET} ")
+        self._script_vars[varname] = value
+        ColorPrinter.success(f"${{{varname}}} = {value!r}")
+
     def do_script(self, arg):
         "script <new|run|edit|list|rm|show|import|load|save> [args]: manage and run scripts"
         args = self._parse_args(arg)
         args, help_flag = self._strip_help(args)
 
-        usage = [
-            "script new  <name>                   # create new script in editor",
-            "script run  <name> [key=val ...]      # execute with optional params",
-            "script edit <name>                    # edit existing script in editor",
-            "script list                           # show all scripts",
-            "script rm   <name>                    # delete",
-            "script show <name>                    # print script lines",
-            "script import <name> <path>           # import from .txt file",
-            "script load [path]                    # load JSON file",
-            "script save [path]                    # save JSON file",
-        ]
-
         if not args or help_flag:
-            self._print_usage(usage)
+            self._print_colored_usage([
+                "# SCRIPT",
+                "",
+                "script new <name>",
+                "script run <name> [key=val ...]",
+                "  - example: script run my_test voltage=5.0",
+                "script edit <name>",
+                "script list",
+                "script rm <name>",
+                "script show <name>",
+                "script import <name> <path>",
+                "  - import lines from a .txt file",
+                "script load [path]",
+                "  - load scripts from JSON file",
+                "script save [path]",
+                "  - save scripts to JSON file",
+                "",
+                "# SCRIPT DIRECTIVES",
+                "",
+                "print <message>",
+                "  - display a message to the operator",
+                "pause [message]",
+                "  - wait for operator to press Enter",
+                "input <varname> [prompt]",
+                "  - prompt operator for a value, store in ${varname}",
+                "  - example: input voltage Enter PSU voltage:",
+                "  - use ${varname} in subsequent lines to reference it",
+                "set <varname> <expr>",
+                "  - compute a value at script build time",
+                "  - example: set v2 ${v1} * 2",
+                "sleep <seconds>",
+                "repeat <N>  ...  end",
+                "for <var> <val1> <val2> ...  end",
+                "call <name> [key=val ...]",
+            ])
             return
 
         subcmd = args[0].lower()
@@ -1141,6 +1186,7 @@ class InstrumentRepl(cmd.Cmd):
                     params[key] = value
             expanded = self._expand_script_lines(lines, params)
             for raw_line in expanded:
+                raw_line = self._substitute_vars(raw_line, self._script_vars)
                 line = raw_line.strip()
                 if not line or line.startswith("#"):
                     continue
@@ -1227,8 +1273,1298 @@ class InstrumentRepl(cmd.Cmd):
             ColorPrinter.success("Scripts saved.")
 
         else:
-            ColorPrinter.warning(f"Unknown subcommand '{subcmd}'.")
-            self._print_usage(usage)
+            ColorPrinter.warning(f"Unknown subcommand '{subcmd}'. Type 'script' for help.")
+
+    def do_examples(self, arg):
+        "examples [load <name>|load all]: list or load bundled example scripts"
+        try:
+            from lab_instruments.examples import EXAMPLES
+        except ImportError:
+            from examples import EXAMPLES
+        args = self._parse_args(arg)
+        args, help_flag = self._strip_help(args)
+
+        if not args or help_flag:
+            self._print_colored_usage([
+                "# EXAMPLES",
+                "",
+                "examples",
+                "  - list all bundled example scripts",
+                "examples load <name>",
+                "  - copy a bundled example into your scripts (then: script run <name>)",
+                "examples load all",
+                "  - load every bundled example at once",
+            ])
+            print()
+            ColorPrinter.header("Available Examples")
+            for name, entry in EXAMPLES.items():
+                print(f"  {ColorPrinter.CYAN}{name}{ColorPrinter.RESET}  {ColorPrinter.YELLOW}{entry['description']}{ColorPrinter.RESET}")
+            return
+
+        subcmd = args[0].lower()
+
+        if subcmd == "load":
+            if len(args) < 2:
+                ColorPrinter.warning("Usage: examples load <name>  or  examples load all")
+                return
+            target = args[1].lower()
+            if target == "all":
+                for name, entry in EXAMPLES.items():
+                    self.scripts[name] = entry["lines"]
+                self._save_scripts()
+                ColorPrinter.success(f"Loaded {len(EXAMPLES)} examples into scripts.")
+            elif target in EXAMPLES:
+                self.scripts[target] = EXAMPLES[target]["lines"]
+                self._save_scripts()
+                ColorPrinter.success(f"Loaded '{target}'. Run with: script run {target}")
+            else:
+                available = list(EXAMPLES.keys())
+                ColorPrinter.warning(f"Unknown example '{target}'. Available: {available}")
+        else:
+            ColorPrinter.warning(f"Unknown subcommand '{subcmd}'. Type 'examples' for help.")
+
+    def do_docs(self, arg):
+        "docs: open the full command reference in your browser"
+        import subprocess
+        import webbrowser
+        import os
+
+        repl_dir = os.path.dirname(os.path.abspath(__file__))
+        repo_root = os.path.dirname(repl_dir)
+        mkdocs_yml = os.path.join(repo_root, "mkdocs.yml")
+        site_index = os.path.join(repo_root, "site", "index.html")
+
+        if os.path.exists(mkdocs_yml):
+            # Build if site/ doesn't exist yet
+            if not os.path.exists(site_index):
+                ColorPrinter.info("Building docs (first run — takes a few seconds)...")
+                result = subprocess.run(
+                    [sys.executable, "-m", "mkdocs", "build", "--quiet"],
+                    cwd=repo_root,
+                    capture_output=True,
+                    env={**os.environ, "PYTHONUTF8": "1"},
+                )
+                if result.returncode != 0:
+                    err = result.stderr.decode(errors="replace").strip()
+                    ColorPrinter.warning(f"mkdocs build failed: {err[:200]}")
+                    ColorPrinter.info("Install mkdocs-material: pip install mkdocs-material")
+
+            if os.path.exists(site_index):
+                url = "file:///" + site_index.replace("\\", "/")
+                webbrowser.open(url)
+                ColorPrinter.success(f"Docs opened: {site_index}")
+                return
+
+        # Fallback: single-page HTML
+        import tempfile
+        html = self._generate_docs_html()
+        path = os.path.join(tempfile.gettempdir(), "scpi_toolkit_docs.html")
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(html)
+        url = "file:///" + path.replace("\\", "/")
+        webbrowser.open(url)
+        ColorPrinter.success("Docs opened in browser (single-page fallback).")
+        ColorPrinter.info("For the full docs site: pip install mkdocs-material  then  docs")
+
+    def _generate_docs_html(self) -> str:
+        try:
+            from lab_instruments.examples import EXAMPLES as _EXAMPLES
+        except ImportError:
+            from examples import EXAMPLES as _EXAMPLES
+        import html as _html
+
+        def e(s):
+            return _html.escape(str(s))
+
+        try:
+            from importlib.metadata import version as _v
+            ver = _v("scpi-instrument-toolkit")
+        except Exception:
+            ver = "dev"
+
+        # ─────────────────────────────────────────────────────────────────────
+        # COMMAND DATA
+        # Each section: {id, title, intro, commands}
+        # Each command: {id, name, brief, syntax, desc, params, examples, notes, see}
+        # Each param:   {name, required, values, desc}
+        # required values: "required" | "optional" | any other string (shown as context badge)
+        # ─────────────────────────────────────────────────────────────────────
+        SECTIONS = [
+            {
+                "id": "general", "title": "General Commands",
+                "intro": "These commands work regardless of which instrument is active.",
+                "commands": [
+                    {
+                        "id": "cmd-scan", "name": "scan",
+                        "brief": "Discover and connect VISA instruments",
+                        "syntax": "scan",
+                        "desc": "Scans all VISA resources and auto-identifies instruments by querying <code>*IDN?</code>. Instruments are assigned names like <code>psu1</code>, <code>dmm1</code>, <code>scope1</code>, <code>awg1</code>. When multiple of the same type are found they are numbered: psu1, psu2, etc.",
+                        "params": [],
+                        "examples": [("scan", "Discover and connect all available instruments")],
+                        "notes": [],
+                        "see": [],
+                    },
+                    {
+                        "id": "cmd-list", "name": "list",
+                        "brief": "Show connected instruments",
+                        "syntax": "list",
+                        "desc": "Displays all currently connected instruments, their assigned names, and which one is currently active (set via <code>use</code>).",
+                        "params": [],
+                        "examples": [("list", "Print all connected instruments")],
+                        "notes": [],
+                        "see": ["cmd-use"],
+                    },
+                    {
+                        "id": "cmd-use", "name": "use",
+                        "brief": "Set the active instrument",
+                        "syntax": "use <name>",
+                        "desc": "Sets the active instrument for subsequent generic commands (e.g. <code>psu set 5.0</code> acts on whatever is active). When only one instrument of a type is connected it is selected automatically. With multiple of the same type you must <code>use</code> the desired one, or address it directly by prefixing commands: <code>psu2 set 12.0</code>.",
+                        "params": [
+                            {"name": "name", "required": "required", "values": "psu1, dmm2, scope1, …", "desc": "The instrument name as shown by <code>list</code>."},
+                        ],
+                        "examples": [
+                            ("use psu1", "Make psu1 the active PSU"),
+                            ("use scope2", "Make scope2 the active oscilloscope"),
+                        ],
+                        "notes": ["Alternative: prefix any command with the instrument name to address it directly without changing the active selection — e.g. <code>psu2 set 12.0</code>."],
+                        "see": ["cmd-list"],
+                    },
+                    {
+                        "id": "cmd-idn", "name": "idn",
+                        "brief": "Query instrument identification string",
+                        "syntax": "idn [name]",
+                        "desc": "Sends <code>*IDN?</code> and prints the response (manufacturer, model, serial, firmware version).",
+                        "params": [
+                            {"name": "name", "required": "optional", "values": "e.g. psu1, dmm1", "desc": "Instrument to query. Defaults to the currently active instrument if omitted."},
+                        ],
+                        "examples": [
+                            ("idn", "Query IDN of active instrument"),
+                            ("idn scope1", "Query IDN of scope1 specifically"),
+                        ],
+                        "notes": [],
+                        "see": ["cmd-raw"],
+                    },
+                    {
+                        "id": "cmd-raw", "name": "raw",
+                        "brief": "Send a raw SCPI command or query",
+                        "syntax": "raw <command>",
+                        "desc": "Sends a raw SCPI string to the active instrument. If the command ends with <code>?</code> the response is printed.",
+                        "params": [
+                            {"name": "command", "required": "required", "values": "any SCPI string", "desc": "SCPI command or query. Queries (ending with <code>?</code>) print the instrument response."},
+                        ],
+                        "examples": [
+                            ("raw *RST", "Reset the instrument"),
+                            ("raw MEAS:VOLT:DC?", "Query DC voltage"),
+                            ("raw OUTP:STAT ON", "Turn output on via raw SCPI"),
+                        ],
+                        "notes": [],
+                        "see": ["cmd-idn"],
+                    },
+                    {
+                        "id": "cmd-state", "name": "state",
+                        "brief": "Set instrument state",
+                        "syntax": "state <on|off|safe|reset>",
+                        "desc": "Applies a named state to the active instrument. Behavior depends on instrument type.",
+                        "params": [
+                            {"name": "on", "required": "—", "values": "on", "desc": "Enable output."},
+                            {"name": "off", "required": "—", "values": "off", "desc": "Disable output."},
+                            {"name": "safe", "required": "—", "values": "safe", "desc": "Put in safe state: outputs off, returns to safe defaults."},
+                            {"name": "reset", "required": "—", "values": "reset", "desc": "Send <code>*RST</code> to restore factory defaults."},
+                        ],
+                        "examples": [
+                            ("state safe", "Put active instrument in safe state"),
+                            ("state reset", "Factory-reset active instrument"),
+                        ],
+                        "notes": [],
+                        "see": ["cmd-all"],
+                    },
+                    {
+                        "id": "cmd-all", "name": "all",
+                        "brief": "Apply state to every connected instrument",
+                        "syntax": "all <on|off|safe|reset>",
+                        "desc": "Same as <code>state</code> but applies to all connected instruments simultaneously.",
+                        "params": [
+                            {"name": "on|off|safe|reset", "required": "required", "values": "on, off, safe, reset", "desc": "State to apply to all instruments. See <code>state</code> for descriptions."},
+                        ],
+                        "examples": [
+                            ("all safe", "Put every instrument in safe state"),
+                            ("all off", "Turn off all outputs"),
+                        ],
+                        "notes": [],
+                        "see": ["cmd-state"],
+                    },
+                    {
+                        "id": "cmd-sleep", "name": "sleep / wait",
+                        "brief": "Pause execution",
+                        "syntax": "sleep <seconds>",
+                        "desc": "Pauses the REPL (or script) for the given duration. <code>wait</code> is an alias. Fractional seconds are supported.",
+                        "params": [
+                            {"name": "seconds", "required": "required", "values": "float ≥ 0", "desc": "Duration to sleep. E.g. <code>0.5</code> = 500 ms, <code>1.0</code> = 1 s."},
+                        ],
+                        "examples": [
+                            ("sleep 1.0", "Pause for 1 second"),
+                            ("sleep 0.5", "Pause for 500 ms"),
+                            ("wait 2", "Alias: wait 2 seconds"),
+                        ],
+                        "notes": ["Also valid as a script directive: <code>sleep ${delay}</code> uses a variable for the duration."],
+                        "see": [],
+                    },
+                    {
+                        "id": "cmd-reload", "name": "reload / version / clear / exit",
+                        "brief": "Utility commands",
+                        "syntax": "reload  |  version  |  clear  |  exit  |  quit",
+                        "desc": "<code>reload</code> restarts the REPL process. <code>version</code> prints the installed toolkit version. <code>clear</code> clears the terminal. <code>exit</code>/<code>quit</code> close the REPL.",
+                        "params": [],
+                        "examples": [
+                            ("version", "Print installed version"),
+                            ("reload", "Restart the REPL"),
+                        ],
+                        "notes": [],
+                        "see": [],
+                    },
+                ],
+            },
+            {
+                "id": "psu", "title": "PSU — Power Supply",
+                "intro": "Controls power supply units. Single-channel PSUs (e.g. HP E3631A) always use channel 1. Multi-channel PSUs (e.g. Matrix MPS-6010H) support channels 1, 2, 3, and all. Multiple PSUs are named psu1, psu2, etc. — address them directly: psu2 set 12.0, or use 'use psu2' first.",
+                "commands": [
+                    {
+                        "id": "psu-chan", "name": "psu chan",
+                        "brief": "Enable or disable an output channel",
+                        "syntax": "psu chan <channel> <on|off>",
+                        "desc": "Turns a PSU output channel on or off. For single-channel PSUs the channel is always <code>1</code>.",
+                        "params": [
+                            {"name": "channel", "required": "required", "values": "1, 2, 3, all", "desc": "Output channel number. Multi-channel PSUs support 1, 2, 3, or <code>all</code>. Single-channel PSUs always use <code>1</code>."},
+                            {"name": "on|off", "required": "required", "values": "on, off", "desc": "<code>on</code> = enable output voltage; <code>off</code> = disable output."},
+                        ],
+                        "examples": [
+                            ("psu chan 1 on", "Enable output on a single-channel PSU"),
+                            ("psu chan 2 off", "Disable channel 2 on a multi-channel PSU"),
+                            ("psu chan all off", "Disable all channels at once"),
+                        ],
+                        "notes": [],
+                        "see": ["psu-set", "psu-meas_store"],
+                    },
+                    {
+                        "id": "psu-set", "name": "psu set",
+                        "brief": "Set output voltage and optional current limit",
+                        "syntax": "psu set <voltage> [current]  |  psu set <channel> <voltage> [current]",
+                        "desc": "Sets the voltage setpoint and optional current limit. Single-channel PSUs use <code>psu set &lt;V&gt;</code>. Multi-channel PSUs require the channel number first: <code>psu set &lt;ch&gt; &lt;V&gt;</code>.",
+                        "params": [
+                            {"name": "channel", "required": "multi-ch only", "values": "1, 2, 3", "desc": "Channel number — required for multi-channel PSUs, not used for single-channel PSUs."},
+                            {"name": "voltage", "required": "required", "values": "float (V)", "desc": "Target output voltage in volts."},
+                            {"name": "current", "required": "optional", "values": "float (A)", "desc": "Current limit in amperes. If omitted, the current limit is unchanged."},
+                        ],
+                        "examples": [
+                            ("psu set 5.0", "Set single-ch output to 5 V"),
+                            ("psu set 5.0 0.5", "Set 5 V with 0.5 A current limit"),
+                            ("psu set 2 12.0", "Multi-ch: set channel 2 to 12 V"),
+                            ("psu set 2 12.0 1.0", "Multi-ch: channel 2, 12 V, 1 A limit"),
+                        ],
+                        "notes": [],
+                        "see": ["psu-chan"],
+                    },
+                    {
+                        "id": "psu-meas", "name": "psu meas",
+                        "brief": "Measure and print PSU output",
+                        "syntax": "psu meas <v|i> [channel]",
+                        "desc": "Takes a live measurement from the PSU and prints the result. Does not store the value — use <code>psu meas_store</code> to record it.",
+                        "params": [
+                            {"name": "v|i", "required": "required", "values": "v, i", "desc": "<code>v</code> = measure output voltage; <code>i</code> = measure output current."},
+                            {"name": "channel", "required": "multi-ch only", "values": "1, 2, 3", "desc": "Channel to measure. Required for multi-channel PSUs."},
+                        ],
+                        "examples": [
+                            ("psu meas v", "Print output voltage"),
+                            ("psu meas i", "Print output current"),
+                            ("psu meas v 2", "Multi-ch: print channel 2 voltage"),
+                        ],
+                        "notes": [],
+                        "see": ["psu-meas_store"],
+                    },
+                    {
+                        "id": "psu-meas_store", "name": "psu meas_store",
+                        "brief": "Measure and record to the measurement log",
+                        "syntax": "psu meas_store <v|i> [channel] <label> [unit=<str>]",
+                        "desc": "Measures the PSU output and appends the result to the session measurement log. Use <code>log print</code> to view all recorded measurements and <code>calc</code> to compute derived values using stored data.",
+                        "params": [
+                            {"name": "v|i", "required": "required", "values": "v, i", "desc": "<code>v</code> = measure voltage; <code>i</code> = measure current."},
+                            {"name": "channel", "required": "multi-ch only", "values": "1, 2, 3", "desc": "Channel to measure. Required for multi-channel PSUs; omit for single-channel."},
+                            {"name": "label", "required": "required", "values": "string, no spaces", "desc": "Name for this measurement entry in the log. Appears as the row identifier in <code>log print</code> output. Also used as the dictionary key in <code>calc</code> expressions — e.g. if label is <code>ch1_v</code> then access it as <code>m[\"ch1_v\"]</code>. Use underscores instead of spaces."},
+                            {"name": "unit=", "required": "optional", "values": "string, e.g. V, A", "desc": "Unit label shown in <code>log print</code> output alongside the value (e.g. <code>V</code>, <code>A</code>). This is purely for display — it does not affect the stored numeric value or any <code>calc</code> computation."},
+                        ],
+                        "examples": [
+                            ("psu meas_store v psu_out unit=V", "Store voltage as 'psu_out'; access later as m[\"psu_out\"]"),
+                            ("psu meas_store i psu_i unit=A", "Store current as 'psu_i'"),
+                            ("psu meas_store v 2 ch2_v unit=V", "Multi-ch: store channel 2 voltage"),
+                        ],
+                        "notes": [
+                            "Access stored values in <code>calc</code>: <code>calc power m[\"psu_out\"]*m[\"psu_i\"] unit=W</code>",
+                            "View all stored measurements: <code>log print</code> — Export: <code>log save results.csv</code>",
+                        ],
+                        "see": ["cmd-log", "cmd-calc"],
+                    },
+                    {
+                        "id": "psu-get", "name": "psu get",
+                        "brief": "Show programmed voltage/current setpoints",
+                        "syntax": "psu get",
+                        "desc": "Reads and displays the <em>programmed</em> setpoints (voltage and current limit) — not the live output. For live measured values use <code>psu meas</code>.",
+                        "params": [],
+                        "examples": [("psu get", "Print voltage and current setpoints")],
+                        "notes": [],
+                        "see": ["psu-meas"],
+                    },
+                    {
+                        "id": "psu-track", "name": "psu track",
+                        "brief": "Enable/disable channel tracking (multi-channel PSUs)",
+                        "syntax": "psu track <on|off>",
+                        "desc": "Enables or disables output tracking mode. In tracking mode the two adjustable channels mirror each other (one positive, one negative) for split-supply configurations.",
+                        "params": [
+                            {"name": "on|off", "required": "required", "values": "on, off", "desc": "<code>on</code> = link channels in tracking mode; <code>off</code> = independent channel control."},
+                        ],
+                        "examples": [
+                            ("psu track on", "Enable tracking (±supply mode)"),
+                            ("psu track off", "Return to independent control"),
+                        ],
+                        "notes": ["Multi-channel PSUs only."],
+                        "see": [],
+                    },
+                    {
+                        "id": "psu-save", "name": "psu save / recall",
+                        "brief": "Save or restore a state slot",
+                        "syntax": "psu save <1-3>  |  psu recall <1-3>",
+                        "desc": "Saves the current voltage/current settings to a numbered slot, or restores a previously saved slot. Multi-channel PSUs only.",
+                        "params": [
+                            {"name": "1-3", "required": "required", "values": "1, 2, 3", "desc": "Slot number to save to or recall from."},
+                        ],
+                        "examples": [
+                            ("psu save 1", "Save current settings to slot 1"),
+                            ("psu recall 1", "Restore settings from slot 1"),
+                        ],
+                        "notes": [],
+                        "see": [],
+                    },
+                ],
+            },
+            {
+                "id": "awg", "title": "AWG — Function Generator",
+                "intro": "Controls arbitrary waveform / function generators. Channels 1, 2, or all. Multiple AWGs are named awg1, awg2, etc.",
+                "commands": [
+                    {
+                        "id": "awg-chan", "name": "awg chan",
+                        "brief": "Enable or disable an output channel",
+                        "syntax": "awg chan <1|2|all> <on|off>",
+                        "desc": "Turns an AWG output channel on or off.",
+                        "params": [
+                            {"name": "1|2|all", "required": "required", "values": "1, 2, all", "desc": "Channel number, or <code>all</code> to affect both channels simultaneously."},
+                            {"name": "on|off", "required": "required", "values": "on, off", "desc": "<code>on</code> = enable output; <code>off</code> = disable output."},
+                        ],
+                        "examples": [
+                            ("awg chan 1 on", "Enable channel 1"),
+                            ("awg chan all off", "Disable all channels"),
+                        ],
+                        "notes": [],
+                        "see": ["awg-wave"],
+                    },
+                    {
+                        "id": "awg-wave", "name": "awg wave",
+                        "brief": "Configure waveform type and parameters",
+                        "syntax": "awg wave <1|2|all> <type> [freq=<Hz>] [amp=<Vpp>] [offset=<V>] [duty=<%>] [phase=<deg>]",
+                        "desc": "Sets the waveform type and any combination of parameters for one or more channels. Keyword arguments are all optional — omitted parameters retain their current values.",
+                        "params": [
+                            {"name": "1|2|all", "required": "required", "values": "1, 2, all", "desc": "Channel to configure."},
+                            {"name": "type", "required": "required", "values": "sine, square, ramp, triangle, pulse, noise, dc, arb", "desc": "Waveform shape."},
+                            {"name": "freq=", "required": "optional", "values": "float (Hz)", "desc": "Output frequency in hertz."},
+                            {"name": "amp=", "required": "optional", "values": "float (Vpp)", "desc": "Peak-to-peak amplitude in volts."},
+                            {"name": "offset=", "required": "optional", "values": "float (V)", "desc": "DC offset voltage in volts."},
+                            {"name": "duty=", "required": "optional", "values": "0.0 – 100.0 (%)", "desc": "Duty cycle percentage. Applies to square and pulse waveforms."},
+                            {"name": "phase=", "required": "optional", "values": "float (degrees)", "desc": "Phase offset in degrees."},
+                        ],
+                        "examples": [
+                            ("awg wave 1 sine freq=1000 amp=2.0 offset=0", "1 kHz sine, 2 Vpp, no DC offset"),
+                            ("awg wave 1 square freq=500 duty=25", "500 Hz square wave, 25% duty cycle"),
+                            ("awg wave all sine freq=10000", "Set both channels to 10 kHz sine"),
+                        ],
+                        "notes": [],
+                        "see": ["awg-freq", "awg-amp", "awg-chan"],
+                    },
+                    {
+                        "id": "awg-freq", "name": "awg freq",
+                        "brief": "Set output frequency",
+                        "syntax": "awg freq <1|2|all> <Hz>",
+                        "desc": "Sets frequency without changing other waveform parameters.",
+                        "params": [
+                            {"name": "1|2|all", "required": "required", "values": "1, 2, all", "desc": "Channel to configure."},
+                            {"name": "Hz", "required": "required", "values": "float > 0", "desc": "Frequency in hertz."},
+                        ],
+                        "examples": [
+                            ("awg freq 1 1000", "Set ch1 to 1 kHz"),
+                            ("awg freq all 50000", "Set both channels to 50 kHz"),
+                        ],
+                        "notes": [],
+                        "see": ["awg-wave"],
+                    },
+                    {
+                        "id": "awg-amp", "name": "awg amp / offset / duty / phase",
+                        "brief": "Set amplitude, DC offset, duty cycle, or phase",
+                        "syntax": "awg amp <1|2|all> <Vpp>  |  awg offset <1|2|all> <V>  |  awg duty <1|2|all> <%>  |  awg phase <1|2|all> <deg>",
+                        "desc": "Fine-tune individual waveform parameters without changing other settings.",
+                        "params": [
+                            {"name": "1|2|all", "required": "required", "values": "1, 2, all", "desc": "Channel to configure."},
+                            {"name": "Vpp", "required": "required (amp)", "values": "float (V)", "desc": "Peak-to-peak amplitude in volts."},
+                            {"name": "V", "required": "required (offset)", "values": "float (V)", "desc": "DC offset. Negative values shift the waveform below ground."},
+                            {"name": "%", "required": "required (duty)", "values": "0.0 – 100.0", "desc": "Duty cycle percentage for square/pulse waveforms."},
+                            {"name": "deg", "required": "required (phase)", "values": "0.0 – 360.0", "desc": "Phase offset in degrees. 180° inverts the waveform."},
+                        ],
+                        "examples": [
+                            ("awg amp 1 3.3", "Set ch1 amplitude to 3.3 Vpp"),
+                            ("awg offset 1 1.65", "Shift ch1 waveform up by 1.65 V"),
+                            ("awg duty 1 25", "Set ch1 duty cycle to 25%"),
+                            ("awg phase 2 180", "Invert ch2 (180° phase offset)"),
+                        ],
+                        "notes": [],
+                        "see": ["awg-wave"],
+                    },
+                    {
+                        "id": "awg-sync", "name": "awg sync",
+                        "brief": "Enable/disable sync output",
+                        "syntax": "awg sync <on|off>",
+                        "desc": "Enables or disables the sync/trigger output signal on supported AWGs.",
+                        "params": [
+                            {"name": "on|off", "required": "required", "values": "on, off", "desc": "Enable or disable sync output."},
+                        ],
+                        "examples": [("awg sync on", "Enable sync output")],
+                        "notes": [],
+                        "see": [],
+                    },
+                ],
+            },
+            {
+                "id": "dmm", "title": "DMM — Multimeter",
+                "intro": "Controls digital multimeters. Multiple DMMs are named dmm1, dmm2, etc. Typical workflow: configure mode → read. Or use meas for a single one-shot measurement.",
+                "commands": [
+                    {
+                        "id": "dmm-config", "name": "dmm config",
+                        "brief": "Configure the measurement mode",
+                        "syntax": "dmm config <mode> [range] [resolution] [nplc=<n>]",
+                        "desc": "Configures the DMM for a specific measurement type. After configuring, use <code>dmm read</code> or <code>dmm meas_store</code>. The mode stays active until changed.",
+                        "params": [
+                            {"name": "mode", "required": "required", "values": "vdc, vac, idc, iac, res, fres, freq, per, cont, diode, cap, temp", "desc": "Measurement mode: <code>vdc</code> = DC voltage, <code>vac</code> = AC voltage, <code>idc</code> = DC current, <code>iac</code> = AC current, <code>res</code> = 2-wire resistance, <code>fres</code> = 4-wire resistance, <code>freq</code> = frequency, <code>per</code> = period, <code>cont</code> = continuity, <code>diode</code> = diode voltage, <code>cap</code> = capacitance, <code>temp</code> = temperature."},
+                            {"name": "range", "required": "optional", "values": "float, DEF, MIN, MAX", "desc": "Measurement range (e.g. <code>10</code> for 10 V range). Use <code>DEF</code> for auto-range."},
+                            {"name": "resolution", "required": "optional", "values": "float, DEF, MIN, MAX", "desc": "Resolution (number of significant digits). Use <code>DEF</code> for default."},
+                            {"name": "nplc=", "required": "optional", "values": "0.02, 0.2, 1, 10, 100", "desc": "Integration time in power line cycles. Higher = slower but lower noise. Only supported on HP 34401A and for DC measurement modes."},
+                        ],
+                        "examples": [
+                            ("dmm config vdc", "Configure for DC voltage, auto-range"),
+                            ("dmm config vdc 10 DEF nplc=10", "DC voltage, 10 V range, high-accuracy (slow)"),
+                            ("dmm config res DEF DEF nplc=1", "2-wire resistance, auto-range, 1 PLC"),
+                        ],
+                        "notes": ["For a one-shot measurement without a separate configure step, use <code>dmm meas &lt;mode&gt;</code> instead."],
+                        "see": ["dmm-read", "dmm-meas"],
+                    },
+                    {
+                        "id": "dmm-read", "name": "dmm read",
+                        "brief": "Take a reading (after dmm config)",
+                        "syntax": "dmm read",
+                        "desc": "Takes a measurement using the currently configured mode and prints the result. Call <code>dmm config</code> first.",
+                        "params": [],
+                        "examples": [("dmm read", "Take one reading in the current measurement mode")],
+                        "notes": [],
+                        "see": ["dmm-config", "dmm-meas_store"],
+                    },
+                    {
+                        "id": "dmm-meas_store", "name": "dmm meas_store",
+                        "brief": "Read and record to the measurement log",
+                        "syntax": "dmm meas_store <label> [scale=<factor>] [unit=<str>]",
+                        "desc": "Takes a reading using the current configuration and appends it to the session measurement log. Requires <code>dmm config</code> to have been called first.",
+                        "params": [
+                            {"name": "label", "required": "required", "values": "string, no spaces", "desc": "Name for this measurement entry in the log. Appears as the row identifier in <code>log print</code> output. Also used as the dictionary key in <code>calc</code> expressions — e.g. if label is <code>vout</code> then access it as <code>m[\"vout\"]</code>. Use underscores instead of spaces (e.g. <code>vout_mv</code>)."},
+                            {"name": "scale=", "required": "optional", "values": "float", "desc": "Multiply the raw reading by this factor before storing. Useful for unit conversion — e.g. <code>scale=1000</code> to convert V → mV, or <code>scale=0.001</code> to convert mA → A. Default: 1.0 (no scaling)."},
+                            {"name": "unit=", "required": "optional", "values": "string, e.g. V, mV, A, Ω", "desc": "Unit label shown in <code>log print</code> output alongside the value. This is purely for display — it does not affect the stored numeric value or any <code>calc</code> computation."},
+                        ],
+                        "examples": [
+                            ("dmm meas_store vout unit=V", "Store reading as 'vout' with unit V"),
+                            ("dmm meas_store res_low unit=\u03a9", "Store resistance as 'res_low'"),
+                            ("dmm meas_store vout_mv scale=1000 unit=mV", "Store in mV by multiplying reading by 1000"),
+                        ],
+                        "notes": [
+                            "You must call <code>dmm config &lt;mode&gt;</code> before using <code>meas_store</code>.",
+                            "Access stored values in <code>calc</code>: <code>calc power m[\"vout\"]*m[\"iout\"] unit=W</code>",
+                        ],
+                        "see": ["dmm-config", "cmd-log", "cmd-calc"],
+                    },
+                    {
+                        "id": "dmm-meas", "name": "dmm meas",
+                        "brief": "One-shot measurement (configure + read in one step)",
+                        "syntax": "dmm meas <mode> [range] [resolution]",
+                        "desc": "Configures the DMM and takes a single reading in one command. Convenient for quick checks; for repeated measurements in the same mode use <code>dmm config</code> + <code>dmm read</code>.",
+                        "params": [
+                            {"name": "mode", "required": "required", "values": "vdc, vac, idc, iac, res, fres, freq, per, cont, diode", "desc": "Measurement mode. Same values as <code>dmm config</code>."},
+                            {"name": "range", "required": "optional", "values": "float or DEF", "desc": "Measurement range. Default: auto-range."},
+                            {"name": "resolution", "required": "optional", "values": "float or DEF", "desc": "Resolution. Default: default."},
+                        ],
+                        "examples": [
+                            ("dmm meas vdc", "Quick DC voltage reading"),
+                            ("dmm meas res", "Quick 2-wire resistance reading"),
+                        ],
+                        "notes": [],
+                        "see": ["dmm-config"],
+                    },
+                    {
+                        "id": "dmm-fetch", "name": "dmm fetch",
+                        "brief": "Fetch the last reading without triggering a new one",
+                        "syntax": "dmm fetch",
+                        "desc": "Returns the last measurement result without initiating a new measurement. HP 34401A only.",
+                        "params": [],
+                        "examples": [("dmm fetch", "Retrieve the last reading")],
+                        "notes": ["HP 34401A only."],
+                        "see": ["dmm-read"],
+                    },
+                    {
+                        "id": "dmm-display", "name": "dmm display / beep / text / ranges",
+                        "brief": "Display control, beep, and range info",
+                        "syntax": "dmm display <on|off>  |  dmm beep  |  dmm text <msg> [scroll=] [delay=] [loops=]  |  dmm ranges",
+                        "desc": "Utility commands. <code>display</code> turns the front panel display on/off. <code>beep</code> triggers an audible beep. <code>text</code> displays a message on the DMM screen with optional scrolling. <code>ranges</code> prints supported measurement ranges for the connected model.",
+                        "params": [
+                            {"name": "on|off", "required": "required (display)", "values": "on, off", "desc": "Turn the display on or off."},
+                            {"name": "msg", "required": "required (text)", "values": "string", "desc": "Text to show on the DMM front panel."},
+                            {"name": "scroll=", "required": "optional (text)", "values": "auto, on, off", "desc": "Scroll behavior for long messages."},
+                            {"name": "delay=", "required": "optional (text)", "values": "float (s)", "desc": "Delay between scroll steps."},
+                            {"name": "loops=", "required": "optional (text)", "values": "int", "desc": "Scroll repetitions."},
+                        ],
+                        "examples": [
+                            ("dmm beep", "Trigger a beep"),
+                            ("dmm display off", "Blank the front panel display"),
+                            ("dmm text TESTING scroll=auto", "Show scrolling text on DMM"),
+                            ("dmm ranges", "Show supported measurement ranges"),
+                        ],
+                        "notes": ["Text/scroll features: HP 34401A only."],
+                        "see": [],
+                    },
+                ],
+            },
+            {
+                "id": "scope", "title": "Scope — Oscilloscope",
+                "intro": "Controls oscilloscopes. Multiple scopes are named scope1, scope2, etc. Channels 1–4 are supported; use all to affect every channel at once.",
+                "commands": [
+                    {
+                        "id": "scope-acq", "name": "scope autoset / run / stop / single",
+                        "brief": "Acquisition control",
+                        "syntax": "scope autoset  |  scope run  |  scope stop  |  scope single",
+                        "desc": "<code>autoset</code> auto-configures time/voltage scales and trigger for the current input. <code>run</code> starts continuous acquisition. <code>stop</code> freezes the display. <code>single</code> arms a single-shot trigger.",
+                        "params": [],
+                        "examples": [
+                            ("scope autoset", "Auto-configure scope for current signal"),
+                            ("scope single", "Arm single-shot capture"),
+                            ("scope stop", "Freeze acquisition"),
+                        ],
+                        "notes": [],
+                        "see": ["scope-trigger"],
+                    },
+                    {
+                        "id": "scope-chan", "name": "scope chan",
+                        "brief": "Enable or disable a channel",
+                        "syntax": "scope chan <1-4|all> <on|off>",
+                        "desc": "Shows or hides an oscilloscope input channel.",
+                        "params": [
+                            {"name": "1-4|all", "required": "required", "values": "1, 2, 3, 4, all", "desc": "Channel number, or <code>all</code> to affect all channels."},
+                            {"name": "on|off", "required": "required", "values": "on, off", "desc": "<code>on</code> = display channel; <code>off</code> = hide channel."},
+                        ],
+                        "examples": [
+                            ("scope chan 1 on", "Show channel 1"),
+                            ("scope chan 3 off", "Hide channel 3"),
+                            ("scope chan all on", "Show all channels"),
+                        ],
+                        "notes": [],
+                        "see": ["scope-coupling", "scope-vscale"],
+                    },
+                    {
+                        "id": "scope-coupling", "name": "scope coupling / probe",
+                        "brief": "Set input coupling and probe attenuation",
+                        "syntax": "scope coupling <1-4|all> <DC|AC|GND>  |  scope probe <1-4|all> <attenuation>",
+                        "desc": "<code>coupling</code> sets the input coupling. DC passes all frequencies; AC blocks DC; GND disconnects the input. <code>probe</code> sets the probe attenuation ratio so the scope displays correct voltages.",
+                        "params": [
+                            {"name": "1-4|all", "required": "required", "values": "1, 2, 3, 4, all", "desc": "Channel number."},
+                            {"name": "DC|AC|GND", "required": "required (coupling)", "values": "DC, AC, GND", "desc": "Input coupling mode."},
+                            {"name": "attenuation", "required": "required (probe)", "values": "1, 10, 100", "desc": "Probe attenuation ratio (1× for direct connection, 10× for 10× probe, 100× for high-voltage probe)."},
+                        ],
+                        "examples": [
+                            ("scope coupling 1 AC", "AC-couple channel 1"),
+                            ("scope coupling all DC", "DC-couple all channels"),
+                            ("scope probe 1 10", "Set ch1 for a 10× probe"),
+                        ],
+                        "notes": [],
+                        "see": ["scope-chan"],
+                    },
+                    {
+                        "id": "scope-hscale", "name": "scope hscale / hpos / hmove",
+                        "brief": "Horizontal (time) axis control",
+                        "syntax": "scope hscale <s/div>  |  scope hpos <pct>  |  scope hmove <delta>",
+                        "desc": "<code>hscale</code> sets time per division. <code>hpos</code> sets the trigger position as a percentage. <code>hmove</code> adjusts the position relatively.",
+                        "params": [
+                            {"name": "s/div", "required": "required (hscale)", "values": "float (s)", "desc": "Time per division (e.g. <code>0.001</code> = 1 ms/div)."},
+                            {"name": "pct", "required": "required (hpos)", "values": "float 0–100", "desc": "Trigger position as percentage of screen width."},
+                            {"name": "delta", "required": "required (hmove)", "values": "float", "desc": "Relative adjustment amount."},
+                        ],
+                        "examples": [
+                            ("scope hscale 0.001", "Set 1 ms/div"),
+                            ("scope hpos 50", "Center trigger at 50%"),
+                        ],
+                        "notes": [],
+                        "see": ["scope-vscale"],
+                    },
+                    {
+                        "id": "scope-vscale", "name": "scope vscale / vpos / vmove",
+                        "brief": "Vertical (voltage) axis control",
+                        "syntax": "scope vscale <1-4|all> <V/div> [pos]  |  scope vpos <1-4|all> <div>  |  scope vmove <1-4|all> <delta>",
+                        "desc": "<code>vscale</code> sets voltage per division. Optional <code>pos</code> sets the vertical position. <code>vpos</code> sets absolute position in divisions. <code>vmove</code> adjusts position relatively.",
+                        "params": [
+                            {"name": "1-4|all", "required": "required", "values": "1, 2, 3, 4, all", "desc": "Channel number."},
+                            {"name": "V/div", "required": "required (vscale)", "values": "float (V)", "desc": "Voltage per division."},
+                            {"name": "pos", "required": "optional (vscale)", "values": "float (divisions)", "desc": "Vertical position offset in divisions. Default: 0 (centered)."},
+                            {"name": "div", "required": "required (vpos)", "values": "float", "desc": "Absolute vertical position in divisions."},
+                            {"name": "delta", "required": "required (vmove)", "values": "float", "desc": "Relative position change in divisions."},
+                        ],
+                        "examples": [
+                            ("scope vscale 1 0.5", "Set ch1 to 0.5 V/div"),
+                            ("scope vscale all 1.0 0", "All channels: 1 V/div, centered"),
+                        ],
+                        "notes": [],
+                        "see": ["scope-hscale"],
+                    },
+                    {
+                        "id": "scope-trigger", "name": "scope trigger",
+                        "brief": "Configure the trigger",
+                        "syntax": "scope trigger <channel> <level> [slope=<RISE|FALL>] [mode=<AUTO|NORM|SINGLE>]",
+                        "desc": "Sets the trigger source, voltage level, edge slope, and acquisition mode.",
+                        "params": [
+                            {"name": "channel", "required": "required", "values": "1, 2, 3, 4", "desc": "Trigger source channel."},
+                            {"name": "level", "required": "required", "values": "float (V)", "desc": "Trigger threshold voltage."},
+                            {"name": "slope=", "required": "optional", "values": "RISE, FALL", "desc": "Trigger on rising or falling edge. Default: RISE."},
+                            {"name": "mode=", "required": "optional", "values": "AUTO, NORM, SINGLE", "desc": "Trigger mode. AUTO = free-run if no trigger; NORM = wait for trigger; SINGLE = one shot. Default: AUTO."},
+                        ],
+                        "examples": [
+                            ("scope trigger 1 0.0", "Trigger on ch1, 0 V, rising edge"),
+                            ("scope trigger 1 1.5 slope=FALL mode=NORM", "Ch1, 1.5 V, falling edge, normal mode"),
+                        ],
+                        "notes": [],
+                        "see": ["scope-acq"],
+                    },
+                    {
+                        "id": "scope-meas", "name": "scope meas",
+                        "brief": "Take and print a single measurement",
+                        "syntax": "scope meas <1-4|all> <type>",
+                        "desc": "Queries a measurement from the scope and prints the result. Does not store to the log — use <code>scope meas_store</code> for logging.",
+                        "params": [
+                            {"name": "1-4|all", "required": "required", "values": "1, 2, 3, 4, all", "desc": "Channel(s) to measure."},
+                            {"name": "type", "required": "required", "values": "FREQUENCY, PK2PK, RMS, CRMS, MEAN, PERIOD, AMPLITUDE, MINIMUM, MAXIMUM, HIGH, LOW, RISE, FALL, PWIDTH, NWIDTH", "desc": "Measurement type."},
+                        ],
+                        "examples": [
+                            ("scope meas 1 FREQUENCY", "Print channel 1 frequency"),
+                            ("scope meas 1 PK2PK", "Print channel 1 peak-to-peak voltage"),
+                        ],
+                        "notes": [],
+                        "see": ["scope-meas_store"],
+                    },
+                    {
+                        "id": "scope-meas_store", "name": "scope meas_store",
+                        "brief": "Measure and record to the log",
+                        "syntax": "scope meas_store <1-4|all> <type> <label> [unit=<str>]",
+                        "desc": "Queries a measurement from the scope and appends it to the session measurement log.",
+                        "params": [
+                            {"name": "1-4|all", "required": "required", "values": "1, 2, 3, 4, all", "desc": "Channel to measure."},
+                            {"name": "type", "required": "required", "values": "FREQUENCY, PK2PK, RMS, CRMS, MEAN, PERIOD, AMPLITUDE, MINIMUM, MAXIMUM, HIGH, LOW, RISE, FALL, PWIDTH, NWIDTH", "desc": "Type of measurement to take."},
+                            {"name": "label", "required": "required", "values": "string, no spaces", "desc": "Name for this measurement entry in the log. Appears as the row identifier in <code>log print</code>. Also used as the dictionary key in <code>calc</code> expressions — e.g. if label is <code>ch1_freq</code> then access it as <code>m[\"ch1_freq\"]</code>. Use underscores instead of spaces."},
+                            {"name": "unit=", "required": "optional", "values": "string, e.g. Hz, V", "desc": "Unit label shown in <code>log print</code> output. Display-only — does not affect the stored value or calculations."},
+                        ],
+                        "examples": [
+                            ("scope meas_store 1 FREQUENCY meas_freq unit=Hz", "Store ch1 frequency as 'meas_freq'"),
+                            ("scope meas_store 1 PK2PK meas_pk2pk unit=V", "Store ch1 PK2PK"),
+                            ("scope meas_store 1 RMS meas_rms unit=V", "Store ch1 RMS"),
+                        ],
+                        "notes": [
+                            "Access stored values in <code>calc</code>: <code>calc ratio m[\"meas_pk2pk\"]/m[\"meas_rms\"]</code>",
+                        ],
+                        "see": ["scope-meas", "cmd-log", "cmd-calc"],
+                    },
+                    {
+                        "id": "scope-meas_delay", "name": "scope meas_delay / meas_delay_store",
+                        "brief": "Measure propagation delay between two channels",
+                        "syntax": "scope meas_delay <ch1> <ch2> [edge1=RISE] [edge2=RISE]  |  scope meas_delay_store <ch1> <ch2> <label> [edge1=] [edge2=] [direction=] [unit=]",
+                        "desc": "Measures the time delay between trigger events on two channels (propagation delay / phase shift).",
+                        "params": [
+                            {"name": "ch1 / ch2", "required": "required", "values": "1, 2, 3, 4", "desc": "Source and reference channel numbers."},
+                            {"name": "edge1= / edge2=", "required": "optional", "values": "RISE, FALL", "desc": "Which edge to detect on each channel. Default: RISE."},
+                            {"name": "direction=", "required": "optional", "values": "FORWARDS, BACKWARDS", "desc": "Search direction. Default: FORWARDS."},
+                            {"name": "label", "required": "required (store)", "values": "string, no spaces", "desc": "Log entry name. See <code>scope meas_store</code> for full description of the label parameter."},
+                            {"name": "unit=", "required": "optional", "values": "string, e.g. s, ms, us", "desc": "Unit shown in log output."},
+                        ],
+                        "examples": [
+                            ("scope meas_delay 1 2", "Print delay from ch1 to ch2"),
+                            ("scope meas_delay_store 1 2 prop_delay unit=s", "Store delay as 'prop_delay'"),
+                        ],
+                        "notes": [],
+                        "see": ["scope-meas_store"],
+                    },
+                    {
+                        "id": "scope-save", "name": "scope save",
+                        "brief": "Save waveform data to CSV",
+                        "syntax": "scope save <channels> <file.csv> [record=<s>] [time=<s>] [points=<n>]",
+                        "desc": "Downloads waveform data from the scope and saves as CSV.",
+                        "params": [
+                            {"name": "channels", "required": "required", "values": "1, 2, 3, 4, or e.g. 1,2", "desc": "Channel(s) to save. Comma-separated for multiple."},
+                            {"name": "file.csv", "required": "required", "values": "file path", "desc": "Output file. Created or overwritten."},
+                            {"name": "record= / time=", "required": "optional", "values": "float (s)", "desc": "Record for this many seconds before saving."},
+                            {"name": "points=", "required": "optional", "values": "int", "desc": "Number of waveform points to request."},
+                        ],
+                        "examples": [
+                            ("scope save 1 output.csv", "Save ch1 waveform"),
+                            ("scope save 1,2 both.csv", "Save ch1 and ch2"),
+                            ("scope save 1 data.csv record=2.0", "Record 2 s then save"),
+                        ],
+                        "notes": [],
+                        "see": [],
+                    },
+                    {
+                        "id": "scope-tools", "name": "scope awg / counter / dvm",
+                        "brief": "Built-in scope tools",
+                        "syntax": "scope awg <subcmd>  |  scope counter <subcmd>  |  scope dvm <subcmd>",
+                        "desc": "Access built-in tools. <code>awg</code> controls the built-in waveform generator (DHO914S/DHO924S only). <code>counter</code> controls the built-in frequency counter. <code>dvm</code> controls the built-in digital voltmeter. Run the subcommand alone (e.g. <code>scope awg</code>) for help.",
+                        "params": [],
+                        "examples": [
+                            ("scope counter on", "Enable frequency counter"),
+                            ("scope dvm on", "Enable DVM"),
+                            ("scope awg", "Show AWG subcommands"),
+                        ],
+                        "notes": ["Built-in AWG: DHO914S and DHO924S only."],
+                        "see": [],
+                    },
+                ],
+            },
+            {
+                "id": "scripting", "title": "Scripts & Directives",
+                "intro": "Scripts are named sequences of REPL commands stored in the session. They support variables, loops, and calling other scripts. Script directives (set, for, repeat, print, input, pause, call) are also valid as interactive REPL commands.",
+                "commands": [
+                    {
+                        "id": "script-new", "name": "script new",
+                        "brief": "Create a new script",
+                        "syntax": "script new <name>",
+                        "desc": "Creates a new empty script and opens it in your configured editor ($EDITOR). Each line you write becomes a REPL command that runs when the script executes.",
+                        "params": [
+                            {"name": "name", "required": "required", "values": "string, no spaces", "desc": "Script name. Used to reference the script in <code>script run</code> and <code>call</code>."},
+                        ],
+                        "examples": [("script new my_test", "Create and edit a script called 'my_test'")],
+                        "notes": [],
+                        "see": ["script-run", "script-edit"],
+                    },
+                    {
+                        "id": "script-run", "name": "script run",
+                        "brief": "Execute a script with optional parameter overrides",
+                        "syntax": "script run <name> [key=value ...]",
+                        "desc": "Runs a named script. Key=value pairs override variables defined with <code>set</code> inside the script, letting you parameterize the same script for different test conditions without editing it.",
+                        "params": [
+                            {"name": "name", "required": "required", "values": "script name", "desc": "Name of the script to run (as shown in <code>script list</code>)."},
+                            {"name": "key=value", "required": "optional", "values": "any key=value pairs", "desc": "Override script variables. These replace the default values from <code>set</code> lines. E.g. <code>voltage=3.3</code> sets <code>${voltage}</code> to 3.3 throughout the script for this run."},
+                        ],
+                        "examples": [
+                            ("script run my_test", "Run 'my_test' with default variable values"),
+                            ("script run psu_dmm_test voltage=3.3 label=test_3v3", "Run with custom parameters"),
+                        ],
+                        "notes": [
+                            "Script variables are referenced as <code>${varname}</code> inside script lines.",
+                            "Priority order: command-line params &gt; <code>set</code> defaults in the script.",
+                        ],
+                        "see": ["script-new", "directive-set"],
+                    },
+                    {
+                        "id": "script-edit", "name": "script edit / show / list / rm",
+                        "brief": "Manage the script library",
+                        "syntax": "script edit <name>  |  script show <name>  |  script list  |  script rm <name>  |  script import <name> <path>  |  script load [path]  |  script save [path]",
+                        "desc": "Library management commands. <code>edit</code> opens a script in your editor. <code>show</code> prints it with syntax highlighting. <code>list</code> shows all scripts. <code>rm</code> deletes a script. <code>import</code> loads lines from a .txt file. <code>load</code>/<code>save</code> serialize the entire library to/from a JSON file.",
+                        "params": [
+                            {"name": "name", "required": "required (edit/show/rm/import)", "values": "script name", "desc": "Script to operate on."},
+                            {"name": "path", "required": "optional (import/load/save)", "values": "file path", "desc": "File path. Defaults to <code>.repl_scripts.json</code> in the current directory."},
+                        ],
+                        "examples": [
+                            ("script list", "Show all scripts with line counts"),
+                            ("script show psu_dmm_test", "Print script lines"),
+                            ("script rm old_test", "Delete 'old_test'"),
+                            ("script save", "Save library to .repl_scripts.json"),
+                        ],
+                        "notes": [],
+                        "see": [],
+                    },
+                    {
+                        "id": "directive-set", "name": "set",
+                        "brief": "Define a script variable (evaluated at expansion time)",
+                        "syntax": "set <varname> <expression>",
+                        "desc": "Defines a variable accessible as <code>${varname}</code> in subsequent script lines. Evaluated when the script is expanded (before execution begins), so arithmetic using other variables works: <code>set doubled ${voltage} * 2</code>. Variables set here are overridable from the command line when running the script.",
+                        "params": [
+                            {"name": "varname", "required": "required", "values": "string, no spaces", "desc": "Variable name. Reference it as <code>${varname}</code> in script lines."},
+                            {"name": "expression", "required": "required", "values": "number, string, or math expr", "desc": "Value or arithmetic expression. Supports references to other variables: <code>${v_start} + 1.5</code>. String values are stored as-is."},
+                        ],
+                        "examples": [
+                            ("set voltage 5.0", "Define ${voltage} = 5.0 (overridable at run time)"),
+                            ("set label vtest", "Define ${label} = 'vtest'"),
+                            ("set doubled ${voltage} * 2", "Compute a derived variable"),
+                        ],
+                        "notes": [
+                            "Override at run time: <code>script run my_test voltage=3.3</code>",
+                            "Variables set via <code>input</code> are captured at run time and cannot be overridden from the command line.",
+                        ],
+                        "see": ["directive-input", "script-run"],
+                    },
+                    {
+                        "id": "directive-print", "name": "print",
+                        "brief": "Display a message to the operator",
+                        "syntax": "print <message>",
+                        "desc": "Prints a message to the terminal. Variable references like <code>${varname}</code> are expanded before printing.",
+                        "params": [
+                            {"name": "message", "required": "required", "values": "any text", "desc": "Text to display. <code>${varname}</code> references are substituted with their current values."},
+                        ],
+                        "examples": [
+                            ("print === Test Starting ===", "Print a header line"),
+                            ("print Setting ${voltage}V", "Print a message with variable substitution"),
+                        ],
+                        "notes": [],
+                        "see": ["directive-pause", "directive-input"],
+                    },
+                    {
+                        "id": "directive-pause", "name": "pause",
+                        "brief": "Wait for operator to press Enter",
+                        "syntax": "pause [message]",
+                        "desc": "Stops script execution and waits for the operator to press Enter. Useful for manual steps — connecting probes, changing DUT, verifying wiring — before the script continues.",
+                        "params": [
+                            {"name": "message", "required": "optional", "values": "any text", "desc": "Custom prompt shown to the operator. Default: 'Press Enter to continue...'"},
+                        ],
+                        "examples": [
+                            ("pause", "Wait with default prompt"),
+                            ("pause Connect probe to TP1 then press Enter", "Wait with custom instruction"),
+                        ],
+                        "notes": [],
+                        "see": ["directive-print", "directive-input"],
+                    },
+                    {
+                        "id": "directive-input", "name": "input",
+                        "brief": "Prompt operator for a value and store it as a variable",
+                        "syntax": "input <varname> [prompt text]",
+                        "desc": "Prompts the operator to type a value at script run time. The entered text is stored as <code>${varname}</code> and substituted into all subsequent script lines. Unlike <code>set</code>, the value is not known until the script runs and cannot be overridden from the command line.",
+                        "params": [
+                            {"name": "varname", "required": "required", "values": "string, no spaces", "desc": "Variable name. The operator's input will be available as <code>${varname}</code> in all lines after this directive."},
+                            {"name": "prompt text", "required": "optional", "values": "any text", "desc": "Prompt shown to the operator. Default: the variable name followed by a colon."},
+                        ],
+                        "examples": [
+                            ("input voltage Enter target voltage (V):", "Prompt for voltage; stored as ${voltage}"),
+                            ("input dut_id DUT serial number:", "Prompt for DUT identifier"),
+                        ],
+                        "notes": [
+                            "The entered value is always stored as a string. When used in arithmetic (e.g. via <code>set doubled ${voltage} * 2</code>), it is coerced to a number.",
+                            "Unlike <code>set</code>, input values cannot be overridden by command-line parameters at <code>script run</code> time.",
+                        ],
+                        "see": ["directive-set", "directive-pause"],
+                    },
+                    {
+                        "id": "directive-call", "name": "call",
+                        "brief": "Call another script inline",
+                        "syntax": "call <name> [key=value ...]",
+                        "desc": "Executes another script as a sub-routine. Variables from the current script can be passed as parameters. The called script runs in its own variable scope.",
+                        "params": [
+                            {"name": "name", "required": "required", "values": "script name", "desc": "Name of the script to call."},
+                            {"name": "key=value", "required": "optional", "values": "any key=value", "desc": "Parameters to pass. Variable substitution works in values: <code>voltage=${target_v}</code> passes the current value of <code>${target_v}</code>."},
+                        ],
+                        "examples": [
+                            ("call set_psu voltage=5.0", "Call 'set_psu' passing voltage=5.0"),
+                            ("call set_psu voltage=${target_v}", "Pass a variable from the current script"),
+                        ],
+                        "notes": ["Parameters override <code>set</code> defaults in the called script."],
+                        "see": ["directive-set", "script-run"],
+                    },
+                    {
+                        "id": "directive-repeat", "name": "repeat ... end",
+                        "brief": "Repeat a block N times",
+                        "syntax": "repeat <N>\n  <commands>\nend",
+                        "desc": "Executes the enclosed commands a fixed number of times.",
+                        "params": [
+                            {"name": "N", "required": "required", "values": "int ≥ 1", "desc": "Number of repetitions."},
+                        ],
+                        "examples": [
+                            ("repeat 3\n  psu meas v\n  sleep 0.2\nend", "Measure voltage 3 times, 200 ms apart"),
+                        ],
+                        "notes": [],
+                        "see": ["directive-for"],
+                    },
+                    {
+                        "id": "directive-for", "name": "for ... end",
+                        "brief": "Loop over a list of values",
+                        "syntax": "for <var> <val1> <val2> ... <valN>\n  <commands>\nend",
+                        "desc": "Iterates over a whitespace-separated list of values, setting <code>${var}</code> to each value in turn and executing the block for each.",
+                        "params": [
+                            {"name": "var", "required": "required", "values": "string", "desc": "Loop variable name, referenced as <code>${var}</code> inside the block."},
+                            {"name": "val1 val2 ...", "required": "required", "values": "space-separated", "desc": "Values to iterate over — numbers, strings, or variable references like <code>${start}</code>."},
+                        ],
+                        "examples": [
+                            ("for v 1.0 2.0 3.3 5.0\n  psu1 set ${v}\n  sleep 0.5\n  dmm1 meas_store vdc v_${v} unit=V\nend", "Sweep PSU through voltages and log each"),
+                            ("for ch 1 2 3 4\n  scope chan ${ch} on\nend", "Enable all scope channels"),
+                        ],
+                        "notes": [
+                            "The loop variable is substituted in all lines inside the block.",
+                            "Variable references work in the value list: <code>for v ${v_start} ${v_mid} ${v_end}</code>",
+                        ],
+                        "see": ["directive-repeat"],
+                    },
+                ],
+            },
+            {
+                "id": "log", "title": "Log & Calc",
+                "intro": "All meas_store commands write to a shared in-session measurement log. Use log to view or export the results, and calc to derive new values from stored measurements.",
+                "commands": [
+                    {
+                        "id": "cmd-log", "name": "log print / save / clear",
+                        "brief": "View, export, or clear the measurement log",
+                        "syntax": "log print  |  log save <file> [csv|txt]  |  log clear",
+                        "desc": "<code>log print</code> displays all measurements in a table (Label | Value | Unit | Source). <code>log save</code> exports to a file. <code>log clear</code> erases all stored measurements.",
+                        "params": [
+                            {"name": "file", "required": "required (save)", "values": "file path", "desc": "Output file path (e.g. <code>results.csv</code>)."},
+                            {"name": "csv|txt", "required": "optional (save)", "values": "csv, txt", "desc": "File format. Defaults based on file extension."},
+                        ],
+                        "examples": [
+                            ("log print", "Print all stored measurements"),
+                            ("log save results.csv", "Export to CSV"),
+                            ("log clear", "Erase all measurements before a new test"),
+                        ],
+                        "notes": [],
+                        "see": ["cmd-calc"],
+                    },
+                    {
+                        "id": "cmd-calc", "name": "calc",
+                        "brief": "Compute a derived value from stored measurements",
+                        "syntax": "calc <label> <expression> [unit=<str>]",
+                        "desc": "Evaluates a Python arithmetic expression using stored measurements as inputs. The result is printed and also stored in the log under the given <code>label</code> so it can be used in further <code>calc</code> expressions.",
+                        "params": [
+                            {"name": "label", "required": "required", "values": "string, no spaces", "desc": "Name for the computed result in the log. Appears in <code>log print</code> and can be referenced in subsequent <code>calc</code> expressions."},
+                            {"name": "expression", "required": "required", "values": "Python arithmetic expression", "desc": "Math expression. Access stored measurements by label using <code>m[\"label\"]</code>. Use <code>last</code> for the most recently stored value. Available: <code>abs</code>, <code>min</code>, <code>max</code>, <code>round</code>, <code>pi</code> and other math constants."},
+                            {"name": "unit=", "required": "optional", "values": "string", "desc": "Unit label for the result shown in <code>log print</code>. Display-only."},
+                        ],
+                        "examples": [
+                            ("calc power m[\"psu_v\"]*m[\"psu_i\"] unit=W", "Compute power from stored voltage and current"),
+                            ("calc ratio m[\"output\"]/m[\"input\"]", "Compute ratio between two measurements"),
+                            ("calc err_pct (m[\"meas\"]-m[\"ref\"])/m[\"ref\"]*100 unit=%", "Compute percentage error"),
+                        ],
+                        "notes": [
+                            "Labels used in expressions must have been stored earlier in the session by a <code>meas_store</code> or previous <code>calc</code>.",
+                            "The computed result is stored in the log, so chained calculations work: <code>calc efficiency m[\"power_out\"]/m[\"power_in\"]*100 unit=%</code>",
+                        ],
+                        "see": ["cmd-log"],
+                    },
+                ],
+            },
+        ]
+
+        # ─────────────────────────────────────────────────────────────────────
+        # RENDERING HELPERS
+        # ─────────────────────────────────────────────────────────────────────
+        def req_badge(r):
+            if r == "required":
+                return '<span class="req-badge req">required</span>'
+            elif r in ("optional", ""):
+                return '<span class="req-badge opt">optional</span>'
+            else:
+                return f'<span class="req-badge ctx">{e(r)}</span>'
+
+        def render_param_table(params):
+            if not params:
+                return ""
+            rows = ""
+            for p in params:
+                rows += (
+                    f'<tr><td><code>{e(p["name"])}</code></td>'
+                    f'<td>{req_badge(p["required"])}</td>'
+                    f'<td class="values-cell">{e(p["values"])}</td>'
+                    f'<td class="desc-cell">{p["desc"]}</td></tr>'
+                )
+            return (
+                '<table class="param-table">'
+                '<thead><tr><th>Parameter</th><th>Required</th>'
+                '<th>Values / Type</th><th>Description</th></tr></thead>'
+                f'<tbody>{rows}</tbody></table>'
+            )
+
+        def render_examples(examples):
+            if not examples:
+                return ""
+            items = ""
+            for ex_cmd, ex_desc in examples:
+                items += (
+                    f'<div class="ex-row">'
+                    f'<code class="ex-cmd">{e(ex_cmd)}</code>'
+                    f'<span class="ex-desc"># {e(ex_desc)}</span>'
+                    f'</div>\n'
+                )
+            return f'<div class="examples-block"><div class="ex-label">Examples</div>{items}</div>'
+
+        def render_notes(notes):
+            if not notes:
+                return ""
+            items = "".join(f"<li>{n}</li>" for n in notes)
+            return f'<ul class="cmd-notes">{items}</ul>'
+
+        def render_see(see_ids):
+            if not see_ids:
+                return ""
+            links = ", ".join(
+                f'<a href="#{sid}">{e(sid.replace("-", " "))}</a>'
+                for sid in see_ids
+            )
+            return f'<div class="cmd-see">See also: {links}</div>'
+
+        def render_cmd(cmd):
+            # Handle newlines in syntax for multi-line display
+            syntax_esc = e(cmd["syntax"])
+            return (
+                f'<div class="cmd-entry" id="{e(cmd["id"])}">'
+                f'<div class="cmd-header">'
+                f'<span class="cmd-name">{e(cmd["name"])}</span>'
+                f'<span class="cmd-brief"> &mdash; {e(cmd["brief"])}</span>'
+                f'</div>'
+                f'<div class="cmd-syntax"><code>{syntax_esc}</code></div>'
+                f'<p class="cmd-desc">{cmd["desc"]}</p>'
+                f'{render_param_table(cmd["params"])}'
+                f'{render_examples(cmd["examples"])}'
+                f'{render_notes(cmd["notes"])}'
+                f'{render_see(cmd["see"])}'
+                f'</div>'
+            )
+
+        def render_section(sec):
+            cmds_html = "\n".join(render_cmd(c) for c in sec["commands"])
+            return (
+                f'<section id="{e(sec["id"])}">'
+                f'<h2>{e(sec["title"])}</h2>'
+                f'<p class="section-intro">{e(sec["intro"])}</p>'
+                f'{cmds_html}'
+                f'</section>'
+            )
+
+        # ── Sidebar ──────────────────────────────────────────────────────────
+        sidebar_links = '<a href="#quick-start">Quick Start</a>\n'
+        for sec in SECTIONS:
+            sidebar_links += f'<a href="#{e(sec["id"])}">{e(sec["title"])}</a>\n'
+            for cmd in sec["commands"]:
+                sidebar_links += (
+                    f'<a class="sub-link" href="#{e(cmd["id"])}">'
+                    f'{e(cmd["name"])}</a>\n'
+                )
+        sidebar_links += '<a href="#examples">Examples</a>\n'
+        sidebar_links += '<a href="#instruments">Instruments</a>\n'
+
+        # ── Sections HTML ────────────────────────────────────────────────────
+        sections_html = "\n".join(render_section(s) for s in SECTIONS)
+
+        # ── Example workflows ────────────────────────────────────────────────
+        def example_block(name, entry):
+            lines_html = e("\n".join(entry["lines"]))
+            return (
+                f'<div class="example-block" id="ex-{e(name)}">'
+                f'<div class="example-title">{e(name)}</div>'
+                f'<div class="example-desc">{e(entry["description"])}</div>'
+                f'<pre><code>{lines_html}</code></pre>'
+                f'<div class="example-usage">'
+                f'Load: <code>examples load {e(name)}</code>'
+                f' &nbsp;|&nbsp; '
+                f'Run: <code>script run {e(name)}</code>'
+                f'</div>'
+                f'</div>'
+            )
+
+        examples_html = "\n".join(
+            example_block(n, ex) for n, ex in _EXAMPLES.items()
+        )
+
+        # ── Supported instruments ─────────────────────────────────────────────
+        instruments = [
+            ("Tektronix MSO2024",    "Oscilloscope",       "USB/GPIB"),
+            ("Rigol DHO804",         "Oscilloscope",       "USB"),
+            ("HP E3631A",            "Power Supply",       "GPIB"),
+            ("Matrix MPS-6010H-1C",  "Power Supply",       "Serial"),
+            ("HP 34401A",            "Multimeter",         "GPIB"),
+            ("OWON XDM1041",         "Multimeter",         "USB/Serial"),
+            ("BK Precision 4063",    "Function Generator", "USB"),
+            ("Keysight EDU33212A",   "Function Generator", "USB"),
+            ("JDS6600 (Seesii DDS)", "Function Generator", "Serial"),
+        ]
+
+        # ── Full HTML ─────────────────────────────────────────────────────────
+        return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SCPI Instrument Toolkit v{e(ver)} &mdash; Command Reference</title>
+<style>
+  :root {{
+    --bg: #0f0f1a; --bg2: #1a1a2e; --bg3: #16213e;
+    --cyan: #00d4d4; --yellow: #f0c040; --green: #4ade80;
+    --red: #f87171; --text: #d0d0e0; --muted: #7070a0;
+    --border: #2a2a4a; --code-bg: #0d0d1a; --sidebar-w: 240px;
+  }}
+  * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+  body {{ background: var(--bg); color: var(--text); font-family: 'Consolas','Courier New',monospace; display: flex; min-height: 100vh; font-size: 14px; }}
+  a {{ color: var(--cyan); text-decoration: none; }}
+  a:hover {{ text-decoration: underline; }}
+  code {{ background: var(--code-bg); color: var(--cyan); padding: 1px 5px; border-radius: 3px; font-size: 0.9em; }}
+
+  /* SIDEBAR */
+  nav {{ width: var(--sidebar-w); background: var(--bg2); border-right: 1px solid var(--border); position: fixed; top: 0; left: 0; bottom: 0; overflow-y: auto; padding: 14px 0; z-index: 100; scrollbar-width: thin; }}
+  nav .logo {{ padding: 0 14px 12px; border-bottom: 1px solid var(--border); margin-bottom: 6px; }}
+  nav .logo .title {{ color: var(--cyan); font-size: 1em; font-weight: bold; }}
+  nav .logo .ver {{ color: var(--muted); font-size: 0.72em; }}
+  nav a {{ display: block; padding: 3px 14px; color: var(--muted); font-size: 0.8em; border-left: 2px solid transparent; transition: all 0.12s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }}
+  nav a:hover, nav a.active {{ color: var(--cyan); border-left-color: var(--cyan); background: rgba(0,212,212,0.06); text-decoration: none; }}
+  nav a.sub-link {{ padding-left: 26px; font-size: 0.74em; color: #484870; }}
+  nav a.sub-link:hover, nav a.sub-link.active {{ color: var(--cyan); }}
+
+  /* MAIN */
+  main {{ margin-left: var(--sidebar-w); padding: 30px 48px; max-width: 1020px; flex: 1; }}
+
+  /* HEADINGS */
+  h1 {{ color: var(--cyan); font-size: 1.55em; margin-bottom: 4px; }}
+  h1 .ver {{ color: var(--muted); font-size: 0.52em; vertical-align: middle; margin-left: 10px; }}
+  h2 {{ color: var(--cyan); font-size: 1.1em; margin: 0 0 5px; padding-bottom: 5px; border-bottom: 1px solid var(--border); }}
+  p {{ line-height: 1.65; color: var(--text); margin-bottom: 8px; font-size: 0.9em; }}
+  section {{ margin-bottom: 44px; scroll-margin-top: 14px; }}
+  .section-intro {{ color: var(--muted); margin-bottom: 16px; font-size: 0.85em; }}
+
+  /* COMMAND ENTRY */
+  .cmd-entry {{ background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 16px; padding: 14px 16px; scroll-margin-top: 14px; }}
+  .cmd-header {{ margin-bottom: 7px; }}
+  .cmd-name {{ color: var(--cyan); font-weight: bold; font-size: 0.98em; }}
+  .cmd-brief {{ color: var(--muted); font-size: 0.85em; }}
+  .cmd-syntax {{ background: var(--code-bg); border: 1px solid var(--border); border-radius: 4px; padding: 7px 12px; margin: 6px 0 9px; white-space: pre; overflow-x: auto; }}
+  .cmd-syntax code {{ background: none; padding: 0; color: var(--yellow); font-size: 0.87em; }}
+  .cmd-desc {{ font-size: 0.87em; margin-bottom: 9px; color: var(--text); line-height: 1.6; }}
+  .cmd-desc code {{ background: none; color: var(--cyan); padding: 0; }}
+
+  /* PARAM TABLE */
+  .param-table {{ width: 100%; border-collapse: collapse; margin: 6px 0 10px; font-size: 0.82em; }}
+  .param-table th {{ background: var(--bg3); color: var(--yellow); padding: 5px 10px; text-align: left; border: 1px solid var(--border); font-weight: normal; }}
+  .param-table td {{ padding: 5px 10px; border: 1px solid var(--border); vertical-align: top; }}
+  .param-table tr:nth-child(even) td {{ background: rgba(255,255,255,0.02); }}
+  .param-table td:first-child {{ color: var(--cyan); white-space: nowrap; }}
+  .param-table td code {{ background: none; color: var(--cyan); padding: 0; }}
+  .param-table .values-cell {{ color: #9090c0; white-space: nowrap; font-size: 0.95em; }}
+  .param-table .desc-cell {{ color: var(--text); line-height: 1.5; }}
+  .param-table .desc-cell code {{ background: none; color: var(--cyan); padding: 0; }}
+
+  /* REQUIRED BADGES */
+  .req-badge {{ display: inline-block; padding: 1px 7px; border-radius: 8px; font-size: 0.78em; font-weight: bold; white-space: nowrap; }}
+  .req-badge.req {{ background: rgba(248,113,113,0.12); color: var(--red); border: 1px solid var(--red); }}
+  .req-badge.opt {{ background: rgba(74,222,128,0.08); color: var(--green); border: 1px solid var(--green); }}
+  .req-badge.ctx {{ background: rgba(240,192,64,0.08); color: var(--yellow); border: 1px solid var(--yellow); }}
+
+  /* EXAMPLES */
+  .examples-block {{ background: var(--code-bg); border: 1px solid var(--border); border-radius: 4px; padding: 9px 12px; margin: 7px 0; }}
+  .ex-label {{ color: var(--yellow); font-size: 0.78em; margin-bottom: 5px; }}
+  .ex-row {{ display: flex; gap: 14px; margin-bottom: 2px; align-items: baseline; flex-wrap: wrap; }}
+  .ex-cmd {{ color: var(--green); background: none; font-size: 0.85em; white-space: pre; padding: 0; }}
+  .ex-desc {{ color: var(--muted); font-size: 0.82em; }}
+
+  /* NOTES */
+  .cmd-notes {{ margin: 7px 0; padding-left: 18px; font-size: 0.83em; }}
+  .cmd-notes li {{ color: var(--text); margin-bottom: 3px; line-height: 1.5; }}
+  .cmd-notes li code {{ background: none; color: var(--cyan); padding: 0; }}
+
+  /* SEE ALSO */
+  .cmd-see {{ font-size: 0.78em; color: var(--muted); margin-top: 7px; }}
+  .cmd-see a {{ color: var(--cyan); }}
+
+  /* QUICK START */
+  .step {{ display: flex; gap: 12px; margin-bottom: 10px; padding: 11px 14px; background: var(--bg2); border-radius: 6px; border: 1px solid var(--border); align-items: flex-start; }}
+  .step-num {{ flex-shrink: 0; width: 24px; height: 24px; background: var(--cyan); color: #000; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.8em; }}
+  .step-body p {{ margin: 0; font-size: 0.87em; }}
+
+  /* EXAMPLE WORKFLOWS */
+  .example-block {{ background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 16px; overflow: hidden; }}
+  .example-title {{ background: var(--bg3); color: var(--cyan); font-weight: bold; padding: 8px 14px; font-size: 0.88em; }}
+  .example-desc {{ color: var(--yellow); padding: 6px 14px 0; font-size: 0.8em; }}
+  .example-block pre {{ margin: 7px 14px 0; border: none; background: var(--code-bg); padding: 9px; font-size: 0.8em; border-radius: 4px; overflow-x: auto; }}
+  .example-block pre code {{ background: none; color: var(--text); padding: 0; }}
+  .example-usage {{ color: var(--muted); font-size: 0.76em; padding: 6px 14px 10px; }}
+  .example-usage code {{ color: var(--green); background: none; }}
+
+  /* INSTRUMENTS TABLE */
+  table.inst-table {{ width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 0.84em; }}
+  table.inst-table th {{ background: var(--bg3); color: var(--yellow); padding: 6px 12px; text-align: left; border: 1px solid var(--border); font-weight: normal; }}
+  table.inst-table td {{ padding: 5px 12px; border: 1px solid var(--border); }}
+  table.inst-table tr:nth-child(even) td {{ background: rgba(255,255,255,0.02); }}
+  table.inst-table td:first-child {{ color: var(--cyan); }}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">
+    <div class="title">SCPI Toolkit</div>
+    <div class="ver">v{e(ver)} &mdash; Command Reference</div>
+  </div>
+  {sidebar_links}
+</nav>
+
+<main>
+  <h1>SCPI Instrument Toolkit <span class="ver">v{e(ver)}</span></h1>
+  <p>Python REPL for controlling lab instruments over VISA (USB, GPIB, Serial). Type <code>docs</code> in the REPL to open this page, or <code>help &lt;cmd&gt;</code> for quick inline help.</p>
+
+  <section id="quick-start">
+    <h2>Quick Start</h2>
+    <div class="step"><div class="step-num">1</div><div class="step-body">
+      <p><strong>Install:</strong> <code>pip install git+https://github.com/bsikar/scpi-instrument-toolkit.git</code></p>
+    </div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-body">
+      <p><strong>Launch:</strong> <code>scpi-repl</code> (auto-discovers instruments) &nbsp;&mdash;&nbsp; <code>scpi-repl --mock</code> (no hardware, for testing)</p>
+    </div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-body">
+      <p><strong>Identify:</strong> <code>list</code> shows connected instruments &mdash; <code>use psu1</code> makes psu1 active</p>
+    </div></div>
+    <div class="step"><div class="step-num">4</div><div class="step-body">
+      <p><strong>Control:</strong> <code>psu chan 1 on</code> &rarr; <code>psu set 5.0</code> &rarr; <code>psu meas v</code></p>
+    </div></div>
+    <div class="step"><div class="step-num">5</div><div class="step-body">
+      <p><strong>Log:</strong> <code>psu meas_store v reading unit=V</code> &rarr; <code>log print</code> &rarr; <code>log save results.csv</code></p>
+    </div></div>
+  </section>
+
+  {sections_html}
+
+  <section id="examples">
+    <h2>Example Workflows</h2>
+    <p>Load any example into your session with <code>examples load &lt;name&gt;</code>, then run with <code>script run &lt;name&gt;</code>. Use as starting points for your own scripts.</p>
+    {examples_html}
+  </section>
+
+  <section id="instruments">
+    <h2>Supported Instruments</h2>
+    <table class="inst-table">
+      <tr><th>Model</th><th>Type</th><th>Interface</th></tr>
+      {"".join(f"<tr><td>{e(m)}</td><td>{e(t)}</td><td>{e(i)}</td></tr>" for m, t, i in instruments)}
+    </table>
+    <p style="color:var(--muted);font-size:0.8em;margin-top:6px;">Auto-detected on <code>scan</code>. Serial resources are probed with multiple baud rates automatically.</p>
+  </section>
+</main>
+
+<script>
+const allLinks = document.querySelectorAll('nav a[href^="#"]');
+const allTargets = [...document.querySelectorAll('section[id], .cmd-entry[id]')];
+const io = new IntersectionObserver(entries => {{
+  entries.forEach(entry => {{
+    if (entry.isIntersecting) {{
+      allLinks.forEach(l => l.classList.remove('active'));
+      const link = document.querySelector(`nav a[href="#${{entry.target.id}}"]`);
+      if (link) link.classList.add('active');
+    }}
+  }});
+}}, {{ threshold: 0.15, rootMargin: '-30px 0px -65% 0px' }});
+allTargets.forEach(t => io.observe(t));
+</script>
+</body>
+</html>"""
 
     def do_all(self, arg):
         "all <on|off|safe|reset>: apply a state to all instruments"
@@ -1326,14 +2662,16 @@ class InstrumentRepl(cmd.Cmd):
         cmd_line("quit",    "quit the REPL")
 
         section("INSTRUMENTS")
-        cmd_line("psu",     "power supply  (output, set, meas, track, save, recall)")
-        cmd_line("awg",     "function generator  (wave, freq, amp, offset, duty, phase)")
+        cmd_line("psu",     "power supply  (chan, set, meas, track, save, recall)")
+        cmd_line("awg",     "function generator  (chan, wave, freq, amp, offset, duty, phase)")
         cmd_line("dmm",     "multimeter  (config, read, fetch, meas, beep, display)")
-        cmd_line("scope",   "oscilloscope  (chan, measure, save, trigger, awg, dvm, counter)")
+        cmd_line("scope",   "oscilloscope  (chan, meas, save, trigger, awg, dvm, counter)")
 
         section("SCRIPTING")
-        cmd_line("script",  "manage and run named scripts  (new, run, edit, list, rm, show, import, load, save)")
-        cmd_line("python",  "execute an external Python script with REPL context")
+        cmd_line("script",    "manage and run named scripts  (new, run, edit, list, rm, show, import, load, save)")
+        cmd_line("examples",  "list or load bundled example workflows  (load <name> | load all)")
+        cmd_line("python",    "execute an external Python script with REPL context")
+        cmd_line("docs",      "open full HTML documentation in your browser")
 
         section("LOGGING & MATH")
         cmd_line("log",     "show or save recorded measurements  (print, save, clear)")
@@ -1374,7 +2712,7 @@ class InstrumentRepl(cmd.Cmd):
                     [
                         "# PSU",
                         "",
-                        "psu output on|off",
+                        "psu chan 1 on|off",
                         "psu set <voltage> [current]",
                         "  - voltage: 0-60V, current: 0-10A",
                         "  - example: psu set 5.0 1.0",
@@ -1389,7 +2727,7 @@ class InstrumentRepl(cmd.Cmd):
                     [
                         "# PSU",
                         "",
-                        "psu output on|off",
+                        "psu chan <1|2|3|all> on|off",
                         "psu set <channel> <voltage> [current]",
                         "  - channels: 1 (6V), 2 (25V+), 3 (25V-)",
                         "  - example: psu set 1 5.0 0.2",
@@ -1408,10 +2746,11 @@ class InstrumentRepl(cmd.Cmd):
         cmd_name = args[0].lower()
 
         try:
-            # OUTPUT COMMAND
-            if cmd_name == "output" and len(args) >= 2:
-                dev.enable_output(args[1].lower() == "on")
-                ColorPrinter.success(f"Output {'enabled' if args[1].lower() == 'on' else 'disabled'}")
+            # CHAN COMMAND — psu chan 1 on|off (single) or psu chan <1|2|3|all> on|off (multi)
+            if cmd_name == "chan" and len(args) >= 3:
+                state = args[-1].lower() == "on"
+                dev.enable_output(state)
+                ColorPrinter.success(f"Output {'enabled' if state else 'disabled'}")
 
             # SET COMMAND - unified for both single and multi-channel
             elif cmd_name == "set":
@@ -1789,7 +3128,7 @@ class InstrumentRepl(cmd.Cmd):
                     "  - example: dmm config vdc 10 0.001 nplc=10",
                     "",
                     "dmm read",
-                    "dmm read_store <label> [scale=] [unit=]",
+                    "dmm meas_store <label> [scale=] [unit=]",
                     "dmm fetch",
                     "dmm meas <mode> [range] [res]",
                     "dmm beep",
@@ -1882,8 +3221,8 @@ class InstrumentRepl(cmd.Cmd):
             elif cmd_name == "read":
                 ColorPrinter.cyan(str(dev.read()))
 
-            # READ_STORE COMMAND
-            elif cmd_name == "read_store" and len(args) >= 2:
+            # MEAS_STORE COMMAND
+            elif cmd_name == "meas_store" and len(args) >= 2:
                 label = args[1]
                 scale = 1.0
                 unit = ""
@@ -2035,7 +3374,7 @@ class InstrumentRepl(cmd.Cmd):
     # Scope commands
     # --------------------------
     def do_scope(self, arg):
-        "scope <cmd>: control the oscilloscope (autoset, run, stop, single, chan, coupling, probe, hscale, vscale, vpos, vmove, hpos, hmove, measure, save, trigger, awg)"
+        "scope <cmd>: control the oscilloscope (autoset, run, stop, single, chan, coupling, probe, hscale, vscale, vpos, vmove, hpos, hmove, meas, save, trigger, awg)"
         # Resolve which scope to use (auto-select if only one)
         scope_name = self._resolve_device_type("scope")
         if not scope_name:
@@ -2077,14 +3416,14 @@ class InstrumentRepl(cmd.Cmd):
                     "",
                     "scope trigger <chan> <level> [slope=RISE] [mode=AUTO]",
                     "",
-                    "scope measure <1-4|all> <type> - measure waveform parameter",
+                    "scope meas <1-4|all> <type> - measure waveform parameter",
                     "  - types: FREQUENCY, PK2PK, RMS, MEAN, PERIOD, MINIMUM, MAXIMUM",
                     "  - types: RISE, FALL, AMPLITUDE, HIGH, LOW, PWIDTH, NWIDTH, CRMS",
-                    "  - example: scope measure 1 FREQUENCY",
-                    "  - example: scope measure all PK2PK",
-                    "scope measure_store <1-4|all> <type> <label> [unit=]",
-                    "scope measure_delay <ch1> <ch2> [edge1=RISE] [edge2=RISE] [direction=FORWARDS]",
-                    "scope measure_delay_store <ch1> <ch2> <label> [edge1=RISE] [edge2=RISE] [direction=FORWARDS] [unit=]",
+                    "  - example: scope meas 1 FREQUENCY",
+                    "  - example: scope meas all PK2PK",
+                    "scope meas_store <1-4|all> <type> <label> [unit=]",
+                    "scope meas_delay <ch1> <ch2> [edge1=RISE] [edge2=RISE] [direction=FORWARDS]",
+                    "scope meas_delay_store <ch1> <ch2> <label> [edge1=RISE] [edge2=RISE] [direction=FORWARDS] [unit=]",
                     "",
                     "scope save <channels> <filename> [record=<secs>] [time=<secs>] [points=<n>]",
                     "  - channels: single channel (1-4) or comma-separated list (1,3)",
@@ -2175,10 +3514,10 @@ class InstrumentRepl(cmd.Cmd):
                 mode = args[4].upper() if len(args) >= 5 else "AUTO"
                 dev.configure_trigger(channel, level, slope, mode)
                 ColorPrinter.success(f"Trigger configured: CH{channel} @ {level}V, {slope}, {mode}")
-            elif cmd_name == "measure":
+            elif cmd_name == "meas":
                 if len(args) < 3:
                     # Show available measurement types
-                    ColorPrinter.warning("Missing arguments. Usage: scope measure <1-4> <type>")
+                    ColorPrinter.warning("Missing arguments. Usage: scope meas <1-4> <type>")
                     self._print_colored_usage([
                         "",
                         "# AVAILABLE MEASUREMENT TYPES",
@@ -2199,15 +3538,15 @@ class InstrumentRepl(cmd.Cmd):
                         "  - PWIDTH      - positive pulse width",
                         "  - NWIDTH      - negative pulse width",
                         "",
-                        "  - example: scope measure 1 FREQUENCY",
-                        "  - example: scope measure 2 PK2PK",
+                        "  - example: scope meas 1 FREQUENCY",
+                        "  - example: scope meas 2 PK2PK",
                     ])
                 else:
                     channel = int(args[1])
                     measure_type = args[2]
                     result = dev.measure_bnf(channel, measure_type)
                     ColorPrinter.cyan(f"CH{channel} {measure_type}: {result}")
-            elif cmd_name == "measure_store" and len(args) >= 4:
+            elif cmd_name == "meas_store" and len(args) >= 4:
                 channel = int(args[1])
                 measure_type = args[2]
                 label = args[3]
@@ -2218,14 +3557,14 @@ class InstrumentRepl(cmd.Cmd):
                 val = dev.measure_bnf(channel, measure_type)
                 self._record_measurement(label, val, unit, f"scope.meas.{measure_type}")
                 ColorPrinter.success(f"CH{channel} {measure_type}: {val} → stored as '{label}'")
-            elif cmd_name == "measure_delay" and len(args) >= 3:
+            elif cmd_name == "meas_delay" and len(args) >= 3:
                 ch1 = int(args[1])
                 ch2 = int(args[2])
                 edge1 = args[3].upper() if len(args) >= 4 else "RISE"
                 edge2 = args[4].upper() if len(args) >= 5 else "RISE"
                 direction = args[5].upper() if len(args) >= 6 else "FORWARDS"
                 ColorPrinter.cyan(str(dev.measure_delay(ch1, ch2, edge1, edge2, direction)))
-            elif cmd_name == "measure_delay_store" and len(args) >= 4:
+            elif cmd_name == "meas_delay_store" and len(args) >= 4:
                 ch1 = int(args[1])
                 ch2 = int(args[2])
                 label = args[3]
@@ -2303,7 +3642,7 @@ class InstrumentRepl(cmd.Cmd):
                 [
                     "# SCOPE AWG",
                     "",
-                    "scope awg output on|off - enable/disable AWG output",
+                    "scope awg chan on|off - enable/disable AWG output",
                     "scope awg set <func> <freq> <amp> [offset=0] - quick config",
                     "  - func: SINusoid|SQUare|RAMP|DC|NOISe",
                     "  - freq: frequency in Hz",
@@ -2327,7 +3666,7 @@ class InstrumentRepl(cmd.Cmd):
         try:
             cmd = args[0].lower()
 
-            if cmd == "output" and len(args) >= 2:
+            if cmd == "chan" and len(args) >= 2:
                 dev.awg_set_output_enable(args[1].lower() == "on")
                 ColorPrinter.success(f"AWG output {'enabled' if args[1].lower() == 'on' else 'disabled'}")
 
@@ -2575,7 +3914,7 @@ class InstrumentRepl(cmd.Cmd):
             ColorPrinter.warning("calc expects an expression.")
             return
         if not self.measurements:
-            ColorPrinter.warning("No measurements recorded. Use meas_store/read_store/measure_store first.")
+            ColorPrinter.warning("No measurements recorded. Use meas_store first.")
             return
         m = {entry["label"]: entry["value"] for entry in self.measurements}
         last = self.measurements[-1]["value"]

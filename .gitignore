@@ -32,3 +32,6 @@ devices.py
 *.csv
 *.png
 *.xlsx
+
+# MkDocs generated site (built locally with: mkdocs build)
+site/

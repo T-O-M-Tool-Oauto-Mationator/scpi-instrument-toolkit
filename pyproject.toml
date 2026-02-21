@@ -21,6 +21,7 @@ dependencies = [
 
 [project.optional-dependencies]
 sim = ["pyvisa-py"]
+docs = ["mkdocs-material"]
 
 [project.scripts]
 scpi-repl = "lab_instruments.repl:main"

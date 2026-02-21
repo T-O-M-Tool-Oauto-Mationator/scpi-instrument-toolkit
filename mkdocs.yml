@@ -1,0 +1,62 @@
+site_name: SCPI Instrument Toolkit
+use_directory_urls: false
+site_description: Python REPL for controlling lab instruments over VISA
+repo_url: https://github.com/bsikar/scpi-instrument-toolkit
+repo_name: bsikar/scpi-instrument-toolkit
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: teal
+      accent: cyan
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: teal
+      accent: cyan
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.highlight
+    - search.suggest
+    - content.code.copy
+    - toc.follow
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+      linenums: false
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - General Commands: general.md
+  - Instruments:
+    - Power Supply (PSU): psu.md
+    - Function Generator (AWG): awg.md
+    - Multimeter (DMM): dmm.md
+    - Oscilloscope (Scope): scope.md
+  - Scripting:
+    - Scripts & Directives: scripting.md
+    - Example Workflows: examples.md
+  - Log & Calc: logging.md
+  - Supported Instruments: instruments.md

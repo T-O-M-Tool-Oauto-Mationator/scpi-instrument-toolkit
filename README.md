@@ -73,20 +73,25 @@ Once the REPL is running, here are the most useful commands:
 | Command | What it does |
 |---|---|
 | `help` | Show all available commands |
+| `docs` | Open the full command reference in your browser |
 | `list` | Show connected instruments |
 | `scan` | Re-scan for instruments |
-| `psu output on` | Turn on the power supply |
+| `psu chan 1 on` | Turn on the power supply |
 | `psu set 5.0 0.5` | Set PSU to 5V, 0.5A limit |
 | `psu meas v` | Measure output voltage |
 | `dmm meas vdc` | Measure DC voltage |
 | `dmm read` | Take a reading |
 | `awg wave 1 sine freq=1000 amp=2.0` | Output a 1kHz sine wave |
-| `scope measure 1 FREQUENCY` | Measure frequency on channel 1 |
+| `scope meas 1 FREQUENCY` | Measure frequency on channel 1 |
 | `scope autoset` | Auto-configure the scope |
 | `state safe` | Put all instruments in a safe state |
 | `exit` | Quit |
 
 Type `help <command>` for more detail on any command. For example: `help psu`
+
+### Full documentation
+
+Run `docs` inside the REPL to open a complete command reference in your browser. It covers every command and subcommand with parameter descriptions and examples — including what `label`, `unit=`, and `scale=` do in measurement commands.
 
 ---
 
