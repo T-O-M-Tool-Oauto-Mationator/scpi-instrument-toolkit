@@ -44,10 +44,13 @@ def _update_log_path():
     return os.path.join(log_dir, "update.log")
 
 
-def _check_and_update():
-    """Check GitHub tags for a newer version. If found, pip-install and restart."""
+def _check_and_update(force=False):
+    """Check GitHub tags for a newer version. If found, pip-install and restart.
+    force=True: always print status even when already up to date."""
     if _REPL_VERSION == "unknown":
-        return  # running from source, skip
+        if force:
+            print("Running from source — skipping update check.")
+        return
 
     import urllib.request
     import json
@@ -80,7 +83,13 @@ def _check_and_update():
         def _vtuple(v):
             return tuple(int(x) for x in v.split("."))
 
-        if _vtuple(latest) > _vtuple(_REPL_VERSION):
+        if _vtuple(latest) <= _vtuple(_REPL_VERSION):
+            if force:
+                from lab_instruments.src.terminal import ColorPrinter as _CP
+                _CP.success(f"Already up to date (v{_REPL_VERSION}).")
+            return
+
+        if True:  # update available
             from lab_instruments.src.terminal import ColorPrinter as _CP
             _CP.info(f"Update available: v{_REPL_VERSION} → v{latest}. Installing...")
             git_url = f"git+https://github.com/{_GITHUB_REPO}.git@{latest_tag}"
@@ -4073,7 +4082,7 @@ allTargets.forEach(t => io.observe(t));
         if help_flag or len(args) < 2:
             self._print_colored_usage(
                 [
-                    "# CALC (calculator)",
+                    "# CALC (short for calculator)",
                     "",
                     "calc <label> <expr> [unit=]",
                     "  - expr can use m[\"label\"], last, and variables like pi",
@@ -4188,10 +4197,11 @@ def main():
         print(
             f"scpi-instrument-toolkit v{_REPL_VERSION}\n"
             "\n"
-            "Usage: scpi-repl [--mock] [--version] [--help] [script]\n"
+            "Usage: scpi-repl [--mock] [--update] [--version] [--help] [script]\n"
             "\n"
             "Options:\n"
             "  --mock       Run with simulated instruments (no hardware required)\n"
+            "  --update     Check for updates, install if available, and exit\n"
             "  --version    Print version and exit\n"
             "  --help       Show this help and exit\n"
             "\n"
@@ -4201,8 +4211,13 @@ def main():
             "Examples:\n"
             "  scpi-repl                  Start the interactive REPL\n"
             "  scpi-repl --mock           Start with mock instruments\n"
+            "  scpi-repl --update         Check for and install updates\n"
             "  scpi-repl my_script        Run 'my_script' and exit\n"
         )
+        sys.exit(0)
+
+    if "--update" in args:
+        _check_and_update(force=True)
         sys.exit(0)
 
     _check_and_update()
