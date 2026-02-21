@@ -390,21 +390,6 @@ class InstrumentRepl(cmd.Cmd):
         except Exception as exc:
             ColorPrinter.error(f"Failed to load scripts: {exc}")
 
-        # One-time migration from old .repl_scripts.json in cwd
-        if not scripts and os.path.exists(".repl_scripts.json"):
-            try:
-                with open(".repl_scripts.json", "r", encoding="utf-8") as f:
-                    old_data = json.load(f)
-                if isinstance(old_data, dict) and old_data:
-                    scripts = old_data
-                    # Write migrated scripts to new location
-                    for name, lines in scripts.items():
-                        with open(self._script_file(name), "w", encoding="utf-8") as f:
-                            f.write("\n".join(lines) + ("\n" if lines else ""))
-                    ColorPrinter.info(f"Migrated {len(scripts)} scripts → {d}")
-            except Exception:
-                pass
-
         return scripts
 
     def _save_scripts(self):
