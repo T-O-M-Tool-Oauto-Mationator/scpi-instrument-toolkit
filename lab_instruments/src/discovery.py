@@ -113,14 +113,21 @@ class InstrumentDiscovery:
             inst.stop_bits = pyvisa.constants.StopBits.one
             inst.read_termination = "\n"
             inst.write_termination = "\n"  # LF only, not CR+LF
-            inst.timeout = 1500
+            inst.timeout = 2000
+
+            # Flush stale bytes left by previous probes at wrong baud rates
+            try:
+                inst.clear()
+            except Exception:
+                pass
+            time.sleep(0.1)
 
             # Enable remote mode first (required for commands to work)
             try:
                 inst.write("REM:ON")
             except Exception:
                 return None
-            time.sleep(0.15)
+            time.sleep(0.3)  # give the device time to enter remote mode
 
             # Try *IDN?
             try:
@@ -130,15 +137,18 @@ class InstrumentDiscovery:
             except Exception:
                 pass
 
-            # *IDN? failed — probe with VOLT? (returns a float if it's a MATRIX)
-            try:
-                inst.write("VOLT?")
-                time.sleep(0.2)
-                response = inst.read().strip()
-                float(response)  # Must be a valid number
-                return "MPS-6010H-1C"
-            except Exception:
-                pass
+            # *IDN? failed — probe with voltage queries.
+            # Response may be a plain float or include a unit suffix (e.g. "0.000V").
+            for probe_cmd in ("VOLT?", "MEAS:VOLT?"):
+                try:
+                    inst.write(probe_cmd)
+                    time.sleep(0.3)
+                    response = inst.read().strip()
+                    if response:
+                        float(response.rstrip("VAva \t"))  # tolerate unit suffix
+                        return "MPS-6010H-1C"
+                except Exception:
+                    continue
 
         except Exception:
             pass
