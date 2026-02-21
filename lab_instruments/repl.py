@@ -162,8 +162,8 @@ class InstrumentRepl(cmd.Cmd):
     # --------------------------
     def scan(self):
         self.devices = self.discovery.scan(verbose=True)
-        if self.devices and self.selected not in self.devices:
-            self.selected = next(iter(self.devices))
+        if self.selected not in self.devices:
+            self.selected = None
 
     def _get_device(self, name: Optional[str]) -> Optional[Any]:
         if not self.devices:
@@ -694,9 +694,19 @@ class InstrumentRepl(cmd.Cmd):
         if not self.devices:
             ColorPrinter.warning("No instruments connected.")
             return
+        C = ColorPrinter.CYAN
+        G = ColorPrinter.GREEN
+        Y = ColorPrinter.YELLOW
+        B = ColorPrinter.BOLD
+        R = ColorPrinter.RESET
         for name, dev in self.devices.items():
-            marker = "*" if name == self.selected else " "
-            print(f"{marker} {name}: {dev.__class__.__name__}")
+            if name == self.selected:
+                marker = f"{G}*{R}"
+                name_str = f"{G}{B}{name}{R}"
+            else:
+                marker = " "
+                name_str = f"{C}{name}{R}"
+            print(f" {marker} {name_str}: {Y}{dev.__class__.__name__}{R}")
 
     def _safe_all(self):
         for name, dev in self.devices.items():
@@ -995,34 +1005,44 @@ class InstrumentRepl(cmd.Cmd):
             if name.startswith("psu"):
                 if state in ("safe", "off"):
                     dev.disable_all_channels()
+                    ColorPrinter.success(f"{name}: output disabled")
                 elif state == "on":
                     dev.enable_output(True)
+                    ColorPrinter.success(f"{name}: output enabled")
                 elif state == "reset":
                     dev.reset()
+                    ColorPrinter.success(f"{name}: reset")
                 else:
                     ColorPrinter.warning("PSU states: on, off, safe, reset")
             elif name.startswith("awg") or name == "dds":
                 if state in ("safe", "off"):
                     dev.disable_all_channels()
+                    ColorPrinter.success(f"{name}: outputs disabled")
                 elif state == "on":
                     dev.enable_output(1, True)
                     dev.enable_output(2, True)
+                    ColorPrinter.success(f"{name}: outputs enabled")
                 elif state == "reset":
                     dev.reset()
+                    ColorPrinter.success(f"{name}: reset")
                 else:
                     ColorPrinter.warning("AWG states: on, off, safe, reset")
             elif name.startswith("scope"):
                 if state in ("safe", "off"):
                     dev.disable_all_channels()
+                    ColorPrinter.success(f"{name}: channels disabled")
                 elif state == "on":
                     dev.enable_all_channels()
+                    ColorPrinter.success(f"{name}: channels enabled")
                 elif state == "reset":
                     dev.reset()
+                    ColorPrinter.success(f"{name}: reset")
                 else:
                     ColorPrinter.warning("Scope states: on, off, safe, reset")
             elif name.startswith("dmm"):
                 if state in ("safe", "reset"):
                     dev.reset()
+                    ColorPrinter.success(f"{name}: reset")
                 else:
                     ColorPrinter.warning("DMM states: safe, reset")
         except Exception as exc:
@@ -1037,6 +1057,7 @@ class InstrumentRepl(cmd.Cmd):
         for name, dev in self.devices.items():
             try:
                 dev.disconnect()
+                ColorPrinter.success(f"{name}: disconnected")
             except Exception as exc:
                 ColorPrinter.error(f"{name}: {exc}")
         self.devices = {}
@@ -1327,43 +1348,40 @@ class InstrumentRepl(cmd.Cmd):
         "docs: open the full command reference in your browser"
         import subprocess
         import webbrowser
-        import os
+        from pathlib import Path
 
-        repl_dir = os.path.dirname(os.path.abspath(__file__))
-        repo_root = os.path.dirname(repl_dir)
-        mkdocs_yml = os.path.join(repo_root, "mkdocs.yml")
-        site_index = os.path.join(repo_root, "site", "index.html")
+        repl_dir = Path(__file__).resolve().parent
+        repo_root = repl_dir.parent
 
-        if os.path.exists(mkdocs_yml):
-            # Build if site/ doesn't exist yet
-            if not os.path.exists(site_index):
-                ColorPrinter.info("Building docs (first run — takes a few seconds)...")
-                result = subprocess.run(
-                    [sys.executable, "-m", "mkdocs", "build", "--quiet"],
-                    cwd=repo_root,
-                    capture_output=True,
-                    env={**os.environ, "PYTHONUTF8": "1"},
-                )
-                if result.returncode != 0:
-                    err = result.stderr.decode(errors="replace").strip()
-                    ColorPrinter.warning(f"mkdocs build failed: {err[:200]}")
-                    ColorPrinter.info("Install mkdocs-material: pip install mkdocs-material")
+        # 1. Bundled site inside the package (installed or repo with pre-built site)
+        bundled_index = repl_dir / "site" / "index.html"
 
-            if os.path.exists(site_index):
-                url = "file:///" + site_index.replace("\\", "/")
-                webbrowser.open(url)
-                ColorPrinter.success(f"Docs opened: {site_index}")
-                return
+        # 2. If running from the repo and the site hasn't been built yet, build it
+        mkdocs_yml = repo_root / "mkdocs.yml"
+        if not bundled_index.exists() and mkdocs_yml.exists():
+            ColorPrinter.info("Building docs (first run — takes a few seconds)...")
+            result = subprocess.run(
+                [sys.executable, "-m", "mkdocs", "build", "--quiet"],
+                cwd=str(repo_root),
+                capture_output=True,
+                env={**os.environ, "PYTHONUTF8": "1"},
+            )
+            if result.returncode != 0:
+                err = result.stderr.decode(errors="replace").strip()
+                ColorPrinter.warning(f"mkdocs build failed: {err[:200]}")
 
-        # Fallback: single-page HTML
+        if bundled_index.exists():
+            webbrowser.open(bundled_index.as_uri())
+            ColorPrinter.success(f"Docs opened: {bundled_index}")
+            return
+
+        # Fallback: single-page HTML (always works, no dependencies)
         import tempfile
         html = self._generate_docs_html()
-        path = os.path.join(tempfile.gettempdir(), "scpi_toolkit_docs.html")
-        with open(path, "w", encoding="utf-8") as f:
-            f.write(html)
-        url = "file:///" + path.replace("\\", "/")
-        webbrowser.open(url)
-        ColorPrinter.success("Docs opened in browser (single-page fallback).")
+        path = Path(tempfile.gettempdir()) / "scpi_toolkit_docs.html"
+        path.write_text(html, encoding="utf-8")
+        webbrowser.open(path.as_uri())
+        ColorPrinter.success("Docs opened in browser.")
         ColorPrinter.info("For the full docs site: pip install mkdocs-material  then  docs")
 
     def _generate_docs_html(self) -> str:
@@ -3840,15 +3858,19 @@ allTargets.forEach(t => io.observe(t));
             if not self.measurements:
                 ColorPrinter.warning("No measurements recorded.")
                 return
+            C = ColorPrinter.CYAN
+            G = ColorPrinter.GREEN
+            Y = ColorPrinter.YELLOW
+            R = ColorPrinter.RESET
             header = f"{'Label':<24} {'Value':>14} {'Unit':<8} {'Source':<12}"
-            print(header)
-            print("-" * len(header))
+            print(f"{Y}{header}{R}")
+            print(f"{Y}{'-' * len(header)}{R}")
             for entry in self.measurements:
                 label = entry.get("label", "")
                 value = entry.get("value", "")
                 unit = entry.get("unit", "")
                 source = entry.get("source", "")
-                print(f"{label:<24} {value:>14} {unit:<8} {source:<12}")
+                print(f"{C}{label:<24}{R} {G}{value:>14}{R} {Y}{unit:<8}{R} {source:<12}")
             return
         if cmd_name == "save" and len(args) >= 2:
             path = args[1]
@@ -3922,7 +3944,12 @@ allTargets.forEach(t => io.observe(t));
         try:
             value = self._safe_eval(expr, names)
             self._record_measurement(label, value, unit, "calc")
-            ColorPrinter.cyan(str(value))
+            suffix = f" {unit}" if unit else ""
+            C = ColorPrinter.CYAN
+            G = ColorPrinter.GREEN
+            Y = ColorPrinter.YELLOW
+            R = ColorPrinter.RESET
+            print(f"{C}{label}{R} = {G}{value}{R}{Y}{suffix}{R}")
         except Exception as exc:
             ColorPrinter.error(f"calc failed: {exc}")
 

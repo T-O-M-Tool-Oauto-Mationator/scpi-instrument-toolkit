@@ -1,0 +1,2285 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Python REPL for controlling lab instruments over VISA">
+      
+      
+      
+      
+        <link rel="prev" href="dmm.html">
+      
+      
+        <link rel="next" href="scripting.html">
+      
+      
+        
+      
+      
+      <link rel="icon" href="assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.2">
+    
+    
+      
+        <title>Oscilloscope (Scope) - SCPI Instrument Toolkit</title>
+      
+    
+    
+      <link rel="stylesheet" href="assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="cyan">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#scope-oscilloscope" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="index.html" title="SCPI Instrument Toolkit" class="md-header__button md-logo" aria-label="SCPI Instrument Toolkit" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            SCPI Instrument Toolkit
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Oscilloscope (Scope)
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="cyan"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="cyan"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/bsikar/scpi-instrument-toolkit" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    bsikar/scpi-instrument-toolkit
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="index.html" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="general.html" class="md-tabs__link">
+        
+  
+  
+    
+  
+  General Commands
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="psu.html" class="md-tabs__link">
+          
+  
+  
+  Instruments
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="scripting.html" class="md-tabs__link">
+          
+  
+  
+  Scripting
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="logging.html" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Log & Calc
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="instruments.html" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Supported Instruments
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="index.html" title="SCPI Instrument Toolkit" class="md-nav__button md-logo" aria-label="SCPI Instrument Toolkit" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    SCPI Instrument Toolkit
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/bsikar/scpi-instrument-toolkit" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    bsikar/scpi-instrument-toolkit
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="general.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    General Commands
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Instruments
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Instruments
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="psu.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Power Supply (PSU)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="awg.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Function Generator (AWG)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="dmm.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Multimeter (DMM)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Oscilloscope (Scope)
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="scope.html" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Oscilloscope (Scope)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#acquisition-control" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acquisition Control
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Acquisition Control">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#scope-autoset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        scope autoset
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scope-run-stop-single" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        scope run / stop / single
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#channel-control" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Channel Control
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Channel Control">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#scope-chan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        scope chan
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scope-coupling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        scope coupling
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scope-probe" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        scope probe
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#horizontal-time-axis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Horizontal (Time) Axis
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Horizontal (Time) Axis">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#scope-hscale" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        scope hscale
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scope-hpos-hmove" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        scope hpos / hmove
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#vertical-voltage-axis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Vertical (Voltage) Axis
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Vertical (Voltage) Axis">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#scope-vscale" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        scope vscale
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scope-vpos-vmove" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        scope vpos / vmove
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#trigger" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Trigger
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Trigger">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#scope-trigger" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        scope trigger
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#measurements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Measurements
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Measurements">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#scope-meas" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        scope meas
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="scope meas">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#available-measurement-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Available measurement types
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scope-meas_store" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        scope meas_store
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scope-meas_delay" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        scope meas_delay
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scope-meas_delay_store" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        scope meas_delay_store
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#waveform-capture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Waveform Capture
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Waveform Capture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#scope-save" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        scope save
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#built-in-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Built-in Tools
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Built-in Tools">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#scope-awg" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        scope awg
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scope-counter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        scope counter
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scope-dvm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        scope dvm
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scope-state" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        scope state
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Scripting
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Scripting
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="scripting.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Scripts & Directives
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Example Workflows
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="logging.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Log & Calc
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="instruments.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Supported Instruments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#acquisition-control" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acquisition Control
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Acquisition Control">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#scope-autoset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        scope autoset
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scope-run-stop-single" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        scope run / stop / single
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#channel-control" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Channel Control
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Channel Control">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#scope-chan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        scope chan
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scope-coupling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        scope coupling
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scope-probe" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        scope probe
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#horizontal-time-axis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Horizontal (Time) Axis
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Horizontal (Time) Axis">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#scope-hscale" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        scope hscale
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scope-hpos-hmove" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        scope hpos / hmove
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#vertical-voltage-axis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Vertical (Voltage) Axis
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Vertical (Voltage) Axis">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#scope-vscale" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        scope vscale
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scope-vpos-vmove" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        scope vpos / vmove
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#trigger" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Trigger
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Trigger">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#scope-trigger" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        scope trigger
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#measurements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Measurements
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Measurements">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#scope-meas" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        scope meas
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="scope meas">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#available-measurement-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Available measurement types
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scope-meas_store" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        scope meas_store
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scope-meas_delay" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        scope meas_delay
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scope-meas_delay_store" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        scope meas_delay_store
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#waveform-capture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Waveform Capture
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Waveform Capture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#scope-save" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        scope save
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#built-in-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Built-in Tools
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Built-in Tools">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#scope-awg" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        scope awg
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scope-counter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        scope counter
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scope-dvm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        scope dvm
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scope-state" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        scope state
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="scope-oscilloscope">Scope — Oscilloscope<a class="headerlink" href="#scope-oscilloscope" title="Permanent link">&para;</a></h1>
+<p>Controls oscilloscopes over VISA.</p>
+<ul>
+<li>Channels are numbered <code>1</code>–<code>4</code>. Use <code>all</code> to affect every channel at once.</li>
+<li>Multiple scopes are named <code>scope1</code>, <code>scope2</code>, etc.</li>
+</ul>
+<hr />
+<h2 id="acquisition-control">Acquisition Control<a class="headerlink" href="#acquisition-control" title="Permanent link">&para;</a></h2>
+<h3 id="scope-autoset">scope autoset<a class="headerlink" href="#scope-autoset" title="Permanent link">&para;</a></h3>
+<p>Auto-configure the scope for the current input signal.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>scope autoset
+</code></pre></div>
+<p>Automatically adjusts time/division, voltage/division, and trigger settings to display the input signal cleanly. Equivalent to pressing the Autoset button on the front panel.</p>
+<h3 id="scope-run-stop-single">scope run / stop / single<a class="headerlink" href="#scope-run-stop-single" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>scope run       # start continuous acquisition
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>scope stop      # freeze the display
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>scope single    # arm single-shot trigger
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>run</code></td>
+<td>Start continuous acquisition (free-running)</td>
+</tr>
+<tr>
+<td><code>stop</code></td>
+<td>Freeze the display at the current waveform</td>
+</tr>
+<tr>
+<td><code>single</code></td>
+<td>Arm the trigger — capture one waveform then stop</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="channel-control">Channel Control<a class="headerlink" href="#channel-control" title="Permanent link">&para;</a></h2>
+<h3 id="scope-chan">scope chan<a class="headerlink" href="#scope-chan" title="Permanent link">&para;</a></h3>
+<p>Enable or disable channel display.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>scope chan &lt;1-4|all&gt; &lt;on|off&gt;
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Required</th>
+<th>Values</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>1-4\|all</code></td>
+<td>required</td>
+<td><code>1</code>, <code>2</code>, <code>3</code>, <code>4</code>, <code>all</code></td>
+<td>Channel number, or <code>all</code>.</td>
+</tr>
+<tr>
+<td><code>on\|off</code></td>
+<td>required</td>
+<td><code>on</code>, <code>off</code></td>
+<td>Show or hide the channel.</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>scope chan 1 on      # show channel 1
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>scope chan 3 off     # hide channel 3
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>scope chan all on    # show all channels
+</code></pre></div>
+<h3 id="scope-coupling">scope coupling<a class="headerlink" href="#scope-coupling" title="Permanent link">&para;</a></h3>
+<p>Set input coupling for one or more channels.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>scope coupling &lt;1-4|all&gt; &lt;DC|AC|GND&gt;
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Required</th>
+<th>Values</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>1-4\|all</code></td>
+<td>required</td>
+<td><code>1</code>–<code>4</code>, <code>all</code></td>
+<td>Channel(s) to configure.</td>
+</tr>
+<tr>
+<td><code>DC\|AC\|GND</code></td>
+<td>required</td>
+<td><code>DC</code>, <code>AC</code>, <code>GND</code></td>
+<td>Coupling mode. DC = pass all frequencies. AC = block DC component. GND = disconnect input (shows 0 V reference).</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>scope coupling 1 AC       # AC-couple channel 1
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>scope coupling all DC     # DC-couple all channels
+</code></pre></div>
+<h3 id="scope-probe">scope probe<a class="headerlink" href="#scope-probe" title="Permanent link">&para;</a></h3>
+<p>Set probe attenuation so the scope displays correct voltages.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>scope probe &lt;1-4|all&gt; &lt;attenuation&gt;
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Required</th>
+<th>Values</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>1-4\|all</code></td>
+<td>required</td>
+<td><code>1</code>–<code>4</code>, <code>all</code></td>
+<td>Channel(s).</td>
+</tr>
+<tr>
+<td><code>attenuation</code></td>
+<td>required</td>
+<td><code>1</code>, <code>10</code>, <code>100</code></td>
+<td>Probe attenuation ratio. <code>1</code> = direct connection, <code>10</code> = 10× probe, <code>100</code> = 100× high-voltage probe.</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>scope probe 1 10    # channel 1 has a 10× probe
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>scope probe all 1   # all channels: direct (1×) connection
+</code></pre></div>
+<hr />
+<h2 id="horizontal-time-axis">Horizontal (Time) Axis<a class="headerlink" href="#horizontal-time-axis" title="Permanent link">&para;</a></h2>
+<h3 id="scope-hscale">scope hscale<a class="headerlink" href="#scope-hscale" title="Permanent link">&para;</a></h3>
+<p>Set the time per division.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>scope hscale &lt;s/div&gt;
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Required</th>
+<th>Values</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>s/div</code></td>
+<td>required</td>
+<td>float (s)</td>
+<td>Seconds per division. E.g. <code>0.001</code> = 1 ms/div, <code>1e-6</code> = 1 µs/div.</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>scope hscale 0.001      # 1 ms/div
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>scope hscale 0.0001     # 100 µs/div
+</code></pre></div>
+<h3 id="scope-hpos-hmove">scope hpos / hmove<a class="headerlink" href="#scope-hpos-hmove" title="Permanent link">&para;</a></h3>
+<p>Set or adjust the horizontal trigger position.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>scope hpos &lt;percentage&gt;     # set absolute position
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>scope hmove &lt;delta&gt;         # adjust relative to current position
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>percentage</code></td>
+<td>required (hpos)</td>
+<td>Trigger position as percent of screen width.</td>
+</tr>
+<tr>
+<td><code>delta</code></td>
+<td>required (hmove)</td>
+<td>Relative adjustment amount.</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>scope hpos 50     # center trigger at 50%
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>scope hmove 10    # shift right by 10%
+</code></pre></div>
+<hr />
+<h2 id="vertical-voltage-axis">Vertical (Voltage) Axis<a class="headerlink" href="#vertical-voltage-axis" title="Permanent link">&para;</a></h2>
+<h3 id="scope-vscale">scope vscale<a class="headerlink" href="#scope-vscale" title="Permanent link">&para;</a></h3>
+<p>Set voltage per division for one or more channels.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>scope vscale &lt;1-4|all&gt; &lt;V/div&gt; [pos]
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Required</th>
+<th>Values</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>1-4\|all</code></td>
+<td>required</td>
+<td><code>1</code>–<code>4</code>, <code>all</code></td>
+<td>Channel(s).</td>
+</tr>
+<tr>
+<td><code>V/div</code></td>
+<td>required</td>
+<td>float (V)</td>
+<td>Voltage per division.</td>
+</tr>
+<tr>
+<td><code>pos</code></td>
+<td>optional</td>
+<td>float (divisions)</td>
+<td>Vertical position offset. Default: <code>0</code> (centered).</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>scope vscale 1 0.5           # channel 1: 0.5 V/div
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>scope vscale 1 0.5 -2        # 0.5 V/div, shifted down 2 divisions
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>scope vscale all 1.0 0       # all channels: 1 V/div, centered
+</code></pre></div>
+<h3 id="scope-vpos-vmove">scope vpos / vmove<a class="headerlink" href="#scope-vpos-vmove" title="Permanent link">&para;</a></h3>
+<p>Set or adjust vertical position.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>scope vpos &lt;1-4|all&gt; &lt;divisions&gt;    # set absolute position
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>scope vmove &lt;1-4|all&gt; &lt;delta&gt;       # adjust relative to current
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>scope vpos 1 0        # center channel 1
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>scope vmove 1 -1      # move channel 1 down by 1 division
+</code></pre></div>
+<hr />
+<h2 id="trigger">Trigger<a class="headerlink" href="#trigger" title="Permanent link">&para;</a></h2>
+<h3 id="scope-trigger">scope trigger<a class="headerlink" href="#scope-trigger" title="Permanent link">&para;</a></h3>
+<p>Configure the trigger.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>scope trigger &lt;channel&gt; &lt;level&gt; [slope=&lt;RISE|FALL&gt;] [mode=&lt;AUTO|NORM|SINGLE&gt;]
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Required</th>
+<th>Values</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>channel</code></td>
+<td>required</td>
+<td><code>1</code>–<code>4</code></td>
+<td>Trigger source channel.</td>
+</tr>
+<tr>
+<td><code>level</code></td>
+<td>required</td>
+<td>float (V)</td>
+<td>Trigger threshold voltage.</td>
+</tr>
+<tr>
+<td><code>slope=</code></td>
+<td>optional</td>
+<td><code>RISE</code>, <code>FALL</code></td>
+<td>Edge to trigger on. Default: <code>RISE</code>.</td>
+</tr>
+<tr>
+<td><code>mode=</code></td>
+<td>optional</td>
+<td><code>AUTO</code>, <code>NORM</code>, <code>SINGLE</code></td>
+<td>Trigger mode. <code>AUTO</code> = free-run if no trigger; <code>NORM</code> = wait for trigger; <code>SINGLE</code> = one-shot. Default: <code>AUTO</code>.</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>scope trigger 1 0.0                           # ch1, 0 V threshold, rising edge
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>scope trigger 1 1.5 slope=FALL                # ch1, 1.5 V, falling edge
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>scope trigger 1 0.0 slope=RISE mode=NORM      # ch1, normal mode
+</code></pre></div>
+<hr />
+<h2 id="measurements">Measurements<a class="headerlink" href="#measurements" title="Permanent link">&para;</a></h2>
+<h3 id="scope-meas">scope meas<a class="headerlink" href="#scope-meas" title="Permanent link">&para;</a></h3>
+<p>Take and print a single measurement.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>scope meas &lt;1-4|all&gt; &lt;type&gt;
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Required</th>
+<th>Values</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>1-4\|all</code></td>
+<td>required</td>
+<td><code>1</code>–<code>4</code>, <code>all</code></td>
+<td>Channel to measure.</td>
+</tr>
+<tr>
+<td><code>type</code></td>
+<td>required</td>
+<td>see below</td>
+<td>Measurement type.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="available-measurement-types">Available measurement types<a class="headerlink" href="#available-measurement-types" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>FREQUENCY</code></td>
+<td>Signal frequency</td>
+</tr>
+<tr>
+<td><code>PK2PK</code></td>
+<td>Peak-to-peak voltage</td>
+</tr>
+<tr>
+<td><code>RMS</code></td>
+<td>RMS voltage</td>
+</tr>
+<tr>
+<td><code>CRMS</code></td>
+<td>Cycle RMS</td>
+</tr>
+<tr>
+<td><code>MEAN</code></td>
+<td>Mean voltage</td>
+</tr>
+<tr>
+<td><code>PERIOD</code></td>
+<td>Signal period</td>
+</tr>
+<tr>
+<td><code>AMPLITUDE</code></td>
+<td>Amplitude (high−low)</td>
+</tr>
+<tr>
+<td><code>MINIMUM</code></td>
+<td>Minimum voltage</td>
+</tr>
+<tr>
+<td><code>MAXIMUM</code></td>
+<td>Maximum voltage</td>
+</tr>
+<tr>
+<td><code>HIGH</code></td>
+<td>High voltage level</td>
+</tr>
+<tr>
+<td><code>LOW</code></td>
+<td>Low voltage level</td>
+</tr>
+<tr>
+<td><code>RISE</code></td>
+<td>Rise time</td>
+</tr>
+<tr>
+<td><code>FALL</code></td>
+<td>Fall time</td>
+</tr>
+<tr>
+<td><code>PWIDTH</code></td>
+<td>Positive pulse width</td>
+</tr>
+<tr>
+<td><code>NWIDTH</code></td>
+<td>Negative pulse width</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>scope meas 1 FREQUENCY    # print channel 1 frequency
+<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>scope meas 1 PK2PK        # print channel 1 peak-to-peak
+<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a>scope meas 2 RMS          # print channel 2 RMS voltage
+</code></pre></div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><code>scope meas</code> prints the result but does not record it. Use <code>scope meas_store</code> to save to the log.</p>
+</div>
+<h3 id="scope-meas_store">scope meas_store<a class="headerlink" href="#scope-meas_store" title="Permanent link">&para;</a></h3>
+<p>Measure and record to the measurement log.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>scope meas_store &lt;1-4|all&gt; &lt;type&gt; &lt;label&gt; [unit=&lt;str&gt;]
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Required</th>
+<th>Values</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>1-4\|all</code></td>
+<td>required</td>
+<td><code>1</code>–<code>4</code>, <code>all</code></td>
+<td>Channel to measure.</td>
+</tr>
+<tr>
+<td><code>type</code></td>
+<td>required</td>
+<td>see <a href="#available-measurement-types">measurement types</a></td>
+<td>Measurement type.</td>
+</tr>
+<tr>
+<td><code>label</code></td>
+<td>required</td>
+<td>string, no spaces</td>
+<td><strong>Name for this entry in the log.</strong> Appears in <code>log print</code> output and used as the dictionary key in <code>calc</code> expressions: <code>m["label"]</code>. Use underscores — e.g. <code>ch1_freq</code>.</td>
+</tr>
+<tr>
+<td><code>unit=</code></td>
+<td>optional</td>
+<td>string</td>
+<td>Unit shown in <code>log print</code> (e.g. <code>Hz</code>, <code>V</code>). <strong>Display-only</strong> — does not affect stored value or calculations.</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>scope meas_store 1 FREQUENCY meas_freq unit=Hz    # store as &#39;meas_freq&#39;
+<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a>scope meas_store 1 PK2PK     meas_pk2pk unit=V    # store as &#39;meas_pk2pk&#39;
+<a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a>scope meas_store 1 RMS       meas_rms unit=V      # store as &#39;meas_rms&#39;
+</code></pre></div>
+<p>Then use in calculations:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a>calc crest_factor m[&quot;meas_pk2pk&quot;] / m[&quot;meas_rms&quot;]   # compute crest factor
+<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a>log print
+</code></pre></div>
+<h3 id="scope-meas_delay">scope meas_delay<a class="headerlink" href="#scope-meas_delay" title="Permanent link">&para;</a></h3>
+<p>Measure the time delay between two channels.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a>scope meas_delay &lt;ch1&gt; &lt;ch2&gt; [edge1=RISE] [edge2=RISE]
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Required</th>
+<th>Values</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ch1</code> / <code>ch2</code></td>
+<td>required</td>
+<td><code>1</code>–<code>4</code></td>
+<td>Source and reference channel numbers.</td>
+</tr>
+<tr>
+<td><code>edge1=</code> / <code>edge2=</code></td>
+<td>optional</td>
+<td><code>RISE</code>, <code>FALL</code></td>
+<td>Which edge to detect on each channel. Default: <code>RISE</code>.</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a>scope meas_delay 1 2              # delay from ch1 rising edge to ch2 rising edge
+<a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a>scope meas_delay 1 2 edge2=FALL  # delay from ch1 rising to ch2 falling
+</code></pre></div>
+<h3 id="scope-meas_delay_store">scope meas_delay_store<a class="headerlink" href="#scope-meas_delay_store" title="Permanent link">&para;</a></h3>
+<p>Measure delay and record to the log.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a>scope meas_delay_store &lt;ch1&gt; &lt;ch2&gt; &lt;label&gt; [edge1=RISE] [edge2=RISE] [direction=FORWARDS] [unit=]
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Required</th>
+<th>Values</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ch1</code> / <code>ch2</code></td>
+<td>required</td>
+<td><code>1</code>–<code>4</code></td>
+<td>Channel numbers.</td>
+</tr>
+<tr>
+<td><code>label</code></td>
+<td>required</td>
+<td>string</td>
+<td>Log entry name — same rules as <code>meas_store</code>.</td>
+</tr>
+<tr>
+<td><code>edge1=</code> / <code>edge2=</code></td>
+<td>optional</td>
+<td><code>RISE</code>, <code>FALL</code></td>
+<td>Edge selection. Default: <code>RISE</code>.</td>
+</tr>
+<tr>
+<td><code>direction=</code></td>
+<td>optional</td>
+<td><code>FORWARDS</code>, <code>BACKWARDS</code></td>
+<td>Search direction. Default: <code>FORWARDS</code>.</td>
+</tr>
+<tr>
+<td><code>unit=</code></td>
+<td>optional</td>
+<td>string</td>
+<td>Unit shown in log (e.g. <code>s</code>, <code>ms</code>). Display-only.</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a>scope meas_delay_store 1 2 prop_delay unit=s
+</code></pre></div>
+<hr />
+<h2 id="waveform-capture">Waveform Capture<a class="headerlink" href="#waveform-capture" title="Permanent link">&para;</a></h2>
+<h3 id="scope-save">scope save<a class="headerlink" href="#scope-save" title="Permanent link">&para;</a></h3>
+<p>Download waveform data and save to a CSV file.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a>scope save &lt;channels&gt; &lt;file.csv&gt; [record=&lt;s&gt;] [time=&lt;s&gt;] [points=&lt;n&gt;]
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Required</th>
+<th>Values</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>channels</code></td>
+<td>required</td>
+<td><code>1</code>–<code>4</code> or comma-separated</td>
+<td>Channel(s) to save. E.g. <code>1</code> or <code>1,2</code>.</td>
+</tr>
+<tr>
+<td><code>file.csv</code></td>
+<td>required</td>
+<td>file path</td>
+<td>Output file. Created or overwritten.</td>
+</tr>
+<tr>
+<td><code>record=</code> / <code>time=</code></td>
+<td>optional</td>
+<td>float (s)</td>
+<td>Record for this many seconds before saving.</td>
+</tr>
+<tr>
+<td><code>points=</code></td>
+<td>optional</td>
+<td>int</td>
+<td>Number of waveform points to request from scope.</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-28-1" name="__codelineno-28-1" href="#__codelineno-28-1"></a>scope save 1 output.csv              # save channel 1 waveform
+<a id="__codelineno-28-2" name="__codelineno-28-2" href="#__codelineno-28-2"></a>scope save 1,2 both.csv             # save channels 1 and 2
+<a id="__codelineno-28-3" name="__codelineno-28-3" href="#__codelineno-28-3"></a>scope save 1 data.csv record=2.0    # record for 2 s then save
+</code></pre></div>
+<hr />
+<h2 id="built-in-tools">Built-in Tools<a class="headerlink" href="#built-in-tools" title="Permanent link">&para;</a></h2>
+<p>These commands access built-in scope tools where available.</p>
+<h3 id="scope-awg">scope awg<a class="headerlink" href="#scope-awg" title="Permanent link">&para;</a></h3>
+<p>Control the built-in waveform generator (DHO914S and DHO924S only).</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-29-1" name="__codelineno-29-1" href="#__codelineno-29-1"></a>scope awg              # show available subcommands
+<a id="__codelineno-29-2" name="__codelineno-29-2" href="#__codelineno-29-2"></a>scope awg on           # enable AWG output
+<a id="__codelineno-29-3" name="__codelineno-29-3" href="#__codelineno-29-3"></a>scope awg off          # disable AWG output
+<a id="__codelineno-29-4" name="__codelineno-29-4" href="#__codelineno-29-4"></a>scope awg sine 1000 2.0 0    # configure: sine, 1 kHz, 2 Vpp, 0 V offset
+</code></pre></div>
+<h3 id="scope-counter">scope counter<a class="headerlink" href="#scope-counter" title="Permanent link">&para;</a></h3>
+<p>Control the built-in frequency counter.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-30-1" name="__codelineno-30-1" href="#__codelineno-30-1"></a>scope counter on       # enable counter
+<a id="__codelineno-30-2" name="__codelineno-30-2" href="#__codelineno-30-2"></a>scope counter off      # disable counter
+<a id="__codelineno-30-3" name="__codelineno-30-3" href="#__codelineno-30-3"></a>scope counter read     # read current frequency
+<a id="__codelineno-30-4" name="__codelineno-30-4" href="#__codelineno-30-4"></a>scope counter source 1 # set counter source to channel 1
+</code></pre></div>
+<h3 id="scope-dvm">scope dvm<a class="headerlink" href="#scope-dvm" title="Permanent link">&para;</a></h3>
+<p>Control the built-in digital voltmeter.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-31-1" name="__codelineno-31-1" href="#__codelineno-31-1"></a>scope dvm on           # enable DVM
+<a id="__codelineno-31-2" name="__codelineno-31-2" href="#__codelineno-31-2"></a>scope dvm off          # disable DVM
+<a id="__codelineno-31-3" name="__codelineno-31-3" href="#__codelineno-31-3"></a>scope dvm read         # read current DVM value
+<a id="__codelineno-31-4" name="__codelineno-31-4" href="#__codelineno-31-4"></a>scope dvm source 1     # set DVM source to channel 1
+</code></pre></div>
+<hr />
+<h2 id="scope-state">scope state<a class="headerlink" href="#scope-state" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-32-1" name="__codelineno-32-1" href="#__codelineno-32-1"></a>scope state &lt;on|off|safe|reset&gt;
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>on</code></td>
+<td>Enable all channels</td>
+</tr>
+<tr>
+<td><code>off</code></td>
+<td>Disable all channels</td>
+</tr>
+<tr>
+<td><code>safe</code></td>
+<td>Channels off, trigger to default</td>
+</tr>
+<tr>
+<td><code>reset</code></td>
+<td><code>*RST</code> — factory defaults</td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": ".", "features": ["navigation.tabs", "navigation.sections", "navigation.expand", "navigation.top", "search.highlight", "search.suggest", "content.code.copy", "toc.follow"], "search": "assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

@@ -33,5 +33,6 @@ devices.py
 *.png
 *.xlsx
 
-# MkDocs generated site (built locally with: mkdocs build)
-site/
+# MkDocs generated site — now lives inside lab_instruments/site/ and is tracked
+# Ignore only a stale top-level site/ if it exists
+/site/

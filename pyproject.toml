@@ -33,3 +33,6 @@ Issues = "https://github.com/bsikar/scpi-instrument-toolkit/issues"
 
 [tool.setuptools.packages.find]
 include = ["lab_instruments*"]
+
+[tool.setuptools.package-data]
+lab_instruments = ["site/**/*"]

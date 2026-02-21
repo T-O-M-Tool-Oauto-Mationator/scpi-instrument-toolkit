@@ -1,4 +1,5 @@
 site_name: SCPI Instrument Toolkit
+site_dir: lab_instruments/site
 use_directory_urls: false
 site_description: Python REPL for controlling lab instruments over VISA
 repo_url: https://github.com/bsikar/scpi-instrument-toolkit
