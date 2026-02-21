@@ -194,7 +194,6 @@ class InstrumentRepl(cmd.Cmd):
         self.discovery = InstrumentDiscovery()
         self.devices: Dict[str, Any] = {}
         self.selected: Optional[str] = None
-        self._scripts_path = ".repl_scripts.json"
         self.scripts: Dict[str, Any] = self._load_scripts()
         self.measurements = []
         self._dmm_text_loop_active = False
@@ -361,26 +360,68 @@ class InstrumentRepl(cmd.Cmd):
             return [1, 2]
         return None
 
-    def _load_scripts(self, path: Optional[str] = None):
-        target = path or self._scripts_path
+    def _get_scripts_dir(self):
+        """Return the platform-appropriate scripts directory (created if needed)."""
+        if sys.platform == "win32":
+            base = os.environ.get("APPDATA", os.path.expanduser("~"))
+        else:
+            base = os.environ.get("XDG_CONFIG_HOME", os.path.join(os.path.expanduser("~"), ".config"))
+        d = os.path.join(base, "scpi-instrument-toolkit", "scripts")
+        os.makedirs(d, exist_ok=True)
+        return d
+
+    def _script_file(self, name):
+        """Return the full path to a script's .scpi file."""
+        return os.path.join(self._get_scripts_dir(), f"{name}.scpi")
+
+    def _load_scripts(self):
+        """Load all .scpi scripts from the user scripts directory."""
+        scripts = {}
+        d = self._get_scripts_dir()
         try:
-            with open(target, "r", encoding="utf-8") as handle:
-                data = json.load(handle)
-            if isinstance(data, dict):
-                return data
-        except FileNotFoundError:
-            return {}
+            for fname in sorted(os.listdir(d)):
+                if fname.endswith(".scpi"):
+                    name = fname[:-5]
+                    with open(os.path.join(d, fname), "r", encoding="utf-8") as f:
+                        lines = [line.rstrip("\n") for line in f.readlines()]
+                    while lines and not lines[-1].strip():
+                        lines.pop()
+                    scripts[name] = lines
         except Exception as exc:
             ColorPrinter.error(f"Failed to load scripts: {exc}")
-        return {}
 
-    def _save_scripts(self, path: Optional[str] = None):
-        target = path or self._scripts_path
+        # One-time migration from old .repl_scripts.json in cwd
+        if not scripts and os.path.exists(".repl_scripts.json"):
+            try:
+                with open(".repl_scripts.json", "r", encoding="utf-8") as f:
+                    old_data = json.load(f)
+                if isinstance(old_data, dict) and old_data:
+                    scripts = old_data
+                    # Write migrated scripts to new location
+                    for name, lines in scripts.items():
+                        with open(self._script_file(name), "w", encoding="utf-8") as f:
+                            f.write("\n".join(lines) + ("\n" if lines else ""))
+                    ColorPrinter.info(f"Migrated {len(scripts)} scripts → {d}")
+            except Exception:
+                pass
+
+        return scripts
+
+    def _save_scripts(self):
+        """Save all scripts as individual .scpi files."""
+        for name in self.scripts:
+            self._save_script(name)
+
+    def _save_script(self, name):
+        """Save a single script to its .scpi file."""
         try:
-            with open(target, "w", encoding="utf-8") as handle:
-                json.dump(self.scripts, handle, indent=2, sort_keys=True)
+            lines = self.scripts[name]
+            with open(self._script_file(name), "w", encoding="utf-8") as f:
+                f.write("\n".join(lines))
+                if lines:
+                    f.write("\n")
         except Exception as exc:
-            ColorPrinter.error(f"Failed to save scripts: {exc}")
+            ColorPrinter.error(f"Failed to save script '{name}': {exc}")
     
     def _edit_script_in_editor(self, name, current_lines):
         editor = os.environ.get("EDITOR")
@@ -1302,11 +1343,12 @@ class InstrumentRepl(cmd.Cmd):
                 "script rm <name>",
                 "script show <name>",
                 "script import <name> <path>",
-                "  - import lines from a .txt file",
-                "script load [path]",
-                "  - load scripts from JSON file",
+                "  - import any text/.scpi file as a named script",
+                "script load",
+                "  - reload scripts from disk (picks up manual edits)",
                 "script save [path]",
-                "  - save scripts to JSON file",
+                "  - no path: show scripts directory",
+                "  - with path: export all scripts as a JSON bundle",
                 "",
                 "# SCRIPT DIRECTIVES",
                 "",
@@ -1339,7 +1381,7 @@ class InstrumentRepl(cmd.Cmd):
                 ColorPrinter.warning(f"Script '{name}' already exists — opening for edit. Use 'script rm {name}' first to start fresh.")
             lines = self._edit_script_in_editor(name, self.scripts.get(name, []))
             self.scripts[name] = lines
-            self._save_scripts()
+            self._save_script(name)
             ColorPrinter.success(f"Saved script '{name}' ({len(lines)} lines).")
 
         elif subcmd == "run":
@@ -1377,7 +1419,7 @@ class InstrumentRepl(cmd.Cmd):
                 return
             lines = self._edit_script_in_editor(name, self.scripts[name])
             self.scripts[name] = lines
-            self._save_scripts()
+            self._save_script(name)
             ColorPrinter.success(f"Updated script '{name}' ({len(lines)} lines).")
 
         elif subcmd == "list":
@@ -1398,7 +1440,9 @@ class InstrumentRepl(cmd.Cmd):
                 ColorPrinter.warning(f"Script '{name}' not found.")
                 return
             del self.scripts[name]
-            self._save_scripts()
+            fpath = self._script_file(name)
+            if os.path.exists(fpath):
+                os.remove(fpath)
             ColorPrinter.success(f"Deleted script '{name}'.")
 
         elif subcmd == "show":
@@ -1424,25 +1468,31 @@ class InstrumentRepl(cmd.Cmd):
             try:
                 with open(path, "r", encoding="utf-8") as handle:
                     lines = [line.rstrip("\n") for line in handle.readlines()]
+                while lines and not lines[-1].strip():
+                    lines.pop()
                 self.scripts[name] = lines
-                self._save_scripts()
-                ColorPrinter.success(f"Imported script '{name}' ({len(lines)} lines).")
+                self._save_script(name)
+                ColorPrinter.success(f"Imported '{name}' ({len(lines)} lines) → {self._script_file(name)}")
             except Exception as exc:
                 ColorPrinter.error(f"Failed to import script: {exc}")
 
         elif subcmd == "load":
-            path = args[1] if len(args) >= 2 else None
-            data = self._load_scripts(path)
-            if not data:
-                ColorPrinter.warning("No scripts loaded.")
-                return
-            self.scripts = data
-            ColorPrinter.success(f"Loaded {len(self.scripts)} scripts.")
+            # Reload all scripts from disk (picks up any manually edited .scpi files)
+            self.scripts = self._load_scripts()
+            ColorPrinter.success(f"Reloaded {len(self.scripts)} scripts from {self._get_scripts_dir()}")
 
         elif subcmd == "save":
-            path = args[1] if len(args) >= 2 else None
-            self._save_scripts(path)
-            ColorPrinter.success("Scripts saved.")
+            # Show where scripts live; optionally export a JSON bundle for sharing
+            if len(args) >= 2:
+                path = args[1]
+                try:
+                    with open(path, "w", encoding="utf-8") as f:
+                        json.dump(self.scripts, f, indent=2, sort_keys=True)
+                    ColorPrinter.success(f"Exported {len(self.scripts)} scripts to {path}")
+                except Exception as exc:
+                    ColorPrinter.error(f"Export failed: {exc}")
+            else:
+                ColorPrinter.info(f"Scripts directory: {self._get_scripts_dir()}")
 
         else:
             ColorPrinter.warning(f"Unknown subcommand '{subcmd}'. Type 'script' for help.")
@@ -1483,11 +1533,11 @@ class InstrumentRepl(cmd.Cmd):
             if target == "all":
                 for name, entry in EXAMPLES.items():
                     self.scripts[name] = entry["lines"]
-                self._save_scripts()
+                    self._save_script(name)
                 ColorPrinter.success(f"Loaded {len(EXAMPLES)} examples into scripts.")
             elif target in EXAMPLES:
                 self.scripts[target] = EXAMPLES[target]["lines"]
-                self._save_scripts()
+                self._save_script(target)
                 ColorPrinter.success(f"Loaded '{target}'. Run with: script run {target}")
             else:
                 available = list(EXAMPLES.keys())
