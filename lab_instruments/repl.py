@@ -1397,15 +1397,18 @@ class InstrumentRepl(cmd.Cmd):
                 ColorPrinter.warning(f"mkdocs build failed: {err[:200]}")
 
         if bundled_index.exists():
-            # Copy site to a tempdir to avoid file-permission issues with pip-installed packages on Linux
             import tempfile, shutil
             tmp_site = Path(tempfile.gettempdir()) / "scpi_toolkit_site"
-            if not (tmp_site / "index.html").exists():
-                shutil.copytree(str(bundled_index.parent), str(tmp_site), dirs_exist_ok=True)
-            tmp_index = tmp_site / "index.html"
-            webbrowser.open(tmp_index.as_uri())
-            ColorPrinter.success(f"Docs opened.")
-            return
+            try:
+                if tmp_site.exists():
+                    shutil.rmtree(str(tmp_site))
+                shutil.copytree(str(bundled_index.parent), str(tmp_site))
+                tmp_index = tmp_site / "index.html"
+                webbrowser.open(tmp_index.as_uri())
+                ColorPrinter.success("Docs opened.")
+                return
+            except Exception as exc:
+                ColorPrinter.warning(f"Could not copy docs to temp dir: {exc}")
 
         # Fallback: single-page HTML (always works, no dependencies)
         import tempfile
