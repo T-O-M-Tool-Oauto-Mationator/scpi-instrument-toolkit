@@ -324,6 +324,16 @@ class InstrumentRepl(cmd.Cmd):
             return args[:-1], True
         return args, False
 
+    def _parse_channels(self, ch_str, max_ch=4):
+        """Parse a channel string into a list of ints.
+        '1' / 'ch1' → [1];  'all' → [1 .. max_ch]."""
+        s = str(ch_str).lower().strip()
+        if s == "all":
+            return list(range(1, max_ch + 1))
+        if s.startswith("ch"):
+            s = s[2:]
+        return [int(s)]
+
     def _print_usage(self, lines):
         for line in lines:
             print(line)
@@ -3011,29 +3021,21 @@ allTargets.forEach(t => io.observe(t));
         try:
             # CHAN COMMAND — enable/disable a channel output
             if cmd_name == "chan" and len(args) >= 3:
-                channel_str = args[1].lower()
+                channels = self._parse_channels(args[1], max_ch=2)
                 state = args[2].lower() == "on"
-
-                if channel_str in ("ch1", "1"):
-                    channel = 1
-                elif channel_str in ("ch2", "2"):
-                    channel = 2
-                else:
-                    ColorPrinter.error("Channel must be '1', '2', 'ch1', or 'ch2'")
-                    return
-
-                if is_jds6600:
-                    dev.enable_output(
-                        ch1=state if channel == 1 else None,
-                        ch2=state if channel == 2 else None,
-                    )
-                else:
-                    dev.enable_output(channel, state)
-                ColorPrinter.success(f"CH{channel}: {'on' if state else 'off'}")
+                for channel in channels:
+                    if is_jds6600:
+                        dev.enable_output(
+                            ch1=state if channel == 1 else None,
+                            ch2=state if channel == 2 else None,
+                        )
+                    else:
+                        dev.enable_output(channel, state)
+                    ColorPrinter.success(f"CH{channel}: {'on' if state else 'off'}")
 
             # WAVE COMMAND
             elif cmd_name == "wave" and len(args) >= 3:
-                channel = int(args[1])
+                channels = self._parse_channels(args[1], max_ch=2)
                 waveform = args[2].lower()
 
                 params = {}
@@ -3042,95 +3044,85 @@ allTargets.forEach(t => io.observe(t));
                         key, value = token.split("=", 1)
                         params[key.lower()] = float(value)
 
-                if is_jds6600:
-                    dev.set_waveform(channel, waveform)
-                    if "freq" in params or "frequency" in params:
-                        dev.set_frequency(channel, params.get("freq", params.get("frequency")))
-                    if "amp" in params or "amplitude" in params:
-                        dev.set_amplitude(channel, params.get("amp", params.get("amplitude")))
-                    if "offset" in params:
-                        dev.set_offset(channel, params["offset"])
-                    if "duty" in params:
-                        dev.set_duty_cycle(channel, params["duty"])
-                    if "phase" in params:
-                        dev.set_phase(channel, params["phase"])
-                else:
-                    # Normalize to SCPI abbreviations: "sine" → "SIN", "square" → "SQU", etc.
-                    scpi_wave = AWG_WAVE_ALIASES.get(waveform, waveform.upper())
-                    kwargs = {}
-                    for key, value in params.items():
-                        mapped_key = AWG_WAVE_KEYS.get(key)
-                        if mapped_key:
-                            kwargs[mapped_key] = value
-                    dev.set_waveform(channel, scpi_wave, **kwargs)
-
                 param_str = "  " + "  ".join(f"{k}={v}" for k, v in params.items()) if params else ""
-                ColorPrinter.success(f"CH{channel}: {AWG_WAVE_ALIASES.get(waveform, waveform.upper())}{param_str}")
+                for channel in channels:
+                    if is_jds6600:
+                        dev.set_waveform(channel, waveform)
+                        if "freq" in params or "frequency" in params:
+                            dev.set_frequency(channel, params.get("freq", params.get("frequency")))
+                        if "amp" in params or "amplitude" in params:
+                            dev.set_amplitude(channel, params.get("amp", params.get("amplitude")))
+                        if "offset" in params:
+                            dev.set_offset(channel, params["offset"])
+                        if "duty" in params:
+                            dev.set_duty_cycle(channel, params["duty"])
+                        if "phase" in params:
+                            dev.set_phase(channel, params["phase"])
+                    else:
+                        # Normalize to SCPI abbreviations: "sine" → "SIN", "square" → "SQU", etc.
+                        scpi_wave = AWG_WAVE_ALIASES.get(waveform, waveform.upper())
+                        kwargs = {}
+                        for key, value in params.items():
+                            mapped_key = AWG_WAVE_KEYS.get(key)
+                            if mapped_key:
+                                kwargs[mapped_key] = value
+                        dev.set_waveform(channel, scpi_wave, **kwargs)
+                    ColorPrinter.success(f"CH{channel}: {AWG_WAVE_ALIASES.get(waveform, waveform.upper())}{param_str}")
 
             # FREQ COMMAND
             elif cmd_name == "freq" and len(args) >= 3:
-                channel = int(args[1])
+                channels = self._parse_channels(args[1], max_ch=2)
                 frequency = float(args[2])
-                if is_jds6600:
-                    dev.set_frequency(channel, frequency)
-                elif hasattr(dev, 'set_frequency'):
-                    dev.set_frequency(channel, frequency)
-                else:
+                if not is_jds6600 and not hasattr(dev, 'set_frequency'):
                     ColorPrinter.warning("Frequency not supported independently. Use 'awg wave' with freq=")
                     return
-                ColorPrinter.success(f"CH{channel}: {frequency} Hz")
+                for channel in channels:
+                    dev.set_frequency(channel, frequency)
+                    ColorPrinter.success(f"CH{channel}: {frequency} Hz")
 
             # AMP COMMAND
             elif cmd_name == "amp" and len(args) >= 3:
-                channel = int(args[1])
+                channels = self._parse_channels(args[1], max_ch=2)
                 amplitude = float(args[2])
-                if is_jds6600:
-                    dev.set_amplitude(channel, amplitude)
-                elif hasattr(dev, 'set_amplitude'):
-                    dev.set_amplitude(channel, amplitude)
-                else:
+                if not is_jds6600 and not hasattr(dev, 'set_amplitude'):
                     ColorPrinter.warning("Amplitude not supported independently. Use 'awg wave' with amp=")
                     return
-                ColorPrinter.success(f"CH{channel}: {amplitude} Vpp")
+                for channel in channels:
+                    dev.set_amplitude(channel, amplitude)
+                    ColorPrinter.success(f"CH{channel}: {amplitude} Vpp")
 
             # OFFSET COMMAND
             elif cmd_name == "offset" and len(args) >= 3:
-                channel = int(args[1])
+                channels = self._parse_channels(args[1], max_ch=2)
                 offset = float(args[2])
-                if is_jds6600:
-                    dev.set_offset(channel, offset)
-                elif hasattr(dev, 'set_offset'):
-                    dev.set_offset(channel, offset)
-                else:
+                if not is_jds6600 and not hasattr(dev, 'set_offset'):
                     ColorPrinter.warning("Offset not supported independently. Use 'awg wave' with offset=")
                     return
-                ColorPrinter.success(f"CH{channel}: offset {offset} V")
+                for channel in channels:
+                    dev.set_offset(channel, offset)
+                    ColorPrinter.success(f"CH{channel}: offset {offset} V")
 
             # DUTY COMMAND
             elif cmd_name == "duty" and len(args) >= 3:
-                channel = int(args[1])
+                channels = self._parse_channels(args[1], max_ch=2)
                 duty = float(args[2])
-                if is_jds6600:
-                    dev.set_duty_cycle(channel, duty)
-                elif hasattr(dev, 'set_duty_cycle'):
-                    dev.set_duty_cycle(channel, duty)
-                else:
+                if not is_jds6600 and not hasattr(dev, 'set_duty_cycle'):
                     ColorPrinter.warning("Duty cycle not supported independently. Use 'awg wave' with duty=")
                     return
-                ColorPrinter.success(f"CH{channel}: duty {duty}%")
+                for channel in channels:
+                    dev.set_duty_cycle(channel, duty)
+                    ColorPrinter.success(f"CH{channel}: duty {duty}%")
 
             # PHASE COMMAND
             elif cmd_name == "phase" and len(args) >= 3:
-                channel = int(args[1])
+                channels = self._parse_channels(args[1], max_ch=2)
                 phase = float(args[2])
-                if is_jds6600:
-                    dev.set_phase(channel, phase)
-                elif hasattr(dev, 'set_phase'):
-                    dev.set_phase(channel, phase)
-                else:
+                if not is_jds6600 and not hasattr(dev, 'set_phase'):
                     ColorPrinter.warning("Phase not supported independently. Use 'awg wave' with phase=")
                     return
-                ColorPrinter.success(f"CH{channel}: phase {phase} deg")
+                for channel in channels:
+                    dev.set_phase(channel, phase)
+                    ColorPrinter.success(f"CH{channel}: phase {phase} deg")
 
             # SYNC COMMAND
             elif cmd_name == "sync" and len(args) >= 2:
@@ -3530,24 +3522,27 @@ allTargets.forEach(t => io.observe(t));
                 dev.single()
                 ColorPrinter.success("Single shot armed")
             elif cmd_name == "chan" and len(args) >= 3:
-                channel = int(args[1])
+                channels = self._parse_channels(args[1], max_ch=4)
                 enable = args[2].lower() == "on"
-                if enable:
-                    dev.enable_channel(channel)
-                    ColorPrinter.success(f"CH{channel}: on")
-                else:
-                    dev.disable_channel(channel)
-                    ColorPrinter.info(f"CH{channel}: off")
+                for channel in channels:
+                    if enable:
+                        dev.enable_channel(channel)
+                        ColorPrinter.success(f"CH{channel}: on")
+                    else:
+                        dev.disable_channel(channel)
+                        ColorPrinter.info(f"CH{channel}: off")
             elif cmd_name == "coupling" and len(args) >= 3:
-                channel = int(args[1])
+                channels = self._parse_channels(args[1], max_ch=4)
                 coupling_type = args[2].upper()
-                dev.set_coupling(channel, coupling_type)
-                ColorPrinter.success(f"CH{channel}: coupling {coupling_type}")
+                for channel in channels:
+                    dev.set_coupling(channel, coupling_type)
+                    ColorPrinter.success(f"CH{channel}: coupling {coupling_type}")
             elif cmd_name == "probe" and len(args) >= 3:
-                channel = int(args[1])
+                channels = self._parse_channels(args[1], max_ch=4)
                 attenuation = float(args[2])
-                dev.set_probe_attenuation(channel, attenuation)
-                ColorPrinter.success(f"CH{channel} probe attenuation set to {attenuation}x")
+                for channel in channels:
+                    dev.set_probe_attenuation(channel, attenuation)
+                    ColorPrinter.success(f"CH{channel} probe attenuation set to {attenuation}x")
             elif cmd_name == "hscale" and len(args) >= 2:
                 scale = float(args[1])
                 dev.set_horizontal_scale(scale)
@@ -3561,21 +3556,24 @@ allTargets.forEach(t => io.observe(t));
                 dev.move_horizontal(delta)
                 ColorPrinter.success(f"Horizontal position moved by {delta}")
             elif cmd_name == "vscale" and len(args) >= 3:
-                channel = int(args[1])
+                channels = self._parse_channels(args[1], max_ch=4)
                 scale = float(args[2])
                 position = float(args[3]) if len(args) >= 4 else 0.0
-                dev.set_vertical_scale(channel, scale, position)
-                ColorPrinter.success(f"CH{channel} vertical scale set to {scale} V/div")
+                for channel in channels:
+                    dev.set_vertical_scale(channel, scale, position)
+                    ColorPrinter.success(f"CH{channel} vertical scale set to {scale} V/div")
             elif cmd_name == "vpos" and len(args) >= 3:
-                channel = int(args[1])
+                channels = self._parse_channels(args[1], max_ch=4)
                 position = float(args[2])
-                dev.set_vertical_position(channel, position)
-                ColorPrinter.success(f"CH{channel} vertical position set to {position} div")
+                for channel in channels:
+                    dev.set_vertical_position(channel, position)
+                    ColorPrinter.success(f"CH{channel} vertical position set to {position} div")
             elif cmd_name == "vmove" and len(args) >= 3:
-                channel = int(args[1])
+                channels = self._parse_channels(args[1], max_ch=4)
                 delta = float(args[2])
-                dev.move_vertical(channel, delta)
-                ColorPrinter.success(f"CH{channel}: moved {delta} div")
+                for channel in channels:
+                    dev.move_vertical(channel, delta)
+                    ColorPrinter.success(f"CH{channel}: moved {delta} div")
             elif cmd_name == "trigger" and len(args) >= 3:
                 channel = int(args[1])
                 level = float(args[2])
@@ -3611,21 +3609,24 @@ allTargets.forEach(t => io.observe(t));
                         "  - example: scope meas 2 PK2PK",
                     ])
                 else:
-                    channel = int(args[1])
+                    channels = self._parse_channels(args[1], max_ch=4)
                     measure_type = args[2]
-                    result = dev.measure_bnf(channel, measure_type)
-                    ColorPrinter.cyan(f"CH{channel} {measure_type}: {result}")
+                    for channel in channels:
+                        result = dev.measure_bnf(channel, measure_type)
+                        ColorPrinter.cyan(f"CH{channel} {measure_type}: {result}")
             elif cmd_name == "meas_store" and len(args) >= 4:
-                channel = int(args[1])
+                channels = self._parse_channels(args[1], max_ch=4)
                 measure_type = args[2]
                 label = args[3]
                 unit = ""
                 for token in args[4:]:
                     if token.lower().startswith("unit="):
                         unit = token.split("=", 1)[1]
-                val = dev.measure_bnf(channel, measure_type)
-                self._record_measurement(label, val, unit, f"scope.meas.{measure_type}")
-                ColorPrinter.success(f"CH{channel} {measure_type}: {val} → stored as '{label}'")
+                for channel in channels:
+                    stored_label = f"{label}_ch{channel}" if len(channels) > 1 else label
+                    val = dev.measure_bnf(channel, measure_type)
+                    self._record_measurement(stored_label, val, unit, f"scope.meas.{measure_type}")
+                    ColorPrinter.success(f"CH{channel} {measure_type}: {val} → stored as '{stored_label}'")
             elif cmd_name == "meas_delay" and len(args) >= 3:
                 ch1 = int(args[1])
                 ch2 = int(args[2])
