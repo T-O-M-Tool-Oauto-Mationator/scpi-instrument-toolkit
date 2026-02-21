@@ -98,6 +98,53 @@ class InstrumentDiscovery:
 
         return None
 
+    def _try_matrix_idn(self, inst) -> Optional[str]:
+        """
+        Try MATRIX MPS-6010H-1C identification.
+        This device requires REM:ON before commands work and may not respond to *IDN?.
+
+        Returns:
+            str: "MPS-6010H-1C" if identified, None otherwise
+        """
+        try:
+            inst.baud_rate = 9600
+            inst.data_bits = 8
+            inst.parity = pyvisa.constants.Parity.none
+            inst.stop_bits = pyvisa.constants.StopBits.one
+            inst.read_termination = "\n"
+            inst.write_termination = "\n"  # LF only, not CR+LF
+            inst.timeout = 1500
+
+            # Enable remote mode first (required for commands to work)
+            try:
+                inst.write("REM:ON")
+            except Exception:
+                return None
+            time.sleep(0.15)
+
+            # Try *IDN?
+            try:
+                idn = inst.query("*IDN?", delay=0.1).strip()
+                if idn:
+                    return idn
+            except Exception:
+                pass
+
+            # *IDN? failed — probe with VOLT? (returns a float if it's a MATRIX)
+            try:
+                inst.write("VOLT?")
+                time.sleep(0.2)
+                response = inst.read().strip()
+                float(response)  # Must be a valid number
+                return "MPS-6010H-1C"
+            except Exception:
+                pass
+
+        except Exception:
+            pass
+
+        return None
+
     def _try_jds6600_idn(self, inst) -> Optional[str]:
         """
         Try JDS6600/Seesii DDS generator identification.
@@ -199,6 +246,10 @@ class InstrumentDiscovery:
                         # If no *IDN? response, try JDS6600 protocol
                         if not idn:
                             idn = self._try_jds6600_idn(inst)
+
+                        # If still no response, try MATRIX MPS-6010H-1C protocol
+                        if not idn:
+                            idn = self._try_matrix_idn(inst)
                     else:
                         # Standard query for USB/GPIB/Ethernet devices
                         idn = inst.query("*IDN?").strip()

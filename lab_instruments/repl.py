@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Interactive REPL for ESET-452 lab instruments.
+Interactive REPL for ESET lab instruments.
 
 Use to discover instruments, send commands, and place devices into known states.
 """
@@ -86,7 +86,7 @@ DMM_MODE_ALIASES = {
 
 
 class InstrumentRepl(cmd.Cmd):
-    intro = "ESET-452 Instrument REPL. Type 'help' for commands."
+    intro = "ESET Instrument REPL. Type 'help' for commands."
     prompt = "eset> "
 
     def __init__(self):
@@ -811,6 +811,10 @@ class InstrumentRepl(cmd.Cmd):
             return
         self.scan()
 
+    def do_clear(self, arg):
+        "clear: clear the terminal screen"
+        os.system('cls' if os.name == 'nt' else 'clear')
+
     def do_reload(self, arg):
         "reload: restart the REPL process to pick up changes to repl.py and lab_instruments"
         ColorPrinter.info("Disconnecting all instruments...")
@@ -821,7 +825,13 @@ class InstrumentRepl(cmd.Cmd):
                 pass
 
         ColorPrinter.success("Restarting process...")
-        os.execv(sys.executable, [sys.executable] + sys.argv)
+        # sys.argv[0] may be an installed entry-point wrapper (e.g. Scripts\scpi-repl),
+        # not a .py file Python can run directly. Fall back to -m in that case.
+        argv0 = sys.argv[0]
+        if os.path.isfile(argv0) and argv0.endswith('.py'):
+            os.execv(sys.executable, [sys.executable] + sys.argv)
+        else:
+            os.execv(sys.executable, [sys.executable, '-m', 'lab_instruments.repl'] + sys.argv[1:])
 
     def do_list(self, arg):
         "list: show connected instruments"
@@ -1145,7 +1155,7 @@ class InstrumentRepl(cmd.Cmd):
             for name in sorted(self.scripts.keys()):
                 lines = self.scripts[name]
                 count = f"{len(lines)} lines" if lines else "empty"
-                print(f"  {name}  ({count})")
+                print(f"  {ColorPrinter.CYAN}{name}{ColorPrinter.RESET}  {ColorPrinter.YELLOW}({count}){ColorPrinter.RESET}")
 
         elif subcmd == "rm":
             if len(args) < 2:
@@ -1168,8 +1178,10 @@ class InstrumentRepl(cmd.Cmd):
                 ColorPrinter.warning(f"Script '{name}' not found.")
                 return
             ColorPrinter.info(f"Script '{name}':")
-            for line in self.scripts[name]:
-                print(f"  {line}")
+            for i, line in enumerate(self.scripts[name], 1):
+                num = f"{ColorPrinter.YELLOW}{i:3d}{ColorPrinter.RESET}"
+                text = f"{ColorPrinter.CYAN}{line}{ColorPrinter.RESET}" if line.strip() and not line.strip().startswith("#") else f"{ColorPrinter.GREEN}{line}{ColorPrinter.RESET}"
+                print(f"  {num}  {text}")
 
         elif subcmd == "import":
             if len(args) < 3:
@@ -1280,7 +1292,7 @@ class InstrumentRepl(cmd.Cmd):
         def cmd_line(name, desc):
             print(f"  {C}{name:<12}{R} {desc}")
 
-        print(f"{B}ESET-452 Instrument REPL{R}  —  type {C}help <command>{R} for details\n")
+        print(f"{B}ESET Instrument REPL{R}  —  type {C}help <command>{R} for details\n")
 
         section("GENERAL")
         cmd_line("scan",    "discover and connect to instruments")
