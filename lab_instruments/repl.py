@@ -33,6 +33,17 @@ except Exception:
 _GITHUB_REPO = "T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit"
 
 
+def _update_log_path():
+    """Return a platform-appropriate path for the update log file."""
+    if sys.platform == "win32":
+        base = os.environ.get("APPDATA", os.path.expanduser("~"))
+    else:
+        base = os.environ.get("XDG_CACHE_HOME", os.path.join(os.path.expanduser("~"), ".cache"))
+    log_dir = os.path.join(base, "scpi-instrument-toolkit")
+    os.makedirs(log_dir, exist_ok=True)
+    return os.path.join(log_dir, "update.log")
+
+
 def _check_and_update():
     """Check GitHub tags for a newer version. If found, pip-install and restart."""
     if _REPL_VERSION == "unknown":
@@ -41,6 +52,17 @@ def _check_and_update():
     import urllib.request
     import json
     import subprocess
+    from datetime import datetime
+
+    def _write_log(lines):
+        try:
+            log_path = _update_log_path()
+            with open(log_path, "a", encoding="utf-8") as f:
+                f.write(f"\n[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}]\n")
+                for line in lines:
+                    f.write(line + "\n")
+        except Exception:
+            pass
 
     try:
         url = f"https://api.github.com/repos/{_GITHUB_REPO}/tags"
@@ -66,12 +88,25 @@ def _check_and_update():
                 [sys.executable, "-m", "pip", "install", "--upgrade", git_url, "--quiet"],
                 capture_output=True,
             )
+            stdout = result.stdout.decode(errors="replace").strip()
+            stderr = result.stderr.decode(errors="replace").strip()
             if result.returncode == 0:
+                _write_log([
+                    f"SUCCESS: upgraded from v{_REPL_VERSION} to v{latest}",
+                    f"stdout: {stdout}" if stdout else "stdout: (empty)",
+                ])
                 _CP.success(f"Updated to v{latest}. Restarting...")
                 os.execv(sys.executable, [sys.executable] + sys.argv)
             else:
-                _CP.warning("Update install failed. Continuing with current version.")
-    except Exception:
+                log_path = _update_log_path()
+                _write_log([
+                    f"FAILED: upgrade from v{_REPL_VERSION} to v{latest}",
+                    f"returncode: {result.returncode}",
+                    f"stdout: {stdout}" if stdout else "stdout: (empty)",
+                    f"stderr: {stderr}" if stderr else "stderr: (empty)",
+                ])
+                _CP.warning(f"Update install failed. See log: {log_path}")
+    except Exception as exc:
         pass  # network down, GitHub unreachable, parse error — just continue
 
 from lab_instruments import InstrumentDiscovery, ColorPrinter
