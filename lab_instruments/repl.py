@@ -4114,9 +4114,34 @@ allTargets.forEach(t => io.observe(t));
 
 
 def main():
-    _check_and_update()
-
     args = sys.argv[1:]
+
+    if "--version" in args or "-V" in args:
+        print(f"scpi-instrument-toolkit v{_REPL_VERSION}")
+        sys.exit(0)
+
+    if "--help" in args or "-h" in args:
+        print(
+            f"scpi-instrument-toolkit v{_REPL_VERSION}\n"
+            "\n"
+            "Usage: scpi-repl [--mock] [--version] [--help] [script]\n"
+            "\n"
+            "Options:\n"
+            "  --mock       Run with simulated instruments (no hardware required)\n"
+            "  --version    Print version and exit\n"
+            "  --help       Show this help and exit\n"
+            "\n"
+            "Arguments:\n"
+            "  script       Name of a saved script to run non-interactively\n"
+            "\n"
+            "Examples:\n"
+            "  scpi-repl                  Start the interactive REPL\n"
+            "  scpi-repl --mock           Start with mock instruments\n"
+            "  scpi-repl my_script        Run 'my_script' and exit\n"
+        )
+        sys.exit(0)
+
+    _check_and_update()
 
     if "--mock" in args:
         args = [a for a in args if a != "--mock"]
