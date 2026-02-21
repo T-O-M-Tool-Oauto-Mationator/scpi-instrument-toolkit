@@ -101,7 +101,9 @@ class InstrumentDiscovery:
     def _try_matrix_idn(self, inst) -> Optional[str]:
         """
         Try MATRIX MPS-6010H-1C identification.
-        This device requires REM:ON before commands work and may not respond to *IDN?.
+        This device requires REM:ON before *IDN? will work.
+        The IDN response contains non-ASCII garbage bytes before "MPS-6010H-1C",
+        so we read raw bytes and search for the key rather than decoding as a string.
 
         Returns:
             str: "MPS-6010H-1C" if identified, None otherwise
@@ -122,33 +124,24 @@ class InstrumentDiscovery:
                 pass
             time.sleep(0.1)
 
-            # Enable remote mode first (required for commands to work)
+            # Enable remote mode first (required for *IDN? to work)
             try:
                 inst.write("REM:ON")
             except Exception:
                 return None
-            time.sleep(0.3)  # give the device time to enter remote mode
+            time.sleep(0.3)
 
-            # Try *IDN?
+            # Read raw bytes so non-ASCII garbage in the response doesn't cause
+            # a decode exception. The IDN response looks like:
+            #   <garbage bytes> MPS-6010H-1C \n
             try:
-                idn = inst.query("*IDN?", delay=0.1).strip()
-                if idn:
-                    return idn
+                inst.write("*IDN?")
+                time.sleep(0.3)
+                raw = inst.read_raw()  # returns bytes, no decoding
+                if b"MPS-6010H-1C" in raw:
+                    return "MPS-6010H-1C"
             except Exception:
                 pass
-
-            # *IDN? failed — probe with voltage queries.
-            # Response may be a plain float or include a unit suffix (e.g. "0.000V").
-            for probe_cmd in ("VOLT?", "MEAS:VOLT?"):
-                try:
-                    inst.write(probe_cmd)
-                    time.sleep(0.3)
-                    response = inst.read().strip()
-                    if response:
-                        float(response.rstrip("VAva \t"))  # tolerate unit suffix
-                        return "MPS-6010H-1C"
-                except Exception:
-                    continue
 
         except Exception:
             pass
