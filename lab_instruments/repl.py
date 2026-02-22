@@ -35,13 +35,32 @@ _GITHUB_REPO = "T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit"
 
 
 def _update_log_path():
-    """Return a platform-appropriate path for the update log file."""
+    """Return a platform-appropriate path for the update log file.
+
+    Always returns a writable path — falls back to the system temp directory
+    if the preferred location cannot be created, so logs are never silently lost.
+    """
     if sys.platform == "win32":
         base = os.environ.get("APPDATA", os.path.expanduser("~"))
     else:
         base = os.environ.get("XDG_CACHE_HOME", os.path.join(os.path.expanduser("~"), ".cache"))
     log_dir = os.path.join(base, "scpi-instrument-toolkit")
-    os.makedirs(log_dir, exist_ok=True)
+    try:
+        os.makedirs(log_dir, exist_ok=True)
+        if not os.path.isdir(log_dir):
+            raise OSError(f"makedirs reported success but '{log_dir}' is not a directory")
+    except Exception as exc:
+        fallback = os.path.join(tempfile.gettempdir(), "scpi-instrument-toolkit")
+        print(
+            f"[scpi-updater] WARNING: cannot create log dir '{log_dir}': {exc}\n"
+            f"[scpi-updater] Falling back to: {fallback}",
+            file=sys.stderr,
+        )
+        try:
+            os.makedirs(fallback, exist_ok=True)
+        except Exception:
+            pass
+        log_dir = fallback
     return os.path.join(log_dir, "update.log")
 
 
@@ -65,8 +84,17 @@ def _check_and_update(force=False):
                 f.write(f"\n[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}]\n")
                 for line in lines:
                     f.write(line + "\n")
-        except Exception:
-            pass
+            # Verify the write landed on disk
+            if not os.path.exists(log_path):
+                raise OSError(f"log file '{log_path}' does not exist after write")
+        except Exception as log_exc:
+            # Last-resort: dump to stderr so the user can always see what happened
+            print(
+                f"[scpi-updater] WARNING: could not write update log: {log_exc}\n"
+                f"[scpi-updater] Log content follows:\n" +
+                "\n".join(f"  {l}" for l in lines),
+                file=sys.stderr,
+            )
 
     try:
         url = f"https://api.github.com/repos/{_GITHUB_REPO}/tags"
@@ -124,7 +152,9 @@ def _check_and_update(force=False):
                 ])
                 _CP.warning(f"Update install failed. See log: {log_path}")
     except Exception as exc:
-        pass  # network down, GitHub unreachable, parse error — just continue
+        # Network down, GitHub unreachable, or parse error — don't crash the REPL,
+        # but surface the reason so the user can diagnose it.
+        print(f"[scpi-updater] Update check error: {exc}", file=sys.stderr)
 
 from lab_instruments import InstrumentDiscovery, ColorPrinter
 
@@ -361,15 +391,98 @@ class InstrumentRepl(cmd.Cmd):
             return [1, 2]
         return None
 
+    @staticmethod
+    def _probe_dir(d):
+        """Return True if *d* exists (or can be created) AND a file can actually
+        be written and read back from it.
+
+        On managed/school Windows machines, filesystem virtualisation can make
+        os.makedirs succeed and os.path.isdir return True while writes are silently
+        redirected to a shadow location that other processes (and the real Explorer
+        path) cannot see.  A write-then-read probe is the only reliable way to
+        detect this.
+        """
+        try:
+            os.makedirs(d, exist_ok=True)
+            if not os.path.isdir(d):
+                return False
+            probe = os.path.join(d, ".scpi_probe")
+            with open(probe, "w") as f:
+                f.write("ok")
+            ok = os.path.exists(probe)
+            try:
+                os.remove(probe)
+            except Exception:
+                pass
+            return ok
+        except Exception:
+            return False
+
     def _get_scripts_dir(self):
-        """Return the platform-appropriate scripts directory (created if needed)."""
+        """Return a scripts directory that is genuinely writable on this machine.
+
+        Tries a prioritised candidate list so the tool works on managed school/
+        company Windows machines where %APPDATA% writes may be silently redirected
+        by filesystem virtualisation (invisible to Explorer and other processes).
+
+        Override via the SCPI_SCRIPTS_DIR environment variable to pin a specific
+        location.
+
+        Raises RuntimeError only if every candidate fails — in practice at least
+        the temp-directory fallback should always succeed.
+        """
+        # 1. Explicit user override — respected unconditionally
+        override = os.environ.get("SCPI_SCRIPTS_DIR")
+        if override:
+            try:
+                os.makedirs(override, exist_ok=True)
+            except Exception as exc:
+                raise RuntimeError(
+                    f"SCPI_SCRIPTS_DIR is set to '{override}' but that directory "
+                    f"cannot be created: {exc}"
+                ) from exc
+            return override
+
+        # 2. Build a prioritised candidate list
+        subpath = os.path.join("scpi-instrument-toolkit", "scripts")
+        candidates = []
+
         if sys.platform == "win32":
-            base = os.environ.get("APPDATA", os.path.expanduser("~"))
+            appdata = os.environ.get("APPDATA")
+            if appdata:
+                candidates.append(("APPDATA", os.path.join(appdata, subpath)))
+            # Managed machines often allow writes to Documents even when APPDATA
+            # is virtualised — use it as the first fallback
+            docs = os.path.join(os.path.expanduser("~"), "Documents")
+            candidates.append(("~/Documents", os.path.join(docs, subpath)))
         else:
-            base = os.environ.get("XDG_CONFIG_HOME", os.path.join(os.path.expanduser("~"), ".config"))
-        d = os.path.join(base, "scpi-instrument-toolkit", "scripts")
-        os.makedirs(d, exist_ok=True)
-        return d
+            xdg = os.environ.get("XDG_CONFIG_HOME",
+                                 os.path.join(os.path.expanduser("~"), ".config"))
+            candidates.append(("XDG_CONFIG_HOME", os.path.join(xdg, subpath)))
+
+        # Common final fallbacks for both platforms
+        candidates.append(("~", os.path.join(os.path.expanduser("~"), subpath)))
+        candidates.append(("tempdir",
+                           os.path.join(tempfile.gettempdir(), subpath)))
+
+        attempted = []
+        for label, d in candidates:
+            if self._probe_dir(d):
+                if attempted:
+                    # Notify user that a non-default location is being used
+                    ColorPrinter.warning(
+                        f"Scripts directory: using '{d}' ({label}).\n"
+                        f"  Primary location(s) failed: {', '.join(attempted)}\n"
+                        f"  To pin this path permanently: set SCPI_SCRIPTS_DIR={d}"
+                    )
+                return d
+            attempted.append(f"'{d}'")
+
+        raise RuntimeError(
+            "Cannot find any writable directory for scripts.\n"
+            f"  Tried: {', '.join(attempted)}\n"
+            "  Set SCPI_SCRIPTS_DIR to a directory you can write to."
+        )
 
     def _script_file(self, name):
         """Return the full path to a script's .scpi file."""
@@ -401,22 +514,62 @@ class InstrumentRepl(cmd.Cmd):
     def _save_script(self, name):
         """Save a single script to its .scpi file."""
         try:
+            script_path = self._script_file(name)
             lines = self.scripts[name]
-            with open(self._script_file(name), "w", encoding="utf-8") as f:
+            with open(script_path, "w", encoding="utf-8") as f:
                 f.write("\n".join(lines))
                 if lines:
                     f.write("\n")
+            # Verify the file actually landed on disk
+            if not os.path.exists(script_path):
+                scripts_dir = os.path.dirname(script_path)
+                ColorPrinter.error(
+                    f"Script '{name}' was written but '{script_path}' does not exist afterwards.\n"
+                    f"  Scripts dir exists: {os.path.isdir(scripts_dir)}\n"
+                    f"  Scripts dir path:   '{scripts_dir}'"
+                )
         except Exception as exc:
-            ColorPrinter.error(f"Failed to save script '{name}': {exc}")
+            try:
+                scripts_dir = self._get_scripts_dir()
+                dir_exists = os.path.isdir(scripts_dir)
+            except Exception:
+                scripts_dir = "<unavailable>"
+                dir_exists = False
+            ColorPrinter.error(
+                f"Failed to save script '{name}': {exc}\n"
+                f"  Scripts dir: '{scripts_dir}' (exists={dir_exists})"
+            )
     
     def _edit_script_in_editor(self, name, current_lines):
         if os.name == "nt":
-            # Non-blocking on Windows: save to the real .scpi file and open it
+            # Non-blocking on Windows: save to the real .scpi file and open it.
+            # IMPORTANT: create the parent directory BEFORE attempting any write so
+            # that _save_script() never races against a non-existent directory.
+            path = pathlib.Path(self._script_file(name))
+            try:
+                path.parent.mkdir(parents=True, exist_ok=True)
+                if not path.parent.is_dir():
+                    raise OSError(f"Directory '{path.parent}' does not exist after mkdir")
+            except Exception as exc:
+                ColorPrinter.error(
+                    f"Cannot create scripts directory '{path.parent}': {exc}\n"
+                    f"  Check that APPDATA is set and the drive is writable."
+                )
+                return None
             self.scripts[name] = list(current_lines)
             self._save_script(name)
-            path = pathlib.Path(self._script_file(name))
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.touch(exist_ok=True)  # guarantee file exists even if _save_script failed
+            # Guarantee the file exists on disk even if _save_script silently failed
+            try:
+                path.touch(exist_ok=True)
+            except Exception as exc:
+                ColorPrinter.error(f"Cannot create script file '{path}': {exc}")
+                return None
+            if not path.exists():
+                ColorPrinter.error(
+                    f"Script file '{path}' still does not exist after touch — "
+                    f"the filesystem may be read-only or the path is blocked."
+                )
+                return None
             self._open_file_nonblocking(str(path))
             ColorPrinter.info(f"Opened '{path}' — edit and save it, then run: script load")
             return None  # signals callers to skip their own save/success message
@@ -1385,7 +1538,22 @@ class InstrumentRepl(cmd.Cmd):
             if lines is not None:
                 self.scripts[name] = lines
                 self._save_script(name)
-                ColorPrinter.success(f"Saved script '{name}' ({len(lines)} lines).")
+                script_path = self._script_file(name)
+                if os.path.exists(script_path):
+                    ColorPrinter.success(f"Saved script '{name}' ({len(lines)} lines).")
+                else:
+                    try:
+                        scripts_dir = self._get_scripts_dir()
+                        dir_ok = os.path.isdir(scripts_dir)
+                    except Exception:
+                        scripts_dir = "<error retrieving path>"
+                        dir_ok = False
+                    ColorPrinter.error(
+                        f"Script '{name}' could not be written to disk.\n"
+                        f"  Expected path: '{script_path}'\n"
+                        f"  Scripts dir:   '{scripts_dir}' (exists={dir_ok})\n"
+                        f"  Check drive permissions or available disk space."
+                    )
 
         elif subcmd == "run":
             if len(args) < 2:
