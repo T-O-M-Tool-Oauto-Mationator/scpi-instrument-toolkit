@@ -284,6 +284,7 @@ class InstrumentRepl(cmd.Cmd):
         self._exit_on_error = False  # If True, stop script on command failure
         self._command_had_error = False  # Flag set when a command encounters an error
         self._in_script = False  # Flag to track if we're running a script
+        self._interrupt_requested = False  # Flag set when Ctrl+C is pressed
 
         # Save terminal state so we can restore it on any exit path
         self._term_fd = None
@@ -391,6 +392,7 @@ class InstrumentRepl(cmd.Cmd):
                     else:
                         print()  # Just newline for interactive mode
                     self._in_script = False
+                    self._interrupt_requested = False  # Reset for next command
         finally:
             self.postloop()
 
@@ -408,6 +410,8 @@ class InstrumentRepl(cmd.Cmd):
 
     def _cleanup_on_interrupt(self, signum, frame):
         """Called when Ctrl+C or termination signal is received."""
+        self._interrupt_requested = True
+        
         # Reset loop state if in a multi-line block
         if self._in_loop:
             self._in_loop = False
@@ -1083,6 +1087,7 @@ class InstrumentRepl(cmd.Cmd):
     def _run_script_lines(self, lines):
         expanded = self._expand_script_lines(lines, {})
         self._in_script = True
+        self._interrupt_requested = False
         try:
             for raw_line in expanded:
                 raw_line = self._substitute_vars(raw_line, self._script_vars)
@@ -1105,6 +1110,7 @@ class InstrumentRepl(cmd.Cmd):
             ColorPrinter.warning("Script interrupted by user")
         finally:
             self._in_script = False
+            self._interrupt_requested = False
         return False
 
     def _onecmd_single(self, line):
@@ -1760,7 +1766,11 @@ class InstrumentRepl(cmd.Cmd):
             return
         ColorPrinter.info(f"Sleeping {label}...")
         end_time = time.time() + delay
+        self._interrupt_requested = False
         while True:
+            if self._interrupt_requested:
+                print()
+                return
             remaining = end_time - time.time()
             if remaining <= 0:
                 break
