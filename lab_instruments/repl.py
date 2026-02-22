@@ -138,7 +138,7 @@ def _check_and_update(force=False, restart_on_success=True):
             from lab_instruments.src.terminal import ColorPrinter as _CP
             _CP.info(f"Update available: v{_REPL_VERSION} → v{latest}. Installing...")
             git_url = f"git+https://github.com/{_GITHUB_REPO}.git@{latest_tag}#egg=scpi-instrument-toolkit"
-            cmd_base = [sys.executable, "-m", "pip", "install", "--upgrade", "-e"]
+            cmd_base = [sys.executable, "-m", "pip", "install", "--upgrade"]
             result = subprocess.run(
                 cmd_base + [git_url, "--quiet"],
                 capture_output=True,
@@ -210,10 +210,19 @@ def _check_and_update(force=False, restart_on_success=True):
                             "    time.sleep(1)\\n"
                             "time.sleep(1)\\n"
                             "print('Installing update... DO NOT CLOSE THIS WINDOW')\\n"
-                            "subprocess.run([\\n"
-                            "sys.executable, '-m', 'pip', 'install', '--upgrade', '-e',\\n"
-                            f" {repr(git_url_local)}\\n"
-                            "])\\n"
+                            "try:\\n"
+                            "    result = subprocess.run([\\n"
+                            "        sys.executable, '-m', 'pip', 'install', '--upgrade',\\n"
+                            f"        {repr(git_url_local)}\\n"
+                            "    ], capture_output=True, text=True)\\n"
+                            "    if result.returncode == 0:\\n"
+                            "        print('[SUCCESS] Update successful')\\n"
+                            "    else:\\n"
+                            "        print(f'[FAILED] Update failed with code {result.returncode}')\\n"
+                            "        if result.stderr:\\n"
+                            "            print('Error:', result.stderr[:500])\\n"
+                            "except Exception as e:\\n"
+                            "    print(f'[FAILED] Exception during update: {e}')\\n"
                             f"{restart_block}"
                         )
                         subprocess.Popen(
