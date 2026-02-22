@@ -3688,7 +3688,7 @@ allTargets.forEach(t => io.observe(t));
                 self.do_state(f"{psu_name} {args[1]}")
 
             else:
-                ColorPrinter.warning("Unknown PSU command. Type 'psu' for help.")
+                ColorPrinter.warning(f"Unknown PSU command: psu {arg}. Type 'psu' for help.")
 
         except Exception as exc:
             ColorPrinter.error(str(exc))
@@ -3858,7 +3858,7 @@ allTargets.forEach(t => io.observe(t));
                 self.do_state(f"{awg_name} {args[1]}")
 
             else:
-                ColorPrinter.warning("Unknown AWG command. Type 'awg' for help.")
+                ColorPrinter.warning(f"Unknown AWG command: awg {arg}. Type 'awg' for help.")
 
         except ValueError as e:
             ColorPrinter.error(f"Invalid value: {e}")
@@ -4146,7 +4146,7 @@ allTargets.forEach(t => io.observe(t));
                 self.do_state(f"{dmm_name} {args[1]}")
 
             else:
-                ColorPrinter.warning("Unknown DMM command. Type 'dmm' for help.")
+                ColorPrinter.warning(f"Unknown DMM command: dmm {arg}. Type 'dmm' for help.")
 
         except Exception as exc:
             ColorPrinter.error(str(exc))
@@ -4421,7 +4421,7 @@ allTargets.forEach(t => io.observe(t));
             elif cmd_name == "state" and len(args) >= 2:
                 self.do_state(f"{scope_name} {args[1]}")
             else:
-                ColorPrinter.warning("Unknown scope command. Type 'scope' for help.")
+                ColorPrinter.warning(f"Unknown scope command: scope {arg}. Type 'scope' for help.")
         except Exception as exc:
             ColorPrinter.error(str(exc))
 
@@ -4516,7 +4516,7 @@ allTargets.forEach(t => io.observe(t));
                 ColorPrinter.success(f"AWG modulation type: {mod_type}")
 
             else:
-                ColorPrinter.warning("Unknown AWG command. Type 'scope awg' for help.")
+                ColorPrinter.warning(f"Unknown AWG command: scope awg {' '.join(args)}. Type 'scope awg' for help.")
 
         except AttributeError:
             ColorPrinter.warning("AWG not supported on this oscilloscope model (requires DHO914S/DHO924S)")
@@ -4560,7 +4560,7 @@ allTargets.forEach(t => io.observe(t));
                 ColorPrinter.success(f"Counter mode: {mode}")
 
             else:
-                ColorPrinter.warning("Unknown counter command. Type 'scope counter' for help.")
+                ColorPrinter.warning(f"Unknown counter command: scope counter {' '.join(args)}. Type 'scope counter' for help.")
 
         except AttributeError:
             ColorPrinter.warning("Counter not supported on this oscilloscope")
@@ -4598,7 +4598,7 @@ allTargets.forEach(t => io.observe(t));
                 ColorPrinter.success(f"DVM source: CH{channel}")
 
             else:
-                ColorPrinter.warning("Unknown DVM command. Type 'scope dvm' for help.")
+                ColorPrinter.warning(f"Unknown DVM command: scope dvm {' '.join(args)}. Type 'scope dvm' for help.")
 
         except AttributeError:
             ColorPrinter.warning("DVM not supported on this oscilloscope")
@@ -4678,7 +4678,7 @@ allTargets.forEach(t => io.observe(t));
             except Exception as exc:
                 ColorPrinter.error(f"Failed to save measurements: {exc}")
             return
-        ColorPrinter.warning("Unknown log command. Use: log print|save|clear")
+        ColorPrinter.warning(f"Unknown log command: log {arg}. Use: log print|save|clear")
 
     def do_calc(self, arg):
         "calc is short for calculator: compute a value from logged measurements"
