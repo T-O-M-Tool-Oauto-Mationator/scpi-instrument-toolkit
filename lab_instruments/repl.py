@@ -246,7 +246,6 @@ class InstrumentRepl(cmd.Cmd):
         if intro is not None:
             self.intro = intro
         if self.intro:
-            self.onecmd("help")
             print(self.intro)
         stop = None
         try:
@@ -267,8 +266,7 @@ class InstrumentRepl(cmd.Cmd):
                                 line = 'EOF'
                             else:
                                 line = line.rstrip('\r\n')
-                    line = self.precmd(line)
-                    stop = self.onecmd(line)
+                    line = self.precmd(line)                    stop = self.onecmd(line)
                     line = self.postcmd(stop, line)
                 except KeyboardInterrupt:
                     # Don't exit REPL on Ctrl+C, just print a message and continue
