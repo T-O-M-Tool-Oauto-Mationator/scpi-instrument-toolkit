@@ -456,6 +456,25 @@ class HP_34401A(DeviceManager):
         """Clear custom text and return to normal display."""
         self.send_command("DISPlay:TEXT:CLEar")
 
+    def display_text_scroll(
+        self,
+        text: str,
+        delay: float = 0.2,
+        pad: int = 4,
+        width: int = 12,
+        loops: int = 1,
+    ):
+        """Scroll text across the display (matches the repl.py call signature).
+
+        Delegates to display_text_rolling with arguments reordered to match
+        how repl.py invokes: display_text_scroll(message, delay, pad, width, loops).
+        """
+        self.display_text_rolling(text, width=width, delay=delay, pad=pad, loops=loops)
+
+    def clear_display(self):
+        """Clear custom text and return to normal display (alias for clear_display_text)."""
+        self.clear_display_text()
+
     def set_beeper(self, enabled: bool = True):
         """
         Enable or disable the beeper.
