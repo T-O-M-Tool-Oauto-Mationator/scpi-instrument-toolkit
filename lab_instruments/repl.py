@@ -1970,7 +1970,7 @@ class InstrumentRepl(cmd.Cmd):
                 # If exit-on-error is enabled and a command failed, stop the script
                 if self._exit_on_error and getattr(self, '_command_had_error', False):
                     ColorPrinter.error(f"Script stopped due to error (set -e enabled)")
-                    return True
+                    break  # Exit script loop but stay in REPL
             return False
 
         elif subcmd == "edit":
