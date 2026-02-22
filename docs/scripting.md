@@ -126,7 +126,7 @@ set voltage 5.0
 set label my_run
 
 psu1 set ${voltage}               # → psu1 set 5.0
-dmm1 meas_store vdc ${label} unit=V   # → dmm1 meas_store vdc my_run unit=V
+dmm1 meas_store ${label} unit=V   # → dmm1 meas_store my_run unit=V
 print Setting ${voltage}V         # → prints "Setting 5.0V"
 ```
 
@@ -156,7 +156,8 @@ Scripts use the same `meas_store`, `calc`, and `log` commands as the interactive
 
 ```
 psu1 meas_store v output_v unit=V   # measure voltage, save as "output_v"
-dmm1 meas_store vdc dmm_v unit=V   # measure DMM, save as "dmm_v"
+dmm1 config vdc                     # set DMM to DC voltage mode
+dmm1 meas_store dmm_v unit=V        # measure DMM, save as "dmm_v"
 calc error m["output_v"] - m["dmm_v"] unit=V   # subtract them
 log print                           # show the full table
 ```
@@ -191,10 +192,11 @@ psu1 meas_store v ${meas_name} unit=V
 This is especially useful in loops — each iteration gets a different label:
 
 ```
+dmm1 config vdc
 for v 3.3 5.0 12.0
   psu1 set ${v}
   sleep 0.5
-  dmm1 meas_store vdc dmm_${v} unit=V   # labels: dmm_3.3, dmm_5.0, dmm_12.0
+  dmm1 meas_store dmm_${v} unit=V   # labels: dmm_3.3, dmm_5.0, dmm_12.0
 end
 log print    # all three rows appear in the log
 ```
@@ -212,7 +214,8 @@ psu1 set ${voltage}
 sleep 0.5
 
 psu1 meas_store v psu_v unit=V         # save PSU reading as "psu_v"
-dmm1 meas_store vdc dmm_v unit=V       # save DMM reading as "dmm_v"
+dmm1 config vdc                        # set DMM to DC voltage mode
+dmm1 meas_store dmm_v unit=V           # save DMM reading as "dmm_v"
 
 calc error     m["dmm_v"] - m["psu_v"] unit=V
 calc error_pct m["error"] / m["psu_v"] * 100 unit=%
@@ -294,7 +297,8 @@ After `input voltage`, you can use `${voltage}` anywhere:
 input voltage Enter target voltage (V):
 psu1 set ${voltage}
 print Voltage set to ${voltage}V
-dmm1 meas_store vdc output_${voltage} unit=V
+dmm1 config vdc
+dmm1 meas_store output_${voltage} unit=V
 ```
 
 !!! note
@@ -370,11 +374,12 @@ Iterates over a whitespace-separated list of values. On each iteration, `${var}`
 **Sweep PSU through voltages:**
 
 ```
+dmm1 config vdc
 for v 1.0 2.0 3.3 5.0 9.0 12.0
   print Setting ${v}V...
   psu1 set ${v}
   sleep 0.5
-  dmm1 meas_store vdc v_${v} unit=V
+  dmm1 meas_store v_${v} unit=V
 end
 ```
 
@@ -453,9 +458,10 @@ psu1 meas_store v ${label} unit=V
 Call it from another script:
 ```
 # main test
+dmm1 config vdc
 for v 3.3 5.0 12.0
   call set_psu voltage=${v} label=psu_${v}
-  dmm1 meas_store vdc dmm_${v} unit=V
+  dmm1 meas_store dmm_${v} unit=V
 end
 log print
 ```
@@ -505,6 +511,7 @@ input operator Operator initials:
 # ── PSU on ───────────────────────────────────
 psu1 chan 1 on
 print PSU enabled
+dmm1 config vdc
 
 # ── Sweep ────────────────────────────────────
 for v 1.0 2.0 3.3 5.0 9.0 12.0
@@ -512,7 +519,7 @@ for v 1.0 2.0 3.3 5.0 9.0 12.0
   psu1 set ${v}
   sleep ${delay}
   psu1 meas_store v psu_${v} unit=V
-  dmm1 meas_store vdc dmm_${v} unit=V
+  dmm1 meas_store dmm_${v} unit=V
   calc err_${v} (m["dmm_${v}"] - m["psu_${v}"]) / m["psu_${v}"] * 100 unit=%
 end
 

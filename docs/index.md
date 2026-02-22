@@ -45,7 +45,8 @@ psu meas v        # measure output voltage
 
 ```
 psu meas_store v output unit=V     # save voltage — label is "output"
-dmm meas_store vdc dmm_v unit=V   # save DMM reading — label is "dmm_v"
+dmm config vdc                     # set DMM to DC voltage mode
+dmm meas_store dmm_v unit=V        # save DMM reading — label is "dmm_v"
 calc error m["dmm_v"] - m["output"] unit=V   # reference labels in math
 log print                           # show the full results table
 log save results.csv                # export to CSV

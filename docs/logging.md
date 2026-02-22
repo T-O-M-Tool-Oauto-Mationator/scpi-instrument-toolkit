@@ -136,7 +136,8 @@ calc power m["psu_v"] * m["psu_i"] unit=W
 Use `last` to reference the most recently stored value:
 
 ```
-dmm1 meas_store vdc my_reading unit=V
+dmm1 config vdc
+dmm1 meas_store my_reading unit=V
 calc doubled last * 2 unit=V
 ```
 
@@ -162,7 +163,8 @@ The result of `calc` is stored in the log, so you can chain calculations:
 ```
 psu1 meas_store v v_in unit=V
 psu1 meas_store i i_in unit=A
-dmm1 meas_store vdc v_out unit=V
+dmm1 config vdc
+dmm1 meas_store v_out unit=V
 
 calc power_in  m["v_in"] * m["i_in"] unit=W
 calc power_out m["v_out"] * m["i_in"] unit=W      # assume same current
@@ -174,7 +176,8 @@ calc efficiency m["power_out"] / m["power_in"] * 100 unit=%
 **Compute percentage error:**
 
 ```
-dmm1 meas_store vdc measured unit=V
+dmm1 config vdc
+dmm1 meas_store measured unit=V
 calc error_pct (m["measured"] - 5.0) / 5.0 * 100 unit=%
 ```
 
@@ -218,7 +221,8 @@ sleep 0.5
 
 psu1 meas_store v psu_v unit=V     # save as "psu_v"
 psu1 meas_store i psu_i unit=A     # save as "psu_i"
-dmm1 meas_store vdc dmm_v unit=V   # save as "dmm_v"
+dmm1 config vdc
+dmm1 meas_store dmm_v unit=V       # save as "dmm_v"
 
 # 3. Derive values
 calc power       m["psu_v"] * m["psu_i"] unit=W

@@ -57,8 +57,8 @@ sleep 0.5
 
 psu1 meas_store v psu_v unit=V
 
-dmm1 meas vdc
-dmm1 meas_store vdc ${label} unit=V
+dmm1 config vdc
+dmm1 meas_store ${label} unit=V
 
 print === Test complete ===
 log print
@@ -114,12 +114,13 @@ script run voltage_sweep
 print === Voltage Sweep ===
 psu1 chan 1 on
 sleep 0.3
+dmm1 config vdc
 
 for v 1.0 2.0 3.3 5.0 9.0 12.0
   print Setting ${v}V...
   psu1 set ${v}
   sleep 0.5
-  dmm1 meas_store vdc v_${v} unit=V
+  dmm1 meas_store v_${v} unit=V
 end
 
 psu1 chan 1 off
@@ -337,7 +338,8 @@ sleep ${delay}
 
 # 4. Measure and store
 psu1 meas_store v psu_out unit=V
-dmm1 meas_store vdc dmm_out unit=V
+dmm1 config vdc
+dmm1 meas_store dmm_out unit=V
 
 # 5. Derived calculations
 calc error m["dmm_out"] - m["psu_out"] unit=V
