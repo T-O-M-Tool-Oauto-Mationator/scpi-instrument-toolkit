@@ -36,33 +36,47 @@ _GITHUB_REPO = "T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit"
 
 
 def _update_log_path():
-    """Return a platform-appropriate path for the update log file.
+    """Return a writable, user-findable path for the update log file.
 
-    Always returns a writable path — falls back to the system temp directory
-    if the preferred location cannot be created, so logs are never silently lost.
+    On managed/school Windows machines %APPDATA% is commonly virtualised so
+    files written there are invisible to Explorer.  We use the same
+    Documents-first priority order as the scripts directory so the log lands
+    somewhere the user can actually navigate to.
     """
+    subdir = "scpi-instrument-toolkit"
+
     if sys.platform == "win32":
-        base = os.environ.get("APPDATA", os.path.expanduser("~"))
+        candidates = [
+            os.path.join(os.path.expanduser("~"), "Documents", subdir),
+            os.path.join(os.environ.get("APPDATA", ""), subdir) if os.environ.get("APPDATA") else None,
+            os.path.join(os.path.expanduser("~"), subdir),
+        ]
     else:
-        base = os.environ.get("XDG_CACHE_HOME", os.path.join(os.path.expanduser("~"), ".cache"))
-    log_dir = os.path.join(base, "scpi-instrument-toolkit")
-    try:
-        os.makedirs(log_dir, exist_ok=True)
-        if not os.path.isdir(log_dir):
-            raise OSError(f"makedirs reported success but '{log_dir}' is not a directory")
-    except Exception as exc:
-        fallback = os.path.join(tempfile.gettempdir(), "scpi-instrument-toolkit")
-        print(
-            f"[scpi-updater] WARNING: cannot create log dir '{log_dir}': {exc}\n"
-            f"[scpi-updater] Falling back to: {fallback}",
-            file=sys.stderr,
-        )
+        candidates = [
+            os.path.join(os.environ.get("XDG_CACHE_HOME",
+                         os.path.join(os.path.expanduser("~"), ".cache")), subdir),
+            os.path.join(os.path.expanduser("~"), subdir),
+        ]
+
+    # Always include tempdir as the last resort
+    candidates.append(os.path.join(tempfile.gettempdir(), subdir))
+
+    for log_dir in candidates:
+        if not log_dir:
+            continue
         try:
-            os.makedirs(fallback, exist_ok=True)
+            os.makedirs(log_dir, exist_ok=True)
+            # Quick writability probe — same-process is fine for logs
+            probe = os.path.join(log_dir, ".log_probe")
+            with open(probe, "w") as f:
+                f.write("ok")
+            os.remove(probe)
+            return os.path.join(log_dir, "update.log")
         except Exception:
-            pass
-        log_dir = fallback
-    return os.path.join(log_dir, "update.log")
+            continue
+
+    # Absolute fallback — should never reach here
+    return os.path.join(tempfile.gettempdir(), subdir, "update.log")
 
 
 def _check_and_update(force=False):
