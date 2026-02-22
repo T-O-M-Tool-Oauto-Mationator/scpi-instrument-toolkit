@@ -2739,7 +2739,7 @@ class InstrumentRepl(cmd.Cmd):
   <section id="quick-start">
     <h2>Quick Start</h2>
     <div class="step"><div class="step-num">1</div><div class="step-body">
-      <p><strong>Install:</strong> <code>pip install git+https://github.com/bsikar/scpi-instrument-toolkit.git</code></p>
+      <p><strong>Install:</strong> <code>pip install git+https://github.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit.git</code></p>
     </div></div>
     <div class="step"><div class="step-num">2</div><div class="step-body">
       <p><strong>Launch:</strong> <code>scpi-repl</code> (auto-discovers instruments) &nbsp;&mdash;&nbsp; <code>scpi-repl --mock</code> (no hardware, for testing)</p>

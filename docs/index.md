@@ -9,7 +9,7 @@ Python REPL for controlling lab instruments — oscilloscopes, power supplies, m
 ### 1. Install
 
 ```bash
-pip install git+https://github.com/bsikar/scpi-instrument-toolkit.git
+pip install git+https://github.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit.git
 ```
 
 > **Requires** [NI-VISA](https://www.ni.com/en/support/downloads/drivers/download.ni-visa.html) for USB and GPIB instruments.

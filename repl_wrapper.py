@@ -2,7 +2,7 @@
 #
 # Prerequisites:
 #   1. Add scpi-instrument-toolkit as a submodule in your personal repo:
-#        git submodule add https://github.com/bsikar/scpi-instrument-toolkit.git
+#        git submodule add https://github.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit.git
 #   2. Run: git submodule update --init
 #
 # Then just run from your personal repo root:

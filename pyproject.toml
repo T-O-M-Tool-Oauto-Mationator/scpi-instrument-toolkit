@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "scpi-instrument-toolkit"
-version = "0.1.20"
+version = "0.1.21"
 description = "Python drivers and interactive REPL for SCPI test and measurement instruments"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -27,9 +27,9 @@ docs = ["mkdocs-material"]
 scpi-repl = "lab_instruments.repl:main"
 
 [project.urls]
-Homepage = "https://github.com/bsikar/scpi-instrument-toolkit"
-Repository = "https://github.com/bsikar/scpi-instrument-toolkit"
-Issues = "https://github.com/bsikar/scpi-instrument-toolkit/issues"
+Homepage = "https://github.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit"
+Repository = "https://github.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit"
+Issues = "https://github.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit/issues"
 
 [tool.setuptools.packages.find]
 include = ["lab_instruments*"]
