@@ -156,16 +156,67 @@ def _check_and_update(force=False):
                     f"stdout: {stdout}" if stdout else "stdout: (empty)",
                 ])
                 _CP.success(f"Updated to v{latest}. Restarting...")
-                os.execv(sys.executable, [sys.executable] + sys.argv)
+                # os.execv replaces the current process; on Windows this can also
+                # hit a file-lock so fall back to a clean exit and let the user
+                # relaunch if execv fails.
+                try:
+                    os.execv(sys.executable, [sys.executable] + sys.argv)
+                except Exception:
+                    _CP.success("Please restart scpi-repl to use the new version.")
+                    sys.exit(0)
             else:
-                log_path = _update_log_path()
-                _write_log([
-                    f"FAILED: upgrade from v{_REPL_VERSION} to v{latest}",
-                    f"returncode: {result.returncode}",
-                    f"stdout: {stdout}" if stdout else "stdout: (empty)",
-                    f"stderr: {stderr}" if stderr else "stderr: (empty)",
-                ])
-                _CP.warning(f"Update install failed. See log: {log_path}")
+                # Windows-specific: pip cannot overwrite scpi-repl.exe while it is
+                # the currently-running process (WinError 32 file-lock).  Schedule
+                # the update via a detached batch script that runs after we exit.
+                if sys.platform == "win32" and "WinError 32" in stderr:
+                    git_url_local = git_url  # capture for batch
+                    scheduled = False
+                    try:
+                        bat = os.path.join(tempfile.gettempdir(), "scpi_update.bat")
+                        with open(bat, "w") as _bat:
+                            _bat.write("@echo off\n")
+                            # Wait a few seconds for the current process to fully exit
+                            _bat.write("timeout /t 4 /nobreak >nul\n")
+                            _bat.write(
+                                f'"{sys.executable}" -m pip install --upgrade'
+                                f' "{git_url_local}" --quiet\n'
+                            )
+                            _bat.write('del "%~f0"\n')
+                        _DETACHED = 0x00000008
+                        _NO_WINDOW = 0x08000000
+                        subprocess.Popen(
+                            ["cmd", "/c", bat],
+                            creationflags=_DETACHED | _NO_WINDOW,
+                            close_fds=True,
+                        )
+                        scheduled = True
+                    except Exception:
+                        pass
+                    if scheduled:
+                        _CP.warning(
+                            f"Update to v{latest} will install after you exit.\n"
+                            f"  (Windows prevents replacing a running .exe)\n"
+                            f"  Restart scpi-repl once to complete the update."
+                        )
+                    else:
+                        _CP.warning(
+                            f"Windows prevented the update (file in use).\n"
+                            f"  Run this command after exiting:\n"
+                            f"  pip install --upgrade \"{git_url}\""
+                        )
+                    _write_log([
+                        f"DEFERRED (WinError 32): upgrade from v{_REPL_VERSION} to v{latest}",
+                        "Windows file lock — scheduled via detached batch or printed manual command.",
+                    ])
+                else:
+                    log_path = _update_log_path()
+                    _write_log([
+                        f"FAILED: upgrade from v{_REPL_VERSION} to v{latest}",
+                        f"returncode: {result.returncode}",
+                        f"stdout: {stdout}" if stdout else "stdout: (empty)",
+                        f"stderr: {stderr}" if stderr else "stderr: (empty)",
+                    ])
+                    _CP.warning(f"Update install failed. See log: {log_path}")
     except Exception as exc:
         # Network down, GitHub unreachable, or parse error — don't crash the REPL,
         # but surface the reason so the user can diagnose it.
@@ -1240,7 +1291,7 @@ class InstrumentRepl(cmd.Cmd):
         "shawn: the only man who can stop jeremie"
         self._jerminator = False
         self._stop_dmm_text_loop()
-        ColorPrinter.success("Shawn has restored order.")
+        ColorPrinter.success("Shawn has stopped sawing.")
 
     def do_version(self, arg):
         "version: show the scpi-instrument-toolkit version"
@@ -1339,7 +1390,7 @@ class InstrumentRepl(cmd.Cmd):
                     time.sleep(0.5)
             t = threading.Thread(target=_beep_loop, daemon=True, name="jeremie-beep")
             t.start()
-            ColorPrinter.warning("FUCK YOU JEREMIE  (type 'shawn' to stop)")
+            ColorPrinter.warning("FUCK YOU JEREMIE")
             return
         # ---- End easter eggs ----
 
