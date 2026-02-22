@@ -409,9 +409,17 @@ class InstrumentRepl(cmd.Cmd):
             ColorPrinter.error(f"Failed to save script '{name}': {exc}")
     
     def _edit_script_in_editor(self, name, current_lines):
+        if os.name == "nt":
+            # Non-blocking on Windows: save to the real .scpi file and open it
+            self.scripts[name] = list(current_lines)
+            self._save_script(name)
+            path = self._script_file(name)
+            self._open_file_nonblocking(path)
+            ColorPrinter.info(f"Opened '{path}' — edit and save it, then run: script load")
+            return None  # signals callers to skip their own save/success message
         editor = os.environ.get("EDITOR")
         if not editor:
-            editor = "notepad" if os.name == "nt" else "nano"
+            editor = "nano"
         tmp_path = None
         try:
             with tempfile.NamedTemporaryFile(
@@ -424,11 +432,7 @@ class InstrumentRepl(cmd.Cmd):
                 for line in current_lines:
                     handle.write(f"{line}\n")
             try:
-                if os.name == "nt":
-                    # Use `start /wait` so Store-app Notepad (Windows 11) blocks until closed
-                    subprocess.run(["cmd", "/c", "start", "/wait", "", editor, tmp_path])
-                else:
-                    subprocess.run([editor, tmp_path])
+                subprocess.run([editor, tmp_path])
             except FileNotFoundError:
                 ColorPrinter.error(f"Editor '{editor}' not found. Set $EDITOR to a valid editor.")
                 return list(current_lines)
@@ -1369,9 +1373,10 @@ class InstrumentRepl(cmd.Cmd):
             if name in self.scripts:
                 ColorPrinter.warning(f"Script '{name}' already exists — opening for edit. Use 'script rm {name}' first to start fresh.")
             lines = self._edit_script_in_editor(name, self.scripts.get(name, []))
-            self.scripts[name] = lines
-            self._save_script(name)
-            ColorPrinter.success(f"Saved script '{name}' ({len(lines)} lines).")
+            if lines is not None:
+                self.scripts[name] = lines
+                self._save_script(name)
+                ColorPrinter.success(f"Saved script '{name}' ({len(lines)} lines).")
 
         elif subcmd == "run":
             if len(args) < 2:
@@ -1407,9 +1412,10 @@ class InstrumentRepl(cmd.Cmd):
                 ColorPrinter.warning(f"Script '{name}' not found.")
                 return
             lines = self._edit_script_in_editor(name, self.scripts[name])
-            self.scripts[name] = lines
-            self._save_script(name)
-            ColorPrinter.success(f"Updated script '{name}' ({len(lines)} lines).")
+            if lines is not None:
+                self.scripts[name] = lines
+                self._save_script(name)
+                ColorPrinter.success(f"Updated script '{name}' ({len(lines)} lines).")
 
         elif subcmd == "list":
             if not self.scripts:
