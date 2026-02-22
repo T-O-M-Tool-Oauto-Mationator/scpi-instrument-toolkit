@@ -18,6 +18,16 @@ class BK_4063(DeviceManager):
 
     VALID_WAVEFORMS = {"SINE", "SQUARE", "RAMP", "PULSE", "NOISE", "DC", "ARB"}
 
+    # Accept SCPI abbreviations and common aliases in addition to full names
+    _WAVE_ALIASES = {
+        "SIN":      "SINE",
+        "SQU":      "SQUARE",
+        "PULS":     "PULSE",
+        "NOIS":     "NOISE",
+        "TRI":      "RAMP",
+        "TRIANGLE": "RAMP",
+    }
+
     def __init__(self, resource_name):
         """Initialize the BK 4063 AWG."""
         super().__init__(resource_name)
@@ -116,7 +126,7 @@ class BK_4063(DeviceManager):
                 f"Invalid channel. Must be one of: {list(self.CHANNEL_MAP.keys())}"
             )
 
-        w_type = wave_type.upper()
+        w_type = self._WAVE_ALIASES.get(wave_type.upper(), wave_type.upper())
         if w_type not in self.VALID_WAVEFORMS:
             raise ValueError(
                 f"Invalid waveform type. Must be one of: {self.VALID_WAVEFORMS}"
