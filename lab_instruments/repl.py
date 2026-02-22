@@ -392,17 +392,18 @@ class InstrumentRepl(cmd.Cmd):
         return None
 
     @staticmethod
-    def _probe_dir(d):
-        """Return True if *d* is genuinely writable AND visible to other processes.
+    def _probe_dir(d, cross_process=True):
+        """Return True if *d* is writable and (when cross_process=True) visible to
+        other processes.
 
-        A same-process os.path.exists() check is not sufficient on managed/school
-        Windows machines: filesystem virtualisation can make writes appear to
-        succeed within the Python process while a completely different (shadow)
-        directory is presented to every other process — including Notepad/Explorer.
+        On managed/school Windows machines, %APPDATA% writes may be silently
+        redirected to a shadow copy that only the Python process can see.  We
+        detect this by asking cmd to list the sentinel file with `dir /b` — a
+        simpler and more reliable command than `if exist ... (echo)`.
 
-        We verify cross-process visibility by asking a freshly-spawned subprocess
-        (cmd on Windows, sh on POSIX) whether the sentinel file exists.  If it
-        can't see the file, the directory is virtualised and we skip it.
+        If the subprocess check itself fails (cmd unavailable, timeout, etc.) we
+        fall back to a same-process os.path.exists() check so the probe never
+        prevents the tool from starting on machines where spawning cmd is restricted.
         """
         try:
             os.makedirs(d, exist_ok=True)
@@ -412,24 +413,24 @@ class InstrumentRepl(cmd.Cmd):
             with open(probe, "w") as f:
                 f.write("ok")
             try:
-                # Cross-process visibility check — the subprocess runs outside
-                # Python's virtualisation context so it sees what Notepad sees.
-                if sys.platform == "win32":
+                if cross_process and sys.platform == "win32":
+                    # `dir /b <file>` exits 0 if the file is visible to cmd,
+                    # non-zero if not — simpler and more portable than `if exist`.
                     result = subprocess.run(
-                        ["cmd", "/c",
-                         f"if exist \"{probe}\" (echo yes) else (echo no)"],
-                        capture_output=True, text=True, timeout=5,
+                        ["cmd", "/c", "dir", "/b", probe],
+                        capture_output=True, timeout=5,
                     )
-                    visible = result.stdout.strip() == "yes"
+                    visible = result.returncode == 0
+                elif cross_process:
+                    result = subprocess.run(
+                        ["sh", "-c", f"test -f '{probe}'"],
+                        timeout=5,
+                    )
+                    visible = result.returncode == 0
                 else:
-                    result = subprocess.run(
-                        ["sh", "-c",
-                         f"test -f '{probe}' && echo yes || echo no"],
-                        capture_output=True, text=True, timeout=5,
-                    )
-                    visible = result.stdout.strip() == "yes"
+                    visible = os.path.exists(probe)
             except Exception:
-                # If we can't spawn a subprocess, fall back to same-process check
+                # Subprocess unavailable or timed out — degrade gracefully
                 visible = os.path.exists(probe)
             finally:
                 try:
@@ -450,8 +451,9 @@ class InstrumentRepl(cmd.Cmd):
         Override via the SCPI_SCRIPTS_DIR environment variable to pin a specific
         location.
 
-        Raises RuntimeError only if every candidate fails — in practice at least
-        the temp-directory fallback should always succeed.
+        Falls back to same-process checks if the cross-process subprocess probe
+        rejects every candidate, so the tool always starts even on locked-down
+        machines where spawning cmd is restricted.
         """
         # 1. Explicit user override — respected unconditionally
         override = os.environ.get("SCPI_SCRIPTS_DIR")
@@ -490,18 +492,31 @@ class InstrumentRepl(cmd.Cmd):
         candidates.append(("tempdir",
                            os.path.join(tempfile.gettempdir(), subpath)))
 
+        # Pass 1: cross-process probe (detects APPDATA virtualisation)
         attempted = []
         for label, d in candidates:
-            if self._probe_dir(d):
+            if self._probe_dir(d, cross_process=True):
                 if attempted:
-                    # Notify user that a non-default location is being used
                     ColorPrinter.warning(
                         f"Scripts directory: using '{d}' ({label}).\n"
-                        f"  Primary location(s) failed: {', '.join(attempted)}\n"
+                        f"  Primary location(s) failed cross-process check: {', '.join(attempted)}\n"
                         f"  To pin this path permanently: set SCPI_SCRIPTS_DIR={d}"
                     )
                 return d
             attempted.append(f"'{d}'")
+
+        # Pass 2: if every cross-process probe failed (cmd restricted / policy),
+        # fall back to same-process writability check and warn the user.
+        for label, d in candidates:
+            if self._probe_dir(d, cross_process=False):
+                ColorPrinter.warning(
+                    f"Scripts directory: cross-process check failed for all candidates\n"
+                    f"  (cmd may be restricted on this machine).\n"
+                    f"  Using '{d}' ({label}) based on same-process writability.\n"
+                    f"  If scripts don't open in Notepad, set SCPI_SCRIPTS_DIR to a path\n"
+                    f"  outside of AppData (e.g. your Desktop or a USB drive)."
+                )
+                return d
 
         raise RuntimeError(
             "Cannot find any writable directory for scripts.\n"
