@@ -15,7 +15,7 @@ class DeviceManager:
         """Connects to the instrument."""
         try:
             self.instrument = self.rm.open_resource(self.resource_name)
-            self.instrument.timeout = 5000
+            self.instrument.timeout = 10000  # 10 seconds for slower instruments
             self.instrument.read_termination = "\n"
             print(f"Connected to {self.resource_name}")
         except pyvisa.VisaIOError as e:
