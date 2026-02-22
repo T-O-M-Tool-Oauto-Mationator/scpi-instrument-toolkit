@@ -178,8 +178,17 @@ def _check_and_update(force=False):
                         # no countdown, and the child survives after the parent exits.
                         _NO_WINDOW = 0x08000000
                         update_script = (
-                            "import subprocess, sys, time\n"
-                            "time.sleep(5)\n"
+                            "import subprocess, sys, time, os\n"
+                            f"ppid = {os.getpid()}\n"
+                            "while True:\n"
+                            "    try:\n"
+                            "        out = subprocess.run(['tasklist', '/FI', f'PID eq {ppid}'], capture_output=True, text=True).stdout\n"
+                            "        if str(ppid) not in out:\n"
+                            "            break\n"
+                            "    except Exception:\n"
+                            "        break\n"
+                            "    time.sleep(1)\n"
+                            "time.sleep(2)\n"
                             "subprocess.run(["
                             "sys.executable, '-m', 'pip', 'install', '--upgrade',"
                             f" {repr(git_url_local)}, '--quiet'"

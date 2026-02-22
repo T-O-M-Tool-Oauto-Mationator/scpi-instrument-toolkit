@@ -5,7 +5,7 @@ psu chan 1 on
 use psu2
 psu set 3.3 0.1
 psu chan 1 on
-sleep 1
+sleep 3
 use dmm
 dmm meas vdc
 print Test Complete

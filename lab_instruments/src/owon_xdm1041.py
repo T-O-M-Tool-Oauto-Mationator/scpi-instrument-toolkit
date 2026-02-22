@@ -203,7 +203,7 @@ class Owon_XDM1041(DeviceManager):
             float: Measurement value
         """
         import time
-        time.sleep(0.2)  # Device needs time to settle after configuration
+        time.sleep(0.5)  # Device needs time to settle after configuration
         result = self.query("MEAS?")
         return float(result.strip())
 
