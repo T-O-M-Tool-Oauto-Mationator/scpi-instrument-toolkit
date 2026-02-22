@@ -1373,7 +1373,13 @@ class InstrumentRepl(cmd.Cmd):
                 ColorPrinter.warning("Usage: script new <name>")
                 return
             name = args[1]
-            if name in self.scripts:
+            script_file = self._script_file(name)
+            file_exists = os.path.exists(script_file)
+            if not file_exists and name in self.scripts:
+                # Stale in-memory entry with no backing file — discard it so
+                # the user gets a clean new script instead of a false positive.
+                del self.scripts[name]
+            if file_exists:
                 ColorPrinter.warning(f"Script '{name}' already exists — opening for edit. Use 'script rm {name}' first to start fresh.")
             lines = self._edit_script_in_editor(name, self.scripts.get(name, []))
             if lines is not None:
