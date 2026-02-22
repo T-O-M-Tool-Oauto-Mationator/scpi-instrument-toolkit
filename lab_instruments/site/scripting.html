@@ -856,6 +856,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="set — define a variable">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#error-handling-set-e-set-e" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Error handling: set -e / set +e
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
           <li class="md-nav__item">
@@ -1044,6 +1061,34 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="for — loop over a list of values">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#multi-variable-loops" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multi-variable loops
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#interactive-forrepeat-loops" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Interactive for/repeat loops
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
         
@@ -1352,6 +1397,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="set — define a variable">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#error-handling-set-e-set-e" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Error handling: set -e / set +e
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
           <li class="md-nav__item">
@@ -1541,6 +1603,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="for — loop over a list of values">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#multi-variable-loops" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multi-variable loops
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#interactive-forrepeat-loops" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Interactive for/repeat loops
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
       </ul>
@@ -1717,20 +1807,41 @@
 <a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>set doubled ${voltage} * 2    # ${doubled} = 10.0
 <a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>set offset ${voltage} - 0.5   # ${offset} = 4.5
 </code></pre></div>
+<h4 id="error-handling-set-e-set-e">Error handling: set -e / set +e<a class="headerlink" href="#error-handling-set-e-set-e" title="Permanent link">&para;</a></h4>
+<p>Control whether a script stops when a command fails (like bash's <code>set -e</code>).</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>set -e    # Enable exit-on-error: stop script on first command failure
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>set +e    # Disable exit-on-error: continue despite errors
+</code></pre></div>
+<p><strong>Example: stop on error</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>set -e
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>psu1 set 5.0           # if this fails, script stops here
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>dmm1 config vdc        # this won&#39;t run if PSU command failed
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>print Done             # this won&#39;t run either
+</code></pre></div>
+<p><strong>Example: continue on error</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>set +e
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>psu1 set 5.0           # if this fails, continue anyway
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>dmm1 config vdc        # this runs regardless
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>print Done             # always executes
+</code></pre></div>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+</div>
+<p>Use <code>set -e</code> for critical test sequences where a single failure should abort the entire test. Use <code>set +e</code> when you want to collect partial results even if some commands fail.</p>
 <h3 id="variable-substitution">Variable substitution<a class="headerlink" href="#variable-substitution" title="Permanent link">&para;</a></h3>
 <p>Use <code>${varname}</code> anywhere in a script line and it will be replaced with the variable's value before the command runs:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>set voltage 5.0
-<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>set label my_run
-<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>
-<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>psu1 set ${voltage}               # → psu1 set 5.0
-<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>dmm1 meas_store vdc ${label} unit=V   # → dmm1 meas_store vdc my_run unit=V
-<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>print Setting ${voltage}V         # → prints &quot;Setting 5.0V&quot;
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>set voltage 5.0
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>set label my_run
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>
+<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>psu1 set ${voltage}               # → psu1 set 5.0
+<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>dmm1 meas_store ${label} unit=V   # → dmm1 meas_store my_run unit=V
+<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a>print Setting ${voltage}V         # → prints &quot;Setting 5.0V&quot;
 </code></pre></div>
 <h3 id="overriding-variables-at-run-time">Overriding variables at run time<a class="headerlink" href="#overriding-variables-at-run-time" title="Permanent link">&para;</a></h3>
 <p>Variables defined with <code>set</code> can be overridden when running the script from the command line:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a># Script has:  set voltage 5.0
-<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>script run my_test voltage=3.3    # runs with voltage=3.3 instead of 5.0
-<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>script run my_test voltage=12.0 label=high_v
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a># Script has:  set voltage 5.0
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>script run my_test voltage=3.3    # runs with voltage=3.3 instead of 5.0
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>script run my_test voltage=12.0 label=high_v
 </code></pre></div>
 <p>This is how you reuse the same script for different test conditions without editing it.</p>
 <p><strong>Priority order:</strong> command-line params &gt; <code>set</code> defaults in the script.</p>
@@ -1739,16 +1850,17 @@
 <p>Scripts use the same <code>meas_store</code>, <code>calc</code>, and <code>log</code> commands as the interactive REPL. Understanding how they fit together is key to writing useful test scripts.</p>
 <h3 id="how-meas_store-works-in-a-script">How meas_store works in a script<a class="headerlink" href="#how-meas_store-works-in-a-script" title="Permanent link">&para;</a></h3>
 <p><code>meas_store</code> saves a measurement to the <strong>measurement log</strong> with a name (the label) so you can retrieve it later. The label is just a string you choose — it becomes the row name in the log table.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>psu1 meas_store v output_v unit=V   # measure voltage, save as &quot;output_v&quot;
-<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>dmm1 meas_store vdc dmm_v unit=V   # measure DMM, save as &quot;dmm_v&quot;
-<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>calc error m[&quot;output_v&quot;] - m[&quot;dmm_v&quot;] unit=V   # subtract them
-<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>log print                           # show the full table
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>psu1 meas_store v output_v unit=V   # measure voltage, save as &quot;output_v&quot;
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>dmm1 config vdc                     # set DMM to DC voltage mode
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>dmm1 meas_store dmm_v unit=V        # measure DMM, save as &quot;dmm_v&quot;
+<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a>calc error m[&quot;output_v&quot;] - m[&quot;dmm_v&quot;] unit=V   # subtract them
+<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a>log print                           # show the full table
 </code></pre></div>
 <p>After running this, <code>log print</code> shows:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>Label       Value       Unit   Source
-<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>output_v    4.9987      V      psu.meas
-<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>dmm_v       4.9992      V      dmm.read
-<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>error      -0.0005      V      calc
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>Label       Value       Unit   Source
+<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>output_v    4.9987      V      psu.meas
+<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>dmm_v       4.9992      V      dmm.read
+<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a>error      -0.0005      V      calc
 </code></pre></div>
 <p>See <a href="logging.html">Log &amp; Calc</a> for the full reference.</p>
 <h3 id="using-variables-as-log-labels">Using variables as log labels<a class="headerlink" href="#using-variables-as-log-labels" title="Permanent link">&para;</a></h3>
@@ -1758,58 +1870,60 @@
 <li><strong>Log label</strong> — the name given to a stored measurement row</li>
 </ul>
 <p>You can use a script variable <em>as</em> the log label — this is how you make labels dynamic:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>set meas_name output_v         # script variable: meas_name = &quot;output_v&quot;
-<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>psu1 meas_store v ${meas_name} unit=V
-<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>#                  └─ expands to: psu1 meas_store v output_v unit=V
-<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a>#                     log label = &quot;output_v&quot;
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>set meas_name output_v         # script variable: meas_name = &quot;output_v&quot;
+<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>psu1 meas_store v ${meas_name} unit=V
+<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a>#                  └─ expands to: psu1 meas_store v output_v unit=V
+<a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a>#                     log label = &quot;output_v&quot;
 </code></pre></div>
 <p>This is especially useful in loops — each iteration gets a different label:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>for v 3.3 5.0 12.0
-<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>  psu1 set ${v}
-<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>  sleep 0.5
-<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a>  dmm1 meas_store vdc dmm_${v} unit=V   # labels: dmm_3.3, dmm_5.0, dmm_12.0
-<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a>end
-<a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a>log print    # all three rows appear in the log
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>dmm1 config vdc
+<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a>for v 3.3 5.0 12.0
+<a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a>  psu1 set ${v}
+<a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a>  sleep 0.5
+<a id="__codelineno-20-5" name="__codelineno-20-5" href="#__codelineno-20-5"></a>  dmm1 meas_store dmm_${v} unit=V   # labels: dmm_3.3, dmm_5.0, dmm_12.0
+<a id="__codelineno-20-6" name="__codelineno-20-6" href="#__codelineno-20-6"></a>end
+<a id="__codelineno-20-7" name="__codelineno-20-7" href="#__codelineno-20-7"></a>log print    # all three rows appear in the log
 </code></pre></div>
 <h3 id="a-complete-measurement-script">A complete measurement script<a class="headerlink" href="#a-complete-measurement-script" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a># my_test — measure PSU accuracy at a target voltage
-<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>set voltage 5.0
-<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>set test_name vout_5v
-<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a>
-<a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a>print === Starting test: ${test_name} ===
-<a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a>psu1 chan 1 on
-<a id="__codelineno-18-7" name="__codelineno-18-7" href="#__codelineno-18-7"></a>psu1 set ${voltage}
-<a id="__codelineno-18-8" name="__codelineno-18-8" href="#__codelineno-18-8"></a>sleep 0.5
-<a id="__codelineno-18-9" name="__codelineno-18-9" href="#__codelineno-18-9"></a>
-<a id="__codelineno-18-10" name="__codelineno-18-10" href="#__codelineno-18-10"></a>psu1 meas_store v psu_v unit=V         # save PSU reading as &quot;psu_v&quot;
-<a id="__codelineno-18-11" name="__codelineno-18-11" href="#__codelineno-18-11"></a>dmm1 meas_store vdc dmm_v unit=V       # save DMM reading as &quot;dmm_v&quot;
-<a id="__codelineno-18-12" name="__codelineno-18-12" href="#__codelineno-18-12"></a>
-<a id="__codelineno-18-13" name="__codelineno-18-13" href="#__codelineno-18-13"></a>calc error     m[&quot;dmm_v&quot;] - m[&quot;psu_v&quot;] unit=V
-<a id="__codelineno-18-14" name="__codelineno-18-14" href="#__codelineno-18-14"></a>calc error_pct m[&quot;error&quot;] / m[&quot;psu_v&quot;] * 100 unit=%
-<a id="__codelineno-18-15" name="__codelineno-18-15" href="#__codelineno-18-15"></a>
-<a id="__codelineno-18-16" name="__codelineno-18-16" href="#__codelineno-18-16"></a>log print
-<a id="__codelineno-18-17" name="__codelineno-18-17" href="#__codelineno-18-17"></a>log save ${test_name}.csv
-<a id="__codelineno-18-18" name="__codelineno-18-18" href="#__codelineno-18-18"></a>
-<a id="__codelineno-18-19" name="__codelineno-18-19" href="#__codelineno-18-19"></a>psu1 chan 1 off
-<a id="__codelineno-18-20" name="__codelineno-18-20" href="#__codelineno-18-20"></a>print === Done ===
+<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a># my_test — measure PSU accuracy at a target voltage
+<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a>set voltage 5.0
+<a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a>set test_name vout_5v
+<a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a>
+<a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a>print === Starting test: ${test_name} ===
+<a id="__codelineno-21-6" name="__codelineno-21-6" href="#__codelineno-21-6"></a>psu1 chan 1 on
+<a id="__codelineno-21-7" name="__codelineno-21-7" href="#__codelineno-21-7"></a>psu1 set ${voltage}
+<a id="__codelineno-21-8" name="__codelineno-21-8" href="#__codelineno-21-8"></a>sleep 0.5
+<a id="__codelineno-21-9" name="__codelineno-21-9" href="#__codelineno-21-9"></a>
+<a id="__codelineno-21-10" name="__codelineno-21-10" href="#__codelineno-21-10"></a>psu1 meas_store v psu_v unit=V         # save PSU reading as &quot;psu_v&quot;
+<a id="__codelineno-21-11" name="__codelineno-21-11" href="#__codelineno-21-11"></a>dmm1 config vdc                        # set DMM to DC voltage mode
+<a id="__codelineno-21-12" name="__codelineno-21-12" href="#__codelineno-21-12"></a>dmm1 meas_store dmm_v unit=V           # save DMM reading as &quot;dmm_v&quot;
+<a id="__codelineno-21-13" name="__codelineno-21-13" href="#__codelineno-21-13"></a>
+<a id="__codelineno-21-14" name="__codelineno-21-14" href="#__codelineno-21-14"></a>calc error     m[&quot;dmm_v&quot;] - m[&quot;psu_v&quot;] unit=V
+<a id="__codelineno-21-15" name="__codelineno-21-15" href="#__codelineno-21-15"></a>calc error_pct m[&quot;error&quot;] / m[&quot;psu_v&quot;] * 100 unit=%
+<a id="__codelineno-21-16" name="__codelineno-21-16" href="#__codelineno-21-16"></a>
+<a id="__codelineno-21-17" name="__codelineno-21-17" href="#__codelineno-21-17"></a>log print
+<a id="__codelineno-21-18" name="__codelineno-21-18" href="#__codelineno-21-18"></a>log save ${test_name}.csv
+<a id="__codelineno-21-19" name="__codelineno-21-19" href="#__codelineno-21-19"></a>
+<a id="__codelineno-21-20" name="__codelineno-21-20" href="#__codelineno-21-20"></a>psu1 chan 1 off
+<a id="__codelineno-21-21" name="__codelineno-21-21" href="#__codelineno-21-21"></a>print === Done ===
 </code></pre></div>
 <p>Run it with different voltages without editing the script:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>script run my_test voltage=3.3 test_name=vout_3v3
-<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>script run my_test voltage=12.0 test_name=vout_12v
+<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a>script run my_test voltage=3.3 test_name=vout_3v3
+<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a>script run my_test voltage=12.0 test_name=vout_12v
 </code></pre></div>
 <hr />
 <h2 id="output-and-operator-interaction">Output and Operator Interaction<a class="headerlink" href="#output-and-operator-interaction" title="Permanent link">&para;</a></h2>
 <h3 id="print-display-a-message">print — display a message<a class="headerlink" href="#print-display-a-message" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>print &lt;message&gt;
+<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a>print &lt;message&gt;
 </code></pre></div>
 <p>Prints a message to the terminal. Variable substitution works.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>print === PSU/DMM Test ===
-<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a>print Setting ${voltage}V to ${label}
-<a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a>print Test complete. Check log print for results.
+<div class="highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a>print === PSU/DMM Test ===
+<a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a>print Setting ${voltage}V to ${label}
+<a id="__codelineno-24-3" name="__codelineno-24-3" href="#__codelineno-24-3"></a>print Test complete. Check log print for results.
 </code></pre></div>
 <p>Use <code>print</code> to add section headers, progress updates, and instructions in your scripts.</p>
 <h3 id="pause-wait-for-operator">pause — wait for operator<a class="headerlink" href="#pause-wait-for-operator" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a>pause [message]
+<div class="highlight"><pre><span></span><code><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a>pause [message]
 </code></pre></div>
 <p>Stops script execution and waits for the operator to press <strong>Enter</strong>. Use for manual steps — connecting probes, changing the DUT, verifying wiring — before the script continues.</p>
 <table>
@@ -1828,12 +1942,12 @@
 </tr>
 </tbody>
 </table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a>pause
-<a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a>pause Connect probe to TP1 then press Enter
-<a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a>pause Swap DUT before continuing
+<div class="highlight"><pre><span></span><code><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a>pause
+<a id="__codelineno-26-2" name="__codelineno-26-2" href="#__codelineno-26-2"></a>pause Connect probe to TP1 then press Enter
+<a id="__codelineno-26-3" name="__codelineno-26-3" href="#__codelineno-26-3"></a>pause Swap DUT before continuing
 </code></pre></div>
 <h3 id="input-prompt-for-a-value">input — prompt for a value<a class="headerlink" href="#input-prompt-for-a-value" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a>input &lt;varname&gt; [prompt text]
+<div class="highlight"><pre><span></span><code><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a>input &lt;varname&gt; [prompt text]
 </code></pre></div>
 <p>Prompts the operator to type a value at runtime. The entered text is stored as <code>${varname}</code> and substituted into all subsequent lines.</p>
 <table>
@@ -1857,37 +1971,38 @@
 </tr>
 </tbody>
 </table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a>input voltage Enter target voltage (V):
-<a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a>input dut_id DUT serial number:
-<a id="__codelineno-25-3" name="__codelineno-25-3" href="#__codelineno-25-3"></a>input operator_name Operator name:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-28-1" name="__codelineno-28-1" href="#__codelineno-28-1"></a>input voltage Enter target voltage (V):
+<a id="__codelineno-28-2" name="__codelineno-28-2" href="#__codelineno-28-2"></a>input dut_id DUT serial number:
+<a id="__codelineno-28-3" name="__codelineno-28-3" href="#__codelineno-28-3"></a>input operator_name Operator name:
 </code></pre></div>
 <p>After <code>input voltage</code>, you can use <code>${voltage}</code> anywhere:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a>input voltage Enter target voltage (V):
-<a id="__codelineno-26-2" name="__codelineno-26-2" href="#__codelineno-26-2"></a>psu1 set ${voltage}
-<a id="__codelineno-26-3" name="__codelineno-26-3" href="#__codelineno-26-3"></a>print Voltage set to ${voltage}V
-<a id="__codelineno-26-4" name="__codelineno-26-4" href="#__codelineno-26-4"></a>dmm1 meas_store vdc output_${voltage} unit=V
+<div class="highlight"><pre><span></span><code><a id="__codelineno-29-1" name="__codelineno-29-1" href="#__codelineno-29-1"></a>input voltage Enter target voltage (V):
+<a id="__codelineno-29-2" name="__codelineno-29-2" href="#__codelineno-29-2"></a>psu1 set ${voltage}
+<a id="__codelineno-29-3" name="__codelineno-29-3" href="#__codelineno-29-3"></a>print Voltage set to ${voltage}V
+<a id="__codelineno-29-4" name="__codelineno-29-4" href="#__codelineno-29-4"></a>dmm1 config vdc
+<a id="__codelineno-29-5" name="__codelineno-29-5" href="#__codelineno-29-5"></a>dmm1 meas_store output_${voltage} unit=V
 </code></pre></div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>Unlike <code>set</code>, values captured by <code>input</code> <strong>cannot</strong> be overridden from the command line at <code>script run</code> time. They are always prompted interactively.</p>
 </div>
+<p>Unlike <code>set</code>, values captured by <code>input</code> <strong>cannot</strong> be overridden from the command line at <code>script run</code> time. They are always prompted interactively.</p>
 <hr />
 <h2 id="timing">Timing<a class="headerlink" href="#timing" title="Permanent link">&para;</a></h2>
 <h3 id="sleep-pause-inside-a-script">sleep — pause inside a script<a class="headerlink" href="#sleep-pause-inside-a-script" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a>sleep &lt;seconds&gt;
+<div class="highlight"><pre><span></span><code><a id="__codelineno-30-1" name="__codelineno-30-1" href="#__codelineno-30-1"></a>sleep &lt;seconds&gt;
 </code></pre></div>
 <p>Pauses execution for the given duration. Variable substitution works:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-28-1" name="__codelineno-28-1" href="#__codelineno-28-1"></a>sleep 0.5              # pause 500 ms
-<a id="__codelineno-28-2" name="__codelineno-28-2" href="#__codelineno-28-2"></a>sleep ${delay}         # pause using a variable
-<a id="__codelineno-28-3" name="__codelineno-28-3" href="#__codelineno-28-3"></a>sleep 1.0              # wait 1 second for signal to settle
+<div class="highlight"><pre><span></span><code><a id="__codelineno-31-1" name="__codelineno-31-1" href="#__codelineno-31-1"></a>sleep 0.5              # pause 500 ms
+<a id="__codelineno-31-2" name="__codelineno-31-2" href="#__codelineno-31-2"></a>sleep ${delay}         # pause using a variable
+<a id="__codelineno-31-3" name="__codelineno-31-3" href="#__codelineno-31-3"></a>sleep 1.0              # wait 1 second for signal to settle
 </code></pre></div>
 <p>Use <code>sleep</code> after <code>psu set</code> or <code>awg wave</code> to let the output settle before measuring.</p>
 <hr />
 <h2 id="loops">Loops<a class="headerlink" href="#loops" title="Permanent link">&para;</a></h2>
 <h3 id="repeat-fixed-number-of-repetitions">repeat — fixed number of repetitions<a class="headerlink" href="#repeat-fixed-number-of-repetitions" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-29-1" name="__codelineno-29-1" href="#__codelineno-29-1"></a>repeat &lt;N&gt;
-<a id="__codelineno-29-2" name="__codelineno-29-2" href="#__codelineno-29-2"></a>  &lt;commands&gt;
-<a id="__codelineno-29-3" name="__codelineno-29-3" href="#__codelineno-29-3"></a>end
+<div class="highlight"><pre><span></span><code><a id="__codelineno-32-1" name="__codelineno-32-1" href="#__codelineno-32-1"></a>repeat &lt;N&gt;
+<a id="__codelineno-32-2" name="__codelineno-32-2" href="#__codelineno-32-2"></a>  &lt;commands&gt;
+<a id="__codelineno-32-3" name="__codelineno-32-3" href="#__codelineno-32-3"></a>end
 </code></pre></div>
 <p>Executes the enclosed commands exactly N times.</p>
 <table>
@@ -1906,20 +2021,20 @@
 </tr>
 </tbody>
 </table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-30-1" name="__codelineno-30-1" href="#__codelineno-30-1"></a>repeat 5
-<a id="__codelineno-30-2" name="__codelineno-30-2" href="#__codelineno-30-2"></a>  psu1 meas_store v sample unit=V
-<a id="__codelineno-30-3" name="__codelineno-30-3" href="#__codelineno-30-3"></a>  sleep 0.2
-<a id="__codelineno-30-4" name="__codelineno-30-4" href="#__codelineno-30-4"></a>end
+<div class="highlight"><pre><span></span><code><a id="__codelineno-33-1" name="__codelineno-33-1" href="#__codelineno-33-1"></a>repeat 5
+<a id="__codelineno-33-2" name="__codelineno-33-2" href="#__codelineno-33-2"></a>  psu1 meas_store v sample unit=V
+<a id="__codelineno-33-3" name="__codelineno-33-3" href="#__codelineno-33-3"></a>  sleep 0.2
+<a id="__codelineno-33-4" name="__codelineno-33-4" href="#__codelineno-33-4"></a>end
 </code></pre></div>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-31-1" name="__codelineno-31-1" href="#__codelineno-31-1"></a>repeat 3
-<a id="__codelineno-31-2" name="__codelineno-31-2" href="#__codelineno-31-2"></a>  dmm1 meas vdc
-<a id="__codelineno-31-3" name="__codelineno-31-3" href="#__codelineno-31-3"></a>  sleep 0.5
-<a id="__codelineno-31-4" name="__codelineno-31-4" href="#__codelineno-31-4"></a>end
+<div class="highlight"><pre><span></span><code><a id="__codelineno-34-1" name="__codelineno-34-1" href="#__codelineno-34-1"></a>repeat 3
+<a id="__codelineno-34-2" name="__codelineno-34-2" href="#__codelineno-34-2"></a>  dmm1 meas vdc
+<a id="__codelineno-34-3" name="__codelineno-34-3" href="#__codelineno-34-3"></a>  sleep 0.5
+<a id="__codelineno-34-4" name="__codelineno-34-4" href="#__codelineno-34-4"></a>end
 </code></pre></div>
 <h3 id="for-loop-over-a-list-of-values">for — loop over a list of values<a class="headerlink" href="#for-loop-over-a-list-of-values" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-32-1" name="__codelineno-32-1" href="#__codelineno-32-1"></a>for &lt;var&gt; &lt;val1&gt; &lt;val2&gt; ... &lt;valN&gt;
-<a id="__codelineno-32-2" name="__codelineno-32-2" href="#__codelineno-32-2"></a>  &lt;commands&gt;
-<a id="__codelineno-32-3" name="__codelineno-32-3" href="#__codelineno-32-3"></a>end
+<div class="highlight"><pre><span></span><code><a id="__codelineno-35-1" name="__codelineno-35-1" href="#__codelineno-35-1"></a>for &lt;var&gt; &lt;val1&gt; &lt;val2&gt; ... &lt;valN&gt;
+<a id="__codelineno-35-2" name="__codelineno-35-2" href="#__codelineno-35-2"></a>  &lt;commands&gt;
+<a id="__codelineno-35-3" name="__codelineno-35-3" href="#__codelineno-35-3"></a>end
 </code></pre></div>
 <p>Iterates over a whitespace-separated list of values. On each iteration, <code>${var}</code> is set to the next value in the list.</p>
 <table>
@@ -1944,44 +2059,66 @@
 </tbody>
 </table>
 <p><strong>Sweep PSU through voltages:</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-33-1" name="__codelineno-33-1" href="#__codelineno-33-1"></a>for v 1.0 2.0 3.3 5.0 9.0 12.0
-<a id="__codelineno-33-2" name="__codelineno-33-2" href="#__codelineno-33-2"></a>  print Setting ${v}V...
-<a id="__codelineno-33-3" name="__codelineno-33-3" href="#__codelineno-33-3"></a>  psu1 set ${v}
-<a id="__codelineno-33-4" name="__codelineno-33-4" href="#__codelineno-33-4"></a>  sleep 0.5
-<a id="__codelineno-33-5" name="__codelineno-33-5" href="#__codelineno-33-5"></a>  dmm1 meas_store vdc v_${v} unit=V
-<a id="__codelineno-33-6" name="__codelineno-33-6" href="#__codelineno-33-6"></a>end
+<div class="highlight"><pre><span></span><code><a id="__codelineno-36-1" name="__codelineno-36-1" href="#__codelineno-36-1"></a>dmm1 config vdc
+<a id="__codelineno-36-2" name="__codelineno-36-2" href="#__codelineno-36-2"></a>for v 1.0 2.0 3.3 5.0 9.0 12.0
+<a id="__codelineno-36-3" name="__codelineno-36-3" href="#__codelineno-36-3"></a>  print Setting ${v}V...
+<a id="__codelineno-36-4" name="__codelineno-36-4" href="#__codelineno-36-4"></a>  psu1 set ${v}
+<a id="__codelineno-36-5" name="__codelineno-36-5" href="#__codelineno-36-5"></a>  sleep 0.5
+<a id="__codelineno-36-6" name="__codelineno-36-6" href="#__codelineno-36-6"></a>  dmm1 meas_store v_${v} unit=V
+<a id="__codelineno-36-7" name="__codelineno-36-7" href="#__codelineno-36-7"></a>end
 </code></pre></div>
 <p><strong>Enable each scope channel in turn:</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-34-1" name="__codelineno-34-1" href="#__codelineno-34-1"></a>for ch 1 2 3 4
-<a id="__codelineno-34-2" name="__codelineno-34-2" href="#__codelineno-34-2"></a>  scope1 chan ${ch} on
-<a id="__codelineno-34-3" name="__codelineno-34-3" href="#__codelineno-34-3"></a>end
+<div class="highlight"><pre><span></span><code><a id="__codelineno-37-1" name="__codelineno-37-1" href="#__codelineno-37-1"></a>for ch 1 2 3 4
+<a id="__codelineno-37-2" name="__codelineno-37-2" href="#__codelineno-37-2"></a>  scope1 chan ${ch} on
+<a id="__codelineno-37-3" name="__codelineno-37-3" href="#__codelineno-37-3"></a>end
 </code></pre></div>
 <p><strong>Frequency sweep:</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-35-1" name="__codelineno-35-1" href="#__codelineno-35-1"></a>for f 100 500 1000 5000 10000 50000
-<a id="__codelineno-35-2" name="__codelineno-35-2" href="#__codelineno-35-2"></a>  awg1 freq 1 ${f}
-<a id="__codelineno-35-3" name="__codelineno-35-3" href="#__codelineno-35-3"></a>  sleep 0.4
-<a id="__codelineno-35-4" name="__codelineno-35-4" href="#__codelineno-35-4"></a>  scope1 meas_store 1 FREQUENCY freq_${f} unit=Hz
-<a id="__codelineno-35-5" name="__codelineno-35-5" href="#__codelineno-35-5"></a>  scope1 meas_store 1 PK2PK pk2pk_${f} unit=V
-<a id="__codelineno-35-6" name="__codelineno-35-6" href="#__codelineno-35-6"></a>end
+<div class="highlight"><pre><span></span><code><a id="__codelineno-38-1" name="__codelineno-38-1" href="#__codelineno-38-1"></a>for f 100 500 1000 5000 10000 50000
+<a id="__codelineno-38-2" name="__codelineno-38-2" href="#__codelineno-38-2"></a>  awg1 freq 1 ${f}
+<a id="__codelineno-38-3" name="__codelineno-38-3" href="#__codelineno-38-3"></a>  sleep 0.4
+<a id="__codelineno-38-4" name="__codelineno-38-4" href="#__codelineno-38-4"></a>  scope1 meas_store 1 FREQUENCY freq_${f} unit=Hz
+<a id="__codelineno-38-5" name="__codelineno-38-5" href="#__codelineno-38-5"></a>  scope1 meas_store 1 PK2PK pk2pk_${f} unit=V
+<a id="__codelineno-38-6" name="__codelineno-38-6" href="#__codelineno-38-6"></a>end
 </code></pre></div>
+<h4 id="multi-variable-loops">Multi-variable loops<a class="headerlink" href="#multi-variable-loops" title="Permanent link">&para;</a></h4>
+<p>Loop over multiple variables at once by separating them with commas. Values in the list are also comma-separated:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-39-1" name="__codelineno-39-1" href="#__codelineno-39-1"></a>for VIN,VSCALE,LABEL 5.0,1.0,five 3.3,0.5,three 2.5,0.5,two
+<a id="__codelineno-39-2" name="__codelineno-39-2" href="#__codelineno-39-2"></a>  print Testing ${VIN}V with scale ${VSCALE} (${LABEL})
+<a id="__codelineno-39-3" name="__codelineno-39-3" href="#__codelineno-39-3"></a>  psu1 set ${VIN}
+<a id="__codelineno-39-4" name="__codelineno-39-4" href="#__codelineno-39-4"></a>  sleep 0.5
+<a id="__codelineno-39-5" name="__codelineno-39-5" href="#__codelineno-39-5"></a>end
+</code></pre></div>
+<h4 id="interactive-forrepeat-loops">Interactive for/repeat loops<a class="headerlink" href="#interactive-forrepeat-loops" title="Permanent link">&para;</a></h4>
+<p>You can enter <code>for</code> and <code>repeat</code> blocks directly in the interactive REPL. The prompt will change to show indentation, and you type <code>end</code> when finished:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-40-1" name="__codelineno-40-1" href="#__codelineno-40-1"></a>eset&gt; for VIN 5.0 3.3 2.5
+<a id="__codelineno-40-2" name="__codelineno-40-2" href="#__codelineno-40-2"></a>  &gt; print Testing VIN=${VIN}
+<a id="__codelineno-40-3" name="__codelineno-40-3" href="#__codelineno-40-3"></a>  &gt; psu1 set ${VIN}
+<a id="__codelineno-40-4" name="__codelineno-40-4" href="#__codelineno-40-4"></a>  &gt; sleep 0.5
+<a id="__codelineno-40-5" name="__codelineno-40-5" href="#__codelineno-40-5"></a>  &gt; end
+<a id="__codelineno-40-6" name="__codelineno-40-6" href="#__codelineno-40-6"></a>Testing VIN=5.0
+<a id="__codelineno-40-7" name="__codelineno-40-7" href="#__codelineno-40-7"></a>Testing VIN=3.3
+<a id="__codelineno-40-8" name="__codelineno-40-8" href="#__codelineno-40-8"></a>Testing VIN=2.5
+<a id="__codelineno-40-9" name="__codelineno-40-9" href="#__codelineno-40-9"></a>eset&gt;
+</code></pre></div>
+<p>This works exactly the same as in scripts — all variable substitution and nesting work the same way.</p>
 <div class="admonition tip">
 <p class="admonition-title">Tip</p>
-<p>The loop variable is substituted in all lines inside the block — including labels, print messages, and sub-command parameters.</p>
 </div>
+<p>The loop variable is substituted in all lines inside the block — including labels, print messages, and sub-command parameters.</p>
 <p><strong>Variable references in the value list:</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-36-1" name="__codelineno-36-1" href="#__codelineno-36-1"></a>set v_start 1.0
-<a id="__codelineno-36-2" name="__codelineno-36-2" href="#__codelineno-36-2"></a>set v_mid 5.0
-<a id="__codelineno-36-3" name="__codelineno-36-3" href="#__codelineno-36-3"></a>set v_end 12.0
-<a id="__codelineno-36-4" name="__codelineno-36-4" href="#__codelineno-36-4"></a>
-<a id="__codelineno-36-5" name="__codelineno-36-5" href="#__codelineno-36-5"></a>for v ${v_start} ${v_mid} ${v_end}
-<a id="__codelineno-36-6" name="__codelineno-36-6" href="#__codelineno-36-6"></a>  psu1 set ${v}
-<a id="__codelineno-36-7" name="__codelineno-36-7" href="#__codelineno-36-7"></a>  sleep 0.5
-<a id="__codelineno-36-8" name="__codelineno-36-8" href="#__codelineno-36-8"></a>end
+<div class="highlight"><pre><span></span><code><a id="__codelineno-41-1" name="__codelineno-41-1" href="#__codelineno-41-1"></a>set v_start 1.0
+<a id="__codelineno-41-2" name="__codelineno-41-2" href="#__codelineno-41-2"></a>set v_mid 5.0
+<a id="__codelineno-41-3" name="__codelineno-41-3" href="#__codelineno-41-3"></a>set v_end 12.0
+<a id="__codelineno-41-4" name="__codelineno-41-4" href="#__codelineno-41-4"></a>
+<a id="__codelineno-41-5" name="__codelineno-41-5" href="#__codelineno-41-5"></a>for v ${v_start} ${v_mid} ${v_end}
+<a id="__codelineno-41-6" name="__codelineno-41-6" href="#__codelineno-41-6"></a>  psu1 set ${v}
+<a id="__codelineno-41-7" name="__codelineno-41-7" href="#__codelineno-41-7"></a>  sleep 0.5
+<a id="__codelineno-41-8" name="__codelineno-41-8" href="#__codelineno-41-8"></a>end
 </code></pre></div>
 <hr />
 <h2 id="sub-scripts">Sub-scripts<a class="headerlink" href="#sub-scripts" title="Permanent link">&para;</a></h2>
 <h3 id="call-run-another-script-inline">call — run another script inline<a class="headerlink" href="#call-run-another-script-inline" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-37-1" name="__codelineno-37-1" href="#__codelineno-37-1"></a>call &lt;name&gt; [key=value ...]
+<div class="highlight"><pre><span></span><code><a id="__codelineno-42-1" name="__codelineno-42-1" href="#__codelineno-42-1"></a>call &lt;name&gt; [key=value ...]
 </code></pre></div>
 <p>Executes another script as a sub-routine. The called script runs in its own variable scope. Variables from the current script can be passed as parameters.</p>
 <table>
@@ -2005,87 +2142,89 @@
 </tr>
 </tbody>
 </table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-38-1" name="__codelineno-38-1" href="#__codelineno-38-1"></a>call set_psu voltage=5.0
-<a id="__codelineno-38-2" name="__codelineno-38-2" href="#__codelineno-38-2"></a>call set_psu voltage=${target_v}     # pass a variable from current script
+<div class="highlight"><pre><span></span><code><a id="__codelineno-43-1" name="__codelineno-43-1" href="#__codelineno-43-1"></a>call set_psu voltage=5.0
+<a id="__codelineno-43-2" name="__codelineno-43-2" href="#__codelineno-43-2"></a>call set_psu voltage=${target_v}     # pass a variable from current script
 </code></pre></div>
 <p><strong>Example: reusable sub-script pattern</strong></p>
-<p>Create a script <code>set_psu</code>:
-<div class="highlight"><pre><span></span><code><a id="__codelineno-39-1" name="__codelineno-39-1" href="#__codelineno-39-1"></a># set_psu — sets PSU to a voltage and verifies
-<a id="__codelineno-39-2" name="__codelineno-39-2" href="#__codelineno-39-2"></a># Params: voltage, label
-<a id="__codelineno-39-3" name="__codelineno-39-3" href="#__codelineno-39-3"></a>set voltage 5.0
-<a id="__codelineno-39-4" name="__codelineno-39-4" href="#__codelineno-39-4"></a>set label psu_out
-<a id="__codelineno-39-5" name="__codelineno-39-5" href="#__codelineno-39-5"></a>
-<a id="__codelineno-39-6" name="__codelineno-39-6" href="#__codelineno-39-6"></a>psu1 chan 1 on
-<a id="__codelineno-39-7" name="__codelineno-39-7" href="#__codelineno-39-7"></a>psu1 set ${voltage}
-<a id="__codelineno-39-8" name="__codelineno-39-8" href="#__codelineno-39-8"></a>sleep 0.5
-<a id="__codelineno-39-9" name="__codelineno-39-9" href="#__codelineno-39-9"></a>psu1 meas_store v ${label} unit=V
-</code></pre></div></p>
-<p>Call it from another script:
-<div class="highlight"><pre><span></span><code><a id="__codelineno-40-1" name="__codelineno-40-1" href="#__codelineno-40-1"></a># main test
-<a id="__codelineno-40-2" name="__codelineno-40-2" href="#__codelineno-40-2"></a>for v 3.3 5.0 12.0
-<a id="__codelineno-40-3" name="__codelineno-40-3" href="#__codelineno-40-3"></a>  call set_psu voltage=${v} label=psu_${v}
-<a id="__codelineno-40-4" name="__codelineno-40-4" href="#__codelineno-40-4"></a>  dmm1 meas_store vdc dmm_${v} unit=V
-<a id="__codelineno-40-5" name="__codelineno-40-5" href="#__codelineno-40-5"></a>end
-<a id="__codelineno-40-6" name="__codelineno-40-6" href="#__codelineno-40-6"></a>log print
-</code></pre></div></p>
+<p>Create a script <code>set_psu</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-44-1" name="__codelineno-44-1" href="#__codelineno-44-1"></a># set_psu — sets PSU to a voltage and verifies
+<a id="__codelineno-44-2" name="__codelineno-44-2" href="#__codelineno-44-2"></a># Params: voltage, label
+<a id="__codelineno-44-3" name="__codelineno-44-3" href="#__codelineno-44-3"></a>set voltage 5.0
+<a id="__codelineno-44-4" name="__codelineno-44-4" href="#__codelineno-44-4"></a>set label psu_out
+<a id="__codelineno-44-5" name="__codelineno-44-5" href="#__codelineno-44-5"></a>
+<a id="__codelineno-44-6" name="__codelineno-44-6" href="#__codelineno-44-6"></a>psu1 chan 1 on
+<a id="__codelineno-44-7" name="__codelineno-44-7" href="#__codelineno-44-7"></a>psu1 set ${voltage}
+<a id="__codelineno-44-8" name="__codelineno-44-8" href="#__codelineno-44-8"></a>sleep 0.5
+<a id="__codelineno-44-9" name="__codelineno-44-9" href="#__codelineno-44-9"></a>psu1 meas_store v ${label} unit=V
+</code></pre></div>
+<p>Call it from another script:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-45-1" name="__codelineno-45-1" href="#__codelineno-45-1"></a># main test
+<a id="__codelineno-45-2" name="__codelineno-45-2" href="#__codelineno-45-2"></a>dmm1 config vdc
+<a id="__codelineno-45-3" name="__codelineno-45-3" href="#__codelineno-45-3"></a>for v 3.3 5.0 12.0
+<a id="__codelineno-45-4" name="__codelineno-45-4" href="#__codelineno-45-4"></a>  call set_psu voltage=${v} label=psu_${v}
+<a id="__codelineno-45-5" name="__codelineno-45-5" href="#__codelineno-45-5"></a>  dmm1 meas_store dmm_${v} unit=V
+<a id="__codelineno-45-6" name="__codelineno-45-6" href="#__codelineno-45-6"></a>end
+<a id="__codelineno-45-7" name="__codelineno-45-7" href="#__codelineno-45-7"></a>log print
+</code></pre></div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>Parameters passed via <code>call</code> override <code>set</code> defaults in the called script — same priority rules as <code>script run</code>.</p>
 </div>
+<p>Parameters passed via <code>call</code> override <code>set</code> defaults in the called script — same priority rules as <code>script run</code>.</p>
 <hr />
 <h2 id="comments">Comments<a class="headerlink" href="#comments" title="Permanent link">&para;</a></h2>
 <p>Lines beginning with <code>#</code> are ignored during execution.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-41-1" name="__codelineno-41-1" href="#__codelineno-41-1"></a># This is a comment
-<a id="__codelineno-41-2" name="__codelineno-41-2" href="#__codelineno-41-2"></a>set voltage 5.0     # inline comments work too
+<div class="highlight"><pre><span></span><code><a id="__codelineno-46-1" name="__codelineno-46-1" href="#__codelineno-46-1"></a># This is a comment
+<a id="__codelineno-46-2" name="__codelineno-46-2" href="#__codelineno-46-2"></a>set voltage 5.0     # inline comments work too
 </code></pre></div>
 <p>Use comments liberally to document what each section does, expected values, and any hardware setup required.</p>
 <hr />
 <h2 id="complete-example">Complete Example<a class="headerlink" href="#complete-example" title="Permanent link">&para;</a></h2>
 <p>A script combining all features:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-42-1" name="__codelineno-42-1" href="#__codelineno-42-1"></a># full_test.repl
-<a id="__codelineno-42-2" name="__codelineno-42-2" href="#__codelineno-42-2"></a># Full voltage characterization test
-<a id="__codelineno-42-3" name="__codelineno-42-3" href="#__codelineno-42-3"></a># Params: dut_name, v_min, v_max, steps
-<a id="__codelineno-42-4" name="__codelineno-42-4" href="#__codelineno-42-4"></a>
-<a id="__codelineno-42-5" name="__codelineno-42-5" href="#__codelineno-42-5"></a># ── Defaults ────────────────────────────────
-<a id="__codelineno-42-6" name="__codelineno-42-6" href="#__codelineno-42-6"></a>set dut_name my_dut
-<a id="__codelineno-42-7" name="__codelineno-42-7" href="#__codelineno-42-7"></a>set v_min 1.0
-<a id="__codelineno-42-8" name="__codelineno-42-8" href="#__codelineno-42-8"></a>set v_max 5.0
-<a id="__codelineno-42-9" name="__codelineno-42-9" href="#__codelineno-42-9"></a>set steps 5
-<a id="__codelineno-42-10" name="__codelineno-42-10" href="#__codelineno-42-10"></a>set delay 0.5
-<a id="__codelineno-42-11" name="__codelineno-42-11" href="#__codelineno-42-11"></a>
-<a id="__codelineno-42-12" name="__codelineno-42-12" href="#__codelineno-42-12"></a># ── Operator setup ───────────────────────────
-<a id="__codelineno-42-13" name="__codelineno-42-13" href="#__codelineno-42-13"></a>print === Voltage Characterization Test ===
-<a id="__codelineno-42-14" name="__codelineno-42-14" href="#__codelineno-42-14"></a>print DUT: ${dut_name}
-<a id="__codelineno-42-15" name="__codelineno-42-15" href="#__codelineno-42-15"></a>pause Connect DUT and DMM probes, then press Enter
-<a id="__codelineno-42-16" name="__codelineno-42-16" href="#__codelineno-42-16"></a>
-<a id="__codelineno-42-17" name="__codelineno-42-17" href="#__codelineno-42-17"></a># ── Optional runtime input ────────────────────
-<a id="__codelineno-42-18" name="__codelineno-42-18" href="#__codelineno-42-18"></a>input operator Operator initials:
-<a id="__codelineno-42-19" name="__codelineno-42-19" href="#__codelineno-42-19"></a>
-<a id="__codelineno-42-20" name="__codelineno-42-20" href="#__codelineno-42-20"></a># ── PSU on ───────────────────────────────────
-<a id="__codelineno-42-21" name="__codelineno-42-21" href="#__codelineno-42-21"></a>psu1 chan 1 on
-<a id="__codelineno-42-22" name="__codelineno-42-22" href="#__codelineno-42-22"></a>print PSU enabled
-<a id="__codelineno-42-23" name="__codelineno-42-23" href="#__codelineno-42-23"></a>
-<a id="__codelineno-42-24" name="__codelineno-42-24" href="#__codelineno-42-24"></a># ── Sweep ────────────────────────────────────
-<a id="__codelineno-42-25" name="__codelineno-42-25" href="#__codelineno-42-25"></a>for v 1.0 2.0 3.3 5.0 9.0 12.0
-<a id="__codelineno-42-26" name="__codelineno-42-26" href="#__codelineno-42-26"></a>  print Testing ${v}V...
-<a id="__codelineno-42-27" name="__codelineno-42-27" href="#__codelineno-42-27"></a>  psu1 set ${v}
-<a id="__codelineno-42-28" name="__codelineno-42-28" href="#__codelineno-42-28"></a>  sleep ${delay}
-<a id="__codelineno-42-29" name="__codelineno-42-29" href="#__codelineno-42-29"></a>  psu1 meas_store v psu_${v} unit=V
-<a id="__codelineno-42-30" name="__codelineno-42-30" href="#__codelineno-42-30"></a>  dmm1 meas_store vdc dmm_${v} unit=V
-<a id="__codelineno-42-31" name="__codelineno-42-31" href="#__codelineno-42-31"></a>  calc err_${v} (m[&quot;dmm_${v}&quot;] - m[&quot;psu_${v}&quot;]) / m[&quot;psu_${v}&quot;] * 100 unit=%
-<a id="__codelineno-42-32" name="__codelineno-42-32" href="#__codelineno-42-32"></a>end
-<a id="__codelineno-42-33" name="__codelineno-42-33" href="#__codelineno-42-33"></a>
-<a id="__codelineno-42-34" name="__codelineno-42-34" href="#__codelineno-42-34"></a># ── Results ────────────────────────────────────
-<a id="__codelineno-42-35" name="__codelineno-42-35" href="#__codelineno-42-35"></a>print === Test complete ===
-<a id="__codelineno-42-36" name="__codelineno-42-36" href="#__codelineno-42-36"></a>log print
-<a id="__codelineno-42-37" name="__codelineno-42-37" href="#__codelineno-42-37"></a>log save ${dut_name}_results.csv
-<a id="__codelineno-42-38" name="__codelineno-42-38" href="#__codelineno-42-38"></a>
-<a id="__codelineno-42-39" name="__codelineno-42-39" href="#__codelineno-42-39"></a># ── Safe state ────────────────────────────────
-<a id="__codelineno-42-40" name="__codelineno-42-40" href="#__codelineno-42-40"></a>psu1 chan 1 off
-<a id="__codelineno-42-41" name="__codelineno-42-41" href="#__codelineno-42-41"></a>print PSU off — done
+<div class="highlight"><pre><span></span><code><a id="__codelineno-47-1" name="__codelineno-47-1" href="#__codelineno-47-1"></a># full_test.repl
+<a id="__codelineno-47-2" name="__codelineno-47-2" href="#__codelineno-47-2"></a># Full voltage characterization test
+<a id="__codelineno-47-3" name="__codelineno-47-3" href="#__codelineno-47-3"></a># Params: dut_name, v_min, v_max, steps
+<a id="__codelineno-47-4" name="__codelineno-47-4" href="#__codelineno-47-4"></a>
+<a id="__codelineno-47-5" name="__codelineno-47-5" href="#__codelineno-47-5"></a># ── Defaults ────────────────────────────────
+<a id="__codelineno-47-6" name="__codelineno-47-6" href="#__codelineno-47-6"></a>set dut_name my_dut
+<a id="__codelineno-47-7" name="__codelineno-47-7" href="#__codelineno-47-7"></a>set v_min 1.0
+<a id="__codelineno-47-8" name="__codelineno-47-8" href="#__codelineno-47-8"></a>set v_max 5.0
+<a id="__codelineno-47-9" name="__codelineno-47-9" href="#__codelineno-47-9"></a>set steps 5
+<a id="__codelineno-47-10" name="__codelineno-47-10" href="#__codelineno-47-10"></a>set delay 0.5
+<a id="__codelineno-47-11" name="__codelineno-47-11" href="#__codelineno-47-11"></a>
+<a id="__codelineno-47-12" name="__codelineno-47-12" href="#__codelineno-47-12"></a># ── Operator setup ───────────────────────────
+<a id="__codelineno-47-13" name="__codelineno-47-13" href="#__codelineno-47-13"></a>print === Voltage Characterization Test ===
+<a id="__codelineno-47-14" name="__codelineno-47-14" href="#__codelineno-47-14"></a>print DUT: ${dut_name}
+<a id="__codelineno-47-15" name="__codelineno-47-15" href="#__codelineno-47-15"></a>pause Connect DUT and DMM probes, then press Enter
+<a id="__codelineno-47-16" name="__codelineno-47-16" href="#__codelineno-47-16"></a>
+<a id="__codelineno-47-17" name="__codelineno-47-17" href="#__codelineno-47-17"></a># ── Optional runtime input ────────────────────
+<a id="__codelineno-47-18" name="__codelineno-47-18" href="#__codelineno-47-18"></a>input operator Operator initials:
+<a id="__codelineno-47-19" name="__codelineno-47-19" href="#__codelineno-47-19"></a>
+<a id="__codelineno-47-20" name="__codelineno-47-20" href="#__codelineno-47-20"></a># ── PSU on ───────────────────────────────────
+<a id="__codelineno-47-21" name="__codelineno-47-21" href="#__codelineno-47-21"></a>psu1 chan 1 on
+<a id="__codelineno-47-22" name="__codelineno-47-22" href="#__codelineno-47-22"></a>print PSU enabled
+<a id="__codelineno-47-23" name="__codelineno-47-23" href="#__codelineno-47-23"></a>dmm1 config vdc
+<a id="__codelineno-47-24" name="__codelineno-47-24" href="#__codelineno-47-24"></a>
+<a id="__codelineno-47-25" name="__codelineno-47-25" href="#__codelineno-47-25"></a># ── Sweep ────────────────────────────────────
+<a id="__codelineno-47-26" name="__codelineno-47-26" href="#__codelineno-47-26"></a>for v 1.0 2.0 3.3 5.0 9.0 12.0
+<a id="__codelineno-47-27" name="__codelineno-47-27" href="#__codelineno-47-27"></a>  print Testing ${v}V...
+<a id="__codelineno-47-28" name="__codelineno-47-28" href="#__codelineno-47-28"></a>  psu1 set ${v}
+<a id="__codelineno-47-29" name="__codelineno-47-29" href="#__codelineno-47-29"></a>  sleep ${delay}
+<a id="__codelineno-47-30" name="__codelineno-47-30" href="#__codelineno-47-30"></a>  psu1 meas_store v psu_${v} unit=V
+<a id="__codelineno-47-31" name="__codelineno-47-31" href="#__codelineno-47-31"></a>  dmm1 meas_store dmm_${v} unit=V
+<a id="__codelineno-47-32" name="__codelineno-47-32" href="#__codelineno-47-32"></a>  calc err_${v} (m[&quot;dmm_${v}&quot;] - m[&quot;psu_${v}&quot;]) / m[&quot;psu_${v}&quot;] * 100 unit=%
+<a id="__codelineno-47-33" name="__codelineno-47-33" href="#__codelineno-47-33"></a>end
+<a id="__codelineno-47-34" name="__codelineno-47-34" href="#__codelineno-47-34"></a>
+<a id="__codelineno-47-35" name="__codelineno-47-35" href="#__codelineno-47-35"></a># ── Results ────────────────────────────────────
+<a id="__codelineno-47-36" name="__codelineno-47-36" href="#__codelineno-47-36"></a>print === Test complete ===
+<a id="__codelineno-47-37" name="__codelineno-47-37" href="#__codelineno-47-37"></a>log print
+<a id="__codelineno-47-38" name="__codelineno-47-38" href="#__codelineno-47-38"></a>log save ${dut_name}_results.csv
+<a id="__codelineno-47-39" name="__codelineno-47-39" href="#__codelineno-47-39"></a>
+<a id="__codelineno-47-40" name="__codelineno-47-40" href="#__codelineno-47-40"></a># ── Safe state ────────────────────────────────
+<a id="__codelineno-47-41" name="__codelineno-47-41" href="#__codelineno-47-41"></a>psu1 chan 1 off
+<a id="__codelineno-47-42" name="__codelineno-47-42" href="#__codelineno-47-42"></a>print PSU off — done
 </code></pre></div>
 <p>Run it:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-43-1" name="__codelineno-43-1" href="#__codelineno-43-1"></a>script run full_test dut_name=widget_rev2 delay=1.0
+<div class="highlight"><pre><span></span><code><a id="__codelineno-48-1" name="__codelineno-48-1" href="#__codelineno-48-1"></a>script run full_test dut_name=widget_rev2 delay=1.0
 </code></pre></div>
 
 

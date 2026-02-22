@@ -1107,10 +1107,11 @@
 <h3 id="5-log-results-and-export">5. Log results and export<a class="headerlink" href="#5-log-results-and-export" title="Permanent link">&para;</a></h3>
 <p><code>meas_store</code> saves a reading to the log with a <strong>label</strong> (name you choose). <code>calc</code> retrieves it by that label. <code>log print</code> shows the table. <code>log save</code> exports it.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>psu meas_store v output unit=V     # save voltage — label is &quot;output&quot;
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>dmm meas_store vdc dmm_v unit=V   # save DMM reading — label is &quot;dmm_v&quot;
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>calc error m[&quot;dmm_v&quot;] - m[&quot;output&quot;] unit=V   # reference labels in math
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>log print                           # show the full results table
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>log save results.csv                # export to CSV
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>dmm config vdc                     # set DMM to DC voltage mode
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>dmm meas_store dmm_v unit=V        # save DMM reading — label is &quot;dmm_v&quot;
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>calc error m[&quot;dmm_v&quot;] - m[&quot;output&quot;] unit=V   # reference labels in math
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>log print                           # show the full results table
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>log save results.csv                # export to CSV
 </code></pre></div>
 <p>See <a href="logging.html">Log &amp; Calc</a> for the full explanation of labels, <code>calc</code>, and export.</p>
 <hr />

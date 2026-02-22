@@ -1067,8 +1067,8 @@
 <a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>
 <a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>psu1 meas_store v psu_v unit=V
 <a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>
-<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>dmm1 meas vdc
-<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>dmm1 meas_store vdc ${label} unit=V
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>dmm1 config vdc
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>dmm1 meas_store ${label} unit=V
 <a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>
 <a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>print === Test complete ===
 <a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>log print
@@ -1105,18 +1105,19 @@
 <a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>print === Voltage Sweep ===
 <a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>psu1 chan 1 on
 <a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>sleep 0.3
-<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>
-<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>for v 1.0 2.0 3.3 5.0 9.0 12.0
-<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>  print Setting ${v}V...
-<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>  psu1 set ${v}
-<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>  sleep 0.5
-<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>  dmm1 meas_store vdc v_${v} unit=V
-<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>end
-<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>
-<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>psu1 chan 1 off
-<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>print === Sweep complete ===
-<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>log print
-<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a>log save voltage_sweep.csv
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>dmm1 config vdc
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>for v 1.0 2.0 3.3 5.0 9.0 12.0
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>  print Setting ${v}V...
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>  psu1 set ${v}
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>  sleep 0.5
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>  dmm1 meas_store v_${v} unit=V
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>end
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>psu1 chan 1 off
+<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>print === Sweep complete ===
+<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a>log print
+<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a>log save voltage_sweep.csv
 </code></pre></div>
 <p><strong>Analyzing results:</strong></p>
 <p>After running, each voltage step is recorded as <code>v_1.0</code>, <code>v_2.0</code>, <code>v_3.3</code>, etc. You can compute differences:</p>
@@ -1320,17 +1321,18 @@
 <a id="__codelineno-16-14" name="__codelineno-16-14" href="#__codelineno-16-14"></a>
 <a id="__codelineno-16-15" name="__codelineno-16-15" href="#__codelineno-16-15"></a># 4. Measure and store
 <a id="__codelineno-16-16" name="__codelineno-16-16" href="#__codelineno-16-16"></a>psu1 meas_store v psu_out unit=V
-<a id="__codelineno-16-17" name="__codelineno-16-17" href="#__codelineno-16-17"></a>dmm1 meas_store vdc dmm_out unit=V
-<a id="__codelineno-16-18" name="__codelineno-16-18" href="#__codelineno-16-18"></a>
-<a id="__codelineno-16-19" name="__codelineno-16-19" href="#__codelineno-16-19"></a># 5. Derived calculations
-<a id="__codelineno-16-20" name="__codelineno-16-20" href="#__codelineno-16-20"></a>calc error m[&quot;dmm_out&quot;] - m[&quot;psu_out&quot;] unit=V
-<a id="__codelineno-16-21" name="__codelineno-16-21" href="#__codelineno-16-21"></a>
-<a id="__codelineno-16-22" name="__codelineno-16-22" href="#__codelineno-16-22"></a># 6. Export
-<a id="__codelineno-16-23" name="__codelineno-16-23" href="#__codelineno-16-23"></a>log print
-<a id="__codelineno-16-24" name="__codelineno-16-24" href="#__codelineno-16-24"></a>log save ${label}_results.csv
-<a id="__codelineno-16-25" name="__codelineno-16-25" href="#__codelineno-16-25"></a>
-<a id="__codelineno-16-26" name="__codelineno-16-26" href="#__codelineno-16-26"></a># 7. Safe state
-<a id="__codelineno-16-27" name="__codelineno-16-27" href="#__codelineno-16-27"></a>psu1 chan 1 off
+<a id="__codelineno-16-17" name="__codelineno-16-17" href="#__codelineno-16-17"></a>dmm1 config vdc
+<a id="__codelineno-16-18" name="__codelineno-16-18" href="#__codelineno-16-18"></a>dmm1 meas_store dmm_out unit=V
+<a id="__codelineno-16-19" name="__codelineno-16-19" href="#__codelineno-16-19"></a>
+<a id="__codelineno-16-20" name="__codelineno-16-20" href="#__codelineno-16-20"></a># 5. Derived calculations
+<a id="__codelineno-16-21" name="__codelineno-16-21" href="#__codelineno-16-21"></a>calc error m[&quot;dmm_out&quot;] - m[&quot;psu_out&quot;] unit=V
+<a id="__codelineno-16-22" name="__codelineno-16-22" href="#__codelineno-16-22"></a>
+<a id="__codelineno-16-23" name="__codelineno-16-23" href="#__codelineno-16-23"></a># 6. Export
+<a id="__codelineno-16-24" name="__codelineno-16-24" href="#__codelineno-16-24"></a>log print
+<a id="__codelineno-16-25" name="__codelineno-16-25" href="#__codelineno-16-25"></a>log save ${label}_results.csv
+<a id="__codelineno-16-26" name="__codelineno-16-26" href="#__codelineno-16-26"></a>
+<a id="__codelineno-16-27" name="__codelineno-16-27" href="#__codelineno-16-27"></a># 7. Safe state
+<a id="__codelineno-16-28" name="__codelineno-16-28" href="#__codelineno-16-28"></a>psu1 chan 1 off
 </code></pre></div>
 <p>See <a href="scripting.html">Scripting</a> for the complete directive reference.</p>
 

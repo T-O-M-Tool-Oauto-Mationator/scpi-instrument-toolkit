@@ -30,9 +30,9 @@ Execute a script with optional parameter overrides.
 script run <name> [key=value ...]
 ```
 
-| Parameter | Required | Description |
-|-----------|----------|-------------|
-| `name` | required | Script name (as shown by `script list`). |
+| Parameter   | Required | Description                                                                                |
+| ----------- | -------- | ------------------------------------------------------------------------------------------ |
+| `name`      | required | Script name (as shown by `script list`).                                                   |
 | `key=value` | optional | Override script variables. Replaces the default values from `set` lines inside the script. |
 
 ```
@@ -105,10 +105,10 @@ set <varname> <expression>
 
 Defines a variable accessible as `${varname}` in all subsequent lines. Evaluated at **script expansion time** (before execution begins), so arithmetic using other variables works.
 
-| Parameter | Required | Description |
-|-----------|----------|-------------|
-| `varname` | required | Variable name. No spaces — use underscores. |
-| `expression` | required | Value, string, or arithmetic expression. |
+| Parameter    | Required | Description                                 |
+| ------------ | -------- | ------------------------------------------- |
+| `varname`    | required | Variable name. No spaces — use underscores. |
+| `expression` | required | Value, string, or arithmetic expression.    |
 
 ```
 set voltage 5.0           # ${voltage} = 5.0
@@ -116,6 +116,36 @@ set label vtest           # ${label} = "vtest"
 set doubled ${voltage} * 2    # ${doubled} = 10.0
 set offset ${voltage} - 0.5   # ${offset} = 4.5
 ```
+
+#### Error handling: set -e / set +e
+
+Control whether a script stops when a command fails (like bash's `set -e`).
+
+```
+set -e    # Enable exit-on-error: stop script on first command failure
+set +e    # Disable exit-on-error: continue despite errors
+```
+
+**Example: stop on error**
+
+```
+set -e
+psu1 set 5.0           # if this fails, script stops here
+dmm1 config vdc        # this won't run if PSU command failed
+print Done             # this won't run either
+```
+
+**Example: continue on error**
+
+```
+set +e
+psu1 set 5.0           # if this fails, continue anyway
+dmm1 config vdc        # this runs regardless
+print Done             # always executes
+```
+
+!!! tip
+Use `set -e` for critical test sequences where a single failure should abort the entire test. Use `set +e` when you want to collect partial results even if some commands fail.
 
 ### Variable substitution
 
@@ -180,7 +210,7 @@ Script variables and log labels are **two separate things**:
 - **Script variable** (`${var}`) — substituted into command text before the command runs
 - **Log label** — the name given to a stored measurement row
 
-You can use a script variable *as* the log label — this is how you make labels dynamic:
+You can use a script variable _as_ the log label — this is how you make labels dynamic:
 
 ```
 set meas_name output_v         # script variable: meas_name = "output_v"
@@ -262,8 +292,8 @@ pause [message]
 
 Stops script execution and waits for the operator to press **Enter**. Use for manual steps — connecting probes, changing the DUT, verifying wiring — before the script continues.
 
-| Parameter | Required | Description |
-|-----------|----------|-------------|
+| Parameter | Required | Description                                                     |
+| --------- | -------- | --------------------------------------------------------------- |
 | `message` | optional | Prompt shown to operator. Default: "Press Enter to continue..." |
 
 ```
@@ -280,10 +310,10 @@ input <varname> [prompt text]
 
 Prompts the operator to type a value at runtime. The entered text is stored as `${varname}` and substituted into all subsequent lines.
 
-| Parameter | Required | Description |
-|-----------|----------|-------------|
-| `varname` | required | Variable name. The entered value will be available as `${varname}` in all lines after this directive. |
-| `prompt text` | optional | Text shown to operator. Default: the variable name. |
+| Parameter     | Required | Description                                                                                           |
+| ------------- | -------- | ----------------------------------------------------------------------------------------------------- |
+| `varname`     | required | Variable name. The entered value will be available as `${varname}` in all lines after this directive. |
+| `prompt text` | optional | Text shown to operator. Default: the variable name.                                                   |
 
 ```
 input voltage Enter target voltage (V):
@@ -302,7 +332,7 @@ dmm1 meas_store output_${voltage} unit=V
 ```
 
 !!! note
-    Unlike `set`, values captured by `input` **cannot** be overridden from the command line at `script run` time. They are always prompted interactively.
+Unlike `set`, values captured by `input` **cannot** be overridden from the command line at `script run` time. They are always prompted interactively.
 
 ---
 
@@ -338,9 +368,9 @@ end
 
 Executes the enclosed commands exactly N times.
 
-| Parameter | Required | Description |
-|-----------|----------|-------------|
-| `N` | required | Number of repetitions. Integer ≥ 1. |
+| Parameter | Required | Description                         |
+| --------- | -------- | ----------------------------------- |
+| `N`       | required | Number of repetitions. Integer ≥ 1. |
 
 ```
 repeat 5
@@ -366,10 +396,10 @@ end
 
 Iterates over a whitespace-separated list of values. On each iteration, `${var}` is set to the next value in the list.
 
-| Parameter | Required | Description |
-|-----------|----------|-------------|
-| `var` | required | Loop variable name. Available as `${var}` inside the block. |
-| `val1 val2 ...` | required | Space-separated list of values to iterate over. |
+| Parameter       | Required | Description                                                 |
+| --------------- | -------- | ----------------------------------------------------------- |
+| `var`           | required | Loop variable name. Available as `${var}` inside the block. |
+| `val1 val2 ...` | required | Space-separated list of values to iterate over.             |
 
 **Sweep PSU through voltages:**
 
@@ -402,8 +432,38 @@ for f 100 500 1000 5000 10000 50000
 end
 ```
 
+#### Multi-variable loops
+
+Loop over multiple variables at once by separating them with commas. Values in the list are also comma-separated:
+
+```
+for VIN,VSCALE,LABEL 5.0,1.0,five 3.3,0.5,three 2.5,0.5,two
+  print Testing ${VIN}V with scale ${VSCALE} (${LABEL})
+  psu1 set ${VIN}
+  sleep 0.5
+end
+```
+
+#### Interactive for/repeat loops
+
+You can enter `for` and `repeat` blocks directly in the interactive REPL. The prompt will change to show indentation, and you type `end` when finished:
+
+```
+eset> for VIN 5.0 3.3 2.5
+  > print Testing VIN=${VIN}
+  > psu1 set ${VIN}
+  > sleep 0.5
+  > end
+Testing VIN=5.0
+Testing VIN=3.3
+Testing VIN=2.5
+eset>
+```
+
+This works exactly the same as in scripts — all variable substitution and nesting work the same way.
+
 !!! tip
-    The loop variable is substituted in all lines inside the block — including labels, print messages, and sub-command parameters.
+The loop variable is substituted in all lines inside the block — including labels, print messages, and sub-command parameters.
 
 **Variable references in the value list:**
 
@@ -430,9 +490,9 @@ call <name> [key=value ...]
 
 Executes another script as a sub-routine. The called script runs in its own variable scope. Variables from the current script can be passed as parameters.
 
-| Parameter | Required | Description |
-|-----------|----------|-------------|
-| `name` | required | Name of the script to call. |
+| Parameter   | Required | Description                                                   |
+| ----------- | -------- | ------------------------------------------------------------- |
+| `name`      | required | Name of the script to call.                                   |
 | `key=value` | optional | Parameters to pass. Supports variable substitution in values. |
 
 ```
@@ -443,6 +503,7 @@ call set_psu voltage=${target_v}     # pass a variable from current script
 **Example: reusable sub-script pattern**
 
 Create a script `set_psu`:
+
 ```
 # set_psu — sets PSU to a voltage and verifies
 # Params: voltage, label
@@ -456,6 +517,7 @@ psu1 meas_store v ${label} unit=V
 ```
 
 Call it from another script:
+
 ```
 # main test
 dmm1 config vdc
@@ -467,7 +529,7 @@ log print
 ```
 
 !!! note
-    Parameters passed via `call` override `set` defaults in the called script — same priority rules as `script run`.
+Parameters passed via `call` override `set` defaults in the called script — same priority rules as `script run`.
 
 ---
 
