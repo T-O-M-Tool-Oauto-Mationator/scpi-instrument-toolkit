@@ -195,8 +195,13 @@ def _check_and_update(force=False):
                             "sys.executable, '-m', 'pip', 'install', '--upgrade',"
                             f" {repr(git_url_local)}\n"
                             "])\n"
-                            "print('Update complete. This window will close in 3 seconds.')\n"
-                            "time.sleep(3)\n"
+                            "print('Update complete. Relaunching scpi-repl...')\n"
+                            "time.sleep(2)\n"
+                            "try:\n"
+                            "    subprocess.Popen(['scpi-repl'])\n"
+                            "except Exception:\n"
+                            "    print('Could not auto-launch. Please start scpi-repl manually.')\n"
+                            "    time.sleep(5)\n"
                         )
                         subprocess.Popen(
                             [sys.executable, "-c", update_script],
@@ -207,11 +212,10 @@ def _check_and_update(force=False):
                     except Exception:
                         pass
                     if scheduled:
-                        _CP.warning(
-                            f"Update to v{latest} will install after you exit.\n"
-                            f"  (Windows prevents replacing a running .exe)\n"
-                            f"  Restart scpi-repl once to complete the update."
+                        _CP.success(
+                            f"Update scheduled. Restarting application..."
                         )
+                        sys.exit(0)
                     else:
                         _CP.warning(
                             f"Windows prevented the update (file in use).\n"
