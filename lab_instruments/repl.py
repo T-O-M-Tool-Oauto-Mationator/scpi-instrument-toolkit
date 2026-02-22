@@ -1291,7 +1291,17 @@ class InstrumentRepl(cmd.Cmd):
         "shawn: the only man who can stop jeremie"
         self._jerminator = False
         self._stop_dmm_text_loop()
-        ColorPrinter.success("Shawn has stopped sawing.")
+        dev = self.devices.get("dmm")
+        if dev:
+            try:
+                dev.clear_display()
+            except Exception:
+                pass
+            try:
+                dev.set_display(True)
+            except Exception:
+                pass
+        ColorPrinter.success("Shawn has restored order.")
 
     def do_version(self, arg):
         "version: show the scpi-instrument-toolkit version"
