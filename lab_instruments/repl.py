@@ -1382,15 +1382,25 @@ class InstrumentRepl(cmd.Cmd):
 
         if normalized in ("jeremie", "jhews"):
             self._jerminator = True
-            self._start_dmm_text_loop("FUCK YOU JEREMIE", width=12, delay=0.15)
-            def _beep_loop():
-                while getattr(self, "_jeremie_active", False):
-                    sys.stdout.write("\a")
-                    sys.stdout.flush()
+            def _jerminator_loop():
+                msgs = ["FUCK JEREMI", "E           ", "FUCK JEREMI", "YOU JEREMIE"]
+                i = 0
+                while getattr(self, "_jerminator", False):
+                    dev = self.devices.get("dmm")
+                    if dev:
+                        try:
+                            dev.display_text(msgs[i % len(msgs)])
+                        except Exception:
+                            pass
+                        try:
+                            dev.beep()
+                        except Exception:
+                            pass
+                    i += 1
                     time.sleep(0.5)
-            t = threading.Thread(target=_beep_loop, daemon=True, name="jeremie-beep")
+            t = threading.Thread(target=_jerminator_loop, daemon=True, name="jerminator")
             t.start()
-            ColorPrinter.warning("FUCK YOU JEREMIE")
+            ColorPrinter.warning("FUCK YOU JEREMIE  (type 'shawn' to stop)")
             return
         # ---- End easter eggs ----
 
