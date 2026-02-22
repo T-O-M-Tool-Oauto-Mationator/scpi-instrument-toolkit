@@ -47,6 +47,8 @@ class JDS6600_Generator(DeviceManager):
     def __init__(self, resource_name):
         """Initialize the JDS6600 Generator."""
         super().__init__(resource_name)
+        self._ch1_enabled = False
+        self._ch2_enabled = False
 
     def connect(self):
         """Override to set serial communication parameters."""
@@ -91,14 +93,22 @@ class JDS6600_Generator(DeviceManager):
             time.sleep(0.1)  # Slightly longer delay for write commands
             return ""
 
-    def enable_output(self, ch1: bool = True, ch2: bool = True):
+    def enable_output(self, ch1: bool = None, ch2: bool = None):
         """
         Enable or disable channel outputs.
 
         Args:
-            ch1: Enable channel 1 if True
-            ch2: Enable channel 2 if True
+            ch1: Enable channel 1 if True, disable if False, keep current if None
+            ch2: Enable channel 2 if True, disable if False, keep current if None
         """
+        if ch1 is None:
+            ch1 = self._ch1_enabled
+        if ch2 is None:
+            ch2 = self._ch2_enabled
+
+        self._ch1_enabled = ch1
+        self._ch2_enabled = ch2
+
         val1 = 1 if ch1 else 0
         val2 = 1 if ch2 else 0
         response = self._send_command(f":w20={val1},{val2}.")
