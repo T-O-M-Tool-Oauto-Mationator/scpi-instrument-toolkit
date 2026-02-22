@@ -1,0 +1,15 @@
+print Starting Test...
+use psu1
+psu set 5.0 0.1
+psu chan 1 on
+use psu2
+psu set 3.3 0.1
+psu chan 1 on
+sleep 1
+use dmm
+dmm meas vdc
+print Test Complete
+use psu1
+psu chan 1 off
+use psu2
+psu chan 1 off

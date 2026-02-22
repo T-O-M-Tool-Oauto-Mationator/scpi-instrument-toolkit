@@ -1688,9 +1688,8 @@ class InstrumentRepl(cmd.Cmd):
                 "  - import any text/.scpi file as a named script",
                 "script load",
                 "  - reload scripts from disk (picks up manual edits)",
-                "script save [path]",
-                "  - no path: show scripts directory",
-                "  - with path: export all scripts as a JSON bundle",
+                "script save",
+                "  - show scripts directory",
                 "",
                 "# SCRIPT DIRECTIVES",
                 "",
@@ -1847,17 +1846,8 @@ class InstrumentRepl(cmd.Cmd):
             ColorPrinter.success(f"Reloaded {len(self.scripts)} scripts from {self._get_scripts_dir()}")
 
         elif subcmd == "save":
-            # Show where scripts live; optionally export a JSON bundle for sharing
-            if len(args) >= 2:
-                path = args[1]
-                try:
-                    with open(path, "w", encoding="utf-8") as f:
-                        json.dump(self.scripts, f, indent=2, sort_keys=True)
-                    ColorPrinter.success(f"Exported {len(self.scripts)} scripts to {path}")
-                except Exception as exc:
-                    ColorPrinter.error(f"Export failed: {exc}")
-            else:
-                ColorPrinter.info(f"Scripts directory: {self._get_scripts_dir()}")
+            # Show where scripts live
+            ColorPrinter.info(f"Scripts directory: {self._get_scripts_dir()}")
 
         else:
             ColorPrinter.warning(f"Unknown subcommand '{subcmd}'. Type 'script' for help.")
@@ -2682,17 +2672,16 @@ class InstrumentRepl(cmd.Cmd):
                     {
                         "id": "script-edit", "name": "script edit / show / list / rm",
                         "brief": "Manage the script library",
-                        "syntax": "script edit <name>  |  script show <name>  |  script list  |  script rm <name>  |  script import <name> <path>  |  script load [path]  |  script save [path]",
-                        "desc": "Library management commands. <code>edit</code> opens a script in your editor. <code>show</code> prints it with syntax highlighting. <code>list</code> shows all scripts. <code>rm</code> deletes a script. <code>import</code> loads lines from a .txt file. <code>load</code>/<code>save</code> serialize the entire library to/from a JSON file.",
+                        "syntax": "script edit <name>  |  script show <name>  |  script list  |  script rm <name>  |  script import <name> <path>  |  script load  |  script save",
+                        "desc": "Library management commands. <code>edit</code> opens a script in your editor. <code>show</code> prints it with syntax highlighting. <code>list</code> shows all scripts. <code>rm</code> deletes a script. <code>import</code> loads lines from a .txt file. <code>load</code> reloads all scripts from disk. <code>save</code> displays the scripts directory path.",
                         "params": [
                             {"name": "name", "required": "required (edit/show/rm/import)", "values": "script name", "desc": "Script to operate on."},
-                            {"name": "path", "required": "optional (import/load/save)", "values": "file path", "desc": "File path. Defaults to <code>.repl_scripts.json</code> in the current directory."},
                         ],
                         "examples": [
                             ("script list", "Show all scripts with line counts"),
                             ("script show psu_dmm_test", "Print script lines"),
                             ("script rm old_test", "Delete 'old_test'"),
-                            ("script save", "Save library to .repl_scripts.json"),
+                            ("script save", "Show where scripts are stored"),
                         ],
                         "notes": [],
                         "see": [],
@@ -3690,7 +3679,7 @@ allTargets.forEach(t => io.observe(t));
             return
 
         # Use unified handler for all DMM types
-        is_owon = dmm_name == "dmm_owon"
+        is_owon = dmm_name == "dmm_owon" or type(dev).__name__ == "Owon_XDM1041"
         return self._handle_dmm_unified(arg, dev, dmm_name, is_owon)
 
     def _handle_dmm_unified(self, arg, dev, dmm_name, is_owon):

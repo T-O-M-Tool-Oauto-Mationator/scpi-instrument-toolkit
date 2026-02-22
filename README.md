@@ -109,7 +109,7 @@ This opens a text editor. Type your commands (one per line), save, and close. Th
 script run my_setup
 ```
 
-Scripts are saved in a file called `.repl_scripts.json` in whatever folder you launched `scpi-repl` from.
+Scripts are saved as individual `.scpi` files in your user scripts directory (usually `Documents/scpi-instrument-toolkit/scripts`).
 
 ---
 
