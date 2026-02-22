@@ -4719,6 +4719,9 @@ def main():
         _check_for_updates(force=True)
         sys.exit(0)
 
+    # Check for updates on startup (silently tells user if available)
+    _check_for_updates(force=False)
+
     if "--mock" in args:
         args = [a for a in args if a != "--mock"]
         from lab_instruments import mock_instruments
