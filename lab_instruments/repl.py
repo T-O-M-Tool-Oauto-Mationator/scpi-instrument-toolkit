@@ -172,14 +172,15 @@ def _check_and_update(force=False):
                     git_url_local = git_url  # capture for batch
                     scheduled = False
                     try:
-                        # Spawn a silent Python process that waits for us to exit
-                        # then runs pip.  Using Python directly (not cmd.exe + batch)
-                        # means CREATE_NO_WINDOW works reliably — no console flicker,
-                        # no countdown, and the child survives after the parent exits.
-                        _NO_WINDOW = 0x08000000
+                        # Spawn a separate Python process that waits for us to exit
+                        # then runs pip. We use creationflags=0 (default) or CREATE_NEW_CONSOLE
+                        # so the user SEES the update happening and doesn't restart too soon.
+                        _CREATE_NEW_CONSOLE = 0x00000010
                         update_script = (
                             "import subprocess, sys, time, os\n"
                             f"ppid = {os.getpid()}\n"
+                            "print('--- SCPI TOOLKIT UPDATER ---')\n"
+                            "print(f'Waiting for parent process {ppid} to exit...')\n"
                             "while True:\n"
                             "    try:\n"
                             "        out = subprocess.run(['tasklist', '/FI', f'PID eq {ppid}'], capture_output=True, text=True).stdout\n"
@@ -188,15 +189,18 @@ def _check_and_update(force=False):
                             "    except Exception:\n"
                             "        break\n"
                             "    time.sleep(1)\n"
-                            "time.sleep(2)\n"
+                            "time.sleep(1)\n"
+                            "print('Installing update... DO NOT CLOSE THIS WINDOW')\n"
                             "subprocess.run(["
                             "sys.executable, '-m', 'pip', 'install', '--upgrade',"
-                            f" {repr(git_url_local)}, '--quiet'"
+                            f" {repr(git_url_local)}\n"
                             "])\n"
+                            "print('Update complete. This window will close in 3 seconds.')\n"
+                            "time.sleep(3)\n"
                         )
                         subprocess.Popen(
                             [sys.executable, "-c", update_script],
-                            creationflags=_NO_WINDOW,
+                            creationflags=_CREATE_NEW_CONSOLE,
                             close_fds=True,
                         )
                         scheduled = True
