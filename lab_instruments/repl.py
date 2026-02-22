@@ -285,6 +285,7 @@ class InstrumentRepl(cmd.Cmd):
         self._command_had_error = False  # Flag set when a command encounters an error
         self._in_script = False  # Flag to track if we're running a script
         self._interrupt_requested = False  # Flag set when Ctrl+C is pressed
+        self._should_exit = False  # Flag to signal that we should exit the REPL
 
         # Save terminal state so we can restore it on any exit path
         self._term_fd = None
@@ -365,7 +366,7 @@ class InstrumentRepl(cmd.Cmd):
             print(self.intro)
         stop = None
         try:
-            while not stop:
+            while not stop and not self._should_exit:
                 try:
                     if self.cmdqueue:
                         line = self.cmdqueue.pop(0)
@@ -394,6 +395,9 @@ class InstrumentRepl(cmd.Cmd):
                     self._in_script = False
                     self._interrupt_requested = False  # Reset for next command
         finally:
+            if self._should_exit:
+                print("\nGoodbye!")
+                self._restore_terminal()
             self.postloop()
 
     def _cleanup_on_exit(self):
@@ -435,10 +439,8 @@ class InstrumentRepl(cmd.Cmd):
         if self._in_script:
             raise KeyboardInterrupt
         
-        # If at REPL level, exit cleanly
-        print("\nGoodbye!")
-        self._restore_terminal()
-        sys.exit(0)
+        # If at REPL level, signal that we should exit (without calling sys.exit)
+        self._should_exit = True
 
     # --------------------------
     # Core helpers
