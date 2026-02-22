@@ -4,17 +4,17 @@ A tool for controlling lab instruments (oscilloscopes, power supplies, multimete
 
 ## Supported Instruments
 
-| Instrument | Type |
-|---|---|
-| Tektronix MSO2024 | Oscilloscope |
-| Rigol DHO804 | Oscilloscope |
-| HP E3631A | Power Supply |
-| HP 34401A | Multimeter |
-| BK Precision 4063 | Function Generator |
+| Instrument         | Type               |
+| ------------------ | ------------------ |
+| Tektronix MSO2024  | Oscilloscope       |
+| Rigol DHO804       | Oscilloscope       |
+| HP E3631A          | Power Supply       |
+| HP 34401A          | Multimeter         |
+| BK Precision 4063  | Function Generator |
 | Keysight EDU33212A | Function Generator |
-| OWON XDM1041 | Multimeter |
-| Matrix MPS6010H | Power Supply |
-| JDS6600 | Function Generator |
+| OWON XDM1041       | Multimeter         |
+| Matrix MPS6010H    | Power Supply       |
+| JDS6600            | Function Generator |
 
 ---
 
@@ -39,6 +39,8 @@ pip install git+https://github.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-t
 That's it. This installs everything including the `scpi-repl` command.
 
 > **Note:** You also need [NI-VISA](https://www.ni.com/en/support/downloads/drivers/download.ni-visa.html) installed for the tool to detect instruments over USB or GPIB.
+
+> **Windows Users:** On Windows, the `scpi-repl` command may initially be blocked by security policies. See [WINDOWS.md](WINDOWS.md) for a one-time fix.
 
 ---
 
@@ -70,22 +72,22 @@ This uses fake instruments so you can test commands safely.
 
 Once the REPL is running, here are the most useful commands:
 
-| Command | What it does |
-|---|---|
-| `help` | Show all available commands |
-| `docs` | Open the full command reference in your browser |
-| `list` | Show connected instruments |
-| `scan` | Re-scan for instruments |
-| `psu chan 1 on` | Turn on the power supply |
-| `psu set 5.0 0.5` | Set PSU to 5V, 0.5A limit |
-| `psu meas v` | Measure output voltage |
-| `dmm meas vdc` | Measure DC voltage |
-| `dmm read` | Take a reading |
-| `awg wave 1 sine freq=1000 amp=2.0` | Output a 1kHz sine wave |
-| `scope meas 1 FREQUENCY` | Measure frequency on channel 1 |
-| `scope autoset` | Auto-configure the scope |
-| `state safe` | Put all instruments in a safe state |
-| `exit` | Quit |
+| Command                             | What it does                                    |
+| ----------------------------------- | ----------------------------------------------- |
+| `help`                              | Show all available commands                     |
+| `docs`                              | Open the full command reference in your browser |
+| `list`                              | Show connected instruments                      |
+| `scan`                              | Re-scan for instruments                         |
+| `psu chan 1 on`                     | Turn on the power supply                        |
+| `psu set 5.0 0.5`                   | Set PSU to 5V, 0.5A limit                       |
+| `psu meas v`                        | Measure output voltage                          |
+| `dmm meas vdc`                      | Measure DC voltage                              |
+| `dmm read`                          | Take a reading                                  |
+| `awg wave 1 sine freq=1000 amp=2.0` | Output a 1kHz sine wave                         |
+| `scope meas 1 FREQUENCY`            | Measure frequency on channel 1                  |
+| `scope autoset`                     | Auto-configure the scope                        |
+| `state safe`                        | Put all instruments in a safe state             |
+| `exit`                              | Quit                                            |
 
 Type `help <command>` for more detail on any command. For example: `help psu`
 

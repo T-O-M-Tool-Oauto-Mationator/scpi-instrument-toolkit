@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "scpi-instrument-toolkit"
-version = "0.1.75"
+version = "0.1.78"
 description = "Python drivers and interactive REPL for SCPI test and measurement instruments"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -24,6 +24,9 @@ sim = ["pyvisa-py"]
 docs = ["mkdocs-material"]
 
 [project.scripts]
+# Note: On Windows, the console_scripts entry creates an exe that may be blocked 
+# by security policies. We've created a batch file wrapper (scpi-repl.bat) as a 
+# fallback. See setup-windows.py for the post-install workaround.
 scpi-repl = "lab_instruments.repl:main"
 
 [project.urls]

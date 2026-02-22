@@ -293,10 +293,29 @@ class InstrumentDiscovery:
         if verbose:
             ColorPrinter.header("Scanning for Instruments")
 
+        # Enumerate resources with a 10-second timeout to prevent hanging
+        resources = []
         try:
             if verbose:
                 print("Enumerating VISA resources...", flush=True)
-            resources = sorted(self.rm.list_resources())
+            
+            # Use a thread with timeout to prevent hanging on problematic VISA backends
+            def _list_resources():
+                try:
+                    return sorted(self.rm.list_resources())
+                except Exception:
+                    return []
+            
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(_list_resources)
+                try:
+                    resources = future.result(timeout=10)  # 10-second timeout
+                except concurrent.futures.TimeoutError:
+                    if verbose:
+                        ColorPrinter.warning("Resource enumeration timed out — using empty list")
+                    resources = []
+            
             if verbose:
                 print(f"Found {len(resources)} VISA resource(s)", flush=True)
         except pyvisa.VisaIOError as e:
@@ -311,16 +330,20 @@ class InstrumentDiscovery:
         if not resources:
             return {}
 
-        # Run probes in parallel
+        # Run probes in parallel with timeout per resource (5 seconds each)
         results = []
-        with concurrent.futures.ThreadPoolExecutor(max_workers=len(resources)) as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=min(len(resources), 4)) as executor:
             # Map resources to the probe function
             future_to_resource = {executor.submit(self._probe_resource, res, verbose): res for res in resources}
-            for future in concurrent.futures.as_completed(future_to_resource):
+            for future in concurrent.futures.as_completed(future_to_resource, timeout=30):
                 try:
-                    res = future.result()
+                    res = future.result(timeout=5)  # 5-second timeout per probe
                     if res:
                         results.append(res)
+                except concurrent.futures.TimeoutError:
+                    resource = future_to_resource[future]
+                    if verbose:
+                        self._safe_print(f"Checking {resource}... {ColorPrinter.YELLOW}Timeout{ColorPrinter.RESET}")
                 except Exception as e:
                     if verbose:
                         self._safe_print(f"{ColorPrinter.RED}Thread error during scan: {e}{ColorPrinter.RESET}")

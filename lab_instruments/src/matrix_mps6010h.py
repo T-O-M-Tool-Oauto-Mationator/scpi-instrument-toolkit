@@ -181,8 +181,12 @@ class MATRIX_MPS6010H(DeviceManager):
             float: Actual measured output voltage in volts.
         """
         try:
-            # Use query() instead of write/sleep/read pattern - more reliable
-            response = self.query("MEAS:VOLT?")
+            import time
+            # Send command with explicit delay before reading response
+            # Serial instruments need extra time for buffering
+            self.instrument.write("MEAS:VOLT?")
+            time.sleep(0.5)  # 500ms delay to let device respond
+            response = self.instrument.read().strip()
             return float(response)
         except Exception as e:
             print(f"Warning: Could not measure voltage: {e}")
@@ -197,8 +201,12 @@ class MATRIX_MPS6010H(DeviceManager):
             float: Actual measured output current in amps.
         """
         try:
-            # Use query() instead of write/sleep/read pattern - more reliable
-            response = self.query("MEAS:CURR?")
+            import time
+            # Send command with explicit delay before reading response
+            # Serial instruments need extra time for buffering
+            self.instrument.write("MEAS:CURR?")
+            time.sleep(0.5)  # 500ms delay to let device respond
+            response = self.instrument.read().strip()
             return float(response)
         except Exception as e:
             print(f"Warning: Could not measure current: {e}")
