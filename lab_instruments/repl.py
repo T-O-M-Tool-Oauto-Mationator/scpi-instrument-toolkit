@@ -236,7 +236,7 @@ class InstrumentRepl(cmd.Cmd):
         self._device_override: Optional[str] = None  # set by default() for awg1, scope2, etc.
         self._cleanup_done = False
         self._script_vars: Dict[str, str] = {}  # runtime variables set by 'input' during scripts
-        self._jeremie_active = False
+        self._jerminator = False
 
         # Save terminal state so we can restore it on any exit path
         self._term_fd = None
@@ -1224,7 +1224,7 @@ class InstrumentRepl(cmd.Cmd):
 
     def do_shawn(self, arg):
         "shawn: the only man who can stop jeremie"
-        self._jeremie_active = False
+        self._jerminator = False
         self._stop_dmm_text_loop()
         ColorPrinter.success("Shawn has restored order.")
 
@@ -1316,7 +1316,7 @@ class InstrumentRepl(cmd.Cmd):
             return
 
         if normalized in ("jeremie", "jhews"):
-            self._jeremie_active = True
+            self._jerminator = True
             self._start_dmm_text_loop("FUCK YOU JEREMIE", width=12, delay=0.15)
             def _beep_loop():
                 while getattr(self, "_jeremie_active", False):
