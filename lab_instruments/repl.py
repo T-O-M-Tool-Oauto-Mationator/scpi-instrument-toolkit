@@ -18,6 +18,7 @@ import json
 import shlex
 import subprocess
 import tempfile
+import threading
 import time
 import ast
 import inspect
@@ -235,6 +236,7 @@ class InstrumentRepl(cmd.Cmd):
         self._device_override: Optional[str] = None  # set by default() for awg1, scope2, etc.
         self._cleanup_done = False
         self._script_vars: Dict[str, str] = {}  # runtime variables set by 'input' during scripts
+        self._jeremie_active = False
 
         # Save terminal state so we can restore it on any exit path
         self._term_fd = None
@@ -247,27 +249,50 @@ class InstrumentRepl(cmd.Cmd):
         except Exception:
             pass  # Windows or non-tty stdin — no-op
 
-        ColorPrinter.info("Scanning for instruments... (Ctrl+C to cancel)")
-        self.scan()
-        if self.devices:
-            ColorPrinter.success(f"Found {len(self.devices)} device(s)")
-        else:
-            ColorPrinter.warning(f"Found {len(self.devices)} device(s)")
-
-        # Register cleanup handlers AFTER scan completes (so Ctrl+C works during scan)
+        # Register cleanup handlers before starting the background scan so
+        # Ctrl+C is handled correctly even while discovery is in progress.
         atexit.register(self._cleanup_on_exit)
         signal.signal(signal.SIGINT, self._cleanup_on_interrupt)
         if hasattr(signal, 'SIGTERM'):
             signal.signal(signal.SIGTERM, self._cleanup_on_interrupt)
 
-            # Ensure all instruments start in safe/off state
-            try:
-                ColorPrinter.info("\n=== Setting all instruments to safe state ===")
-                self._safe_all()
-                print()  # Add blank line after startup
-            except Exception as exc:
-                ColorPrinter.error(f"Error during startup safety check: {exc}")
-                traceback.print_exc()
+        # Kick off discovery in the background so the REPL prompt appears
+        # immediately.  Commands that need devices call _wait_for_scan() first.
+        self._scan_done = threading.Event()
+        self._scan_thread = threading.Thread(
+            target=self._background_scan, daemon=True, name="scpi-scan"
+        )
+        ColorPrinter.info("Scanning for instruments in background — type 'scan' to wait for results.")
+        self._scan_thread.start()
+
+    def _background_scan(self):
+        """Run discovery + startup safety check in a background thread."""
+        try:
+            self.scan()
+            if self.devices:
+                ColorPrinter.success(f"\nScan complete: found {len(self.devices)} device(s).")
+            else:
+                ColorPrinter.warning(f"\nScan complete: no instruments found.")
+            # Put all discovered instruments into a safe/off state on startup
+            if self.devices:
+                try:
+                    ColorPrinter.info("Setting all instruments to safe state...")
+                    self._safe_all()
+                except Exception as exc:
+                    ColorPrinter.error(f"Error during startup safety check: {exc}")
+        except Exception as exc:
+            ColorPrinter.error(f"\nScan failed: {exc}")
+        finally:
+            self._scan_done.set()
+            # Reprint the prompt so the user sees it after the scan message
+            sys.stdout.write(self.prompt)
+            sys.stdout.flush()
+
+    def _wait_for_scan(self):
+        """Block until the background scan finishes. Prints a one-time notice."""
+        if not self._scan_done.is_set():
+            ColorPrinter.info("Waiting for instrument scan to finish...")
+            self._scan_done.wait()
 
     def _restore_terminal(self):
         """Restore terminal settings saved at startup (no-op on Windows)."""
@@ -280,6 +305,7 @@ class InstrumentRepl(cmd.Cmd):
 
     def _cleanup_on_exit(self):
         """Called automatically on normal program exit (via atexit)."""
+        self._wait_for_scan()
         if not self._cleanup_done and self.devices:
             self._cleanup_done = True
             ColorPrinter.warning("\n=== Shutting down instruments safely ===")
@@ -291,6 +317,9 @@ class InstrumentRepl(cmd.Cmd):
 
     def _cleanup_on_interrupt(self, signum, frame):
         """Called when Ctrl+C or termination signal is received."""
+        # Don't wait for the scan thread on interrupt — if the user is Ctrl+C-ing
+        # during a long scan, just cancel it and exit cleanly.
+        self._scan_done.set()  # unblock any _wait_for_scan callers
         if not self._cleanup_done and self.devices:
             self._cleanup_done = True
             ColorPrinter.warning("\n\n=== Interrupted! Shutting down instruments safely ===")
@@ -311,6 +340,7 @@ class InstrumentRepl(cmd.Cmd):
             self.selected = None
 
     def _get_device(self, name: Optional[str]) -> Optional[Any]:
+        self._wait_for_scan()
         if not self.devices:
             ColorPrinter.warning("No instruments connected. Run 'scan' first.")
             return None
@@ -1180,7 +1210,23 @@ class InstrumentRepl(cmd.Cmd):
         if self._is_help(args):
             self._print_usage(["scan  # rescan and connect to instruments"])
             return
-        self.scan()
+        if not self._scan_done.is_set():
+            # Background startup scan still running — just wait for it
+            ColorPrinter.info("Waiting for background scan to finish...")
+            self._scan_done.wait()
+        else:
+            # Startup scan already done — run a fresh explicit rescan
+            self.scan()
+            if self.devices:
+                ColorPrinter.success(f"Found {len(self.devices)} device(s).")
+            else:
+                ColorPrinter.warning("No instruments found.")
+
+    def do_shawn(self, arg):
+        "shawn: the only man who can stop jeremie"
+        self._jeremie_active = False
+        self._stop_dmm_text_loop()
+        ColorPrinter.success("Shawn has restored order.")
 
     def do_version(self, arg):
         "version: show the scpi-instrument-toolkit version"
@@ -1261,6 +1307,27 @@ class InstrumentRepl(cmd.Cmd):
                 finally:
                     self._device_override = None
                 return
+
+        # ---- Easter eggs ----
+        normalized = line.strip().lower().rstrip("?").strip()
+
+        if normalized == "who made these drivers":
+            print(f"\033[91mYOU DID KING! 👑\033[0m")
+            return
+
+        if normalized in ("jeremie", "jhews"):
+            self._jeremie_active = True
+            self._start_dmm_text_loop("FUCK YOU JEREMIE", width=12, delay=0.15)
+            def _beep_loop():
+                while getattr(self, "_jeremie_active", False):
+                    sys.stdout.write("\a")
+                    sys.stdout.flush()
+                    time.sleep(0.5)
+            t = threading.Thread(target=_beep_loop, daemon=True, name="jeremie-beep")
+            t.start()
+            ColorPrinter.warning("FUCK YOU JEREMIE  (type 'shawn' to stop)")
+            return
+        # ---- End easter eggs ----
 
         ColorPrinter.error(f"Unknown syntax: {line}")
 
