@@ -138,7 +138,7 @@ def _check_and_update(force=False, restart_on_success=True):
             from lab_instruments.src.terminal import ColorPrinter as _CP
             _CP.info(f"Update available: v{_REPL_VERSION} → v{latest}. Installing...")
             git_url = f"git+https://github.com/{_GITHUB_REPO}.git@{latest_tag}"
-            cmd_base = [sys.executable, "-m", "pip", "install", "--upgrade"]
+            cmd_base = [sys.executable, "-m", "pip", "install", "--upgrade", "-e"]
             result = subprocess.run(
                 cmd_base + [git_url, "--quiet"],
                 capture_output=True,
@@ -211,7 +211,7 @@ def _check_and_update(force=False, restart_on_success=True):
                             "time.sleep(1)\\n"
                             "print('Installing update... DO NOT CLOSE THIS WINDOW')\\n"
                             "subprocess.run([\\n"
-                            "sys.executable, '-m', 'pip', 'install', '--upgrade',\\n"
+                            "sys.executable, '-m', 'pip', 'install', '--upgrade', '-e',\\n"
                             f" {repr(git_url_local)}\\n"
                             "])\\n"
                             f"{restart_block}"
@@ -233,7 +233,7 @@ def _check_and_update(force=False, restart_on_success=True):
                         _CP.warning(
                             f"Windows prevented the update (file in use).\n"
                             f"  Run this command after exiting:\n"
-                            f"  pip install --upgrade \"{git_url}\""
+                            f"  pip install --upgrade -e \"{git_url}\""
                         )
                     _write_log([
                         f"DEFERRED (WinError 32): upgrade from v{_REPL_VERSION} to v{latest}",
