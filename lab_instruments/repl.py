@@ -1302,7 +1302,7 @@ class InstrumentRepl(cmd.Cmd):
                 dev.set_display(True)
             except Exception:
                 pass
-        ColorPrinter.success("Shawn has restored order.")
+        ColorPrinter.success("Shawn has stopped sawing.")
 
     def do_version(self, arg):
         "version: show the scpi-instrument-toolkit version"
@@ -1394,7 +1394,7 @@ class InstrumentRepl(cmd.Cmd):
         if normalized in ("jeremie", "jhews"):
             self._jerminator = True
             def _jerminator_loop():
-                msgs = ["FUCK JEREMI", "E           ", "FUCK JEREMI", "YOU JEREMIE"]
+                msgs = ["FUCK JEREMIE"]
                 i = 0
                 while getattr(self, "_jerminator", False):
                     dev = self.devices.get("dmm")
@@ -1411,7 +1411,7 @@ class InstrumentRepl(cmd.Cmd):
                     time.sleep(0.5)
             t = threading.Thread(target=_jerminator_loop, daemon=True, name="jerminator")
             t.start()
-            ColorPrinter.warning("FUCK YOU JEREMIE  (type 'shawn' to stop)")
+            ColorPrinter.warning("FUCK YOU JEREMIE")
             return
         # ---- End easter eggs ----
 
