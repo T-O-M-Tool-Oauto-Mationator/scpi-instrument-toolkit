@@ -393,14 +393,16 @@ class InstrumentRepl(cmd.Cmd):
 
     @staticmethod
     def _probe_dir(d):
-        """Return True if *d* exists (or can be created) AND a file can actually
-        be written and read back from it.
+        """Return True if *d* is genuinely writable AND visible to other processes.
 
-        On managed/school Windows machines, filesystem virtualisation can make
-        os.makedirs succeed and os.path.isdir return True while writes are silently
-        redirected to a shadow location that other processes (and the real Explorer
-        path) cannot see.  A write-then-read probe is the only reliable way to
-        detect this.
+        A same-process os.path.exists() check is not sufficient on managed/school
+        Windows machines: filesystem virtualisation can make writes appear to
+        succeed within the Python process while a completely different (shadow)
+        directory is presented to every other process — including Notepad/Explorer.
+
+        We verify cross-process visibility by asking a freshly-spawned subprocess
+        (cmd on Windows, sh on POSIX) whether the sentinel file exists.  If it
+        can't see the file, the directory is virtualised and we skip it.
         """
         try:
             os.makedirs(d, exist_ok=True)
@@ -409,12 +411,32 @@ class InstrumentRepl(cmd.Cmd):
             probe = os.path.join(d, ".scpi_probe")
             with open(probe, "w") as f:
                 f.write("ok")
-            ok = os.path.exists(probe)
             try:
-                os.remove(probe)
+                # Cross-process visibility check — the subprocess runs outside
+                # Python's virtualisation context so it sees what Notepad sees.
+                if sys.platform == "win32":
+                    result = subprocess.run(
+                        ["cmd", "/c",
+                         f"if exist \"{probe}\" (echo yes) else (echo no)"],
+                        capture_output=True, text=True, timeout=5,
+                    )
+                    visible = result.stdout.strip() == "yes"
+                else:
+                    result = subprocess.run(
+                        ["sh", "-c",
+                         f"test -f '{probe}' && echo yes || echo no"],
+                        capture_output=True, text=True, timeout=5,
+                    )
+                    visible = result.stdout.strip() == "yes"
             except Exception:
-                pass
-            return ok
+                # If we can't spawn a subprocess, fall back to same-process check
+                visible = os.path.exists(probe)
+            finally:
+                try:
+                    os.remove(probe)
+                except Exception:
+                    pass
+            return visible
         except Exception:
             return False
 
@@ -448,13 +470,16 @@ class InstrumentRepl(cmd.Cmd):
         candidates = []
 
         if sys.platform == "win32":
+            # On managed/school Windows machines %APPDATA% is commonly virtualised:
+            # Python sees a shadow copy while Explorer and every other process see
+            # a different filesystem.  ~/Documents is almost never virtualised, so
+            # try it FIRST.  APPDATA is kept as a secondary option for unmanaged
+            # machines where it is the conventional config location.
+            docs = os.path.join(os.path.expanduser("~"), "Documents")
+            candidates.append(("~/Documents", os.path.join(docs, subpath)))
             appdata = os.environ.get("APPDATA")
             if appdata:
                 candidates.append(("APPDATA", os.path.join(appdata, subpath)))
-            # Managed machines often allow writes to Documents even when APPDATA
-            # is virtualised — use it as the first fallback
-            docs = os.path.join(os.path.expanduser("~"), "Documents")
-            candidates.append(("~/Documents", os.path.join(docs, subpath)))
         else:
             xdg = os.environ.get("XDG_CONFIG_HOME",
                                  os.path.join(os.path.expanduser("~"), ".config"))
