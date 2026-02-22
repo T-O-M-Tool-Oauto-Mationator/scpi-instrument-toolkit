@@ -1551,7 +1551,7 @@ class InstrumentRepl(cmd.Cmd):
             return
         # ---- End easter eggs ----
 
-        ColorPrinter.error(f"Unknown syntax: {line}")
+        self._error(f"Unknown syntax: {line}")
 
     def do_idn(self, arg):
         "idn [name]: query *IDN? for selected or named instrument"
