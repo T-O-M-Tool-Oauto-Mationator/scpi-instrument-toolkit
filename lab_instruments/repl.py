@@ -35,54 +35,9 @@ except Exception:
 _GITHUB_REPO = "T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit"
 
 
-def _update_log_path():
-    """Return a writable, user-findable path for the update log file.
-
-    On managed/school Windows machines %APPDATA% is commonly virtualised so
-    files written there are invisible to Explorer.  We use the same
-    Documents-first priority order as the scripts directory so the log lands
-    somewhere the user can actually navigate to.
-    """
-    subdir = "scpi-instrument-toolkit"
-
-    if sys.platform == "win32":
-        candidates = [
-            os.path.join(os.path.expanduser("~"), "Documents", subdir),
-            os.path.join(os.environ.get("APPDATA", ""), subdir) if os.environ.get("APPDATA") else None,
-            os.path.join(os.path.expanduser("~"), subdir),
-        ]
-    else:
-        candidates = [
-            os.path.join(os.environ.get("XDG_CACHE_HOME",
-                         os.path.join(os.path.expanduser("~"), ".cache")), subdir),
-            os.path.join(os.path.expanduser("~"), subdir),
-        ]
-
-    # Always include tempdir as the last resort
-    candidates.append(os.path.join(tempfile.gettempdir(), subdir))
-
-    for log_dir in candidates:
-        if not log_dir:
-            continue
-        try:
-            os.makedirs(log_dir, exist_ok=True)
-            # Quick writability probe — same-process is fine for logs
-            probe = os.path.join(log_dir, ".log_probe")
-            with open(probe, "w") as f:
-                f.write("ok")
-            os.remove(probe)
-            return os.path.join(log_dir, "update.log")
-        except Exception:
-            continue
-
-    # Absolute fallback — should never reach here
-    return os.path.join(tempfile.gettempdir(), subdir, "update.log")
-
-
-def _check_and_update(force=False, restart_on_success=True):
-    """Check GitHub tags for a newer version. If found, pip-install and restart.
-    force=True: always print status even when already up to date.
-    restart_on_success=True: auto-relaunch scpi-repl after update (default)."""
+def _check_for_updates(force=False):
+    """Check GitHub for updates and tell the user what command to run.
+    No automatic install — user must run the command manually."""
     if _REPL_VERSION == "unknown":
         if force:
             print("Running from source — skipping update check.")
@@ -90,27 +45,6 @@ def _check_and_update(force=False, restart_on_success=True):
 
     import urllib.request
     import json
-    import subprocess
-    from datetime import datetime
-
-    def _write_log(lines):
-        try:
-            log_path = _update_log_path()
-            with open(log_path, "a", encoding="utf-8") as f:
-                f.write(f"\n[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}]\n")
-                for line in lines:
-                    f.write(line + "\n")
-            # Verify the write landed on disk
-            if not os.path.exists(log_path):
-                raise OSError(f"log file '{log_path}' does not exist after write")
-        except Exception as log_exc:
-            # Last-resort: dump to stderr so the user can always see what happened
-            print(
-                f"[scpi-updater] WARNING: could not write update log: {log_exc}\n"
-                f"[scpi-updater] Log content follows:\n" +
-                "\n".join(f"  {l}" for l in lines),
-                file=sys.stderr,
-            )
 
     try:
         url = f"https://api.github.com/repos/{_GITHUB_REPO}/tags"
@@ -122,8 +56,8 @@ def _check_and_update(force=False, restart_on_success=True):
             return
 
         # GitHub returns tags newest-first; first entry is the latest
-        latest_tag = tags[0]["name"]        # e.g. "v0.1.9"
-        latest = latest_tag.lstrip("v")     # e.g. "0.1.9"
+        latest_tag = tags[0]["name"]        # e.g. "v0.1.70"
+        latest = latest_tag.lstrip("v")     # e.g. "0.1.70"
 
         def _vtuple(v):
             return tuple(int(x) for x in v.split("."))
@@ -134,64 +68,14 @@ def _check_and_update(force=False, restart_on_success=True):
                 _CP.success(f"Already up to date (v{_REPL_VERSION}).")
             return
 
-        if True:  # update available
-            from lab_instruments.src.terminal import ColorPrinter as _CP
-            _CP.info(f"Update available: v{_REPL_VERSION} → v{latest}. Installing...")
-            git_url = f"git+https://github.com/{_GITHUB_REPO}.git@{latest_tag}#egg=scpi-instrument-toolkit"
-            cmd_base = [sys.executable, "-m", "pip", "install", "--upgrade"]
-            result = subprocess.run(
-                cmd_base + [git_url, "--quiet"],
-                capture_output=True,
-            )
-            # PEP 668: Debian/Ubuntu/Arch system Python rejects pip without this flag
-            if result.returncode != 0 and b"externally-managed-environment" in result.stderr:
-                result = subprocess.run(
-                    cmd_base + [git_url, "--quiet", "--break-system-packages"],
-                    capture_output=True,
-                )
-            stdout = result.stdout.decode(errors="replace").strip()
-            stderr = result.stderr.decode(errors="replace").strip()
-            if result.returncode == 0:
-                _write_log([
-                    f"SUCCESS: upgraded from v{_REPL_VERSION} to v{latest}",
-                    f"stdout: {stdout}" if stdout else "stdout: (empty)",
-                ])
-                _CP.success(f"Updated to v{latest}. Restarting...")
-                # os.execv replaces the current process; on Windows this can also
-                # hit a file-lock so fall back to a clean exit and let the user
-                # relaunch if execv fails.
-                try:
-                    os.execv(sys.executable, [sys.executable] + sys.argv)
-                except Exception:
-                    _CP.success("Please restart scpi-repl to use the new version.")
-                    sys.exit(0)
-            else:
-                # Windows-specific: pip cannot overwrite scpi-repl.exe while it is
-                # the currently-running process (WinError 32 file-lock). Just tell
-                # the user how to update after exiting.
-                if sys.platform == "win32" and "WinError 32" in stderr:
-                    _CP.warning(
-                        f"Windows file lock prevents in-place update.\n"
-                        f"  Close any scpi-repl windows and run:\n"
-                        f"  pip install --upgrade \"{git_url}\""
-                    )
-                    _write_log([
-                        f"BLOCKED (WinError 32): upgrade from v{_REPL_VERSION} to v{latest}",
-                        f"User must run: pip install --upgrade \"{git_url}\"",
-                    ])
-                else:
-                    log_path = _update_log_path()
-                    _write_log([
-                        f"FAILED: upgrade from v{_REPL_VERSION} to v{latest}",
-                        f"returncode: {result.returncode}",
-                        f"stdout: {stdout}" if stdout else "stdout: (empty)",
-                        f"stderr: {stderr}" if stderr else "stderr: (empty)",
-                    ])
-                    _CP.warning(f"Update install failed. See log: {log_path}")
-    except Exception as exc:
-        # Network down, GitHub unreachable, or parse error — don't crash the REPL,
-        # but surface the reason so the user can diagnose it.
-        print(f"[scpi-updater] Update check error: {exc}", file=sys.stderr)
+        # Update available — show the user the command to run
+        from lab_instruments.src.terminal import ColorPrinter as _CP
+        _CP.info(f"Update available: v{_REPL_VERSION} → v{latest}. To install, run:")
+        git_url = f"git+https://github.com/{_GITHUB_REPO}.git@{latest_tag}#egg=scpi-instrument-toolkit"
+        print(f'  pip install --upgrade "{git_url}"')
+
+    except Exception:
+        pass  # Network error or no internet — ignore silently
 
 from lab_instruments import InstrumentDiscovery, ColorPrinter
 
@@ -4818,7 +4702,7 @@ def main():
             "\n"
             "Options:\n"
             "  --mock       Run with simulated instruments (no hardware required)\n"
-            "  --update     Check for updates, install if available, and exit\n"
+            "  --update     Check for updates and display the install command\n"
             "  --version    Print version and exit\n"
             "  --help       Show this help and exit\n"
             "\n"
@@ -4828,16 +4712,14 @@ def main():
             "Examples:\n"
             "  scpi-repl                  Start the interactive REPL\n"
             "  scpi-repl --mock           Start with mock instruments\n"
-            "  scpi-repl --update         Check for and install updates\n"
+            "  scpi-repl --update         Check for updates\n"
             "  scpi-repl my_script        Run 'my_script' and exit\n"
         )
         sys.exit(0)
 
     if "--update" in args:
-        _check_and_update(force=True, restart_on_success=False)
+        _check_for_updates(force=True)
         sys.exit(0)
-
-    _check_and_update()
 
     if "--mock" in args:
         args = [a for a in args if a != "--mock"]
