@@ -40,7 +40,7 @@ class MATRIX_MPS6010H(DeviceManager):
         """Override to set serial communication parameters and enable remote mode."""
         try:
             self.instrument = self.rm.open_resource(self.resource_name)
-            self.instrument.timeout = 5000
+            self.instrument.timeout = 10000  # 10 seconds for reliable measurement queries
             self.instrument.baud_rate = 9600
             self.instrument.data_bits = 8
             self.instrument.parity = pyvisa.constants.Parity.none
@@ -181,11 +181,8 @@ class MATRIX_MPS6010H(DeviceManager):
             float: Actual measured output voltage in volts.
         """
         try:
-            import time
-            # Query voltage with small delay
-            self.instrument.write("MEAS:VOLT?")
-            time.sleep(0.2)
-            response = self.instrument.read().strip()
+            # Use query() instead of write/sleep/read pattern - more reliable
+            response = self.query("MEAS:VOLT?")
             return float(response)
         except Exception as e:
             print(f"Warning: Could not measure voltage: {e}")
@@ -200,11 +197,8 @@ class MATRIX_MPS6010H(DeviceManager):
             float: Actual measured output current in amps.
         """
         try:
-            import time
-            # Query current with small delay
-            self.instrument.write("MEAS:CURR?")
-            time.sleep(0.2)
-            response = self.instrument.read().strip()
+            # Use query() instead of write/sleep/read pattern - more reliable
+            response = self.query("MEAS:CURR?")
             return float(response)
         except Exception as e:
             print(f"Warning: Could not measure current: {e}")
