@@ -1049,6 +1049,9 @@ class InstrumentRepl(cmd.Cmd):
         return False
 
     def _onecmd_single(self, line):
+        # Apply variable substitution using REPL variables
+        line = self._substitute_vars(line, self._script_vars)
+        
         tokens = self._parse_args(line)
         if len(tokens) >= 3 and tokens[0].lower() == "repeat":
             try:
@@ -1676,6 +1679,40 @@ class InstrumentRepl(cmd.Cmd):
         value = builtins.input(f"{ColorPrinter.YELLOW}{prompt}{ColorPrinter.RESET} ")
         self._script_vars[varname] = value
         ColorPrinter.success(f"${{{varname}}} = {value!r}")
+
+    def do_set(self, arg):
+        "set <varname> <expr>: define a variable for use in commands (e.g. set v 5.0)"
+        args = self._parse_args(arg)
+        if len(args) < 2:
+            ColorPrinter.warning("Usage: set <varname> <expr>")
+            if self._script_vars:
+                ColorPrinter.info("Current variables:")
+                for k, v in self._script_vars.items():
+                    print(f"  {k} = {v}")
+            return
+        
+        key = args[0]
+        # Join the rest of arguments to handle expressions with spaces
+        raw_val = " ".join(args[1:])
+        
+        # Perform substitution on the expression itself (e.g. set v2 ${v1} * 2)
+        raw_val = self._substitute_vars(raw_val, self._script_vars)
+        
+        try:
+            # Try to evaluate as math expression
+            num_vars = {}
+            for k, v in self._script_vars.items():
+                try:
+                    num_vars[k] = float(v)
+                except (TypeError, ValueError):
+                    pass
+            result = self._safe_eval(raw_val, num_vars)
+            self._script_vars[key] = str(result)
+        except Exception:
+            # Fallback to string literal
+            self._script_vars[key] = raw_val
+            
+        ColorPrinter.success(f"{key} = {self._script_vars[key]}")
 
     def do_script(self, arg):
         "script <new|run|edit|list|rm|show|import|load|save> [args]: manage and run scripts"
