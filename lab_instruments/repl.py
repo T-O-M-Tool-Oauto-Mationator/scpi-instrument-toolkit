@@ -283,6 +283,7 @@ class InstrumentRepl(cmd.Cmd):
         # Error handling mode (set -e / set +e)
         self._exit_on_error = False  # If True, stop script on command failure
         self._command_had_error = False  # Flag set when a command encounters an error
+        self._in_script = False  # Flag to track if we're running a script
 
         # Save terminal state so we can restore it on any exit path
         self._term_fd = None
@@ -353,6 +354,45 @@ class InstrumentRepl(cmd.Cmd):
                 termios.tcsetattr(self._term_fd, termios.TCSADRAIN, self._term_settings)
         except Exception:
             pass
+
+    def cmdloop(self, intro=None):
+        """Override cmdloop to catch KeyboardInterrupt without exiting the REPL."""
+        if intro is not None:
+            self.intro = intro
+        if self.intro:
+            self.onecmd_plus_hooks("help")
+            print(self.intro)
+        stop = None
+        try:
+            while not stop:
+                try:
+                    if self.cmdqueue:
+                        line = self.cmdqueue.pop(0)
+                    else:
+                        if self.use_rawinput:
+                            try:
+                                line = input(self.prompt)
+                            except EOFError:
+                                line = 'EOF'
+                        else:
+                            self.lastcmd = ''
+                            line = self.stdin.readline()
+                            if not len(line):
+                                line = 'EOF'
+                            else:
+                                line = line.rstrip('\r\n')
+                    line = self.precmd(line)
+                    stop = self.onecmd_plus_hooks(line)
+                    line = self.postcmd(stop, line)
+                except KeyboardInterrupt:
+                    # Don't exit REPL on Ctrl+C, just print a message and continue
+                    if self._in_script:
+                        ColorPrinter.warning("Script interrupted by user")
+                    else:
+                        print()  # Just newline for interactive mode
+                    self._in_script = False
+        finally:
+            self.postloop()
 
     def _cleanup_on_exit(self):
         """Called automatically on normal program exit (via atexit)."""
@@ -1036,6 +1076,7 @@ class InstrumentRepl(cmd.Cmd):
 
     def _run_script_lines(self, lines):
         expanded = self._expand_script_lines(lines, {})
+        self._in_script = True
         try:
             for raw_line in expanded:
                 raw_line = self._substitute_vars(raw_line, self._script_vars)
@@ -1056,6 +1097,8 @@ class InstrumentRepl(cmd.Cmd):
                     return True
         except KeyboardInterrupt:
             ColorPrinter.warning("Script interrupted by user")
+        finally:
+            self._in_script = False
         return False
 
     def _onecmd_single(self, line):
@@ -1216,6 +1259,8 @@ class InstrumentRepl(cmd.Cmd):
                 self._tick_dmm_text_loop()
                 if self.onecmd(line):
                     return
+        except KeyboardInterrupt:
+            ColorPrinter.warning("Loop interrupted by user")
         except Exception as e:
             ColorPrinter.error(f"Loop execution error: {e}")
             traceback.print_exc()
@@ -1897,6 +1942,7 @@ class InstrumentRepl(cmd.Cmd):
             # Persist any variable changes from the script back to global state
             self._script_vars.update(run_vars)
             
+            self._in_script = True
             try:
                 for raw_line in expanded:
                     # Variables already substituted by expand, but onecmd_single might do it again
@@ -1917,6 +1963,8 @@ class InstrumentRepl(cmd.Cmd):
                         break  # Exit script loop but stay in REPL
             except KeyboardInterrupt:
                 ColorPrinter.warning("Script interrupted by user")
+            finally:
+                self._in_script = False
             return False
 
         elif subcmd == "edit":
