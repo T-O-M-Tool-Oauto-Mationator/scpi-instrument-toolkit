@@ -240,6 +240,10 @@ class Rigol_DHO804(DeviceManager):
             print(f"Failed to set probe ratio: {e}")
             raise
 
+    def set_probe_attenuation(self, channel: int, ratio: float) -> None:
+        """Alias for set_probe_ratio."""
+        self.set_probe_ratio(channel, ratio)
+
     def set_channel_position(self, channel: int, position: float) -> None:
         """
         Set vertical position (bias voltage) of the channel.
