@@ -424,7 +424,11 @@ class InstrumentRepl(cmd.Cmd):
                 for line in current_lines:
                     handle.write(f"{line}\n")
             try:
-                subprocess.run([editor, tmp_path])
+                if os.name == "nt":
+                    # Use `start /wait` so Store-app Notepad (Windows 11) blocks until closed
+                    subprocess.run(["cmd", "/c", "start", "/wait", "", editor, tmp_path])
+                else:
+                    subprocess.run([editor, tmp_path])
             except FileNotFoundError:
                 ColorPrinter.error(f"Editor '{editor}' not found. Set $EDITOR to a valid editor.")
                 return list(current_lines)
