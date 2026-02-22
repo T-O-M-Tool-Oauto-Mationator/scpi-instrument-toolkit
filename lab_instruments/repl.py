@@ -79,9 +79,10 @@ def _update_log_path():
     return os.path.join(tempfile.gettempdir(), subdir, "update.log")
 
 
-def _check_and_update(force=False):
+def _check_and_update(force=False, restart_on_success=True):
     """Check GitHub tags for a newer version. If found, pip-install and restart.
-    force=True: always print status even when already up to date."""
+    force=True: always print status even when already up to date.
+    restart_on_success=True: auto-relaunch scpi-repl after update (default)."""
     if _REPL_VERSION == "unknown":
         if force:
             print("Running from source — skipping update check.")
@@ -176,32 +177,44 @@ def _check_and_update(force=False):
                         # then runs pip. We use creationflags=0 (default) or CREATE_NEW_CONSOLE
                         # so the user SEES the update happening and doesn't restart too soon.
                         _CREATE_NEW_CONSOLE = 0x00000010
+                        
+                        restart_block = ""
+                        if restart_on_success:
+                            restart_block = (
+                                "print('Update complete. Relaunching scpi-repl...')\\n"
+                                "time.sleep(2)\\n"
+                                "try:\\n"
+                                "    subprocess.Popen(['scpi-repl'])\\n"
+                                "except Exception:\\n"
+                                "    print('Could not auto-launch. Please start scpi-repl manually.')\\n"
+                                "    time.sleep(5)\\n"
+                            )
+                        else:
+                            restart_block = (
+                                "print('Update complete. This window will close in 3 seconds.')\\n"
+                                "time.sleep(3)\\n"
+                            )
+
                         update_script = (
-                            "import subprocess, sys, time, os\n"
-                            f"ppid = {os.getpid()}\n"
-                            "print('--- SCPI TOOLKIT UPDATER ---')\n"
-                            "print(f'Waiting for parent process {ppid} to exit...')\n"
-                            "while True:\n"
-                            "    try:\n"
-                            "        out = subprocess.run(['tasklist', '/FI', f'PID eq {ppid}'], capture_output=True, text=True).stdout\n"
-                            "        if str(ppid) not in out:\n"
-                            "            break\n"
-                            "    except Exception:\n"
-                            "        break\n"
-                            "    time.sleep(1)\n"
-                            "time.sleep(1)\n"
-                            "print('Installing update... DO NOT CLOSE THIS WINDOW')\n"
-                            "subprocess.run(["
-                            "sys.executable, '-m', 'pip', 'install', '--upgrade',"
-                            f" {repr(git_url_local)}\n"
-                            "])\n"
-                            "print('Update complete. Relaunching scpi-repl...')\n"
-                            "time.sleep(2)\n"
-                            "try:\n"
-                            "    subprocess.Popen(['scpi-repl'])\n"
-                            "except Exception:\n"
-                            "    print('Could not auto-launch. Please start scpi-repl manually.')\n"
-                            "    time.sleep(5)\n"
+                            "import subprocess, sys, time, os\\n"
+                            f"ppid = {os.getpid()}\\n"
+                            "print('--- SCPI TOOLKIT UPDATER ---')\\n"
+                            "print(f'Waiting for parent process {ppid} to exit...')\\n"
+                            "while True:\\n"
+                            "    try:\\n"
+                            "        out = subprocess.run(['tasklist', '/FI', f'PID eq {ppid}'], capture_output=True, text=True).stdout\\n"
+                            "        if str(ppid) not in out:\\n"
+                            "            break\\n"
+                            "    except Exception:\\n"
+                            "        break\\n"
+                            "    time.sleep(1)\\n"
+                            "time.sleep(1)\\n"
+                            "print('Installing update... DO NOT CLOSE THIS WINDOW')\\n"
+                            "subprocess.run([\\n"
+                            "sys.executable, '-m', 'pip', 'install', '--upgrade',\\n"
+                            f" {repr(git_url_local)}\\n"
+                            "])\\n"
+                            f"{restart_block}"
                         )
                         subprocess.Popen(
                             [sys.executable, "-c", update_script],
@@ -213,7 +226,7 @@ def _check_and_update(force=False):
                         pass
                     if scheduled:
                         _CP.success(
-                            f"Update scheduled. Restarting application..."
+                            f"Update scheduled. Closing main application to allow update to proceed."
                         )
                         sys.exit(0)
                     else:
@@ -320,6 +333,12 @@ class InstrumentRepl(cmd.Cmd):
         self._cleanup_done = False
         self._script_vars: Dict[str, str] = {}  # runtime variables set by 'input' during scripts
         self._jerminator = False
+        
+        # Multi-line loop support (for/repeat blocks in interactive mode)
+        self._in_loop = False  # True when collecting loop body lines
+        self._loop_lines = []  # accumulate lines until 'end'
+        self._loop_depth = 0  # track nested depth
+        self._loop_header = ""  # the "for" or "repeat" line
 
         # Save terminal state so we can restore it on any exit path
         self._term_fd = None
@@ -400,6 +419,14 @@ class InstrumentRepl(cmd.Cmd):
 
     def _cleanup_on_interrupt(self, signum, frame):
         """Called when Ctrl+C or termination signal is received."""
+        # Reset loop state if in a multi-line block
+        if self._in_loop:
+            self._in_loop = False
+            self._loop_lines = []
+            self._loop_depth = 0
+            self.prompt = "eset> "
+            print("\n(cancelled loop block)")
+        
         # Don't wait for the scan thread on interrupt — if the user is Ctrl+C-ing
         # during a long scan, just cancel it and exit cleanly.
         self._scan_done.set()  # unblock any _wait_for_scan callers
@@ -1106,6 +1133,36 @@ class InstrumentRepl(cmd.Cmd):
         return super().onecmd(line)
 
     def onecmd(self, line):
+        # If we're collecting a loop body, accumulate lines until 'end'
+        if self._in_loop:
+            stripped = line.strip()
+            if stripped.lower() == "end":
+                self._loop_depth -= 1
+                if self._loop_depth == 0:
+                    # Execute the collected for/repeat block
+                    self._execute_collected_loop()
+                    return False
+            else:
+                # Track nested loops
+                tokens = self._parse_args(stripped)
+                if tokens and tokens[0].lower() in ("for", "repeat"):
+                    self._loop_depth += 1
+                self._loop_lines.append(line)
+            return False
+        
+        # Check if this line starts a for/repeat block in interactive mode
+        stripped = line.strip()
+        tokens = self._parse_args(stripped)
+        if tokens and tokens[0].lower() in ("for", "repeat"):
+            # Enter multi-line mode
+            self._in_loop = True
+            self._loop_depth = 1
+            self._loop_header = stripped
+            self._loop_lines = []
+            self.prompt = "  > "  # Indent prompt to show we're in a block
+            ColorPrinter.info("(entering loop block - type 'end' to exit)")
+            return False
+        
         scan_line = line.replace(";", " ; ")
         tokens = self._parse_args(scan_line)
         if "repeat" in tokens or "repeatall" in tokens:
@@ -1160,6 +1217,33 @@ class InstrumentRepl(cmd.Cmd):
                     break
             return should_exit
         return self._onecmd_single(line)
+
+    def _execute_collected_loop(self):
+        """Execute the for/repeat block that was collected interactively.
+        
+        Combines the loop header with the collected body lines and runs
+        them through the same expansion logic as script files.
+        """
+        # Reset prompt before executing
+        self.prompt = "eset> "
+        self._in_loop = False
+        
+        # Combine the header with the collected body and 'end'
+        all_lines = [self._loop_header] + self._loop_lines + ["end"]
+        
+        # Use the existing script expansion logic
+        try:
+            expanded = self._expand_script_lines(all_lines, {})
+            for raw_line in expanded:
+                line = raw_line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                self._tick_dmm_text_loop()
+                if self.onecmd(line):
+                    return
+        except Exception as e:
+            ColorPrinter.error(f"Loop execution error: {e}")
+            traceback.print_exc()
 
     def _print_devices(self):
         if not self.devices:
@@ -4697,7 +4781,7 @@ def main():
         sys.exit(0)
 
     if "--update" in args:
-        _check_and_update(force=True)
+        _check_and_update(force=True, restart_on_success=False)
         sys.exit(0)
 
     _check_and_update()
