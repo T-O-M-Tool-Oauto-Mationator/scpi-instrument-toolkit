@@ -339,6 +339,10 @@ class InstrumentRepl(cmd.Cmd):
         self._loop_lines = []  # accumulate lines until 'end'
         self._loop_depth = 0  # track nested depth
         self._loop_header = ""  # the "for" or "repeat" line
+        
+        # Error handling mode (set -e / set +e)
+        self._exit_on_error = False  # If True, stop script on command failure
+        self._command_had_error = False  # Flag set when a command encounters an error
 
         # Save terminal state so we can restore it on any exit path
         self._term_fd = None
@@ -389,6 +393,11 @@ class InstrumentRepl(cmd.Cmd):
             # Reprint the prompt so the user sees it after the scan message
             sys.stdout.write(self.prompt)
             sys.stdout.flush()
+
+    def _error(self, message):
+        """Report an error message and set the error flag for set -e handling."""
+        self._command_had_error = True
+        ColorPrinter.error(message)
 
     def _wait_for_scan(self):
         """Block until the background scan finishes. Prints a one-time notice."""
@@ -453,11 +462,13 @@ class InstrumentRepl(cmd.Cmd):
         self._wait_for_scan()
         if not self.devices:
             ColorPrinter.warning("No instruments connected. Run 'scan' first.")
+            self._command_had_error = True
             return None
 
         if name is None:
             if self.selected is None:
                 ColorPrinter.warning("No active instrument. Use 'use <name>'.")
+                self._command_had_error = True
                 return None
             return self.devices.get(self.selected)
 
@@ -465,6 +476,7 @@ class InstrumentRepl(cmd.Cmd):
             ColorPrinter.warning(
                 f"Unknown instrument '{name}'. Available: {list(self.devices.keys())}"
             )
+            self._command_had_error = True
             return None
         return self.devices.get(name)
 
@@ -976,21 +988,32 @@ class InstrumentRepl(cmd.Cmd):
             if not tokens:
                 continue
             head = tokens[0].lower()
-            if head == "set" and len(tokens) >= 3:
-                key = tokens[1]
-                raw_val = self._substitute_vars(" ".join(tokens[2:]), variables)
-                try:
-                    num_vars = {}
-                    for k, v in variables.items():
-                        try:
-                            num_vars[k] = float(v)
-                        except (TypeError, ValueError):
-                            pass
-                    result = self._safe_eval(raw_val, num_vars)
-                    variables[key] = str(result)
-                except Exception:
-                    variables[key] = raw_val
-                continue
+            if head == "set" and len(tokens) >= 2:
+                # Handle set -e / set +e (error mode)
+                if len(tokens) == 2 and tokens[1] in ("-e", "+e"):
+                    if tokens[1] == "-e":
+                        self._exit_on_error = True
+                        ColorPrinter.info("Exit on error enabled")
+                    else:  # +e
+                        self._exit_on_error = False
+                        ColorPrinter.info("Exit on error disabled")
+                    continue
+                # Handle regular set <varname> <value>
+                if len(tokens) >= 3:
+                    key = tokens[1]
+                    raw_val = self._substitute_vars(" ".join(tokens[2:]), variables)
+                    try:
+                        num_vars = {}
+                        for k, v in variables.items():
+                            try:
+                                num_vars[k] = float(v)
+                            except (TypeError, ValueError):
+                                pass
+                        result = self._safe_eval(raw_val, num_vars)
+                        variables[key] = str(result)
+                    except Exception:
+                        variables[key] = raw_val
+                    continue
             if head == "call" and len(tokens) >= 2:
                 script_name = tokens[1]
                 if script_name not in self.scripts:
@@ -1079,7 +1102,16 @@ class InstrumentRepl(cmd.Cmd):
             if not line or line.startswith("#"):
                 continue
             self._tick_dmm_text_loop()
+            
+            # Reset error flag before executing command
+            self._command_had_error = False
+            
             if self.onecmd(line):
+                return True
+            
+            # If exit-on-error is enabled and a command failed, stop the script
+            if self._exit_on_error and getattr(self, '_command_had_error', False):
+                ColorPrinter.error(f"Script stopped due to error (set -e enabled)")
                 return True
         return False
 
@@ -1540,7 +1572,7 @@ class InstrumentRepl(cmd.Cmd):
         try:
             ColorPrinter.cyan(dev.query("*IDN?"))
         except Exception as exc:
-            ColorPrinter.error(str(exc))
+            self._error(str(exc))
 
     def do_raw(self, arg):
         "raw [name] <scpi>: send raw SCPI; if ends with ?, query and print"
@@ -1570,7 +1602,7 @@ class InstrumentRepl(cmd.Cmd):
                 dev.send_command(cmd_str)
                 ColorPrinter.success(f"Sent: {cmd_str}")
         except Exception as exc:
-            ColorPrinter.error(str(exc))
+            self._error(str(exc))
 
     def do_state(self, arg):
         "state [safe|reset|list] or state <device> <safe|reset|on|off>"
