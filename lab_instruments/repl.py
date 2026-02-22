@@ -8,6 +8,7 @@ Use to discover instruments, send commands, and place devices into known states.
 # Use NI-VISA backend for USB device support (pyvisa-py doesn't support USB-TMC)
 # The discovery code has been updated with timeouts to prevent hanging
 import os
+import pathlib
 import re
 import sys
 # os.environ['PYVISA_LIBRARY'] = '@py'  # Disabled - need NI-VISA for USB
@@ -413,8 +414,10 @@ class InstrumentRepl(cmd.Cmd):
             # Non-blocking on Windows: save to the real .scpi file and open it
             self.scripts[name] = list(current_lines)
             self._save_script(name)
-            path = self._script_file(name)
-            self._open_file_nonblocking(path)
+            path = pathlib.Path(self._script_file(name))
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.touch(exist_ok=True)  # guarantee file exists even if _save_script failed
+            self._open_file_nonblocking(str(path))
             ColorPrinter.info(f"Opened '{path}' — edit and save it, then run: script load")
             return None  # signals callers to skip their own save/success message
         editor = os.environ.get("EDITOR")
