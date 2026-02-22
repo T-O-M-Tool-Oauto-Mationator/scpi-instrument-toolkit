@@ -137,7 +137,7 @@ def _check_and_update(force=False, restart_on_success=True):
         if True:  # update available
             from lab_instruments.src.terminal import ColorPrinter as _CP
             _CP.info(f"Update available: v{_REPL_VERSION} → v{latest}. Installing...")
-            git_url = f"git+https://github.com/{_GITHUB_REPO}.git@{latest_tag}"
+            git_url = f"git+https://github.com/{_GITHUB_REPO}.git@{latest_tag}#egg=scpi-instrument-toolkit"
             cmd_base = [sys.executable, "-m", "pip", "install", "--upgrade", "-e"]
             result = subprocess.run(
                 cmd_base + [git_url, "--quiet"],
