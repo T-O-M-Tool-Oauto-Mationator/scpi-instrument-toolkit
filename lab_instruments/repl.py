@@ -1828,9 +1828,18 @@ class InstrumentRepl(cmd.Cmd):
                 if "=" in token:
                     key, value = token.split("=", 1)
                     params[key] = value
-            expanded = self._expand_script_lines(lines, params)
+            
+            # Use global variables, overridden by CLI parameters
+            run_vars = self._script_vars.copy()
+            run_vars.update(params)
+            
+            expanded = self._expand_script_lines(lines, run_vars)
+            
+            # Persist any variable changes from the script back to global state
+            self._script_vars.update(run_vars)
+            
             for raw_line in expanded:
-                raw_line = self._substitute_vars(raw_line, self._script_vars)
+                # Variables already substituted by expand, but onecmd_single might do it again
                 line = raw_line.strip()
                 if not line or line.startswith("#"):
                     continue
