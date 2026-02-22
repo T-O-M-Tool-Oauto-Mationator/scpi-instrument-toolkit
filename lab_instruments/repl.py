@@ -1960,7 +1960,16 @@ class InstrumentRepl(cmd.Cmd):
                 if not line or line.startswith("#"):
                     continue
                 self._tick_dmm_text_loop()
+                
+                # Reset error flag before executing command
+                self._command_had_error = False
+                
                 if self.onecmd(line):
+                    return True
+                
+                # If exit-on-error is enabled and a command failed, stop the script
+                if self._exit_on_error and getattr(self, '_command_had_error', False):
+                    ColorPrinter.error(f"Script stopped due to error (set -e enabled)")
                     return True
             return False
 
