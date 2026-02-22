@@ -172,21 +172,22 @@ def _check_and_update(force=False):
                     git_url_local = git_url  # capture for batch
                     scheduled = False
                     try:
-                        bat = os.path.join(tempfile.gettempdir(), "scpi_update.bat")
-                        with open(bat, "w") as _bat:
-                            _bat.write("@echo off\n")
-                            # Wait a few seconds for the current process to fully exit
-                            _bat.write("timeout /t 4 /nobreak >nul\n")
-                            _bat.write(
-                                f'"{sys.executable}" -m pip install --upgrade'
-                                f' "{git_url_local}" --quiet\n'
-                            )
-                            _bat.write('del "%~f0"\n')
-                        _DETACHED = 0x00000008
+                        # Spawn a silent Python process that waits for us to exit
+                        # then runs pip.  Using Python directly (not cmd.exe + batch)
+                        # means CREATE_NO_WINDOW works reliably — no console flicker,
+                        # no countdown, and the child survives after the parent exits.
                         _NO_WINDOW = 0x08000000
+                        update_script = (
+                            "import subprocess, sys, time\n"
+                            "time.sleep(5)\n"
+                            "subprocess.run(["
+                            "sys.executable, '-m', 'pip', 'install', '--upgrade',"
+                            f" {repr(git_url_local)}, '--quiet'"
+                            "])\n"
+                        )
                         subprocess.Popen(
-                            ["cmd", "/c", bat],
-                            creationflags=_DETACHED | _NO_WINDOW,
+                            [sys.executable, "-c", update_script],
+                            creationflags=_NO_WINDOW,
                             close_fds=True,
                         )
                         scheduled = True
