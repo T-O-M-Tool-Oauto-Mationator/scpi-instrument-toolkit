@@ -426,9 +426,14 @@ class InstrumentRepl(cmd.Cmd):
                 self._safe_all()
             except Exception as exc:
                 ColorPrinter.error(f"Error during cleanup: {exc}")
-        print("\nGoodbye!")
-        self._restore_terminal()
-        sys.exit(0)
+        
+        # If running a script, let the KeyboardInterrupt exception propagate
+        # so cmdloop() can catch it and return to the prompt
+        if not self._in_script:
+            print("\nGoodbye!")
+            self._restore_terminal()
+            sys.exit(0)
+        # If in a script, just return and let the exception handler deal with it
 
     # --------------------------
     # Core helpers
