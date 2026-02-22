@@ -1752,6 +1752,19 @@ class InstrumentRepl(cmd.Cmd):
                 ColorPrinter.warning("Usage: script run <name> [key=val ...]")
                 return
             name = args[1]
+            
+            # Hot-load: Reload from disk if file exists
+            script_path = self._script_file(name)
+            if os.path.exists(script_path):
+                try:
+                    with open(script_path, "r", encoding="utf-8") as f:
+                        lines = [line.rstrip("\n") for line in f.readlines()]
+                    while lines and not lines[-1].strip():
+                        lines.pop()
+                    self.scripts[name] = lines
+                except Exception:
+                    pass  # Keep existing memory version if read fails
+
             lines = self.scripts.get(name)
             if lines is None:
                 ColorPrinter.warning(f"Script '{name}' not found.")
