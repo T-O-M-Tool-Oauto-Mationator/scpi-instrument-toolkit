@@ -167,86 +167,17 @@ def _check_and_update(force=False, restart_on_success=True):
                     sys.exit(0)
             else:
                 # Windows-specific: pip cannot overwrite scpi-repl.exe while it is
-                # the currently-running process (WinError 32 file-lock).  Schedule
-                # the update via a detached batch script that runs after we exit.
+                # the currently-running process (WinError 32 file-lock). Just tell
+                # the user how to update after exiting.
                 if sys.platform == "win32" and "WinError 32" in stderr:
-                    git_url_local = git_url  # capture for batch
-                    scheduled = False
-                    try:
-                        # Spawn a separate Python process that waits for us to exit
-                        # then runs pip. We use creationflags=0 (default) or CREATE_NEW_CONSOLE
-                        # so the user SEES the update happening and doesn't restart too soon.
-                        _CREATE_NEW_CONSOLE = 0x00000010
-                        
-                        restart_block = ""
-                        if restart_on_success:
-                            restart_block = (
-                                "print('Update complete. Relaunching scpi-repl...')\\n"
-                                "time.sleep(2)\\n"
-                                "try:\\n"
-                                "    subprocess.Popen(['scpi-repl'])\\n"
-                                "except Exception:\\n"
-                                "    print('Could not auto-launch. Please start scpi-repl manually.')\\n"
-                                "    time.sleep(5)\\n"
-                            )
-                        else:
-                            restart_block = (
-                                "print('Update complete. This window will close in 3 seconds.')\\n"
-                                "time.sleep(3)\\n"
-                            )
-
-                        update_script = (
-                            "import subprocess, sys, time, os\\n"
-                            f"ppid = {os.getpid()}\\n"
-                            "print('--- SCPI TOOLKIT UPDATER ---')\\n"
-                            "print(f'Waiting for parent process {ppid} to exit...')\\n"
-                            "while True:\\n"
-                            "    try:\\n"
-                            "        out = subprocess.run(['tasklist', '/FI', f'PID eq {ppid}'], capture_output=True, text=True).stdout\\n"
-                            "        if str(ppid) not in out:\\n"
-                            "            break\\n"
-                            "    except Exception:\\n"
-                            "        break\\n"
-                            "    time.sleep(1)\\n"
-                            "time.sleep(1)\\n"
-                            "print('Installing update... DO NOT CLOSE THIS WINDOW')\\n"
-                            "try:\\n"
-                            "    result = subprocess.run([\\n"
-                            "        sys.executable, '-m', 'pip', 'install', '--upgrade',\\n"
-                            f"        {repr(git_url_local)}\\n"
-                            "    ], capture_output=True, text=True)\\n"
-                            "    if result.returncode == 0:\\n"
-                            "        print('[SUCCESS] Update successful')\\n"
-                            "    else:\\n"
-                            "        print(f'[FAILED] Update failed with code {result.returncode}')\\n"
-                            "        if result.stderr:\\n"
-                            "            print('Error:', result.stderr[:500])\\n"
-                            "except Exception as e:\\n"
-                            "    print(f'[FAILED] Exception during update: {e}')\\n"
-                            f"{restart_block}"
-                        )
-                        subprocess.Popen(
-                            [sys.executable, "-c", update_script],
-                            creationflags=_CREATE_NEW_CONSOLE,
-                            close_fds=True,
-                        )
-                        scheduled = True
-                    except Exception:
-                        pass
-                    if scheduled:
-                        _CP.success(
-                            f"Update scheduled. Closing main application to allow update to proceed."
-                        )
-                        sys.exit(0)
-                    else:
-                        _CP.warning(
-                            f"Windows prevented the update (file in use).\n"
-                            f"  Run this command after exiting:\n"
-                            f"  pip install --upgrade -e \"{git_url}\""
-                        )
+                    _CP.warning(
+                        f"Windows file lock prevents in-place update.\n"
+                        f"  Close any scpi-repl windows and run:\n"
+                        f"  pip install --upgrade \"{git_url}\""
+                    )
                     _write_log([
-                        f"DEFERRED (WinError 32): upgrade from v{_REPL_VERSION} to v{latest}",
-                        "Windows file lock — scheduled via detached batch or printed manual command.",
+                        f"BLOCKED (WinError 32): upgrade from v{_REPL_VERSION} to v{latest}",
+                        f"User must run: pip install --upgrade \"{git_url}\"",
                     ])
                 else:
                     log_path = _update_log_path()
