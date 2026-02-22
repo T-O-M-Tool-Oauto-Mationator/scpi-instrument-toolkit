@@ -283,8 +283,6 @@ class InstrumentDiscovery:
 
     def scan(self, verbose=True) -> Dict[str, Any]:
         """Scans all available VISA resources and attempts to identify supported instruments.
-        
-        This scan is performed in parallel for improved performance.
 
         Returns:
             Dict[str, Any]: A dictionary of initialized instrument drivers, keyed by their friendly name
@@ -296,7 +294,7 @@ class InstrumentDiscovery:
         try:
             if verbose:
                 print("Enumerating VISA resources...", flush=True)
-            resources = sorted(self.rm.list_resources())
+            resources = self.rm.list_resources()
             if verbose:
                 print(f"Found {len(resources)} VISA resource(s)", flush=True)
         except pyvisa.VisaIOError as e:
@@ -308,50 +306,128 @@ class InstrumentDiscovery:
                 ColorPrinter.error(f"Unexpected error listing resources: {e}")
             return {}
 
-        if not resources:
-            return {}
-
-        # Run probes in parallel
-        results = []
-        with concurrent.futures.ThreadPoolExecutor(max_workers=len(resources)) as executor:
-            # Map resources to the probe function
-            future_to_resource = {executor.submit(self._probe_resource, res, verbose): res for res in resources}
-            for future in concurrent.futures.as_completed(future_to_resource):
-                try:
-                    res = future.result()
-                    if res:
-                        results.append(res)
-                except Exception as e:
-                    if verbose:
-                        self._safe_print(f"{ColorPrinter.RED}Thread error during scan: {e}{ColorPrinter.RESET}")
-
-        # Post-process: handle naming and type counts
-        # Sort results by resource name to ensure deterministic naming (e.g. ASRL1 is psu1, ASRL4 is psu2)
-        # Result format: (generic, driver, model_key, idn)
-        results.sort(key=lambda x: x[1].resource_name)
-
-        final_drivers: Dict[str, Any] = {}
+        # Use temp keys during scan so we know the full count before naming.
+        # Temp key format: "__awg_0", "__awg_1", etc. (double-underscore prefix).
+        # After the loop we rename based on total count per type:
+        #   1 device  → "awg"
+        #   2+ devices → "awg1", "awg2", "awg3", ...
+        found_drivers: Dict[str, Any] = {}
         type_counts: Dict[str, int] = {}
-        
-        # Calculate totals for naming
-        type_totals: Dict[str, int] = {}
-        for generic, _, _, _ in results:
-            type_totals[generic] = type_totals.get(generic, 0) + 1
 
-        for generic, driver, model_key, idn in results:
-            idx = type_counts.get(generic, 0)
-            total = type_totals[generic]
-            
-            if total == 1:
-                final_name = generic
-            else:
-                final_name = f"{generic}{idx + 1}"
-            
-            type_counts[generic] = idx + 1
-            final_drivers[final_name] = driver
+        for resource in resources:
+            # Skip Bluetooth and other virtual serial ports that often hang
+            if any(skip in resource for skip in ["Bluetooth", "BTHENUM", "BT"]):
+                if verbose:
+                    print(f"Skipping {resource} (virtual port)")
+                continue
+
+            if verbose:
+                print(f"Checking {resource}...", end=" ", flush=True)
+
+            try:
+                # Open resource with a short timeout for identification
+                inst = self.rm.open_resource(resource, timeout=2000)
+
+                # Clear buffer if possible
+                try:
+                    inst.clear()
+                except:
+                    pass
+
+                # Query IDN
+                idn = None
+                try:
+                    # Check if this is a serial device
+                    if resource.startswith("ASRL"):
+                        # Try common serial configurations
+                        idn = self._try_serial_idn(inst)
+
+                        # If no *IDN? response, try JDS6600 protocol
+                        if not idn:
+                            idn = self._try_jds6600_idn(inst)
+
+                        # If still no response, try MATRIX MPS-6010H-1C protocol
+                        if not idn:
+                            idn = self._try_matrix_idn(inst)
+                    else:
+                        # Standard query for USB/GPIB/Ethernet devices
+                        idn = inst.query("*IDN?").strip()
+
+                    if not idn:
+                        raise pyvisa.VisaIOError("No response")
+
+                except pyvisa.VisaIOError:
+                    if verbose:
+                        print(f"{ColorPrinter.RED}No response{ColorPrinter.RESET}")
+                    inst.close()
+                    continue
+
+                if verbose:
+                    print(f"{ColorPrinter.GREEN}Found: {idn}{ColorPrinter.RESET}")
+
+                # Match against known models
+                matched = False
+                for model_key, driver_class in self.MODEL_MAP.items():
+                    if model_key in idn:
+                        generic = self.NAME_MAP[model_key]
+                        idx = type_counts.get(generic, 0)
+                        temp_key = f"__{generic}_{idx}"
+                        type_counts[generic] = idx + 1
+
+                        # We found a match! Initialize the specific driver.
+                        # Note: We close the raw instance first, let the driver handle connection.
+                        inst.close()
+
+                        if verbose:
+                            ColorPrinter.success(
+                                f"  -> Identified as {generic.upper()} #{idx + 1} ({model_key})"
+                            )
+
+                        try:
+                            # Instantiate the driver (store under temp key for now)
+                            driver = driver_class(resource)
+                            driver.connect()
+                            found_drivers[temp_key] = driver
+                            matched = True
+                        except Exception as e:
+                            if verbose:
+                                ColorPrinter.error(
+                                    f"  -> Failed to initialize driver: {e}"
+                                )
+                        break
+
+                if not matched:
+                    inst.close()
+                    if verbose:
+                        ColorPrinter.warning("  -> Unknown or unsupported device.")
+
+            except Exception as e:
+                if verbose:
+                    # Only show meaningful errors, not format/type errors
+                    error_str = str(e)
+                    if "format" not in error_str.lower():
+                        print(f"{ColorPrinter.RED}Error: {e}{ColorPrinter.RESET}")
+                    else:
+                        print(f"{ColorPrinter.RED}No response{ColorPrinter.RESET}")
+                continue
+
+        # Post-process: rename from temp keys to final friendly names.
+        # 1 device of a type  → "awg"
+        # 2+ devices of a type → "awg1", "awg2", "awg3", ...
+        final_drivers: Dict[str, Any] = {}
+        for generic, total in type_counts.items():
+            for idx in range(total):
+                temp_key = f"__{generic}_{idx}"
+                if temp_key not in found_drivers:
+                    continue  # driver failed to initialize
+                if total == 1:
+                    final_name = generic
+                else:
+                    final_name = f"{generic}{idx + 1}"
+                final_drivers[final_name] = found_drivers[temp_key]
 
         if verbose:
-            for final_name in sorted(final_drivers.keys()):
+            for final_name, driver in final_drivers.items():
                 ColorPrinter.info(f"  Assigned name: '{final_name}'")
 
         self.found_devices = final_drivers
