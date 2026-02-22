@@ -1105,23 +1105,26 @@ class InstrumentRepl(cmd.Cmd):
 
     def _run_script_lines(self, lines):
         expanded = self._expand_script_lines(lines, {})
-        for raw_line in expanded:
-            raw_line = self._substitute_vars(raw_line, self._script_vars)
-            line = raw_line.strip()
-            if not line or line.startswith("#"):
-                continue
-            self._tick_dmm_text_loop()
-            
-            # Reset error flag before executing command
-            self._command_had_error = False
-            
-            if self.onecmd(line):
-                return True
-            
-            # If exit-on-error is enabled and a command failed, stop the script
-            if self._exit_on_error and getattr(self, '_command_had_error', False):
-                ColorPrinter.error(f"Script stopped due to error (set -e enabled)")
-                return True
+        try:
+            for raw_line in expanded:
+                raw_line = self._substitute_vars(raw_line, self._script_vars)
+                line = raw_line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                self._tick_dmm_text_loop()
+                
+                # Reset error flag before executing command
+                self._command_had_error = False
+                
+                if self.onecmd(line):
+                    return True
+                
+                # If exit-on-error is enabled and a command failed, stop the script
+                if self._exit_on_error and getattr(self, '_command_had_error', False):
+                    ColorPrinter.error(f"Script stopped due to error (set -e enabled)")
+                    return True
+        except KeyboardInterrupt:
+            ColorPrinter.warning("Script interrupted by user")
         return False
 
     def _onecmd_single(self, line):
@@ -1963,23 +1966,26 @@ class InstrumentRepl(cmd.Cmd):
             # Persist any variable changes from the script back to global state
             self._script_vars.update(run_vars)
             
-            for raw_line in expanded:
-                # Variables already substituted by expand, but onecmd_single might do it again
-                line = raw_line.strip()
-                if not line or line.startswith("#"):
-                    continue
-                self._tick_dmm_text_loop()
-                
-                # Reset error flag before executing command
-                self._command_had_error = False
-                
-                if self.onecmd(line):
-                    return True
-                
-                # If exit-on-error is enabled and a command failed, stop the script
-                if self._exit_on_error and getattr(self, '_command_had_error', False):
-                    ColorPrinter.error(f"Script stopped due to error (set -e enabled)")
-                    break  # Exit script loop but stay in REPL
+            try:
+                for raw_line in expanded:
+                    # Variables already substituted by expand, but onecmd_single might do it again
+                    line = raw_line.strip()
+                    if not line or line.startswith("#"):
+                        continue
+                    self._tick_dmm_text_loop()
+                    
+                    # Reset error flag before executing command
+                    self._command_had_error = False
+                    
+                    if self.onecmd(line):
+                        return True
+                    
+                    # If exit-on-error is enabled and a command failed, stop the script
+                    if self._exit_on_error and getattr(self, '_command_had_error', False):
+                        ColorPrinter.error(f"Script stopped due to error (set -e enabled)")
+                        break  # Exit script loop but stay in REPL
+            except KeyboardInterrupt:
+                ColorPrinter.warning("Script interrupted by user")
             return False
 
         elif subcmd == "edit":
