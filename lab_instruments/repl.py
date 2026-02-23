@@ -37,11 +37,12 @@ _GITHUB_REPO = "T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit"
 
 def _check_for_updates(force=False):
     """Check GitHub for updates and tell the user what command to run.
-    No automatic install — user must run the command manually."""
+    No automatic install — user must run the command manually.
+    Returns True if an update is available, False otherwise."""
     if _REPL_VERSION == "unknown":
         if force:
             print("Running from source — skipping update check.")
-        return
+        return False
 
     import urllib.request
     import json
@@ -53,7 +54,7 @@ def _check_for_updates(force=False):
             tags = json.loads(resp.read())
 
         if not tags:
-            return
+            return False
 
         # GitHub returns tags newest-first; first entry is the latest
         latest_tag = tags[0]["name"]        # e.g. "v0.1.70"
@@ -66,16 +67,17 @@ def _check_for_updates(force=False):
             if force:
                 from lab_instruments.src.terminal import ColorPrinter as _CP
                 _CP.success(f"Already up to date (v{_REPL_VERSION}).")
-            return
+            return False
 
         # Update available — show the user the command to run
         from lab_instruments.src.terminal import ColorPrinter as _CP
         _CP.info(f"Update available: v{_REPL_VERSION} → v{latest}. To install, run:")
         git_url = f"git+https://github.com/{_GITHUB_REPO}.git@{latest_tag}#egg=scpi-instrument-toolkit"
         print(f'  pip install --upgrade "{git_url}"')
+        return True
 
     except Exception:
-        pass  # Network error or no internet — ignore silently
+        return False  # Network error or no internet — ignore silently
 
 from lab_instruments import InstrumentDiscovery, ColorPrinter
 
@@ -4698,13 +4700,14 @@ def main():
         print(
             f"scpi-instrument-toolkit v{_REPL_VERSION}\n"
             "\n"
-            "Usage: scpi-repl [--mock] [--update] [--version] [--help] [script]\n"
+            "Usage: scpi-repl [--mock] [--update] [--ignore-update] [--version] [--help] [script]\n"
             "\n"
             "Options:\n"
-            "  --mock       Run with simulated instruments (no hardware required)\n"
-            "  --update     Check for updates and display the install command\n"
-            "  --version    Print version and exit\n"
-            "  --help       Show this help and exit\n"
+            "  --mock           Run with simulated instruments (no hardware required)\n"
+            "  --update         Check for updates and display the install command\n"
+            "  --ignore-update  Skip the update check and run even if a newer version exists\n"
+            "  --version        Print version and exit\n"
+            "  --help           Show this help and exit\n"
             "\n"
             "Arguments:\n"
             "  script       Name of a saved script to run non-interactively\n"
@@ -4713,6 +4716,7 @@ def main():
             "  scpi-repl                  Start the interactive REPL\n"
             "  scpi-repl --mock           Start with mock instruments\n"
             "  scpi-repl --update         Check for updates\n"
+            "  scpi-repl --ignore-update  Run without checking for updates\n"
             "  scpi-repl my_script        Run 'my_script' and exit\n"
         )
         sys.exit(0)
@@ -4721,8 +4725,15 @@ def main():
         _check_for_updates(force=True)
         sys.exit(0)
 
-    # Check for updates on startup (silently tells user if available)
-    _check_for_updates(force=False)
+    ignore_update = "--ignore-update" in args
+    if ignore_update:
+        args = [a for a in args if a != "--ignore-update"]
+
+    # Check for updates on startup; block if one is available unless --ignore-update
+    update_available = _check_for_updates(force=False)
+    if update_available and not ignore_update:
+        ColorPrinter.error("Please update before using the REPL. Run the command above, or use --ignore-update to skip this check.")
+        sys.exit(1)
 
     if "--mock" in args:
         args = [a for a in args if a != "--mock"]
