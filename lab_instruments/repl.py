@@ -366,6 +366,7 @@ class InstrumentRepl(cmd.Cmd):
 
         Returns the assigned device name string, or None if not found.
         """
+        self._wait_for_scan()
         # If a specific device was pre-selected by default() routing, use it directly
         if self._device_override and self._device_override in self.devices:
             return self._device_override

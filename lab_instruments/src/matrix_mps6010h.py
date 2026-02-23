@@ -5,7 +5,7 @@ Instrument Type: DC Power Supply (60V/10A, single channel)
 IMPORTANT: This device requires enabling remote mode first with REM:ON
 - Must send REM:ON before remote commands will work
 - Commands: VOLT (not VSET), CURR (not ISET), OUTP (not OUTPUT)
-- Device DOES support query commands (VOLT?, MEAS:VOLT?, MEAS:CURR?)
+- Device does NOT support query commands — all reads return cached setpoints
 - Use REM:OFF or press Shift+7 on front panel to return to local mode
 """
 
@@ -175,40 +175,21 @@ class MATRIX_MPS6010H(DeviceManager):
 
     def measure_voltage(self):
         """
-        Measure output voltage.
+        Return the voltage setpoint (this device does not support readback queries).
 
         Returns:
-            float: Actual measured output voltage in volts.
+            float: Last voltage setpoint sent to device.
         """
-        try:
-            import time
-            # Query voltage with small delay
-            self.instrument.write("MEAS:VOLT?")
-            time.sleep(0.2)
-            response = self.instrument.read().strip()
-            return float(response)
-        except Exception as e:
-            print(f"Warning: Could not measure voltage: {e}")
-            print("Returning cached setpoint")
-            return self._voltage_setpoint
+        return self._voltage_setpoint
 
     def measure_current(self):
         """
-        Measure output current.
+        Return the current limit setpoint (this device does not support readback queries).
 
         Returns:
-            float: Actual measured output current in amps.
+            float: Last current limit sent to device.
         """
-        try:
-            import time
-            # Query current with small delay
-            self.instrument.write("MEAS:CURR?")
-            time.sleep(0.2)
-            response = self.instrument.read().strip()
-            return float(response)
-        except Exception as e:
-            print(f"Warning: Could not measure current: {e}")
-            return 0.0
+        return self._current_limit
 
     def get_error(self):
         """
