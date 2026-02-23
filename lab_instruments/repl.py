@@ -1729,10 +1729,16 @@ class InstrumentRepl(cmd.Cmd):
         try:
             if name.startswith("psu"):
                 if state in ("safe", "off"):
-                    dev.disable_all_channels()
+                    if hasattr(dev, 'disable_all_channels'):
+                        dev.disable_all_channels()
+                    elif hasattr(dev, 'disable_output'):
+                        dev.disable_output()
+                    elif hasattr(dev, 'enable_output'):
+                        dev.enable_output(False)
                     ColorPrinter.success(f"{name}: output disabled")
                 elif state == "on":
-                    dev.enable_output(True)
+                    if hasattr(dev, 'enable_output'):
+                        dev.enable_output(True)
                     ColorPrinter.success(f"{name}: output enabled")
                 elif state == "reset":
                     dev.reset()
@@ -1741,11 +1747,24 @@ class InstrumentRepl(cmd.Cmd):
                     ColorPrinter.warning("PSU states: on, off, safe, reset")
             elif name.startswith("awg") or name == "dds":
                 if state in ("safe", "off"):
-                    dev.disable_all_channels()
+                    if hasattr(dev, 'disable_all_channels'):
+                        dev.disable_all_channels()
+                    elif hasattr(dev, 'disable_output'):
+                        dev.disable_output()
+                    elif hasattr(dev, 'enable_output'):
+                        try:
+                            dev.enable_output(ch1=False, ch2=False)
+                        except TypeError:
+                            dev.enable_output(False)
                     ColorPrinter.success(f"{name}: outputs disabled")
                 elif state == "on":
-                    dev.enable_output(1, True)
-                    dev.enable_output(2, True)
+                    if hasattr(dev, 'enable_all_channels'):
+                        dev.enable_all_channels()
+                    elif hasattr(dev, 'enable_output'):
+                        try:
+                            dev.enable_output(ch1=True, ch2=True)
+                        except TypeError:
+                            dev.enable_output(True)
                     ColorPrinter.success(f"{name}: outputs enabled")
                 elif state == "reset":
                     dev.reset()
@@ -1754,10 +1773,24 @@ class InstrumentRepl(cmd.Cmd):
                     ColorPrinter.warning("AWG states: on, off, safe, reset")
             elif name.startswith("scope"):
                 if state in ("safe", "off"):
-                    dev.disable_all_channels()
+                    if hasattr(dev, 'disable_all_channels'):
+                        dev.disable_all_channels()
+                    elif hasattr(dev, 'disable_channel'):
+                        for ch in range(1, 5):
+                            try:
+                                dev.disable_channel(ch)
+                            except Exception:
+                                pass
                     ColorPrinter.success(f"{name}: channels disabled")
                 elif state == "on":
-                    dev.enable_all_channels()
+                    if hasattr(dev, 'enable_all_channels'):
+                        dev.enable_all_channels()
+                    elif hasattr(dev, 'enable_channel'):
+                        for ch in range(1, 5):
+                            try:
+                                dev.enable_channel(ch)
+                            except Exception:
+                                pass
                     ColorPrinter.success(f"{name}: channels enabled")
                 elif state == "reset":
                     dev.reset()
