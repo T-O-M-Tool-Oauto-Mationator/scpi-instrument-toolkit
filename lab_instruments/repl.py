@@ -1018,11 +1018,11 @@ class InstrumentRepl(cmd.Cmd):
             expanded.append(self._substitute_vars(raw_line, variables))
         return expanded
 
-    def _debug_show_context(self, lines, idx, breakpoints, window=3):
+    def _debug_show_context(self, lines, idx, breakpoints, window=3, show_all=False):
         """Print lines around the current position for the script debugger."""
         total = len(lines)
-        start = max(0, idx - window)
-        end = min(total, idx + window + 1)
+        start = 0 if show_all else max(0, idx - window)
+        end = total if show_all else min(total, idx + window + 1)
         print()
         print("  " + "─" * 60)
         for i in range(start, end):
@@ -1032,7 +1032,7 @@ class InstrumentRepl(cmd.Cmd):
             else:
                 print(f"  {bp} {i+1:>4}   {lines[i]}")
         print("  " + "─" * 60)
-        print(f"  {idx+1}/{total}  │  n=step  c=continue  back  goto N  b N=break  d N=del  l=list  q=quit")
+        print(f"  {idx+1}/{total}  │  n=step  c=continue  back  goto N  b N=break  d N=del  l [N|all]=list  q=quit")
         print()
 
     def _run_expanded(self, expanded, debug=False):
@@ -1143,8 +1143,18 @@ class InstrumentRepl(cmd.Cmd):
                             except (ValueError, IndexError):
                                 ColorPrinter.error("Usage: d <N>")
 
-                        elif cmd in ("l", "list"):
-                            self._debug_show_context(lines, idx, breakpoints, window=8)
+                        elif cmd == "l" or cmd == "list" or cmd.startswith("l ") or cmd.startswith("list "):
+                            parts = cmd.split(None, 1)
+                            arg = parts[1] if len(parts) > 1 else ""
+                            if arg.lower() == "all":
+                                self._debug_show_context(lines, idx, breakpoints, show_all=True)
+                            elif arg:
+                                try:
+                                    self._debug_show_context(lines, idx, breakpoints, window=int(arg))
+                                except ValueError:
+                                    ColorPrinter.error("Usage: l [N|all]")
+                            else:
+                                self._debug_show_context(lines, idx, breakpoints, window=8)
 
                         elif cmd in ("info", "i", "?"):
                             ColorPrinter.info(f"Position: line {idx + 1}/{len(lines)}")
