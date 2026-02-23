@@ -1071,7 +1071,10 @@ class InstrumentRepl(cmd.Cmd):
                     while True:
                         try:
                             cmd = input("(dbg) ").strip()
-                        except (EOFError, KeyboardInterrupt):
+                        except KeyboardInterrupt:
+                            print()
+                            continue
+                        except EOFError:
                             ColorPrinter.warning("Debugger aborted")
                             return True
 
