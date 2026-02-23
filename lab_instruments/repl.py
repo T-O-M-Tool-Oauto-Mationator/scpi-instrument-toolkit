@@ -941,7 +941,7 @@ class InstrumentRepl(cmd.Cmd):
                     line_tokens = shlex.split(line)
                     if not line_tokens:
                         continue
-                    if line_tokens[0].lower() in ("repeat", "for"):
+                    if line_tokens[0].lower() in ("repeat", "for", "array"):
                         depth_inner += 1
                     elif line_tokens[0].lower() == "end":
                         depth_inner -= 1
@@ -950,6 +950,23 @@ class InstrumentRepl(cmd.Cmd):
                     block.append(line)
                 for _ in range(count):
                     expanded.extend(self._expand_script_lines(block, dict(variables), depth))
+                continue
+            if head == "array" and len(tokens) >= 2:
+                varname = tokens[1]
+                elements = []
+                while idx < len(lines):
+                    line = lines[idx].strip()
+                    idx += 1
+                    if not line or line.startswith("#"):
+                        continue
+                    inner_tokens = shlex.split(line)
+                    if not inner_tokens:
+                        continue
+                    if inner_tokens[0].lower() == "end":
+                        break
+                    # Each non-comment line is one element; substitute vars
+                    elements.extend(shlex.split(self._substitute_vars(line, variables)))
+                variables[varname] = " ".join(elements)
                 continue
             if head == "for" and len(tokens) >= 3:
                 key = tokens[1]
@@ -972,7 +989,7 @@ class InstrumentRepl(cmd.Cmd):
                     line_tokens = shlex.split(line)
                     if not line_tokens:
                         continue
-                    if line_tokens[0].lower() in ("repeat", "for"):
+                    if line_tokens[0].lower() in ("repeat", "for", "array"):
                         depth_inner += 1
                     elif line_tokens[0].lower() == "end":
                         depth_inner -= 1
