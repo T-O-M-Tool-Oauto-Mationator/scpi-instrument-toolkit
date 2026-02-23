@@ -172,6 +172,7 @@ class InstrumentRepl(cmd.Cmd):
         self._in_script = False  # Flag to track if we're running a script
         self._interrupt_requested = False  # Flag set when Ctrl+C is pressed
         self._should_exit = False  # Flag to signal that we should exit the REPL
+        self._in_debugger = False  # True while the script debugger is active
 
         # Save terminal state so we can restore it on any exit path
         self._term_fd = None
@@ -310,7 +311,7 @@ class InstrumentRepl(cmd.Cmd):
         # Don't wait for the scan thread on interrupt — if the user is Ctrl+C-ing
         # during a long scan, just cancel it and exit cleanly.
         self._scan_done.set()  # unblock any _wait_for_scan callers
-        if not self._cleanup_done and self.devices:
+        if not self._cleanup_done and self.devices and not self._in_debugger:
             self._cleanup_done = True
             ColorPrinter.warning("\n\n=== Interrupted! Shutting down instruments safely ===")
             try:
@@ -1055,6 +1056,7 @@ class InstrumentRepl(cmd.Cmd):
         idx = 0
         debug_active = debug
         self._in_script = True
+        self._in_debugger = debug
         self._interrupt_requested = False
 
         try:
@@ -1065,6 +1067,7 @@ class InstrumentRepl(cmd.Cmd):
                 if (idx + 1) in breakpoints and not debug_active:
                     ColorPrinter.info(f"Breakpoint at line {idx + 1}")
                     debug_active = True
+                    self._in_debugger = True
 
                 if debug_active:
                     self._debug_show_context(lines, idx, breakpoints)
@@ -1081,8 +1084,13 @@ class InstrumentRepl(cmd.Cmd):
                         if cmd in ("", "n", "next", "s", "step"):
                             self._tick_dmm_text_loop()
                             self._command_had_error = False
-                            if self.onecmd(line):
-                                return True
+                            try:
+                                if self.onecmd(line):
+                                    return True
+                            except KeyboardInterrupt:
+                                print()
+                                ColorPrinter.warning("Command interrupted — staying at line (retry with Enter or skip with goto)")
+                                break
                             if self._exit_on_error and self._command_had_error:
                                 ColorPrinter.error("Script stopped (set -e)")
                                 return True
@@ -1091,10 +1099,18 @@ class InstrumentRepl(cmd.Cmd):
 
                         elif cmd in ("c", "continue"):
                             debug_active = False
+                            self._in_debugger = False
                             self._tick_dmm_text_loop()
                             self._command_had_error = False
-                            if self.onecmd(line):
-                                return True
+                            try:
+                                if self.onecmd(line):
+                                    return True
+                            except KeyboardInterrupt:
+                                print()
+                                ColorPrinter.warning("Command interrupted — re-entering debugger")
+                                debug_active = True
+                                self._in_debugger = True
+                                break
                             if self._exit_on_error and self._command_had_error:
                                 ColorPrinter.error("Script stopped (set -e)")
                                 return True
@@ -1177,8 +1193,15 @@ class InstrumentRepl(cmd.Cmd):
                     # Normal (non-debug) execution
                     self._tick_dmm_text_loop()
                     self._command_had_error = False
-                    if self.onecmd(line):
-                        return True
+                    try:
+                        if self.onecmd(line):
+                            return True
+                    except KeyboardInterrupt:
+                        print()
+                        ColorPrinter.warning("Command interrupted — re-entering debugger")
+                        debug_active = True
+                        self._in_debugger = True
+                        continue  # outer while: will show (dbg) at this line
                     if self._exit_on_error and self._command_had_error:
                         ColorPrinter.error("Script stopped (set -e)")
                         return True
@@ -1188,6 +1211,7 @@ class InstrumentRepl(cmd.Cmd):
             ColorPrinter.warning("Script interrupted")
         finally:
             self._in_script = False
+            self._in_debugger = False
             self._interrupt_requested = False
 
         return False
