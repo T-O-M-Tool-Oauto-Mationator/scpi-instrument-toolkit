@@ -881,7 +881,7 @@ class InstrumentRepl(cmd.Cmd):
                         self._error(f"export: '{varname}' not set in this scope")
                 continue
             if head == "breakpoint":
-                expanded.append("__BREAKPOINT__")
+                expanded.append(("__BREAKPOINT__", "breakpoint"))
                 continue
             if head == "set" and len(tokens) >= 2:
                 # Handle set -e / set +e (error mode)
@@ -1016,10 +1016,10 @@ class InstrumentRepl(cmd.Cmd):
                 continue
             if head == "end":
                 continue
-            expanded.append(self._substitute_vars(raw_line, variables))
+            expanded.append((self._substitute_vars(raw_line, variables), raw_line))
         return expanded
 
-    def _debug_show_context(self, lines, idx, breakpoints, window=3, show_all=False):
+    def _debug_show_context(self, lines, source_lines, idx, breakpoints, window=3, show_all=False):
         """Print lines around the current position for the script debugger."""
         total = len(lines)
         start = 0 if show_all else max(0, idx - window)
@@ -1028,10 +1028,14 @@ class InstrumentRepl(cmd.Cmd):
         print("  " + "─" * 60)
         for i in range(start, end):
             bp = "●" if (i + 1) in breakpoints else " "
+            src = source_lines[i] if source_lines else lines[i]
             if i == idx:
-                print(f"\033[96m  {bp} {i+1:>4} → {lines[i]}\033[0m")
+                print(f"\033[96m  {bp} {i+1:>4} → {src}\033[0m")
+                # Show the expanded form underneath if it differs from source
+                if lines[i] != src:
+                    print(f"\033[90m         ↳ {lines[i]}\033[0m")
             else:
-                print(f"  {bp} {i+1:>4}   {lines[i]}")
+                print(f"  {bp} {i+1:>4}   {src}")
         print("  " + "─" * 60)
         print(f"  {idx+1}/{total}  │  n=step  c=continue  back  goto N  b N=break  d N=del  l [N|all]=list  q=quit")
         print()
@@ -1039,16 +1043,19 @@ class InstrumentRepl(cmd.Cmd):
     def _run_expanded(self, expanded, debug=False):
         """Execute a pre-expanded command list, optionally with an interactive debugger."""
         # Build the executable line list, pulling out script-embedded breakpoints
-        lines = []
+        lines = []        # expanded commands (sent to instruments)
+        source_lines = []  # original source text (shown in debugger)
         breakpoints = set()
-        for raw in expanded:
-            line = raw.strip()
-            if not line or line.startswith("#"):
+        for item in expanded:
+            cmd, src = item if isinstance(item, tuple) else (item, item)
+            cmd = cmd.strip()
+            if not cmd or cmd.startswith("#"):
                 continue
-            if line == "__BREAKPOINT__":
+            if cmd == "__BREAKPOINT__":
                 breakpoints.add(len(lines) + 1)  # fires before the next real line
                 continue
-            lines.append(line)
+            lines.append(cmd)
+            source_lines.append(src.strip())
 
         if not lines:
             return False
@@ -1070,7 +1077,7 @@ class InstrumentRepl(cmd.Cmd):
                     self._in_debugger = True
 
                 if debug_active:
-                    self._debug_show_context(lines, idx, breakpoints)
+                    self._debug_show_context(lines, source_lines, idx, breakpoints)
                     while True:
                         try:
                             cmd = input("(dbg) ").strip()
@@ -1121,7 +1128,7 @@ class InstrumentRepl(cmd.Cmd):
                             if idx > 0:
                                 idx -= 1
                                 ColorPrinter.warning("Moved back — instrument state NOT reversed")
-                                self._debug_show_context(lines, idx, breakpoints)
+                                self._debug_show_context(lines, source_lines, idx, breakpoints)
                             else:
                                 ColorPrinter.warning("Already at first line")
 
@@ -1132,7 +1139,7 @@ class InstrumentRepl(cmd.Cmd):
                                 if 0 <= target < len(lines):
                                     idx = target
                                     ColorPrinter.warning(f"Jumped to line {idx + 1} — skipped lines NOT executed/reversed")
-                                    self._debug_show_context(lines, idx, breakpoints)
+                                    self._debug_show_context(lines, source_lines, idx, breakpoints)
                                 else:
                                     ColorPrinter.error(f"Line out of range (1–{len(lines)})")
                             except (ValueError, IndexError):
@@ -1166,14 +1173,14 @@ class InstrumentRepl(cmd.Cmd):
                             parts = cmd.split(None, 1)
                             arg = parts[1] if len(parts) > 1 else ""
                             if arg.lower() == "all":
-                                self._debug_show_context(lines, idx, breakpoints, show_all=True)
+                                self._debug_show_context(lines, source_lines, idx, breakpoints, show_all=True)
                             elif arg:
                                 try:
-                                    self._debug_show_context(lines, idx, breakpoints, window=int(arg))
+                                    self._debug_show_context(lines, source_lines, idx, breakpoints, window=int(arg))
                                 except ValueError:
                                     ColorPrinter.error("Usage: l [N|all]")
                             else:
-                                self._debug_show_context(lines, idx, breakpoints, window=8)
+                                self._debug_show_context(lines, source_lines, idx, breakpoints, window=8)
 
                         elif cmd in ("info", "i", "?"):
                             ColorPrinter.info(f"Position: line {idx + 1}/{len(lines)}")
