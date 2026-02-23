@@ -2,7 +2,7 @@
 
 Scripts are named sequences of REPL commands stored in the session. They support variables, loops, sub-scripts, and operator interaction — letting you automate full test sequences.
 
-Script directives (`set`, `print`, `pause`, `input`, `sleep`, `repeat`, `for`, `call`) are also valid as **interactive REPL commands** — you can test them at the prompt before putting them in a script.
+Script directives (`set`, `array`, `print`, `pause`, `input`, `sleep`, `repeat`, `for`, `call`, `import`, `export`, `breakpoint`) are also valid as **interactive REPL commands** — you can test them at the prompt before putting them in a script.
 
 ---
 
@@ -38,6 +38,21 @@ script run <name> [key=value ...]
 ```
 script run my_psu_test
 script run my_psu_test voltage=3.3 label=test_3v3
+```
+
+### script debug
+
+Run a script in the **interactive debugger** — step through commands one at a time, set breakpoints, and inspect state at any point.
+
+```
+script debug <name> [key=value ...]
+```
+
+See [Debugger](#debugger) for the full reference.
+
+```
+script debug lab3
+script debug my_test voltage=3.3
 ```
 
 ### script edit
@@ -478,6 +493,88 @@ for v ${v_start} ${v_mid} ${v_end}
 end
 ```
 
+### array — multi-line value list
+
+```
+array <varname>
+  <value1>
+  <value2>
+  ...
+end
+```
+
+Builds a variable from a list of values, one per line. Comment out any line with `#` to exclude it from the list. The result is stored as a space-separated string compatible with `for`.
+
+This is the preferred way to define a sweep table — it's easy to read and you can disable individual points by commenting them out.
+
+| Parameter  | Required | Description        |
+| ---------- | -------- | ------------------ |
+| `varname`  | required | Variable name.     |
+| each line  | —        | One element per line. Lines starting with `#` are skipped. |
+
+```
+array SWEEP
+  5.0,0.001,1.0
+  3.3,0.001,0.5
+  # 2.5,0.001,0.5   <- commented out, skipped
+  1.8,0.0005,0.5
+  1.5,0.0005,0.2
+end
+
+for VIN,HSCALE,VSCALE ${SWEEP}
+  psu set ${VIN} 0.5
+  scope hscale ${HSCALE}
+  scope vscale 1 ${VSCALE} 0
+end
+```
+
+This is equivalent to writing all values inline on the `for` line — but much easier to manage.
+
+---
+
+## Variable Scope
+
+By default, each script runs in its own isolated variable scope. Variables defined inside a script do not leak into the REPL, and REPL variables are not automatically visible inside scripts. Use `import` and `export` to explicitly cross the boundary.
+
+### import — pull a variable from the parent scope
+
+```
+import <varname> [varname2 ...]
+```
+
+Copies a variable from the calling scope (REPL or parent script) into the current script's scope. If the variable does not exist in the parent scope, an error is raised.
+
+```
+import FREQ VREF    # bring FREQ and VREF in from the REPL
+psu set ${VREF} 0.5
+awg freq 1 ${FREQ}
+```
+
+### export — push a variable back to the parent scope
+
+```
+export <varname> [varname2 ...]
+```
+
+When the script finishes, copies the named variable back to the calling scope (REPL or parent script). Only explicitly exported variables survive — everything else stays local.
+
+```
+set result 42.0
+export result    # ${result} becomes available in the REPL after the script runs
+```
+
+**Example: script that returns a computed value**
+
+```
+# measure_vout — measures PSU output, exports result
+set VOUT 0.0
+psu meas_store v psu_reading unit=V
+set VOUT m["psu_reading"]
+export VOUT
+```
+
+After `script run measure_vout`, `${VOUT}` is available in the REPL.
+
 ---
 
 ## Sub-scripts
@@ -543,6 +640,72 @@ set voltage 5.0     # inline comments work too
 ```
 
 Use comments liberally to document what each section does, expected values, and any hardware setup required.
+
+---
+
+## Debugger
+
+The script debugger lets you step through a script one command at a time, set breakpoints, jump around, and run live REPL commands while paused. Because all loops and variables are fully expanded before the debugger starts, every iteration of a `for` loop appears as a separate numbered line — you can set a breakpoint on exactly the one point you care about.
+
+### Starting the debugger
+
+```
+script debug <name> [key=value ...]
+```
+
+```
+script debug lab3
+script debug my_sweep voltage=3.3
+```
+
+### In-script breakpoints
+
+Add `breakpoint` anywhere in a script file to automatically pause there, even when running with `script run`:
+
+```
+psu set ${VIN} 0.5
+psu chan on
+breakpoint          ← execution pauses here; drops into debugger
+scope single
+```
+
+### Debugger display
+
+When paused, the debugger shows a context window around the current line. The current line is highlighted in cyan. Lines with breakpoints are marked with `●`:
+
+```
+  ────────────────────────────────────────────────────────────
+      12     psu chan off
+      13     sleep 0.5
+  →   14     psu set 5.0 0.5
+  ●   15     psu chan on
+      16     sleep 0.3
+  ────────────────────────────────────────────────────────────
+  14/42  │  n=step  c=continue  back  goto N  b N=break  d N=del  l=list  q=quit
+
+(dbg) _
+```
+
+### Debugger commands
+
+| Command      | Action                                                                                 |
+| ------------ | -------------------------------------------------------------------------------------- |
+| Enter / `n`  | Execute the current line and advance to the next                                       |
+| `c`          | Continue running until the next breakpoint or end of script                            |
+| `back`       | Move pointer back one line without executing — lets you re-run a command               |
+| `goto N`     | Jump the pointer to line N — lines in between are **not** executed or reversed        |
+| `b N`        | Set a breakpoint at line N                                                              |
+| `d N`        | Delete the breakpoint at line N                                                        |
+| `l`          | Show a wider context window (±8 lines)                                                 |
+| `info`       | Show current line number and all active breakpoints                                    |
+| `q`          | Abort the script and return to the REPL                                                |
+| _any command_ | Type any REPL command (e.g. `psu meas v`, `scope meas 1 FREQ`) to run it live        |
+
+!!! note
+    `back` moves the execution pointer but does **not** reverse any instrument state. Use it when you want to re-execute a command, not to undo it.
+
+!!! tip
+    Because the full script is expanded before the debugger starts, line numbers are stable for the entire session. A `for` loop with 7 iterations appears as 7×N separate lines — you can set a breakpoint at exactly the iteration you want to inspect.
 
 ---
 
