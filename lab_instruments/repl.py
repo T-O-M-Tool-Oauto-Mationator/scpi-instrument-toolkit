@@ -2195,17 +2195,7 @@ class InstrumentRepl(cmd.Cmd):
                     ColorPrinter.error(f"Cannot load script '{file_path}': {exc}")
                     return
             else:
-                # Hot-load: Reload from disk if file exists in scripts dir
-                script_path = self._script_file(name)
-                if os.path.exists(script_path):
-                    try:
-                        with open(script_path, "r", encoding="utf-8") as f:
-                            lines = [line.rstrip("\n") for line in f.readlines()]
-                        while lines and not lines[-1].strip():
-                            lines.pop()
-                        self.scripts[name] = lines
-                    except Exception:
-                        pass  # Keep existing memory version if read fails
+                self.scripts = self._load_scripts()
                 lines = self.scripts.get(name)
                 if lines is None:
                     ColorPrinter.warning(f"Script '{name}' not found.")
