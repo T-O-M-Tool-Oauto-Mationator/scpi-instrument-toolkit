@@ -6,6 +6,12 @@ Controls digital multimeters.
 - **Typical workflow:** configure mode → take readings → store results
 - Or use `dmm meas` for a one-shot measurement without a separate configure step
 
+=== "HP 34401A"
+    6½-digit multimeter with GPIB interface. Supports NPLC control, display text, fetch, and high-accuracy measurements.
+
+=== "OWON XDM1041"
+    4½-digit multimeter with USB/serial interface. Supports basic DMM commands.
+
 ---
 
 ## dmm config

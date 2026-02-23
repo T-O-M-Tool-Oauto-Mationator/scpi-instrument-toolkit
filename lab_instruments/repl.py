@@ -557,6 +557,49 @@ class InstrumentRepl(cmd.Cmd):
         """Return the full path to a script's .scpi file."""
         return os.path.join(self._get_scripts_dir(), f"{name}.scpi")
 
+    def _get_data_dir(self):
+        """Return a directory for saving data files (screenshots, CSVs, etc.).
+
+        Uses the same location logic as _get_scripts_dir() but with 'data'
+        instead of 'scripts' as the subdirectory name.
+        """
+        override = os.environ.get("SCPI_DATA_DIR")
+        if override:
+            try:
+                os.makedirs(override, exist_ok=True)
+            except Exception as exc:
+                raise RuntimeError(
+                    f"SCPI_DATA_DIR is set to '{override}' but that directory "
+                    f"cannot be created: {exc}"
+                ) from exc
+            return override
+
+        subpath = os.path.join("scpi-instrument-toolkit", "data")
+        candidates = []
+
+        if sys.platform == "win32":
+            docs = os.path.join(os.path.expanduser("~"), "Documents")
+            candidates.append(os.path.join(docs, subpath))
+        else:
+            xdg = os.environ.get("XDG_CONFIG_HOME",
+                                 os.path.join(os.path.expanduser("~"), ".config"))
+            candidates.append(os.path.join(xdg, subpath))
+
+        candidates.append(os.path.join(os.path.expanduser("~"), subpath))
+        candidates.append(os.path.join(tempfile.gettempdir(), subpath))
+
+        for d in candidates:
+            try:
+                os.makedirs(d, exist_ok=True)
+                return d
+            except Exception:
+                continue
+
+        # Fallback - use temp
+        fallback = os.path.join(tempfile.gettempdir(), subpath)
+        os.makedirs(fallback, exist_ok=True)
+        return fallback
+
     def _load_scripts(self):
         """Load all .scpi scripts from the user scripts directory."""
         scripts = {}
@@ -3057,6 +3100,137 @@ class InstrumentRepl(cmd.Cmd):
                         "notes": ["Built-in AWG: DHO914S and DHO924S only."],
                         "see": [],
                     },
+                    {
+                        "id": "scope-screenshot", "name": "scope screenshot",
+                        "brief": "Save a screenshot to PNG",
+                        "syntax": "scope screenshot [filename]",
+                        "desc": "Captures the scope display and saves as PNG. Default filename includes timestamp. Relative paths are saved to the data directory (<code>~/Documents/scpi-instrument-toolkit/data/</code>).",
+                        "params": [
+                            {"name": "filename", "required": "optional", "values": "file path", "desc": "Output PNG file. Defaults to <code>screenshot_HHMMSS.png</code>."},
+                        ],
+                        "examples": [
+                            ("scope screenshot", "Save with auto-generated filename"),
+                            ("scope screenshot capture.png", "Save as capture.png in data dir"),
+                        ],
+                        "notes": ["Rigol DHO804 only."],
+                        "see": ["scope-save"],
+                    },
+                    {
+                        "id": "scope-label", "name": "scope label / invert / bwlimit",
+                        "brief": "Channel label, inversion, and bandwidth limit",
+                        "syntax": "scope label <1-4> <text>  |  scope invert <1-4> <on|off>  |  scope bwlimit <1-4> <20M|OFF>",
+                        "desc": "<code>label</code> sets a custom label for a channel. <code>invert</code> flips the waveform vertically. <code>bwlimit</code> enables a 20 MHz bandwidth limit filter to reduce noise.",
+                        "params": [
+                            {"name": "1-4", "required": "required", "values": "1, 2, 3, 4", "desc": "Channel number."},
+                            {"name": "text", "required": "required (label)", "values": "string", "desc": "Label text to display."},
+                            {"name": "on|off", "required": "required (invert)", "values": "on, off", "desc": "Enable or disable inversion."},
+                            {"name": "20M|OFF", "required": "required (bwlimit)", "values": "20M, OFF", "desc": "Bandwidth limit setting."},
+                        ],
+                        "examples": [
+                            ("scope label 1 VCC", "Label channel 1 as VCC"),
+                            ("scope invert 2 on", "Invert channel 2"),
+                            ("scope bwlimit 1 20M", "Enable 20 MHz bandwidth limit on ch1"),
+                        ],
+                        "notes": ["Rigol DHO804 only."],
+                        "see": ["scope-chan"],
+                    },
+                    {
+                        "id": "scope-force", "name": "scope force / reset",
+                        "brief": "Force trigger and instrument reset",
+                        "syntax": "scope force  |  scope reset",
+                        "desc": "<code>force</code> forces a trigger event immediately, useful when the trigger is armed but not triggering. <code>reset</code> sends <code>*RST</code> to restore factory defaults.",
+                        "params": [],
+                        "examples": [
+                            ("scope force", "Force a trigger event now"),
+                        ],
+                        "notes": [],
+                        "see": ["scope-trigger"],
+                    },
+                    {
+                        "id": "scope-display", "name": "scope display",
+                        "brief": "Display settings (brightness, grid, persistence)",
+                        "syntax": "scope display <subcmd>",
+                        "desc": "Controls display appearance. Subcommands: <code>clear</code>, <code>brightness</code>, <code>grid</code>, <code>gridbright</code>, <code>persist</code>, <code>type</code>. Type <code>scope display</code> for help.",
+                        "params": [],
+                        "examples": [
+                            ("scope display brightness 50", "Set waveform brightness to 50%"),
+                            ("scope display grid HALF", "Set half grid"),
+                            ("scope display persist INF", "Enable infinite persistence"),
+                        ],
+                        "notes": ["Rigol DHO804 only."],
+                        "see": [],
+                    },
+                    {
+                        "id": "scope-acquire", "name": "scope acquire",
+                        "brief": "Acquisition settings (type, averages, depth)",
+                        "syntax": "scope acquire <subcmd>",
+                        "desc": "Controls acquisition parameters. Subcommands: <code>type</code>, <code>averages</code>, <code>depth</code>, <code>rate</code>. Type <code>scope acquire</code> for help.",
+                        "params": [],
+                        "examples": [
+                            ("scope acquire type AVERAGE", "Set acquisition to averaging mode"),
+                            ("scope acquire averages 64", "Set 64 averages"),
+                            ("scope acquire depth 1M", "Set 1M memory depth"),
+                        ],
+                        "notes": ["Rigol DHO804 only."],
+                        "see": [],
+                    },
+                    {
+                        "id": "scope-cursor", "name": "scope cursor",
+                        "brief": "Cursor measurements",
+                        "syntax": "scope cursor <subcmd>",
+                        "desc": "Controls measurement cursors. Subcommands: <code>off</code>, <code>manual</code>, <code>set</code>, <code>read</code>. Type <code>scope cursor</code> for help.",
+                        "params": [],
+                        "examples": [
+                            ("scope cursor manual X CH1", "Enable X cursors on CH1"),
+                            ("scope cursor set 0.001 0.002", "Set cursor positions"),
+                            ("scope cursor read", "Read cursor values"),
+                        ],
+                        "notes": ["Rigol DHO804 only."],
+                        "see": ["scope-meas"],
+                    },
+                    {
+                        "id": "scope-math", "name": "scope math",
+                        "brief": "Math channels (operations, FFT, filters)",
+                        "syntax": "scope math <subcmd>",
+                        "desc": "Controls math channels. Subcommands: <code>on</code>/<code>off</code>, <code>op</code>, <code>func</code>, <code>fft</code>, <code>filter</code>, <code>scale</code>. Type <code>scope math</code> for help.",
+                        "params": [],
+                        "examples": [
+                            ("scope math on 1", "Enable math channel 1"),
+                            ("scope math op 1 SUB CH1 CH2", "Math1 = CH1 - CH2"),
+                            ("scope math fft 1 CH1 window=HANN", "Math1 = FFT of CH1"),
+                        ],
+                        "notes": ["Rigol DHO804 only."],
+                        "see": [],
+                    },
+                    {
+                        "id": "scope-record", "name": "scope record",
+                        "brief": "Waveform recording and playback",
+                        "syntax": "scope record <subcmd>",
+                        "desc": "Controls waveform recording. Subcommands: <code>on</code>/<code>off</code>, <code>frames</code>, <code>start</code>, <code>stop</code>, <code>status</code>, <code>play</code>. Type <code>scope record</code> for help.",
+                        "params": [],
+                        "examples": [
+                            ("scope record frames 500", "Record 500 frames"),
+                            ("scope record start", "Start recording"),
+                            ("scope record play", "Play back recording"),
+                        ],
+                        "notes": ["Rigol DHO804 only."],
+                        "see": [],
+                    },
+                    {
+                        "id": "scope-mask", "name": "scope mask",
+                        "brief": "Pass/fail mask testing",
+                        "syntax": "scope mask <subcmd>",
+                        "desc": "Controls pass/fail mask testing. Subcommands: <code>on</code>/<code>off</code>, <code>source</code>, <code>tolerance</code>, <code>create</code>, <code>start</code>, <code>stop</code>, <code>stats</code>, <code>reset</code>. Type <code>scope mask</code> for help.",
+                        "params": [],
+                        "examples": [
+                            ("scope mask source 1", "Set mask source to CH1"),
+                            ("scope mask create", "Create mask from current waveform"),
+                            ("scope mask start", "Start mask test"),
+                            ("scope mask stats", "Show pass/fail statistics"),
+                        ],
+                        "notes": ["Rigol DHO804 only."],
+                        "see": [],
+                    },
                 ],
             },
             {
@@ -4459,7 +4633,7 @@ allTargets.forEach(t => io.observe(t));
     # Scope commands
     # --------------------------
     def do_scope(self, arg):
-        "scope <cmd>: control the oscilloscope (autoset, run, stop, single, chan, coupling, probe, hscale, vscale, vpos, vmove, hpos, hmove, meas, save, trigger, awg)"
+        "scope <cmd>: control the oscilloscope (autoset, run, stop, single, chan, coupling, probe, hscale, vscale, vpos, vmove, hpos, hmove, meas, save, trigger, awg, screenshot, display, acquire, cursor, math, record, mask, label, invert, bwlimit, force)"
         # Resolve which scope to use (auto-select if only one)
         scope_name = self._resolve_device_type("scope")
         if not scope_name:
@@ -4524,6 +4698,20 @@ allTargets.forEach(t => io.observe(t));
                     "scope counter <subcmd> - frequency counter (type 'scope counter' for help)",
                     "scope dvm <subcmd> - digital voltmeter (type 'scope dvm' for help)",
                     "scope state on|off|safe|reset",
+                    "",
+                    "# DHO804-specific",
+                    "scope screenshot [filename] - save screenshot to PNG",
+                    "scope label <ch> <text> - set channel label",
+                    "scope invert <ch> on|off - invert channel display",
+                    "scope bwlimit <ch> <20M|OFF> - set bandwidth limit",
+                    "scope force - force trigger",
+                    "",
+                    "scope display <subcmd> - display settings (type 'scope display' for help)",
+                    "scope acquire <subcmd> - acquisition settings (type 'scope acquire' for help)",
+                    "scope cursor <subcmd> - cursor control (type 'scope cursor' for help)",
+                    "scope math <subcmd> - math channels (type 'scope math' for help)",
+                    "scope record <subcmd> - waveform recording (type 'scope record' for help)",
+                    "scope mask <subcmd> - pass/fail mask testing (type 'scope mask' for help)",
                 ]
             )
             return
@@ -4691,9 +4879,14 @@ allTargets.forEach(t => io.observe(t));
                 val = dev.measure_delay(ch1, ch2, edge1, edge2, direction)
                 self._record_measurement(label, val, unit, "scope.meas.delay")
                 ColorPrinter.cyan(str(val))
-            elif cmd_name == "save" and len(args) >= 3:
+            elif cmd_name == "save" and len(args) >= 2:
                 channels_str = args[1]
-                filename = args[2]
+                filename = args[2] if len(args) >= 3 else f"scope_ch{channels_str}_{time.strftime('%H%M%S')}.csv"
+                # Resolve relative paths to data dir
+                if not os.path.isabs(filename):
+                    data_dir = self._get_data_dir()
+                    filename = os.path.join(data_dir, filename)
+                    os.makedirs(os.path.dirname(filename) or ".", exist_ok=True)
 
                 # Parse optional parameters (time=X, points=N, record=X)
                 max_points = None
@@ -4734,6 +4927,61 @@ allTargets.forEach(t => io.observe(t));
                 self._handle_scope_dvm(dev, args[1:])
             elif cmd_name == "state" and len(args) >= 2:
                 self.do_state(f"{scope_name} {args[1]}")
+            elif cmd_name == "screenshot":
+                filename = args[1] if len(args) >= 2 else None
+                try:
+                    data = dev.get_screenshot()
+                except AttributeError:
+                    ColorPrinter.warning("Screenshot not supported on this oscilloscope model")
+                    return
+                if filename is None:
+                    filename = f"screenshot_{time.strftime('%H%M%S')}.png"
+                # Resolve path: absolute paths bypass data dir, relative paths use data dir
+                if not os.path.isabs(filename):
+                    data_dir = self._get_data_dir()
+                    filepath = os.path.join(data_dir, filename)
+                else:
+                    filepath = filename
+                os.makedirs(os.path.dirname(filepath) or ".", exist_ok=True)
+                with open(filepath, "wb") as f:
+                    f.write(data)
+                ColorPrinter.success(f"Screenshot saved to {filepath}")
+            elif cmd_name == "label" and len(args) >= 3:
+                channels = self._parse_channels(args[1], max_ch=4)
+                label_text = " ".join(args[2:])
+                for channel in channels:
+                    dev.set_channel_label(channel, label_text)
+                    ColorPrinter.success(f"CH{channel} label: {label_text}")
+            elif cmd_name == "invert" and len(args) >= 3:
+                channels = self._parse_channels(args[1], max_ch=4)
+                enable = args[2].lower() == "on"
+                for channel in channels:
+                    dev.invert_channel(channel, enable)
+                    ColorPrinter.success(f"CH{channel} invert: {'on' if enable else 'off'}")
+            elif cmd_name == "bwlimit" and len(args) >= 3:
+                channels = self._parse_channels(args[1], max_ch=4)
+                limit = args[2].upper()
+                for channel in channels:
+                    dev.set_bandwidth_limit(channel, limit)
+                    ColorPrinter.success(f"CH{channel} bandwidth limit: {limit}")
+            elif cmd_name == "force":
+                dev.force_trigger()
+                ColorPrinter.success("Force trigger sent")
+            elif cmd_name == "display":
+                self._handle_scope_display(dev, args[1:])
+            elif cmd_name == "acquire":
+                self._handle_scope_acquire(dev, args[1:])
+            elif cmd_name == "cursor":
+                self._handle_scope_cursor(dev, args[1:])
+            elif cmd_name == "math":
+                self._handle_scope_math(dev, args[1:])
+            elif cmd_name == "record":
+                self._handle_scope_record(dev, args[1:])
+            elif cmd_name == "mask":
+                self._handle_scope_mask(dev, args[1:])
+            elif cmd_name == "reset":
+                dev.reset()
+                ColorPrinter.success("Scope reset to factory defaults")
             else:
                 ColorPrinter.warning(f"Unknown scope command: scope {arg}. Type 'scope' for help.")
         except Exception as exc:
@@ -4916,6 +5164,365 @@ allTargets.forEach(t => io.observe(t));
 
         except AttributeError:
             ColorPrinter.warning("DVM not supported on this oscilloscope")
+        except Exception as exc:
+            ColorPrinter.error(str(exc))
+
+    def _handle_scope_display(self, dev, args):
+        """Handle oscilloscope display commands (DHO804)"""
+        if not args:
+            self._print_colored_usage(
+                [
+                    "# SCOPE DISPLAY",
+                    "",
+                    "scope display clear - clear waveform display",
+                    "scope display brightness <0-100> - set waveform brightness",
+                    "scope display grid <FULL|HALF|NONE> - set grid style",
+                    "scope display gridbright <0-100> - set grid brightness",
+                    "scope display persist <MIN|1|5|10|INF|OFF> - set persistence time",
+                    "scope display type <VECTORS|DOTS> - set display type",
+                ]
+            )
+            return
+
+        try:
+            cmd = args[0].lower()
+
+            if cmd == "clear":
+                dev.clear_display()
+                ColorPrinter.success("Display cleared")
+
+            elif cmd == "brightness" and len(args) >= 2:
+                brightness = int(args[1])
+                dev.set_waveform_brightness(brightness)
+                ColorPrinter.success(f"Waveform brightness: {brightness}%")
+
+            elif cmd == "grid" and len(args) >= 2:
+                grid = args[1].upper()
+                dev.set_grid_type(grid)
+                ColorPrinter.success(f"Grid type: {grid}")
+
+            elif cmd == "gridbright" and len(args) >= 2:
+                brightness = int(args[1])
+                dev.set_grid_brightness(brightness)
+                ColorPrinter.success(f"Grid brightness: {brightness}%")
+
+            elif cmd == "persist" and len(args) >= 2:
+                persist_time = args[1].upper()
+                dev.set_persistence(persist_time)
+                ColorPrinter.success(f"Persistence: {persist_time}")
+
+            elif cmd == "type" and len(args) >= 2:
+                display_type = args[1].upper()
+                dev.set_display_type(display_type)
+                ColorPrinter.success(f"Display type: {display_type}")
+
+            else:
+                ColorPrinter.warning(f"Unknown display command: scope display {' '.join(args)}. Type 'scope display' for help.")
+
+        except AttributeError:
+            ColorPrinter.warning("Display control not supported on this oscilloscope model")
+        except Exception as exc:
+            ColorPrinter.error(str(exc))
+
+    def _handle_scope_acquire(self, dev, args):
+        """Handle oscilloscope acquisition setup commands"""
+        if not args:
+            self._print_colored_usage(
+                [
+                    "# SCOPE ACQUIRE",
+                    "",
+                    "scope acquire type <NORMAL|AVERAGE|PEAK|HRES> - set acquisition type",
+                    "scope acquire averages <count> - set number of averages",
+                    "scope acquire depth <AUTO|1K|10K|100K|1M|...> - set memory depth",
+                    "scope acquire rate - show current sample rate",
+                ]
+            )
+            return
+
+        try:
+            cmd = args[0].lower()
+
+            if cmd == "type" and len(args) >= 2:
+                acq_type = args[1].upper()
+                dev.set_acquisition_type(acq_type)
+                ColorPrinter.success(f"Acquisition type: {acq_type}")
+
+            elif cmd == "averages" and len(args) >= 2:
+                count = int(args[1])
+                dev.set_average_count(count)
+                ColorPrinter.success(f"Average count: {count}")
+
+            elif cmd == "depth" and len(args) >= 2:
+                depth = args[1].upper()
+                dev.set_memory_depth(depth)
+                ColorPrinter.success(f"Memory depth: {depth}")
+
+            elif cmd == "rate":
+                rate = dev.get_sample_rate()
+                ColorPrinter.cyan(f"Sample rate: {rate} Sa/s")
+
+            else:
+                ColorPrinter.warning(f"Unknown acquire command: scope acquire {' '.join(args)}. Type 'scope acquire' for help.")
+
+        except AttributeError:
+            ColorPrinter.warning("Acquisition setup not supported on this oscilloscope model")
+        except Exception as exc:
+            ColorPrinter.error(str(exc))
+
+    def _handle_scope_cursor(self, dev, args):
+        """Handle oscilloscope cursor commands"""
+        if not args:
+            self._print_colored_usage(
+                [
+                    "# SCOPE CURSOR",
+                    "",
+                    "scope cursor off - disable cursors",
+                    "scope cursor manual <type> [source] - enable manual cursors",
+                    "  - type: X|Y|XY",
+                    "  - source: CH1|CH2|CH3|CH4 (default: CH1)",
+                    "scope cursor set <ax> [ay] [bx] [by] - set cursor positions",
+                    "scope cursor read - read cursor values",
+                ]
+            )
+            return
+
+        try:
+            cmd = args[0].lower()
+
+            if cmd == "off":
+                dev.set_cursor_mode("OFF")
+                ColorPrinter.success("Cursors disabled")
+
+            elif cmd == "manual" and len(args) >= 2:
+                cursor_type = args[1].upper()
+                source = args[2].upper() if len(args) >= 3 else "CH1"
+                dev.set_cursor_mode("MANUAL")
+                dev.set_manual_cursor_type(cursor_type)
+                dev.set_manual_cursor_source(source)
+                ColorPrinter.success(f"Manual cursor: {cursor_type} on {source}")
+
+            elif cmd == "set" and len(args) >= 2:
+                kwargs = {}
+                if len(args) >= 2:
+                    kwargs["ax"] = float(args[1])
+                if len(args) >= 3:
+                    kwargs["ay"] = float(args[2])
+                if len(args) >= 4:
+                    kwargs["bx"] = float(args[3])
+                if len(args) >= 5:
+                    kwargs["by"] = float(args[4])
+                dev.set_manual_cursor_positions(**kwargs)
+                ColorPrinter.success(f"Cursor positions set")
+
+            elif cmd == "read":
+                values = dev.get_manual_cursor_values()
+                for key, val in values.items():
+                    ColorPrinter.cyan(f"  {key}: {val}")
+
+            else:
+                ColorPrinter.warning(f"Unknown cursor command: scope cursor {' '.join(args)}. Type 'scope cursor' for help.")
+
+        except AttributeError:
+            ColorPrinter.warning("Cursor control not supported on this oscilloscope model")
+        except Exception as exc:
+            ColorPrinter.error(str(exc))
+
+    def _handle_scope_math(self, dev, args):
+        """Handle oscilloscope math channel commands"""
+        if not args:
+            self._print_colored_usage(
+                [
+                    "# SCOPE MATH",
+                    "",
+                    "scope math on|off [ch] - enable/disable math channel (ch: 1-4, default 1)",
+                    "scope math op <ch> <ADD|SUB|MUL|DIV|AND|OR|XOR> <src1> [src2]",
+                    "scope math func <ch> <ABS|SQRT|LG|LN|EXP|DIFF|INTG> <src>",
+                    "scope math fft <ch> <src> [window=RECT]",
+                    "scope math filter <ch> <LPAS|HPAS|BPAS|BSTOP> <src> [upper=] [lower=]",
+                    "scope math scale <ch> <scale> [offset]",
+                ]
+            )
+            return
+
+        try:
+            cmd = args[0].lower()
+
+            if cmd in ("on", "off"):
+                math_ch = int(args[1]) if len(args) >= 2 else 1
+                dev.enable_math_channel(math_ch, cmd == "on")
+                ColorPrinter.success(f"Math{math_ch}: {'enabled' if cmd == 'on' else 'disabled'}")
+
+            elif cmd == "op" and len(args) >= 4:
+                math_ch = int(args[1])
+                operation = args[2].upper()
+                source1 = args[3].upper()
+                source2 = args[4].upper() if len(args) >= 5 else None
+                dev.configure_math_operation(math_ch, operation, source1, source2)
+                ColorPrinter.success(f"Math{math_ch}: {source1} {operation} {source2 or ''}")
+
+            elif cmd == "func" and len(args) >= 4:
+                math_ch = int(args[1])
+                function = args[2].upper()
+                source = args[3].upper()
+                dev.configure_math_function(math_ch, function, source)
+                ColorPrinter.success(f"Math{math_ch}: {function}({source})")
+
+            elif cmd == "fft" and len(args) >= 3:
+                math_ch = int(args[1])
+                source = args[2].upper()
+                window = "RECT"
+                for token in args[3:]:
+                    if token.lower().startswith("window="):
+                        window = token.split("=", 1)[1].upper()
+                dev.configure_fft(math_ch, source, window)
+                ColorPrinter.success(f"Math{math_ch}: FFT of {source}, window={window}")
+
+            elif cmd == "filter" and len(args) >= 4:
+                math_ch = int(args[1])
+                filter_type = args[2].upper()
+                source = args[3].upper()
+                kwargs = {}
+                for token in args[4:]:
+                    if token.lower().startswith("upper="):
+                        kwargs["upper"] = float(token.split("=", 1)[1])
+                    elif token.lower().startswith("lower="):
+                        kwargs["lower"] = float(token.split("=", 1)[1])
+                dev.configure_digital_filter(math_ch, filter_type, source, **kwargs)
+                ColorPrinter.success(f"Math{math_ch}: {filter_type} filter on {source}")
+
+            elif cmd == "scale" and len(args) >= 3:
+                math_ch = int(args[1])
+                scale = float(args[2])
+                offset = float(args[3]) if len(args) >= 4 else None
+                dev.set_math_scale(math_ch, scale, offset)
+                ColorPrinter.success(f"Math{math_ch} scale: {scale}")
+
+            else:
+                ColorPrinter.warning(f"Unknown math command: scope math {' '.join(args)}. Type 'scope math' for help.")
+
+        except AttributeError:
+            ColorPrinter.warning("Math channels not supported on this oscilloscope model")
+        except Exception as exc:
+            ColorPrinter.error(str(exc))
+
+    def _handle_scope_record(self, dev, args):
+        """Handle oscilloscope waveform recording commands"""
+        if not args:
+            self._print_colored_usage(
+                [
+                    "# SCOPE RECORD",
+                    "",
+                    "scope record on|off - enable/disable recording",
+                    "scope record frames <count> - set number of frames to record",
+                    "scope record start - start recording",
+                    "scope record stop - stop recording",
+                    "scope record status - show recording status",
+                    "scope record play - start playback of recorded frames",
+                ]
+            )
+            return
+
+        try:
+            cmd = args[0].lower()
+
+            if cmd in ("on", "off"):
+                dev.set_recording_enable(cmd == "on")
+                ColorPrinter.success(f"Recording {'enabled' if cmd == 'on' else 'disabled'}")
+
+            elif cmd == "frames" and len(args) >= 2:
+                frames = int(args[1])
+                dev.set_recording_frames(frames)
+                ColorPrinter.success(f"Recording frames: {frames}")
+
+            elif cmd == "start":
+                dev.start_recording()
+                ColorPrinter.success("Recording started")
+
+            elif cmd == "stop":
+                dev.stop_recording()
+                ColorPrinter.success("Recording stopped")
+
+            elif cmd == "status":
+                status = dev.get_recording_status()
+                ColorPrinter.cyan(f"Recording status: {status}")
+
+            elif cmd == "play":
+                dev.start_playback()
+                ColorPrinter.success("Playback started")
+
+            else:
+                ColorPrinter.warning(f"Unknown record command: scope record {' '.join(args)}. Type 'scope record' for help.")
+
+        except AttributeError:
+            ColorPrinter.warning("Recording not supported on this oscilloscope model")
+        except Exception as exc:
+            ColorPrinter.error(str(exc))
+
+    def _handle_scope_mask(self, dev, args):
+        """Handle oscilloscope pass/fail mask test commands"""
+        if not args:
+            self._print_colored_usage(
+                [
+                    "# SCOPE MASK",
+                    "",
+                    "scope mask on|off - enable/disable mask testing",
+                    "scope mask source <1-4> - set mask source channel",
+                    "scope mask tolerance <x> <y> - set mask tolerance",
+                    "scope mask create - auto-create mask from current waveform",
+                    "scope mask start - start mask test",
+                    "scope mask stop - stop mask test",
+                    "scope mask stats - show pass/fail statistics",
+                    "scope mask reset - reset mask statistics",
+                ]
+            )
+            return
+
+        try:
+            cmd = args[0].lower()
+
+            if cmd in ("on", "off"):
+                dev.set_mask_enable(cmd == "on")
+                ColorPrinter.success(f"Mask testing {'enabled' if cmd == 'on' else 'disabled'}")
+
+            elif cmd == "source" and len(args) >= 2:
+                channel = int(args[1])
+                dev.set_mask_source(channel)
+                ColorPrinter.success(f"Mask source: CH{channel}")
+
+            elif cmd == "tolerance" and len(args) >= 3:
+                x_tol = float(args[1])
+                y_tol = float(args[2])
+                dev.set_mask_tolerance_x(x_tol)
+                dev.set_mask_tolerance_y(y_tol)
+                ColorPrinter.success(f"Mask tolerance: X={x_tol}, Y={y_tol}")
+
+            elif cmd == "create":
+                dev.create_mask()
+                ColorPrinter.success("Mask created from current waveform")
+
+            elif cmd == "start":
+                dev.start_mask_test()
+                ColorPrinter.success("Mask test started")
+
+            elif cmd == "stop":
+                dev.stop_mask_test()
+                ColorPrinter.success("Mask test stopped")
+
+            elif cmd == "stats":
+                stats = dev.get_mask_statistics()
+                ColorPrinter.cyan(f"  Passed: {stats.get('passed', 0)}")
+                ColorPrinter.cyan(f"  Failed: {stats.get('failed', 0)}")
+                ColorPrinter.cyan(f"  Total:  {stats.get('total', 0)}")
+
+            elif cmd == "reset":
+                dev.reset_mask_statistics()
+                ColorPrinter.success("Mask statistics reset")
+
+            else:
+                ColorPrinter.warning(f"Unknown mask command: scope mask {' '.join(args)}. Type 'scope mask' for help.")
+
+        except AttributeError:
+            ColorPrinter.warning("Mask testing not supported on this oscilloscope model")
         except Exception as exc:
             ColorPrinter.error(str(exc))
 

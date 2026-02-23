@@ -385,3 +385,259 @@ scope state <on|off|safe|reset>
 | `off` | Disable all channels |
 | `safe` | Channels off, trigger to default |
 | `reset` | `*RST` — factory defaults |
+
+---
+
+## DHO804-Specific Features
+
+The following commands are available on the Rigol DHO804 and similar Rigol oscilloscopes.
+
+### scope screenshot
+
+Capture the scope display and save as PNG.
+
+=== "Rigol DHO804"
+    ```
+    scope screenshot                    # auto-named: screenshot_HHMMSS.png
+    scope screenshot capture.png        # save as capture.png in data dir
+    scope screenshot /path/to/file.png  # save to absolute path
+    ```
+
+    Screenshots are saved to `~/Documents/scpi-instrument-toolkit/data/` by default.
+
+=== "Tektronix MSO2024"
+    Not supported on this model.
+
+### scope label / invert / bwlimit
+
+=== "Rigol DHO804"
+    ```
+    scope label <1-4> <text>        # set channel label
+    scope invert <1-4> <on|off>     # invert channel display
+    scope bwlimit <1-4> <20M|OFF>   # set bandwidth limit
+    ```
+
+    | Command | Parameter | Description |
+    |---------|-----------|-------------|
+    | `label` | `<ch> <text>` | Set a custom label for the channel |
+    | `invert` | `<ch> on\|off` | Flip the waveform vertically |
+    | `bwlimit` | `<ch> 20M\|OFF` | Enable 20 MHz bandwidth limit filter |
+
+    ```
+    scope label 1 VCC
+    scope invert 2 on
+    scope bwlimit 1 20M
+    ```
+
+=== "Tektronix MSO2024"
+    Not supported on this model.
+
+### scope force
+
+Force a trigger event immediately.
+
+```
+scope force
+```
+
+Useful when the trigger is armed but not triggering. Works on all scope models.
+
+### scope reset
+
+Reset the scope to factory defaults.
+
+```
+scope reset
+```
+
+Sends `*RST` to restore factory defaults. Works on all scope models.
+
+---
+
+### scope display
+
+=== "Rigol DHO804"
+    Control display settings.
+
+    ```
+    scope display clear                  # clear waveform display
+    scope display brightness <0-100>     # set waveform brightness
+    scope display grid <FULL|HALF|NONE>  # set grid style
+    scope display gridbright <0-100>     # set grid brightness
+    scope display persist <MIN|1|5|10|INF|OFF>  # set persistence time
+    scope display type <VECTORS|DOTS>    # set display type
+    ```
+
+    | Subcommand | Parameter | Description |
+    |------------|-----------|-------------|
+    | `clear` | — | Clear waveform display |
+    | `brightness` | `0`–`100` | Waveform brightness percentage |
+    | `grid` | `FULL`, `HALF`, `NONE` | Grid style |
+    | `gridbright` | `0`–`100` | Grid brightness percentage |
+    | `persist` | `MIN`, `1`, `5`, `10`, `INF`, `OFF` | Persistence time |
+    | `type` | `VECTORS`, `DOTS` | Waveform rendering mode |
+
+=== "Tektronix MSO2024"
+    Not supported on this model.
+
+---
+
+### scope acquire
+
+=== "Rigol DHO804"
+    Control acquisition settings.
+
+    ```
+    scope acquire type <NORMAL|AVERAGE|PEAK|HRES>  # set acquisition type
+    scope acquire averages <count>                  # set number of averages
+    scope acquire depth <AUTO|1K|10K|100K|1M|...>   # set memory depth
+    scope acquire rate                              # show current sample rate
+    ```
+
+    | Subcommand | Parameter | Description |
+    |------------|-----------|-------------|
+    | `type` | `NORMAL`, `AVERAGE`, `PEAK`, `HRES` | Acquisition mode |
+    | `averages` | integer (2, 4, 8, … 8192) | Number of averages |
+    | `depth` | `AUTO`, `1K`, `10K`, `100K`, `1M`, `10M` | Memory depth |
+    | `rate` | — | Display current sample rate |
+
+=== "Tektronix MSO2024"
+    Not supported on this model.
+
+---
+
+### scope cursor
+
+=== "Rigol DHO804"
+    Control measurement cursors.
+
+    ```
+    scope cursor off                        # disable cursors
+    scope cursor manual <X|Y|XY> [source]   # enable manual cursors
+    scope cursor set <ax> [ay] [bx] [by]    # set cursor positions
+    scope cursor read                       # read cursor values
+    ```
+
+    | Subcommand | Parameter | Description |
+    |------------|-----------|-------------|
+    | `off` | — | Disable cursors |
+    | `manual` | `X`, `Y`, `XY` + optional source | Enable manual cursors |
+    | `set` | up to 4 float values | Set cursor positions |
+    | `read` | — | Read and display cursor values |
+
+    ```
+    scope cursor manual X CH1         # enable X cursors on channel 1
+    scope cursor set 0.001 0.002      # set A and B cursor positions
+    scope cursor read                 # read delta values
+    ```
+
+=== "Tektronix MSO2024"
+    Not supported on this model.
+
+---
+
+### scope math
+
+=== "Rigol DHO804"
+    Control math channels (operations, FFT, filters).
+
+    ```
+    scope math on|off [ch]                              # enable/disable math channel
+    scope math op <ch> <ADD|SUB|MUL|DIV> <src1> [src2]  # arithmetic operation
+    scope math func <ch> <ABS|SQRT|LG|LN|EXP> <src>    # math function
+    scope math fft <ch> <src> [window=RECT]             # FFT analysis
+    scope math filter <ch> <LPAS|HPAS|BPAS|BSTOP> <src> [upper=] [lower=]  # digital filter
+    scope math scale <ch> <scale> [offset]              # set math channel scale
+    ```
+
+    | Subcommand | Description |
+    |------------|-------------|
+    | `on`/`off` | Enable or disable a math channel |
+    | `op` | Arithmetic: ADD, SUB, MUL, DIV, AND, OR, XOR |
+    | `func` | Functions: ABS, SQRT, LG, LN, EXP, DIFF, INTG |
+    | `fft` | FFT analysis with configurable window |
+    | `filter` | Digital filter: low-pass, high-pass, band-pass, band-stop |
+    | `scale` | Adjust math channel vertical scale |
+
+    ```
+    scope math on 1                        # enable math channel 1
+    scope math op 1 SUB CH1 CH2            # Math1 = CH1 - CH2
+    scope math fft 1 CH1 window=HANN       # FFT of CH1 with Hanning window
+    scope math filter 1 LPAS CH1 upper=1000  # 1 kHz low-pass filter
+    ```
+
+=== "Tektronix MSO2024"
+    Not supported on this model.
+
+---
+
+### scope record
+
+=== "Rigol DHO804"
+    Control waveform recording and playback.
+
+    ```
+    scope record on|off           # enable/disable recording
+    scope record frames <count>   # set number of frames to record
+    scope record start            # start recording
+    scope record stop             # stop recording
+    scope record status           # show recording status
+    scope record play             # start playback of recorded frames
+    ```
+
+    | Subcommand | Parameter | Description |
+    |------------|-----------|-------------|
+    | `on`/`off` | — | Enable or disable recording mode |
+    | `frames` | integer | Number of frames to record |
+    | `start` | — | Begin recording |
+    | `stop` | — | Stop recording |
+    | `status` | — | Display current recording status |
+    | `play` | — | Start playback of recorded frames |
+
+    ```
+    scope record frames 500       # record 500 frames
+    scope record start            # begin recording
+    scope record status           # check status
+    scope record play             # play back recording
+    ```
+
+=== "Tektronix MSO2024"
+    Not supported on this model.
+
+---
+
+### scope mask
+
+=== "Rigol DHO804"
+    Control pass/fail mask testing.
+
+    ```
+    scope mask on|off                 # enable/disable mask testing
+    scope mask source <1-4>           # set mask source channel
+    scope mask tolerance <x> <y>      # set X and Y tolerance
+    scope mask create                 # auto-create mask from current waveform
+    scope mask start                  # start mask test
+    scope mask stop                   # stop mask test
+    scope mask stats                  # show pass/fail statistics
+    scope mask reset                  # reset statistics
+    ```
+
+    | Subcommand | Parameter | Description |
+    |------------|-----------|-------------|
+    | `on`/`off` | — | Enable or disable mask testing |
+    | `source` | `1`–`4` | Source channel for mask |
+    | `tolerance` | `<x> <y>` | X and Y tolerance values |
+    | `create` | — | Auto-create mask from current waveform |
+    | `start`/`stop` | — | Start or stop mask test |
+    | `stats` | — | Display pass/fail/total statistics |
+    | `reset` | — | Reset statistics counters |
+
+    ```
+    scope mask source 1               # set mask source to CH1
+    scope mask create                  # create mask from current waveform
+    scope mask start                  # start testing
+    scope mask stats                  # view results
+    ```
+
+=== "Tektronix MSO2024"
+    Not supported on this model.

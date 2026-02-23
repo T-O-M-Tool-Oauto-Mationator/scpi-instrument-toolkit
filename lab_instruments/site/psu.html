@@ -1058,6 +1058,16 @@
 <li>Multiple PSUs are named <code>psu1</code>, <code>psu2</code>, etc.</li>
 </ul>
 <p>Address a specific PSU directly: <code>psu1 set 5.0</code> — or use <code>use psu1</code> then <code>psu set 5.0</code>.</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">HP E3631A</label><label for="__tabbed_1_2">Matrix MPS-6010H</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<p>Triple-output power supply. Channels: 1 (0–6 V), 2 (0–25 V), 3 (0– −25 V). Supports tracking mode for ±supply configurations.</p>
+</div>
+<div class="tabbed-block">
+<p>Single-channel programmable PSU with serial interface. Supports remote mode control.</p>
+</div>
+</div>
+</div>
 <hr />
 <h2 id="psu-chan">psu chan<a class="headerlink" href="#psu-chan" title="Permanent link">&para;</a></h2>
 <p>Enable or disable an output channel.</p>
@@ -1094,7 +1104,7 @@
 <hr />
 <h2 id="psu-set">psu set<a class="headerlink" href="#psu-set" title="Permanent link">&para;</a></h2>
 <p>Set output voltage and optional current limit.</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Single-channel PSU</label><label for="__tabbed_1_2">Multi-channel PSU</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="2:2"><input checked="checked" id="__tabbed_2_1" name="__tabbed_2" type="radio" /><input id="__tabbed_2_2" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="__tabbed_2_1">Single-channel PSU</label><label for="__tabbed_2_2">Multi-channel PSU</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>psu set &lt;voltage&gt; [current]

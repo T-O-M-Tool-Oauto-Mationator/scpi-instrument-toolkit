@@ -2,17 +2,17 @@
 
 ## Supported models
 
-| Model | Type | Interface |
-|-------|------|-----------|
-| Tektronix MSO2024 | Oscilloscope | USB / GPIB |
-| Rigol DHO804 | Oscilloscope | USB |
-| HP E3631A | Power Supply | GPIB |
-| Matrix MPS-6010H-1C | Power Supply | Serial |
-| HP 34401A | Multimeter | GPIB |
-| OWON XDM1041 | Multimeter | USB / Serial |
-| BK Precision 4063 | Function Generator | USB |
-| Keysight EDU33212A | Function Generator | USB |
-| JDS6600 (Seesii DDS) | Function Generator | Serial |
+| Model | Type | Interface | Key Features |
+|-------|------|-----------|--------------|
+| Rigol DHO804 | Oscilloscope | USB | Screenshot, display, acquire, cursor, math, record, mask, label, invert, bwlimit, built-in AWG/counter/DVM |
+| Tektronix MSO2024 | Oscilloscope | USB / GPIB | Basic scope commands |
+| HP E3631A | Power Supply | GPIB | Triple-output, tracking |
+| Matrix MPS-6010H-1C | Power Supply | Serial | Remote mode |
+| HP 34401A | Multimeter | GPIB | Display text, NPLC control |
+| OWON XDM1041 | Multimeter | USB / Serial | Basic DMM commands |
+| BK Precision 4063 | Function Generator | USB | Basic AWG commands |
+| Keysight EDU33212A | Function Generator | USB | Dual-channel |
+| JDS6600 (Seesii DDS) | Function Generator | Serial | DDS waveform codes |
 
 ---
 

@@ -8,6 +8,12 @@ Controls power supply units over VISA.
 
 Address a specific PSU directly: `psu1 set 5.0` — or use `use psu1` then `psu set 5.0`.
 
+=== "HP E3631A"
+    Triple-output power supply. Channels: 1 (0–6 V), 2 (0–25 V), 3 (0– −25 V). Supports tracking mode for ±supply configurations.
+
+=== "Matrix MPS-6010H"
+    Single-channel programmable PSU with serial interface. Supports remote mode control.
+
 ---
 
 ## psu chan

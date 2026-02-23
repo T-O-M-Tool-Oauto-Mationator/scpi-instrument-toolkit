@@ -5,6 +5,15 @@ Controls arbitrary waveform generators and function generators.
 - Channels are numbered `1`, `2`, or use `all` to affect both simultaneously
 - Multiple AWGs are named `awg1`, `awg2`, etc.
 
+=== "Keysight EDU33212A"
+    Dual-channel function/arbitrary waveform generator. Full SCPI support for all waveform types.
+
+=== "JDS6600 (Seesii DDS)"
+    DDS function generator with serial interface. Supports standard waveforms and arbitrary waveform loading.
+
+=== "BK Precision 4063"
+    Single-channel function generator with USB interface.
+
 ---
 
 ## awg chan

@@ -315,18 +315,229 @@ class MockScope(MockBase):
         pass
 
 
+class MockDHO804(MockScope):
+    """Mock Rigol DHO804 oscilloscope with model-specific features."""
+
+    def get_screenshot(self):
+        """Return dummy PNG bytes (a minimal valid PNG)."""
+        # Minimal 1x1 white PNG
+        import base64
+        return base64.b64decode(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVQI12NgAAIABQAB"
+            "Nl7BcQAAAABJRU5ErkJggg=="
+        )
+
+    def set_channel_label(self, channel, label, show=True):
+        pass
+
+    def invert_channel(self, channel, enable):
+        pass
+
+    def set_bandwidth_limit(self, channel, limit):
+        pass
+
+    def force_trigger(self):
+        pass
+
+    # Display methods
+    def clear_display(self):
+        pass
+
+    def set_waveform_brightness(self, brightness):
+        pass
+
+    def set_grid_type(self, grid):
+        pass
+
+    def set_grid_brightness(self, brightness):
+        pass
+
+    def set_persistence(self, time):
+        pass
+
+    def set_display_type(self, display_type):
+        pass
+
+    # Acquire methods
+    def set_acquisition_type(self, acq_type):
+        pass
+
+    def set_average_count(self, count):
+        pass
+
+    def set_memory_depth(self, depth):
+        pass
+
+    def get_memory_depth(self):
+        return "AUTO"
+
+    def get_sample_rate(self):
+        return 1e9
+
+    # Cursor methods
+    def set_cursor_mode(self, mode):
+        pass
+
+    def set_manual_cursor_type(self, cursor_type):
+        pass
+
+    def set_manual_cursor_source(self, source):
+        pass
+
+    def set_manual_cursor_positions(self, ax=None, ay=None, bx=None, by=None):
+        pass
+
+    def get_manual_cursor_values(self):
+        return {"AX": 0.0, "AY": 0.0, "BX": 1.0, "BY": 1.0, "DX": 1.0, "DY": 1.0}
+
+    # Math methods
+    def enable_math_channel(self, math_ch, enable=True):
+        pass
+
+    def configure_math_operation(self, math_ch, operation, source1, source2=None):
+        pass
+
+    def configure_math_function(self, math_ch, function, source):
+        pass
+
+    def configure_fft(self, math_ch, source, window="RECT"):
+        pass
+
+    def configure_digital_filter(self, math_ch, filter_type, source, upper=None, lower=None):
+        pass
+
+    def set_math_scale(self, math_ch, scale, offset=None):
+        pass
+
+    # Record methods
+    def set_recording_enable(self, enable):
+        pass
+
+    def get_recording_enable(self):
+        return False
+
+    def set_recording_frames(self, frames):
+        pass
+
+    def get_recording_frames(self):
+        return 100
+
+    def start_recording(self):
+        pass
+
+    def stop_recording(self):
+        pass
+
+    def get_recording_status(self):
+        return "STOP"
+
+    def start_playback(self):
+        pass
+
+    def stop_playback(self):
+        pass
+
+    def get_playback_status(self):
+        return "STOP"
+
+    # Mask methods
+    def set_mask_enable(self, enable):
+        pass
+
+    def get_mask_enable(self):
+        return False
+
+    def set_mask_source(self, channel):
+        pass
+
+    def get_mask_source(self):
+        return 1
+
+    def set_mask_tolerance_x(self, tolerance):
+        pass
+
+    def set_mask_tolerance_y(self, tolerance):
+        pass
+
+    def create_mask(self):
+        pass
+
+    def start_mask_test(self):
+        pass
+
+    def stop_mask_test(self):
+        pass
+
+    def get_mask_test_status(self):
+        return "STOP"
+
+    def reset_mask_statistics(self):
+        pass
+
+    def get_mask_failed_count(self):
+        return 0
+
+    def get_mask_passed_count(self):
+        return random.randint(90, 100)
+
+    def get_mask_total_count(self):
+        return 100
+
+    def get_mask_statistics(self):
+        passed = random.randint(90, 100)
+        total = 100
+        return {"passed": passed, "failed": total - passed, "total": total}
+
+
+class MockMSO2024(MockScope):
+    """Mock Tektronix MSO2024 oscilloscope."""
+    pass
+
+
+class MockMPS6010H(MockPSU):
+    """Mock Matrix MPS-6010H power supply with remote mode."""
+
+    def set_remote_mode(self, on):
+        pass
+
+
+class MockHP_E3631A(MockPSU):
+    """Mock HP E3631A triple-output power supply."""
+    pass
+
+
+class MockJDS6600(MockAWG):
+    """Mock JDS6600 DDS function generator."""
+    pass
+
+
+class MockEDU33212A(MockAWG):
+    """Mock Keysight EDU33212A function generator."""
+    pass
+
+
+class MockHP_34401A(MockDMM):
+    """Mock HP 34401A digital multimeter."""
+    pass
+
+
+class MockXDM1041(MockDMM):
+    """Mock OWON XDM1041 digital multimeter."""
+    pass
+
+
 def get_mock_devices(verbose=True):
     from lab_instruments import ColorPrinter
     if verbose:
         ColorPrinter.warning("Mock mode — no real instruments connected")
-        ColorPrinter.info("Injecting: psu1, psu2 (MockPSU), awg1, awg2 (MockAWG), dmm1, dmm2 (MockDMM), scope1, scope2 (MockScope)")
+        ColorPrinter.info("Injecting: psu1 (MockHP_E3631A), psu2 (MockMPS6010H), awg1 (MockEDU33212A), awg2 (MockJDS6600), dmm1 (MockHP_34401A), dmm2 (MockXDM1041), scope1 (MockDHO804), scope2 (MockMSO2024)")
     return {
-        "psu1": MockPSU(),
-        "psu2": MockPSU(),
-        "awg1": MockAWG(),
-        "awg2": MockAWG(),
-        "dmm1": MockDMM(),
-        "dmm2": MockDMM(),
-        "scope1": MockScope(),
-        "scope2": MockScope(),
+        "psu1": MockHP_E3631A(),
+        "psu2": MockMPS6010H(),
+        "awg1": MockEDU33212A(),
+        "awg2": MockJDS6600(),
+        "dmm1": MockHP_34401A(),
+        "dmm2": MockXDM1041(),
+        "scope1": MockDHO804(),
+        "scope2": MockMSO2024(),
     }
