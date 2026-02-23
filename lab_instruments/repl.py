@@ -1949,7 +1949,7 @@ class InstrumentRepl(cmd.Cmd):
         ColorPrinter.success(f"{key} = {self._script_vars[key]}")
 
     def do_script(self, arg):
-        "script <new|run|edit|list|rm|show|import|load|save> [args]: manage and run scripts"
+        "script <new|run|debug|edit|list|rm|show|import|load|save> [args]: manage and run scripts"
         args = self._parse_args(arg)
         args, help_flag = self._strip_help(args)
 
