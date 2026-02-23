@@ -3615,26 +3615,26 @@ class InstrumentRepl(cmd.Cmd):
                 "intro": "All meas_store commands write to a shared in-session measurement log. Use log to view or export the results, and calc to derive new values from stored measurements.",
                 "commands": [
                     {
-                        "id": "cmd-data", "name": "data dir",
+                        "id": "cmd-data", "name": "data",
                         "brief": "Get or set the data output directory for this session",
-                        "syntax": "data dir [path|reset]",
-                        "desc": "Changes where all data files are saved — screenshots (<code>scope screenshot</code>), waveform CSVs (<code>scope save</code>), and measurement exports (<code>log save</code>). Relative paths within those commands are resolved against this directory. Use <code>data dir reset</code> to restore the default.",
+                        "syntax": "data [path|reset]",
+                        "desc": "Changes where all data files are saved — screenshots (<code>scope screenshot</code>), waveform CSVs (<code>scope save</code>), and measurement exports (<code>log save</code>). Relative paths within those commands are resolved against this directory. Use <code>data reset</code> to restore the default.",
                         "params": [
                             {"name": "path", "required": "optional", "values": "directory path (absolute or relative to cwd)", "desc": "New output directory. Created automatically if it does not exist."},
                             {"name": "reset", "required": "optional", "values": "reset", "desc": "Clear the override and restore the default output directory."},
                         ],
                         "examples": [
-                            ("data dir", "Print current output directory"),
-                            ("data dir .", "Save files in the current working directory"),
-                            ("data dir ./lab3_out", "Save files in a subfolder of cwd"),
-                            ("data dir /mnt/usb/captures", "Save to an absolute path"),
-                            ("data dir reset", "Restore default (~/Documents/scpi-instrument-toolkit/data/)"),
+                            ("data", "Print current output directory"),
+                            ("data .", "Save files in the current working directory"),
+                            ("data ./lab3_out", "Save files in a subfolder of cwd"),
+                            ("data /mnt/usb/captures", "Save to an absolute path"),
+                            ("data reset", "Restore default (~/Documents/scpi-instrument-toolkit/data/)"),
                         ],
                         "notes": [
                             "Affects all save commands: <code>scope screenshot</code>, <code>scope save</code>, <code>log save</code>.",
                             "Subdirectories within the output dir are still created automatically — e.g. <code>scope screenshot lab3/cap.png</code> becomes <code>&lt;data_dir&gt;/lab3/cap.png</code>.",
                             "For a permanent default, set the <code>SCPI_DATA_DIR</code> environment variable before launching.",
-                            "Can be used in scripts: put <code>data dir .</code> at the top of a <code>.scpi</code> file to keep output alongside the project.",
+                            "Can be used in scripts: put <code>data .</code> at the top of a <code>.scpi</code> file to keep output alongside the project.",
                         ],
                         "see": ["script-dir", "cmd-log", "scope-screenshot"],
                     },
@@ -5731,37 +5731,30 @@ allTargets.forEach(t => io.observe(t));
     # Logging commands
     # --------------------------
     def do_data(self, arg):
-        "data dir [path|reset]: get or set the data output directory for this session"
+        "data [path|reset]: get or set the data output directory for this session"
         args = self._parse_args(arg)
         args, help_flag = self._strip_help(args)
         if help_flag or not args:
-            current = self._get_data_dir()
-            ColorPrinter.cyan(f"Current data dir: {current}")
+            ColorPrinter.cyan(f"Current data dir: {os.path.abspath(self._get_data_dir())}")
             self._print_usage([
-                "data dir <path>   # set output dir (absolute or relative to cwd)",
-                "data dir .        # save in current working directory",
-                "data dir reset    # go back to default (~/Documents/...)",
-                "data dir          # show current output dir",
+                "data              # show current output directory",
+                "data <path>       # set output dir (absolute or relative to cwd)",
+                "data .            # save in current working directory",
+                "data reset        # go back to default (~/Documents/...)",
             ])
             return
-        if args[0].lower() == "dir":
-            if len(args) < 2:
-                ColorPrinter.cyan(f"Current data dir: {os.path.abspath(self._get_data_dir())}")
-                return
-            path = args[1]
-            if path.lower() == "reset":
-                self._data_dir_override = None
-                ColorPrinter.success(f"Data dir reset to default: {self._get_data_dir()}")
-            else:
-                resolved = os.path.abspath(path)
-                try:
-                    os.makedirs(resolved, exist_ok=True)
-                    self._data_dir_override = resolved
-                    ColorPrinter.success(f"Data dir set to: {resolved}")
-                except Exception as exc:
-                    ColorPrinter.error(f"Cannot use '{resolved}': {exc}")
+        path = args[0]
+        if path.lower() == "reset":
+            self._data_dir_override = None
+            ColorPrinter.success(f"Data dir reset to default: {self._get_data_dir()}")
         else:
-            ColorPrinter.warning(f"Unknown data command. Use: data dir <path|reset>")
+            resolved = os.path.abspath(path)
+            try:
+                os.makedirs(resolved, exist_ok=True)
+                self._data_dir_override = resolved
+                ColorPrinter.success(f"Data dir set to: {resolved}")
+            except Exception as exc:
+                ColorPrinter.error(f"Cannot use '{resolved}': {exc}")
 
     def do_log(self, arg):
         "log <print|save|clear>: show or save measurements"

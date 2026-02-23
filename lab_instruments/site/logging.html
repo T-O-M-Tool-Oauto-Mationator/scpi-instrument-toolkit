@@ -907,10 +907,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#data-dir-controlling-where-files-are-saved" class="md-nav__link">
+  <a href="#data-controlling-where-files-are-saved" class="md-nav__link">
     <span class="md-ellipsis">
       
-        data dir — controlling where files are saved
+        data — controlling where files are saved
       
     </span>
   </a>
@@ -1106,10 +1106,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#data-dir-controlling-where-files-are-saved" class="md-nav__link">
+  <a href="#data-controlling-where-files-are-saved" class="md-nav__link">
     <span class="md-ellipsis">
       
-        data dir — controlling where files are saved
+        data — controlling where files are saved
       
     </span>
   </a>
@@ -1367,11 +1367,11 @@
 <a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>calc crest_factor m[&quot;pk2pk&quot;] / (2 * m[&quot;rms&quot;])
 </code></pre></div>
 <hr />
-<h2 id="data-dir-controlling-where-files-are-saved">data dir — controlling where files are saved<a class="headerlink" href="#data-dir-controlling-where-files-are-saved" title="Permanent link">&para;</a></h2>
-<p>By default, screenshots, waveform CSVs, and <code>log save</code> files all land in <code>~/Documents/scpi-instrument-toolkit/data/</code>. Use <code>data dir</code> to point them anywhere you want for the current session.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>data dir &lt;path&gt;    # set output directory (absolute or relative to cwd)
-<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>data dir           # print the current output directory
-<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>data dir reset     # go back to the default
+<h2 id="data-controlling-where-files-are-saved">data — controlling where files are saved<a class="headerlink" href="#data-controlling-where-files-are-saved" title="Permanent link">&para;</a></h2>
+<p>By default, screenshots, waveform CSVs, and <code>log save</code> files all land in <code>~/Documents/scpi-instrument-toolkit/data/</code>. Use <code>data</code> to point them anywhere you want for the current session.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>data &lt;path&gt;    # set output directory (absolute or relative to cwd)
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>data           # print the current output directory
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>data reset     # go back to the default
 </code></pre></div>
 <table>
 <thead>
@@ -1382,19 +1382,19 @@
 </thead>
 <tbody>
 <tr>
-<td><code>data dir .</code></td>
+<td><code>data .</code></td>
 <td>Save files in the current working directory</td>
 </tr>
 <tr>
-<td><code>data dir ./lab3</code></td>
+<td><code>data ./lab3</code></td>
 <td>Save files in a <code>lab3/</code> subfolder of cwd</td>
 </tr>
 <tr>
-<td><code>data dir /mnt/usb/captures</code></td>
+<td><code>data /mnt/usb/captures</code></td>
 <td>Save to an absolute path</td>
 </tr>
 <tr>
-<td><code>data dir reset</code></td>
+<td><code>data reset</code></td>
 <td>Restore default (<code>~/Documents/scpi-instrument-toolkit/data/</code>)</td>
 </tr>
 </tbody>
@@ -1402,7 +1402,7 @@
 <p>The setting applies to every save command in the session — <code>scope screenshot</code>, <code>scope save</code>, and <code>log save</code> all respect it. Subdirectories within the output dir are still created automatically (e.g. <code>scope screenshot lab3/cap.png</code> → <code>&lt;data_dir&gt;/lab3/cap.png</code>).</p>
 <p>You can also use it inside a <code>.scpi</code> script so the output location is part of the test setup:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a># lab3.scpi
-<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>data dir .         # save everything relative to where I launched the REPL
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>data .         # save everything relative to where I launched the REPL
 <a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>
 <a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a>log clear
 <a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a>for VIN ${SWEEP}
@@ -1414,7 +1414,7 @@
 </code></pre></div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p><code>data dir</code> only affects the current REPL session. For a permanent default, set the <code>SCPI_DATA_DIR</code> environment variable before launching the REPL — it takes effect whenever <code>data dir</code> has not been set.</p>
+<p><code>data</code> only affects the current REPL session. For a permanent default, set the <code>SCPI_DATA_DIR</code> environment variable before launching the REPL — it takes effect whenever <code>data</code> has not been set.</p>
 </div>
 <hr />
 <h2 id="typical-workflow">Typical workflow<a class="headerlink" href="#typical-workflow" title="Permanent link">&para;</a></h2>

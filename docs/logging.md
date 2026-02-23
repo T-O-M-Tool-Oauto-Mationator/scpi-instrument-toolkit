@@ -208,22 +208,22 @@ calc crest_factor m["pk2pk"] / (2 * m["rms"])
 
 ---
 
-## data dir — controlling where files are saved
+## data — controlling where files are saved
 
-By default, screenshots, waveform CSVs, and `log save` files all land in `~/Documents/scpi-instrument-toolkit/data/`. Use `data dir` to point them anywhere you want for the current session.
+By default, screenshots, waveform CSVs, and `log save` files all land in `~/Documents/scpi-instrument-toolkit/data/`. Use `data` to point them anywhere you want for the current session.
 
 ```
-data dir <path>    # set output directory (absolute or relative to cwd)
-data dir           # print the current output directory
-data dir reset     # go back to the default
+data <path>    # set output directory (absolute or relative to cwd)
+data           # print the current output directory
+data reset     # go back to the default
 ```
 
 | Example | Effect |
 |---------|--------|
-| `data dir .` | Save files in the current working directory |
-| `data dir ./lab3` | Save files in a `lab3/` subfolder of cwd |
-| `data dir /mnt/usb/captures` | Save to an absolute path |
-| `data dir reset` | Restore default (`~/Documents/scpi-instrument-toolkit/data/`) |
+| `data .` | Save files in the current working directory |
+| `data ./lab3` | Save files in a `lab3/` subfolder of cwd |
+| `data /mnt/usb/captures` | Save to an absolute path |
+| `data reset` | Restore default (`~/Documents/scpi-instrument-toolkit/data/`) |
 
 The setting applies to every save command in the session — `scope screenshot`, `scope save`, and `log save` all respect it. Subdirectories within the output dir are still created automatically (e.g. `scope screenshot lab3/cap.png` → `<data_dir>/lab3/cap.png`).
 
@@ -231,7 +231,7 @@ You can also use it inside a `.scpi` script so the output location is part of th
 
 ```
 # lab3.scpi
-data dir .         # save everything relative to where I launched the REPL
+data .         # save everything relative to where I launched the REPL
 
 log clear
 for VIN ${SWEEP}
@@ -243,7 +243,7 @@ log save results.csv
 ```
 
 !!! note
-    `data dir` only affects the current REPL session. For a permanent default, set the `SCPI_DATA_DIR` environment variable before launching the REPL — it takes effect whenever `data dir` has not been set.
+    `data` only affects the current REPL session. For a permanent default, set the `SCPI_DATA_DIR` environment variable before launching the REPL — it takes effect whenever `data` has not been set.
 
 ---
 
