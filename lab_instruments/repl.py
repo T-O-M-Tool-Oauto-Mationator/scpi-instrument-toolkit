@@ -850,7 +850,7 @@ class InstrumentRepl(cmd.Cmd):
             result = result.replace(f"${{{name}}}", str(value))
         return result
 
-    def _expand_script_lines(self, lines, variables, depth=0, parent_vars=None, exports=None):
+    def _expand_script_lines(self, lines, variables, depth=0, parent_vars=None, exports=None, _loop_ctx=""):
         if depth > 10:
             ColorPrinter.error("Maximum script call depth (10) exceeded.")
             return []
@@ -871,6 +871,7 @@ class InstrumentRepl(cmd.Cmd):
                         variables[varname] = parent_vars[varname]
                     else:
                         self._error(f"import: '{varname}' not found in parent scope")
+                expanded.append(("__NOP__", _loop_ctx + raw_line))
                 continue
             if head == "export" and len(tokens) >= 2:
                 for varname in tokens[1:]:
@@ -879,6 +880,7 @@ class InstrumentRepl(cmd.Cmd):
                             exports[varname] = variables[varname]
                     else:
                         self._error(f"export: '{varname}' not set in this scope")
+                expanded.append(("__NOP__", _loop_ctx + raw_line))
                 continue
             if head == "breakpoint":
                 expanded.append(("__BREAKPOINT__", "breakpoint"))
@@ -892,6 +894,7 @@ class InstrumentRepl(cmd.Cmd):
                     else:  # +e
                         self._exit_on_error = False
                         ColorPrinter.info("Exit on error disabled")
+                    expanded.append(("__NOP__", _loop_ctx + raw_line))
                     continue
                 # Handle regular set <varname> <value>
                 if len(tokens) >= 3:
@@ -908,6 +911,7 @@ class InstrumentRepl(cmd.Cmd):
                         variables[key] = str(result)
                     except Exception:
                         variables[key] = raw_val
+                    expanded.append(("__NOP__", f"{_loop_ctx}{raw_line}  →  {key} = {variables[key]}"))
                     continue
             if head == "call" and len(tokens) >= 2:
                 script_name = tokens[1]
@@ -922,7 +926,8 @@ class InstrumentRepl(cmd.Cmd):
                 call_exports = {}
                 expanded.extend(self._expand_script_lines(
                     self.scripts[script_name], call_params, depth + 1,
-                    parent_vars=variables, exports=call_exports
+                    parent_vars=variables, exports=call_exports,
+                    _loop_ctx=f"[call {script_name}] " + _loop_ctx,
                 ))
                 variables.update(call_exports)
                 continue
@@ -949,8 +954,12 @@ class InstrumentRepl(cmd.Cmd):
                         if depth_inner == 0:
                             break
                     block.append(line)
-                for _ in range(count):
-                    expanded.extend(self._expand_script_lines(block, dict(variables), depth))
+                for i in range(count):
+                    iter_ctx = f"[repeat {i + 1}/{count}] "
+                    expanded.append(("__NOP__", f"{_loop_ctx}{raw_line}  →  iteration {i + 1}/{count}"))
+                    expanded.extend(self._expand_script_lines(
+                        block, dict(variables), depth, _loop_ctx=_loop_ctx + iter_ctx
+                    ))
                 continue
             if head == "array" and len(tokens) >= 2:
                 varname = tokens[1]
@@ -968,6 +977,7 @@ class InstrumentRepl(cmd.Cmd):
                     # Each non-comment line is one element; substitute vars
                     elements.extend(shlex.split(self._substitute_vars(line, variables)))
                 variables[varname] = " ".join(elements)
+                expanded.append(("__NOP__", f"{_loop_ctx}{raw_line}  →  {varname} = [{variables[varname]}]"))
                 continue
             if head == "for" and len(tokens) >= 3:
                 key = tokens[1]
@@ -1007,16 +1017,23 @@ class InstrumentRepl(cmd.Cmd):
                         local_vars = dict(variables)
                         for name, val in zip(keys, parts):
                             local_vars[name] = self._substitute_vars(val, variables)
-                        expanded.extend(self._expand_script_lines(block, local_vars, depth))
+                        iter_ctx = " ".join(f"{k}={v}" for k, v in zip(keys, parts))
+                        expanded.append(("__NOP__", f"{_loop_ctx}{raw_line}  →  {iter_ctx}"))
+                        expanded.extend(self._expand_script_lines(
+                            block, local_vars, depth, _loop_ctx=_loop_ctx + f"[{iter_ctx}] "
+                        ))
                 else:
                     for value in values:
                         local_vars = dict(variables)
                         local_vars[key] = self._substitute_vars(value, variables)
-                        expanded.extend(self._expand_script_lines(block, local_vars, depth))
+                        expanded.append(("__NOP__", f"{_loop_ctx}{raw_line}  →  {key}={value}"))
+                        expanded.extend(self._expand_script_lines(
+                            block, local_vars, depth, _loop_ctx=_loop_ctx + f"[{key}={value}] "
+                        ))
                 continue
             if head == "end":
                 continue
-            expanded.append((self._substitute_vars(raw_line, variables), raw_line))
+            expanded.append((self._substitute_vars(raw_line, variables), _loop_ctx + raw_line))
         return expanded
 
     def _debug_show_context(self, lines, source_lines, idx, breakpoints, window=3, show_all=False):
@@ -1054,7 +1071,7 @@ class InstrumentRepl(cmd.Cmd):
             if cmd == "__BREAKPOINT__":
                 breakpoints.add(len(lines) + 1)  # fires before the next real line
                 continue
-            lines.append(cmd)
+            lines.append(cmd)        # __NOP__ stays in the list for display; executor skips it
             source_lines.append(src.strip())
 
         if not lines:
@@ -1089,6 +1106,9 @@ class InstrumentRepl(cmd.Cmd):
                             return True
 
                         if cmd in ("", "n", "next", "s", "step"):
+                            if line == "__NOP__":
+                                idx += 1
+                                break
                             self._tick_dmm_text_loop()
                             self._command_had_error = False
                             try:
@@ -1105,6 +1125,11 @@ class InstrumentRepl(cmd.Cmd):
                             break
 
                         elif cmd in ("c", "continue"):
+                            if line == "__NOP__":
+                                debug_active = False
+                                self._in_debugger = False
+                                idx += 1
+                                break
                             debug_active = False
                             self._in_debugger = False
                             self._tick_dmm_text_loop()
@@ -1198,6 +1223,9 @@ class InstrumentRepl(cmd.Cmd):
                             self.onecmd(cmd)
                 else:
                     # Normal (non-debug) execution
+                    if line == "__NOP__":
+                        idx += 1
+                        continue
                     self._tick_dmm_text_loop()
                     self._command_had_error = False
                     try:
