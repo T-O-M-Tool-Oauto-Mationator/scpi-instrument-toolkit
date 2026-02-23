@@ -953,7 +953,15 @@ class InstrumentRepl(cmd.Cmd):
                 continue
             if head == "for" and len(tokens) >= 3:
                 key = tokens[1]
-                values = tokens[2:]
+                # Substitute variables in each value token then re-tokenize,
+                # so a variable containing multiple space-separated tuples expands correctly.
+                values = []
+                for _rv in tokens[2:]:
+                    _subst = self._substitute_vars(_rv, variables)
+                    try:
+                        values.extend(shlex.split(_subst))
+                    except ValueError:
+                        values.append(_subst)
                 block = []
                 depth_inner = 1
                 while idx < len(lines):
