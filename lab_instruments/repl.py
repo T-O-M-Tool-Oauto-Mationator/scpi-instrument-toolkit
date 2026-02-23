@@ -4118,8 +4118,8 @@ allTargets.forEach(t => io.observe(t));
                     "",
                     "scope hscale <seconds_per_div>",
                     "  - example: scope hscale 1e-3",
-                    "scope hpos <percentage> - set horizontal position (0-100%)",
-                    "scope hmove <delta> - move horizontal position by delta",
+                    "scope hpos <seconds> - set horizontal offset (0 = trigger at center)",
+                    "scope hmove <delta> - move horizontal offset by delta seconds",
                     "",
                     "scope vscale <1-4|all> <volts_per_div> [pos]",
                     "  - example: scope vscale 1 0.5 0",
@@ -4200,13 +4200,17 @@ allTargets.forEach(t => io.observe(t));
                 dev.set_horizontal_scale(scale)
                 ColorPrinter.success(f"Horizontal scale set to {scale} s/div")
             elif cmd_name == "hpos" and len(args) >= 2:
-                position = float(args[1])
-                dev.set_horizontal_position(position)
-                ColorPrinter.success(f"Horizontal position set to {position}%")
+                offset = float(args[1])
+                dev.set_horizontal_offset(offset)
+                ColorPrinter.success(f"Horizontal offset set to {offset} s")
             elif cmd_name == "hmove" and len(args) >= 2:
                 delta = float(args[1])
-                dev.move_horizontal(delta)
-                ColorPrinter.success(f"Horizontal position moved by {delta}")
+                try:
+                    current = float(dev.instrument.query(":TIMebase:MAIN:OFFSet?").strip())
+                except Exception:
+                    current = 0.0
+                dev.set_horizontal_offset(current + delta)
+                ColorPrinter.success(f"Horizontal offset moved by {delta} s")
             elif cmd_name == "vscale" and len(args) >= 3:
                 channels = self._parse_channels(args[1], max_ch=4)
                 scale = float(args[2])
