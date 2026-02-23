@@ -249,6 +249,7 @@ class InstrumentRepl(cmd.Cmd):
             self.intro = intro
         if self.intro:
             print(self.intro)
+        self._wait_for_scan()
         stop = None
         try:
             while not stop and not self._should_exit:
@@ -382,7 +383,7 @@ class InstrumentRepl(cmd.Cmd):
             candidates.append('dds')
 
         if not candidates:
-            ColorPrinter.warning(f"No {device_type.upper()} found. Run 'scan' first.")
+            self._error(f"No {device_type.upper()} found. Run 'scan' first.")
             return None
 
         if len(candidates) == 1:
