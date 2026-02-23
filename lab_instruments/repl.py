@@ -148,6 +148,9 @@ class InstrumentRepl(cmd.Cmd):
         self.discovery = InstrumentDiscovery()
         self.devices: Dict[str, Any] = {}
         self.selected: Optional[str] = None
+        self._device_override: Optional[str] = None  # set by default() for awg1, scope2, etc.
+        self._data_dir_override: Optional[str] = None    # set by 'data dir <path>'
+        self._scripts_dir_override: Optional[str] = None  # set by 'script dir <path>'
         self.scripts: Dict[str, Any] = self._load_scripts()
         self.measurements = []
         self._dmm_text_loop_active = False
@@ -155,9 +158,6 @@ class InstrumentRepl(cmd.Cmd):
         self._dmm_text_index = 0
         self._dmm_text_delay = 0.2
         self._dmm_text_last = 0.0
-        self._device_override: Optional[str] = None  # set by default() for awg1, scope2, etc.
-        self._data_dir_override: Optional[str] = None    # set by 'data dir <path>'
-        self._scripts_dir_override: Optional[str] = None  # set by 'script dir <path>'
         self._cleanup_done = False
         self._script_vars: Dict[str, str] = {}  # runtime variables set by 'input' during scripts
         self._jerminator = False
