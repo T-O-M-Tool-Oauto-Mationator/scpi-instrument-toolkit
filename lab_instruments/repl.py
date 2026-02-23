@@ -2092,7 +2092,7 @@ class InstrumentRepl(cmd.Cmd):
 
             # Only explicitly exported variables survive back to the REPL
             self._script_vars.update(run_exports)
-            return self._run_expanded(expanded)
+            self._run_expanded(expanded)
 
         elif subcmd == "debug":
             if len(args) < 2:
@@ -2125,7 +2125,7 @@ class InstrumentRepl(cmd.Cmd):
             )
             self._script_vars.update(run_exports)
             ColorPrinter.info(f"Debugger started — {len([l for l in expanded if l.strip() and not l.strip().startswith('#') and l.strip() != '__BREAKPOINT__'])} commands expanded")
-            return self._run_expanded(expanded, debug=True)
+            self._run_expanded(expanded, debug=True)
 
         elif subcmd == "edit":
             if len(args) < 2:
