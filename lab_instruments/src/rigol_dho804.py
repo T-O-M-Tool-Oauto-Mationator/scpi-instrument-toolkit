@@ -234,8 +234,8 @@ class Rigol_DHO804(DeviceManager):
             raise ValueError(f"Invalid probe ratio: {ratio}")
 
         try:
-            self.instrument.write(f":CHANnel{channel}:PROBe {ratio}")
-            print(f"CH{channel} probe ratio: {ratio}X")
+            self.instrument.write(f":CHANnel{channel}:PROBe {ratio:g}")
+            print(f"CH{channel} probe ratio: {ratio:g}X")
         except pyvisa.VisaIOError as e:
             print(f"Failed to set probe ratio: {e}")
             raise
