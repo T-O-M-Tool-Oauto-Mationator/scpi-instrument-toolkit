@@ -3431,7 +3431,7 @@ allTargets.forEach(t => io.observe(t));
                     [
                         "# PSU",
                         "",
-                        "psu chan 1 on|off",
+                        "psu chan on|off",
                         "psu set <voltage> [current]",
                         "  - voltage: 0-60V, current: 0-10A",
                         "  - example: psu set 5.0 1.0",
@@ -3465,8 +3465,11 @@ allTargets.forEach(t => io.observe(t));
         cmd_name = args[0].lower()
 
         try:
-            # CHAN COMMAND — psu chan 1 on|off (single) or psu chan <1|2|3|all> on|off (multi)
-            if cmd_name == "chan" and len(args) >= 3:
+            # CHAN COMMAND — psu chan on|off (single) or psu chan <1|2|3|all> on|off (multi)
+            if cmd_name == "chan" and (
+                (is_single_channel and len(args) >= 2) or
+                (not is_single_channel and len(args) >= 3)
+            ):
                 state = args[-1].lower() == "on"
                 dev.enable_output(state)
                 ColorPrinter.success(f"Output {'enabled' if state else 'disabled'}")
