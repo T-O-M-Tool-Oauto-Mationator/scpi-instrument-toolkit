@@ -3018,11 +3018,13 @@ class InstrumentRepl(cmd.Cmd):
                         "desc": "Queries a measurement from the scope and prints the result. Does not store to the log — use <code>scope meas_store</code> for logging.",
                         "params": [
                             {"name": "1-4|all", "required": "required", "values": "1, 2, 3, 4, all", "desc": "Channel(s) to measure."},
-                            {"name": "type", "required": "required", "values": "FREQUENCY, PK2PK, RMS, CRMS, MEAN, PERIOD, AMPLITUDE, MINIMUM, MAXIMUM, HIGH, LOW, RISE, FALL, PWIDTH, NWIDTH", "desc": "Measurement type."},
+                            {"name": "type", "required": "required", "values": "Voltage: VPP/PK2PK, VRMS/RMS, ACRMS, VMAX/MAXIMUM, VMIN/MINIMUM, VTOP/TOP, VBASE/BASE, VAMP/AMPLITUDE, VAVG/MEAN/AVERAGE, VMID/MID, VUPPER/UPPER, VLOWER/LOWER, VARIANCE/VAR, PVRMS, TVMAX, TVMIN — Time: FREQUENCY/FREQ, PERIOD, RISE/RISETIME, FALL/FALLTIME, PWIDTH, NWIDTH — Duty: PDUTY/POSDUTY, NDUTY/NEGDUTY — Shape: OVERSHOOT/OVER, PRESHOOT/PRE, PSLEWRATE/POSSLEW, NSLEWRATE/NEGSLEW — Area: MAREA/AREA, MPAREA/PERIODAREA — Counts: PPULSES, NPULSES, POSEDGES/PEDGES, NEGEDGES/NEDGES", "desc": "Measurement type. Case-insensitive. See grouped list above for all supported aliases."},
                         ],
                         "examples": [
                             ("scope meas 1 FREQUENCY", "Print channel 1 frequency"),
                             ("scope meas 1 PK2PK", "Print channel 1 peak-to-peak voltage"),
+                            ("scope meas 2 RISE", "Print channel 2 rise time"),
+                            ("scope meas 3 OVERSHOOT", "Print channel 3 overshoot"),
                         ],
                         "notes": [],
                         "see": ["scope-meas_store"],
@@ -3034,7 +3036,7 @@ class InstrumentRepl(cmd.Cmd):
                         "desc": "Queries a measurement from the scope and appends it to the session measurement log.",
                         "params": [
                             {"name": "1-4|all", "required": "required", "values": "1, 2, 3, 4, all", "desc": "Channel to measure."},
-                            {"name": "type", "required": "required", "values": "FREQUENCY, PK2PK, RMS, CRMS, MEAN, PERIOD, AMPLITUDE, MINIMUM, MAXIMUM, HIGH, LOW, RISE, FALL, PWIDTH, NWIDTH", "desc": "Type of measurement to take."},
+                            {"name": "type", "required": "required", "values": "Voltage: VPP/PK2PK, VRMS/RMS, ACRMS, VMAX/MAXIMUM, VMIN/MINIMUM, VTOP/TOP, VBASE/BASE, VAMP/AMPLITUDE, VAVG/MEAN/AVERAGE, VMID/MID, VUPPER/UPPER, VLOWER/LOWER, VARIANCE/VAR, PVRMS, TVMAX, TVMIN — Time: FREQUENCY/FREQ, PERIOD, RISE/RISETIME, FALL/FALLTIME, PWIDTH, NWIDTH — Duty: PDUTY/POSDUTY, NDUTY/NEGDUTY — Shape: OVERSHOOT/OVER, PRESHOOT/PRE, PSLEWRATE/POSSLEW, NSLEWRATE/NEGSLEW — Area: MAREA/AREA, MPAREA/PERIODAREA — Counts: PPULSES, NPULSES, POSEDGES/PEDGES, NEGEDGES/NEDGES", "desc": "Type of measurement to take. Case-insensitive."},
                             {"name": "label", "required": "required", "values": "string, no spaces", "desc": "Name for this measurement entry in the log. Appears as the row identifier in <code>log print</code>. Also used as the dictionary key in <code>calc</code> expressions — e.g. if label is <code>ch1_freq</code> then access it as <code>m[\"ch1_freq\"]</code>. Use underscores instead of spaces."},
                             {"name": "unit=", "required": "optional", "values": "string, e.g. Hz, V", "desc": "Unit label shown in <code>log print</code> output. Display-only — does not affect the stored value or calculations."},
                         ],
@@ -3047,6 +3049,50 @@ class InstrumentRepl(cmd.Cmd):
                             "Access stored values in <code>calc</code>: <code>calc ratio m[\"meas_pk2pk\"]/m[\"meas_rms\"]</code>",
                         ],
                         "see": ["scope-meas", "cmd-log", "cmd-calc"],
+                    },
+                    {
+                        "id": "scope-meas_setup", "name": "scope meas_setup",
+                        "brief": "Configure a measurement slot before capture",
+                        "syntax": "scope meas_setup <1-4|all> <type>",
+                        "desc": "Registers a measurement item on the scope so the DHO804 computes it when the trigger fires. Call before <code>scope single</code>. Query results with <code>scope meas_store</code> after capture.",
+                        "params": [
+                            {"name": "1-4|all", "required": "required", "values": "1, 2, 3, 4, all", "desc": "Channel(s) to configure."},
+                            {"name": "type", "required": "required", "values": "See scope meas for full list", "desc": "Measurement type to compute on next capture."},
+                        ],
+                        "examples": [
+                            ("scope meas_setup 3 RISE", "Configure CH3 rise time slot"),
+                            ("scope meas_setup all FREQUENCY", "Configure frequency on all channels"),
+                        ],
+                        "notes": [
+                            "Must be called <em>before</em> <code>scope single</code>. Follow with <code>scope meas_force</code> after <code>scope wait_stop</code>, then query with <code>scope meas_store</code>.",
+                        ],
+                        "see": ["scope-meas_force", "scope-meas_store", "scope-meas_clear"],
+                    },
+                    {
+                        "id": "scope-meas_force", "name": "scope meas_force",
+                        "brief": "Force DSP computation of configured measurements",
+                        "syntax": "scope meas_force",
+                        "desc": "The DHO804 computes measurements lazily — values are only finalized when the display refreshes. <code>scope meas_force</code> triggers an internal display refresh (no file written) so that <code>scope meas_store</code> returns valid values. Use after <code>scope wait_stop</code> and before <code>scope meas_store</code>.",
+                        "params": [],
+                        "examples": [
+                            ("scope meas_force", "Force measurement DSP after wait_stop"),
+                        ],
+                        "notes": [
+                            "Equivalent to taking an internal screenshot and discarding the bytes. If you already call <code>scope screenshot</code> before <code>scope meas_store</code>, <code>scope meas_force</code> is redundant.",
+                        ],
+                        "see": ["scope-meas_setup", "scope-meas_store", "scope-meas_clear"],
+                    },
+                    {
+                        "id": "scope-meas_clear", "name": "scope meas_clear",
+                        "brief": "Close the measurement results panel",
+                        "syntax": "scope meas_clear",
+                        "desc": "Sends <code>:MEASure:CLEar</code> to remove all configured measurement items from the on-screen results panel. Use before <code>scope screenshot</code> to capture a clean waveform image without the measurement sidebar.",
+                        "params": [],
+                        "examples": [
+                            ("scope meas_clear", "Hide measurement panel before screenshot"),
+                        ],
+                        "notes": [],
+                        "see": ["scope-meas_setup", "scope-meas_force", "scope-screenshot"],
                     },
                     {
                         "id": "scope-meas_delay", "name": "scope meas_delay / meas_delay_store",
@@ -4733,6 +4779,22 @@ allTargets.forEach(t => io.observe(t));
             elif cmd_name == "single":
                 dev.single()
                 ColorPrinter.success("Single shot armed")
+            elif cmd_name == "wait_stop":
+                timeout = 10.0
+                for tok in args[1:]:
+                    if tok.lower().startswith("timeout="):
+                        try:
+                            timeout = float(tok.split("=", 1)[1])
+                        except ValueError:
+                            pass
+                if hasattr(dev, "wait_for_stop"):
+                    triggered = dev.wait_for_stop(timeout)
+                    if triggered:
+                        ColorPrinter.success("Scope stopped - trigger fired, waveform captured")
+                    else:
+                        ColorPrinter.warning(f"Scope still armed after {timeout}s — trigger did not fire. Measurements may return 9.9e+37.")
+                else:
+                    ColorPrinter.warning("wait_stop not supported by this device")
             elif cmd_name == "chan" and len(args) >= 3:
                 channels = self._parse_channels(args[1], max_ch=4)
                 enable = args[2].lower() == "on"
@@ -4836,6 +4898,28 @@ allTargets.forEach(t => io.observe(t));
                     for channel in channels:
                         result = dev.measure_bnf(channel, measure_type)
                         ColorPrinter.cyan(f"CH{channel} {measure_type}: {result}")
+            elif cmd_name == "meas_setup" and len(args) >= 3:
+                channels = self._parse_channels(args[1], max_ch=4)
+                measure_type = args[2]
+                for channel in channels:
+                    dev.configure_measurement(channel, measure_type)
+                    ColorPrinter.info(f"CH{channel} {measure_type} slot configured")
+            elif cmd_name == "meas_force":
+                # Trigger the DHO804's measurement DSP by requesting a screenshot
+                # (the scope only computes measurements lazily when the display refreshes).
+                # The image data is discarded — call before meas_store when no screenshot is needed.
+                try:
+                    dev.get_screenshot()
+                    ColorPrinter.info("Measurement DSP forced (display refresh complete)")
+                except AttributeError:
+                    ColorPrinter.warning("meas_force not supported on this oscilloscope model")
+            elif cmd_name == "meas_clear":
+                # Hide all measurement items from the on-screen panel (cleans up screenshots).
+                if hasattr(dev, "clear_measurements"):
+                    dev.clear_measurements()
+                    ColorPrinter.success("Measurement panel cleared")
+                else:
+                    ColorPrinter.warning("meas_clear not supported on this oscilloscope model")
             elif cmd_name == "meas_store" and len(args) >= 4:
                 channels = self._parse_channels(args[1], max_ch=4)
                 measure_type = args[2]
@@ -4844,11 +4928,22 @@ allTargets.forEach(t => io.observe(t));
                 for token in args[4:]:
                     if token.lower().startswith("unit="):
                         unit = token.split("=", 1)[1]
+                if hasattr(dev, "get_trigger_status"):
+                    trig_status = dev.get_trigger_status()
+                    if trig_status == "WAIT":
+                        ColorPrinter.warning(f"Scope trigger status is WAIT — scope has not fired yet. Use 'scope wait_stop' before meas_store. Measurement may return 9.9e+37.")
                 for channel in channels:
                     stored_label = f"{label}_ch{channel}" if len(channels) > 1 else label
-                    val = dev.measure_bnf(channel, measure_type)
+                    # Retry up to 6x (3s total) while scope DSP finishes computing the measurement
+                    import time as _time
+                    val = 9.9e+37
+                    for _attempt in range(7):
+                        val = dev.measure_bnf(channel, measure_type)
+                        if val < 9.9e+36 or _attempt == 6:
+                            break
+                        _time.sleep(0.5)
                     self._record_measurement(stored_label, val, unit, f"scope.meas.{measure_type}")
-                    ColorPrinter.success(f"CH{channel} {measure_type}: {val} → stored as '{stored_label}'")
+                    ColorPrinter.success(f"CH{channel} {measure_type}: {val} -> stored as '{stored_label}'")
             elif cmd_name == "meas_delay" and len(args) >= 3:
                 ch1 = int(args[1])
                 ch2 = int(args[2])
@@ -5577,7 +5672,11 @@ allTargets.forEach(t => io.observe(t));
             if not self.measurements:
                 ColorPrinter.warning("No measurements recorded.")
                 return
+            # Resolve relative paths through the data directory (same as scope screenshot/save)
+            if not os.path.isabs(path):
+                path = os.path.join(self._get_data_dir(), path)
             try:
+                os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
                 with open(path, "w", encoding="utf-8", newline="") as handle:
                     if fmt == "csv":
                         handle.write("label,value,unit,source\n")
@@ -5595,7 +5694,7 @@ allTargets.forEach(t => io.observe(t));
                             unit = entry.get("unit", "")
                             source = entry.get("source", "")
                             handle.write(f"{label:<24} {value:>14} {unit:<8} {source:<12}\n")
-                ColorPrinter.success(f"Saved measurements to {path}.")
+                ColorPrinter.success(f"Saved measurements to {os.path.abspath(path)}.")
             except Exception as exc:
                 ColorPrinter.error(f"Failed to save measurements: {exc}")
             return
@@ -5619,14 +5718,15 @@ allTargets.forEach(t => io.observe(t));
             return
         label = args[0]
         unit = ""
-        expr_parts = []
         for token in args[1:]:
-            token_lower = token.lower()
-            if token_lower.startswith("unit="):
+            if token.lower().startswith("unit="):
                 unit = token.split("=", 1)[1]
-            else:
-                expr_parts.append(token)
-        expr = " ".join(expr_parts)
+        # Extract the expression from the raw arg string to preserve quotes
+        # (shlex.split strips quotes, which breaks m["label.with.dots"])
+        import re as _re
+        raw = arg.strip()
+        raw_after_label = _re.sub(r'^\S+\s*', '', raw, count=1)
+        expr = _re.sub(r'(?<!\S)unit=\S+', '', raw_after_label).strip()
         if not expr:
             ColorPrinter.warning("calc expects an expression.")
             return

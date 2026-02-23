@@ -984,6 +984,32 @@ class Rigol_DHO804(DeviceManager):
             print(f"Failed to set single trigger: {e}")
             raise
 
+    def wait_for_stop(self, timeout: float = 10.0) -> bool:
+        """Poll trigger status until the scope stops (TD or STOP state).
+
+        Call after single() to block until the trigger fires and the scope
+        has captured and frozen the waveform. Returns True if the scope
+        stopped within the timeout, False if the timeout expired while the
+        scope was still armed (WAIT state).
+
+        Args:
+            timeout: Maximum seconds to wait (default 10.0)
+
+        Returns:
+            bool: True if scope stopped (trigger fired), False if timed out
+        """
+        import time
+        time.sleep(0.1)  # Let the scope process :SINGle before polling
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            status = self.get_trigger_status()
+            if status == 'STOP':
+                # Scope stopped; give DSP a moment to begin computing measurements
+                time.sleep(0.5)
+                return True
+            time.sleep(0.2)
+        return False
+
     def force_trigger(self) -> None:
         """
         Generate a trigger signal forcefully.
@@ -1506,9 +1532,28 @@ class Rigol_DHO804(DeviceManager):
                 - 'PSLewrate' - Positive slew rate
                 - 'NSLewrate' - Negative slew rate
 
-                **Other:**
+                **Shape:**
+                - 'OVERshoot' - Overshoot percentage
+                - 'PREShoot' - Preshoot percentage
+                - 'PSLewrate' - Positive slew rate
+                - 'NSLewrate' - Negative slew rate
+
+                **Area:**
                 - 'MARea' - Waveform area
                 - 'MPARea' - Period area
+
+                **Additional Voltage:**
+                - 'ACRMs' - AC RMS voltage
+                - 'VARiance' - Voltage variance
+                - 'PVRMs' - Per-period RMS
+                - 'TVMAX' - Time at voltage maximum
+                - 'TVMIN' - Time at voltage minimum
+
+                **Counts:**
+                - 'PPULses' - Positive pulse count
+                - 'NPULses' - Negative pulse count
+                - 'PEDGes' - Positive edge count
+                - 'NEDGes' - Negative edge count
 
         Returns:
             float: Measurement value
@@ -1525,51 +1570,7 @@ class Rigol_DHO804(DeviceManager):
         if channel not in (1, 2, 3, 4):
             raise ValueError(f"Channel must be 1-4, got {channel}")
 
-        # Map common measurement names to Rigol SCPI item names
-        meas_map = {
-            # Voltage measurements
-            'vpp': 'VPP',
-            'pk2pk': 'VPP',
-            'vrms': 'VRMS',
-            'vmax': 'VMAX',
-            'vmin': 'VMIN',
-            'vtop': 'VTOP',
-            'vbase': 'VBASe',
-            'vamp': 'VAMP',
-            'amplitude': 'VAMP',
-            'vavg': 'VAVG',
-            'mean': 'VAVG',
-            'vmid': 'VMID',
-            'vupper': 'VUPPer',
-            'vlower': 'VLOWer',
-
-            # Time measurements
-            'frequency': 'FREQuency',
-            'freq': 'FREQuency',
-            'period': 'PERiod',
-            'risetime': 'RTIMe',
-            'falltime': 'FTIMe',
-            'pwidth': 'PWIDth',
-            'nwidth': 'NWIDth',
-
-            # Duty cycle
-            'pduty': 'PDUTy',
-            'nduty': 'NDUTy',
-
-            # Overshoot
-            'overshoot': 'OVERshoot',
-            'preshoot': 'PREShoot',
-
-            # Slew rate
-            'pslewrate': 'PSLewrate',
-            'nslewrate': 'NSLewrate',
-
-            # Area
-            'marea': 'MARea',
-            'mparea': 'MPARea',
-        }
-
-        meas_type = meas_map.get(measurement_type.lower(), measurement_type)
+        meas_type = self._resolve_meas_type(measurement_type)
 
         try:
             # Query measurement
@@ -1581,6 +1582,76 @@ class Rigol_DHO804(DeviceManager):
             raise
         except ValueError as e:
             print(f"Invalid measurement value for {meas_type}: {e}")
+            raise
+
+    def _resolve_meas_type(self, measurement_type: str) -> str:
+        """Map a user-facing measurement name to its Rigol SCPI item string."""
+        meas_map = {
+            # Voltage
+            'vpp': 'VPP', 'pk2pk': 'VPP',
+            'vrms': 'VRMS', 'rms': 'VRMS',
+            'vmax': 'VMAX', 'maximum': 'VMAX',
+            'vmin': 'VMIN', 'minimum': 'VMIN',
+            'vtop': 'VTOP', 'top': 'VTOP',
+            'vbase': 'VBASe', 'base': 'VBASe',
+            'vamp': 'VAMP', 'amplitude': 'VAMP',
+            'vavg': 'VAVG', 'mean': 'VAVG', 'average': 'VAVG',
+            'vmid': 'VMID', 'mid': 'VMID',
+            'vupper': 'VUPPer', 'upper': 'VUPPer',
+            'vlower': 'VLOWer', 'lower': 'VLOWer',
+            'acrms': 'ACRMs',
+            'variance': 'VARiance', 'var': 'VARiance',
+            'pvrms': 'PVRMs',
+            'tvmax': 'TVMAX',
+            'tvmin': 'TVMIN',
+            # Time
+            'frequency': 'FREQuency', 'freq': 'FREQuency',
+            'period': 'PERiod',
+            'rise': 'RTIMe', 'risetime': 'RTIMe',
+            'fall': 'FTIMe', 'falltime': 'FTIMe',
+            'pwidth': 'PWIDth', 'ppulsewidth': 'PWIDth',
+            'nwidth': 'NWIDth', 'npulsewidth': 'NWIDth',
+            # Duty cycle
+            'pduty': 'PDUTy', 'posduty': 'PDUTy',
+            'nduty': 'NDUTy', 'negduty': 'NDUTy',
+            # Shape
+            'overshoot': 'OVERshoot', 'over': 'OVERshoot',
+            'preshoot': 'PREShoot', 'pre': 'PREShoot',
+            'pslewrate': 'PSLewrate', 'posslew': 'PSLewrate',
+            'nslewrate': 'NSLewrate', 'negslew': 'NSLewrate',
+            # Area
+            'marea': 'MARea', 'area': 'MARea',
+            'mparea': 'MPARea', 'periodarea': 'MPARea',
+            # Counts
+            'ppulses': 'PPULses', 'posedges': 'PEDGes',
+            'npulses': 'NPULses', 'negedges': 'NEDGes',
+            'pedges': 'PEDGes', 'nedges': 'NEDGes',
+        }
+        return meas_map.get(measurement_type.lower(), measurement_type)
+
+    def configure_measurement(self, channel: int, measurement_type: str) -> None:
+        """Configure a measurement slot without querying (call before scope single).
+
+        Writes :MEASure:ITEM to open the slot while the scope is in RUN/armed state,
+        so the value is computed when the trigger fires. Query with measure() after capture.
+        """
+        if channel not in (1, 2, 3, 4):
+            raise ValueError(f"Channel must be 1-4, got {channel}")
+        meas_type = self._resolve_meas_type(measurement_type)
+        self.instrument.write(f":MEASure:ITEM {meas_type},CHAN{channel}")
+
+    def clear_measurements(self) -> None:
+        """Clear all measurement items from the display panel.
+
+        Sends :MEASure:CLEar to remove all configured measurement slots
+        from the on-screen results panel. Use before taking a clean screenshot.
+        The DSP-computed values remain available until the next acquisition.
+        """
+        try:
+            self.instrument.write(":MEASure:CLEar")
+            print("Measurement items cleared from display")
+        except pyvisa.VisaIOError as e:
+            print(f"Failed to clear measurement display: {e}")
             raise
 
     # Convenience methods for common measurements

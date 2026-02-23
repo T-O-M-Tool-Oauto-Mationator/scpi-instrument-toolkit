@@ -199,6 +199,15 @@ class MockScope(MockBase):
     def single(self):
         pass
 
+    def set_trigger_sweep(self, sweep):
+        pass
+
+    def get_trigger_status(self):
+        return 'TD'
+
+    def wait_for_stop(self, timeout=10.0):
+        return True
+
     def enable_channel(self, ch):
         pass
 
@@ -250,6 +259,9 @@ class MockScope(MockBase):
             "MAXIMUM": round(random.uniform(0.99, 1.01), 4),
         }
         return values.get(mtype.upper(), round(random.uniform(0.0, 1.0), 4))
+
+    def configure_measurement(self, channel, measurement_type):
+        pass
 
     def measure_delay(self, ch1, ch2, edge1="RISE", edge2="RISE", direction="FORWARDS"):
         return round(random.uniform(-1e-6, 1e-6), 9)
