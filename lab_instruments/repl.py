@@ -3354,33 +3354,37 @@ class InstrumentRepl(cmd.Cmd):
                     {
                         "id": "script-run", "name": "script run",
                         "brief": "Execute a script with optional parameter overrides",
-                        "syntax": "script run <name> [key=value ...]",
-                        "desc": "Runs a named script. Key=value pairs override variables defined with <code>set</code> inside the script, letting you parameterize the same script for different test conditions without editing it.",
+                        "syntax": "script run <name|path> [key=value ...]",
+                        "desc": "Runs a named script or a script file at any path. Key=value pairs override variables defined with <code>set</code> inside the script. Pass a file path (containing <code>/</code>, <code>\\</code>, starting with <code>.</code>, or ending in <code>.scpi</code>) to run directly from disk without importing it into the library.",
                         "params": [
-                            {"name": "name", "required": "required", "values": "script name", "desc": "Name of the script to run (as shown in <code>script list</code>)."},
+                            {"name": "name|path", "required": "required", "values": "script name or file path", "desc": "Name of a saved script (from <code>script list</code>), or a file path: relative (<code>./lab3.scpi</code>) or absolute (<code>/path/to/test.scpi</code>)."},
                             {"name": "key=value", "required": "optional", "values": "any key=value pairs", "desc": "Override script variables. These replace the default values from <code>set</code> lines. E.g. <code>voltage=3.3</code> sets <code>${voltage}</code> to 3.3 throughout the script for this run."},
                         ],
                         "examples": [
-                            ("script run my_test", "Run 'my_test' with default variable values"),
-                            ("script run psu_dmm_test voltage=3.3 label=test_3v3", "Run with custom parameters"),
+                            ("script run my_test", "Run named script 'my_test'"),
+                            ("script run psu_dmm_test voltage=3.3", "Run with parameter override"),
+                            ("script run ./lab3.scpi", "Run by relative file path"),
+                            ("script run /projects/sweep.scpi voltage=5.0", "Run absolute path with override"),
                         ],
                         "notes": [
                             "Script variables are referenced as <code>${varname}</code> inside script lines.",
                             "Priority order: command-line params &gt; <code>set</code> defaults in the script.",
+                            "Path detection: any name containing <code>/</code> or <code>\\</code>, starting with <code>.</code>, ending in <code>.scpi</code>, or an absolute path.",
                         ],
-                        "see": ["script-new", "script-debug", "directive-set"],
+                        "see": ["script-new", "script-debug", "script-dir", "directive-set"],
                     },
                     {
                         "id": "script-debug", "name": "script debug",
                         "brief": "Run a script in the interactive step-through debugger",
-                        "syntax": "script debug <name> [key=value ...]",
-                        "desc": "Expands the script fully (resolving all loops, variables, and array blocks), then pauses at the first line and enters an interactive debugger. Line numbers refer to the flat expanded command list — every iteration of a <code>for</code> loop gets its own numbered line, so you can set a breakpoint on exactly the iteration you want. While paused you can also type any REPL command to run it live.",
+                        "syntax": "script debug <name|path> [key=value ...]",
+                        "desc": "Expands the script fully (resolving all loops, variables, and array blocks), then pauses at the first line and enters an interactive debugger. Accepts the same name-or-path syntax as <code>script run</code>. Line numbers refer to the flat expanded command list — every iteration of a <code>for</code> loop gets its own numbered line, so you can set a breakpoint on exactly the iteration you want. While paused you can also type any REPL command to run it live.",
                         "params": [
-                            {"name": "name", "required": "required", "values": "script name", "desc": "Script to debug."},
+                            {"name": "name|path", "required": "required", "values": "script name or file path", "desc": "Script to debug — named script or file path (same syntax as <code>script run</code>)."},
                             {"name": "key=value", "required": "optional", "values": "any key=value pairs", "desc": "Override script variables, same as <code>script run</code>."},
                         ],
                         "examples": [
                             ("script debug lab3", "Step through lab3 from line 1"),
+                            ("script debug ./lab3.scpi", "Debug a script by file path"),
                             ("script debug my_sweep voltage=3.3", "Debug with a variable override"),
                         ],
                         "notes": [
@@ -3405,7 +3409,29 @@ class InstrumentRepl(cmd.Cmd):
                             ("script save", "Show where scripts are stored"),
                         ],
                         "notes": [],
-                        "see": [],
+                        "see": ["script-dir"],
+                    },
+                    {
+                        "id": "script-dir", "name": "script dir",
+                        "brief": "Get or set the scripts directory for this session",
+                        "syntax": "script dir [path|reset]",
+                        "desc": "Changes the directory where named scripts are stored and loaded from. Immediately reloads the script library from the new location. Use <code>script dir reset</code> to go back to the default. Use <code>script dir</code> with no argument to print the current location.",
+                        "params": [
+                            {"name": "path", "required": "optional", "values": "directory path (absolute or relative to cwd)", "desc": "New scripts directory. Created if it does not exist. Relative paths are resolved against cwd."},
+                            {"name": "reset", "required": "optional", "values": "reset", "desc": "Clear the override and restore the default scripts directory."},
+                        ],
+                        "examples": [
+                            ("script dir", "Print current scripts directory"),
+                            ("script dir .", "Load scripts from current working directory"),
+                            ("script dir ./scripts", "Load scripts from a subfolder of cwd"),
+                            ("script dir reset", "Restore default (~/Documents/scpi-instrument-toolkit/scripts/)"),
+                        ],
+                        "notes": [
+                            "Changing the scripts dir reloads all named scripts — <code>script list</code> will reflect the new contents.",
+                            "To run a single file without changing the scripts dir, use <code>script run ./file.scpi</code> instead.",
+                            "For a permanent default, set the <code>SCPI_SCRIPTS_DIR</code> environment variable before launching.",
+                        ],
+                        "see": ["script-run", "cmd-data"],
                     },
                     {
                         "id": "directive-set", "name": "set",
@@ -3588,6 +3614,30 @@ class InstrumentRepl(cmd.Cmd):
                 "id": "log", "title": "Log & Calc",
                 "intro": "All meas_store commands write to a shared in-session measurement log. Use log to view or export the results, and calc to derive new values from stored measurements.",
                 "commands": [
+                    {
+                        "id": "cmd-data", "name": "data dir",
+                        "brief": "Get or set the data output directory for this session",
+                        "syntax": "data dir [path|reset]",
+                        "desc": "Changes where all data files are saved — screenshots (<code>scope screenshot</code>), waveform CSVs (<code>scope save</code>), and measurement exports (<code>log save</code>). Relative paths within those commands are resolved against this directory. Use <code>data dir reset</code> to restore the default.",
+                        "params": [
+                            {"name": "path", "required": "optional", "values": "directory path (absolute or relative to cwd)", "desc": "New output directory. Created automatically if it does not exist."},
+                            {"name": "reset", "required": "optional", "values": "reset", "desc": "Clear the override and restore the default output directory."},
+                        ],
+                        "examples": [
+                            ("data dir", "Print current output directory"),
+                            ("data dir .", "Save files in the current working directory"),
+                            ("data dir ./lab3_out", "Save files in a subfolder of cwd"),
+                            ("data dir /mnt/usb/captures", "Save to an absolute path"),
+                            ("data dir reset", "Restore default (~/Documents/scpi-instrument-toolkit/data/)"),
+                        ],
+                        "notes": [
+                            "Affects all save commands: <code>scope screenshot</code>, <code>scope save</code>, <code>log save</code>.",
+                            "Subdirectories within the output dir are still created automatically — e.g. <code>scope screenshot lab3/cap.png</code> becomes <code>&lt;data_dir&gt;/lab3/cap.png</code>.",
+                            "For a permanent default, set the <code>SCPI_DATA_DIR</code> environment variable before launching.",
+                            "Can be used in scripts: put <code>data dir .</code> at the top of a <code>.scpi</code> file to keep output alongside the project.",
+                        ],
+                        "see": ["script-dir", "cmd-log", "scope-screenshot"],
+                    },
                     {
                         "id": "cmd-log", "name": "log print / save / clear",
                         "brief": "View, export, or clear the measurement log",
