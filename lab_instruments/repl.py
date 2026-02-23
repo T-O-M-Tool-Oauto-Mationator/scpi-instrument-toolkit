@@ -1378,8 +1378,9 @@ class InstrumentRepl(cmd.Cmd):
         # Use the existing script expansion logic
         try:
             expanded = self._expand_script_lines(all_lines, {})
-            for raw_line in expanded:
-                line = raw_line.strip()
+            for item in expanded:
+                cmd, _ = item if isinstance(item, tuple) else (item, item)
+                line = cmd.strip()
                 if not line or line.startswith("#"):
                     continue
                 self._tick_dmm_text_loop()
@@ -2165,7 +2166,7 @@ class InstrumentRepl(cmd.Cmd):
                 lines, run_vars, parent_vars=self._script_vars, exports=run_exports
             )
             self._script_vars.update(run_exports)
-            ColorPrinter.info(f"Debugger started — {len([l for l in expanded if l.strip() and not l.strip().startswith('#') and l.strip() != '__BREAKPOINT__'])} commands expanded")
+            ColorPrinter.info(f"Debugger started — {len([cmd for cmd, _ in expanded if cmd.strip() and not cmd.strip().startswith('#') and cmd.strip() != '__BREAKPOINT__'])} commands expanded")
             self._run_expanded(expanded, debug=True)
 
         elif subcmd == "edit":
