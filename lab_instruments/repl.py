@@ -219,9 +219,6 @@ class InstrumentRepl(cmd.Cmd):
             ColorPrinter.error(f"\nScan failed: {exc}")
         finally:
             self._scan_done.set()
-            # Reprint the prompt so the user sees it after the scan message
-            sys.stdout.write(self.prompt)
-            sys.stdout.flush()
 
     def _error(self, message):
         """Report an error message and set the error flag for set -e handling."""
@@ -3022,7 +3019,27 @@ class InstrumentRepl(cmd.Cmd):
                             "Script variables are referenced as <code>${varname}</code> inside script lines.",
                             "Priority order: command-line params &gt; <code>set</code> defaults in the script.",
                         ],
-                        "see": ["script-new", "directive-set"],
+                        "see": ["script-new", "script-debug", "directive-set"],
+                    },
+                    {
+                        "id": "script-debug", "name": "script debug",
+                        "brief": "Run a script in the interactive step-through debugger",
+                        "syntax": "script debug <name> [key=value ...]",
+                        "desc": "Expands the script fully (resolving all loops, variables, and array blocks), then pauses at the first line and enters an interactive debugger. Line numbers refer to the flat expanded command list — every iteration of a <code>for</code> loop gets its own numbered line, so you can set a breakpoint on exactly the iteration you want. While paused you can also type any REPL command to run it live.",
+                        "params": [
+                            {"name": "name", "required": "required", "values": "script name", "desc": "Script to debug."},
+                            {"name": "key=value", "required": "optional", "values": "any key=value pairs", "desc": "Override script variables, same as <code>script run</code>."},
+                        ],
+                        "examples": [
+                            ("script debug lab3", "Step through lab3 from line 1"),
+                            ("script debug my_sweep voltage=3.3", "Debug with a variable override"),
+                        ],
+                        "notes": [
+                            "Add <code>breakpoint</code> anywhere in a script file to auto-pause there even during <code>script run</code>.",
+                            "<b>Debugger commands:</b> Enter/<code>n</code>=step &nbsp;|&nbsp; <code>c</code>=continue &nbsp;|&nbsp; <code>back</code>=move back &nbsp;|&nbsp; <code>goto N</code>=jump &nbsp;|&nbsp; <code>b N</code>=set breakpoint &nbsp;|&nbsp; <code>d N</code>=delete &nbsp;|&nbsp; <code>l</code>=list &nbsp;|&nbsp; <code>info</code>=status &nbsp;|&nbsp; <code>q</code>=abort",
+                            "<code>back</code> moves the execution pointer without reversing instrument state. Re-execute the line with Enter.",
+                        ],
+                        "see": ["script-run", "directive-breakpoint"],
                     },
                     {
                         "id": "script-edit", "name": "script edit / show / list / rm",
@@ -3156,8 +3173,65 @@ class InstrumentRepl(cmd.Cmd):
                         "notes": [
                             "The loop variable is substituted in all lines inside the block.",
                             "Variable references work in the value list: <code>for v ${v_start} ${v_mid} ${v_end}</code>",
+                            "Multi-variable: <code>for VIN,HSCALE 5.0,0.001 3.3,0.001</code> — separate names and values with commas.",
+                            "Store the value list in a variable using <code>array</code>, then pass <code>${VAR}</code> as the value list.",
                         ],
-                        "see": ["directive-repeat"],
+                        "see": ["directive-repeat", "directive-array"],
+                    },
+                    {
+                        "id": "directive-array", "name": "array ... end",
+                        "brief": "Build a multi-line value list for use in for loops",
+                        "syntax": "array <varname>\n  <value1>\n  <value2>\n  ...\nend",
+                        "desc": "Builds a space-separated list variable from one value per line. Lines starting with <code>#</code> are skipped — comment out a line to exclude it from the list. The resulting variable works directly as the value list in a <code>for</code> loop.",
+                        "params": [
+                            {"name": "varname", "required": "required", "values": "string", "desc": "Variable name to store the list in."},
+                            {"name": "each line", "required": "—", "values": "any value", "desc": "One list element per line. Lines beginning with <code>#</code> are excluded."},
+                        ],
+                        "examples": [
+                            ("array SWEEP\n  5.0,0.001,1.0\n  3.3,0.001,0.5\n  # 2.5,0.001,0.5\nend\nfor VIN,HSCALE,VSCALE ${SWEEP}\n  ...\nend", "Sweep table with one line per point — comment out a line to skip it"),
+                        ],
+                        "notes": ["Equivalent to a long inline value list on the <code>for</code> line, but much easier to read and edit."],
+                        "see": ["directive-for"],
+                    },
+                    {
+                        "id": "directive-import", "name": "import",
+                        "brief": "Pull a variable from the parent scope into this script",
+                        "syntax": "import <varname> [varname2 ...]",
+                        "desc": "Copies a variable from the calling scope (REPL or parent script) into the current script's isolated scope. Raises an error if the variable does not exist in the parent.",
+                        "params": [
+                            {"name": "varname", "required": "required", "values": "variable name(s)", "desc": "One or more variable names to import."},
+                        ],
+                        "examples": [
+                            ("import FREQ VREF", "Pull ${FREQ} and ${VREF} in from the REPL"),
+                        ],
+                        "notes": ["Scripts run in isolated scope by default — REPL variables are not visible unless imported."],
+                        "see": ["directive-export"],
+                    },
+                    {
+                        "id": "directive-export", "name": "export",
+                        "brief": "Push a script variable back to the parent scope",
+                        "syntax": "export <varname> [varname2 ...]",
+                        "desc": "When the script finishes, copies the named variable back to the calling scope (REPL or parent script). Only explicitly exported variables survive — all others stay local to the script.",
+                        "params": [
+                            {"name": "varname", "required": "required", "values": "variable name(s)", "desc": "One or more variables to export."},
+                        ],
+                        "examples": [
+                            ("export RESULT", "Make ${RESULT} available in the REPL after the script finishes"),
+                        ],
+                        "notes": [],
+                        "see": ["directive-import"],
+                    },
+                    {
+                        "id": "directive-breakpoint", "name": "breakpoint",
+                        "brief": "Pause execution and drop into the debugger",
+                        "syntax": "breakpoint",
+                        "desc": "When encountered during <code>script run</code> or <code>script debug</code>, pauses execution and enters the interactive debugger at that line. Useful for inspecting state at a specific point in a script without stepping through from the beginning.",
+                        "params": [],
+                        "examples": [
+                            ("psu set ${VIN} 0.5\npsu chan on\nbreakpoint\nscope single", "Pause after enabling PSU, before triggering the scope"),
+                        ],
+                        "notes": ["Works even during <code>script run</code> — not just <code>script debug</code>."],
+                        "see": ["script-debug"],
                     },
                 ],
             },
