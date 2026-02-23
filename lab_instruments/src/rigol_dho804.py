@@ -641,7 +641,7 @@ class Rigol_DHO804(DeviceManager):
         self.instrument.write(":TRIGger:MODE EDGE")
         self.instrument.write(f":TRIGger:EDGE:SOURce CHAN{channel}")
         self.instrument.write(f":TRIGger:EDGE:SLOPe {slope_cmd}")
-        self.instrument.write(f":TRIGger:LEVel CHAN{channel},{level}")
+        self.instrument.write(f":TRIGger:EDGE:LEVel {level}")
         print(f"Trigger: CH{channel}, {level}V, {slope}")
 
     # ========================================

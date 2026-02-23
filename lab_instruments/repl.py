@@ -4196,10 +4196,16 @@ allTargets.forEach(t => io.observe(t));
             elif cmd_name == "trigger" and len(args) >= 3:
                 channel = int(args[1])
                 level = float(args[2])
-                slope = args[3].upper() if len(args) >= 4 else "RISE"
-                mode = args[4].upper() if len(args) >= 5 else "AUTO"
-                dev.configure_trigger(channel, level, slope, mode)
-                ColorPrinter.success(f"Trigger configured: CH{channel} @ {level}V, {slope}, {mode}")
+                kwargs = {k.lower(): v for k, v in (a.split("=", 1) for a in args[3:] if "=" in a)}
+                positional = [a for a in args[3:] if "=" not in a]
+                slope = kwargs.get("slope", positional[0] if positional else "RISE").upper()
+                mode = kwargs.get("mode", positional[1] if len(positional) > 1 else "AUTO").upper()
+                dev.configure_trigger(channel, level, slope)
+                sweep_map = {"NORM": "NORMal", "NORMAL": "NORMal", "AUTO": "AUTO", "SINGLE": "SINGle", "SING": "SINGle"}
+                sweep = sweep_map.get(mode, mode)
+                if hasattr(dev, "set_trigger_sweep"):
+                    dev.set_trigger_sweep(sweep)
+                ColorPrinter.success(f"Trigger configured: CH{channel} @ {level}V, SLOPE={slope}, MODE={sweep}")
             elif cmd_name == "meas":
                 if len(args) < 3:
                     # Show available measurement types
