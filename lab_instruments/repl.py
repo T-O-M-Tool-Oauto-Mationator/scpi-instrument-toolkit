@@ -2067,7 +2067,7 @@ class InstrumentRepl(cmd.Cmd):
         ColorPrinter.success(f"{key} = {self._script_vars[key]}")
 
     def do_script(self, arg):
-        "script <new|run|debug|edit|list|rm|show|import|load|save> [args]: manage and run scripts"
+        "script <new|run|debug|edit|list|rm|show|dir|import|load|save> [args]: manage and run scripts"
         args = self._parse_args(arg)
         args, help_flag = self._strip_help(args)
 
@@ -2089,7 +2089,9 @@ class InstrumentRepl(cmd.Cmd):
                 "script load",
                 "  - reload scripts from disk (picks up manual edits)",
                 "script save",
-                "  - show scripts directory",
+                "  - show where scripts are stored on disk",
+                "script dir [path|reset]",
+                "  - get or set the scripts directory for this session",
                 "",
                 "# SCRIPT DIRECTIVES",
                 "",
@@ -4085,7 +4087,7 @@ allTargets.forEach(t => io.observe(t));
         cmd_line("scope",   "oscilloscope  (chan, meas, save, trigger, awg, dvm, counter)")
 
         section("SCRIPTING")
-        cmd_line("script",    "manage and run named scripts  (new, run, edit, list, rm, show, import, load, save)")
+        cmd_line("script",    "manage and run named scripts  (new, run, debug, edit, list, rm, show, dir, import, load, save)")
         cmd_line("examples",  "list or load bundled example workflows  (load <name> | load all)")
         cmd_line("python",    "execute an external Python script with REPL context")
         cmd_line("docs",      "open full HTML documentation in your browser")
@@ -4093,6 +4095,7 @@ allTargets.forEach(t => io.observe(t));
         section("LOGGING & MATH")
         cmd_line("log",     "show or save recorded measurements  (print, save, clear)")
         cmd_line("calc",    "compute a value from logged measurements")
+        cmd_line("data",    "get or set the data output directory  (data <path> | data reset)")
 
         print()
 
