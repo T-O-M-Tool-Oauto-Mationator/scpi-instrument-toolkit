@@ -882,6 +882,9 @@ class InstrumentRepl(cmd.Cmd):
                     else:
                         self._error(f"export: '{varname}' not set in this scope")
                 continue
+            if head == "breakpoint":
+                expanded.append("__BREAKPOINT__")
+                continue
             if head == "set" and len(tokens) >= 2:
                 # Handle set -e / set +e (error mode)
                 if len(tokens) == 2 and tokens[1] in ("-e", "+e"):
@@ -1018,34 +1021,170 @@ class InstrumentRepl(cmd.Cmd):
             expanded.append(self._substitute_vars(raw_line, variables))
         return expanded
 
-    def _run_script_lines(self, lines):
-        expanded = self._expand_script_lines(lines, {})
+    def _debug_show_context(self, lines, idx, breakpoints, window=3):
+        """Print lines around the current position for the script debugger."""
+        total = len(lines)
+        start = max(0, idx - window)
+        end = min(total, idx + window + 1)
+        print()
+        print("  " + "─" * 60)
+        for i in range(start, end):
+            bp = "●" if (i + 1) in breakpoints else " "
+            if i == idx:
+                print(f"\033[96m  {bp} {i+1:>4} → {lines[i]}\033[0m")
+            else:
+                print(f"  {bp} {i+1:>4}   {lines[i]}")
+        print("  " + "─" * 60)
+        print(f"  {idx+1}/{total}  │  n=step  c=continue  back  goto N  b N=break  d N=del  l=list  q=quit")
+        print()
+
+    def _run_expanded(self, expanded, debug=False):
+        """Execute a pre-expanded command list, optionally with an interactive debugger."""
+        # Build the executable line list, pulling out script-embedded breakpoints
+        lines = []
+        breakpoints = set()
+        for raw in expanded:
+            line = raw.strip()
+            if not line or line.startswith("#"):
+                continue
+            if line == "__BREAKPOINT__":
+                breakpoints.add(len(lines) + 1)  # fires before the next real line
+                continue
+            lines.append(line)
+
+        if not lines:
+            return False
+
+        idx = 0
+        debug_active = debug
         self._in_script = True
         self._interrupt_requested = False
+
         try:
-            for raw_line in expanded:
-                raw_line = self._substitute_vars(raw_line, self._script_vars)
-                line = raw_line.strip()
-                if not line or line.startswith("#"):
-                    continue
-                self._tick_dmm_text_loop()
-                
-                # Reset error flag before executing command
-                self._command_had_error = False
-                
-                if self.onecmd(line):
-                    return True
-                
-                # If exit-on-error is enabled and a command failed, stop the script
-                if self._exit_on_error and getattr(self, '_command_had_error', False):
-                    ColorPrinter.error(f"Script stopped due to error (set -e enabled)")
-                    return True
+            while idx < len(lines):
+                line = lines[idx]
+
+                # Activate debugger if this line has a breakpoint
+                if (idx + 1) in breakpoints and not debug_active:
+                    ColorPrinter.info(f"Breakpoint at line {idx + 1}")
+                    debug_active = True
+
+                if debug_active:
+                    self._debug_show_context(lines, idx, breakpoints)
+                    while True:
+                        try:
+                            cmd = input("(dbg) ").strip()
+                        except (EOFError, KeyboardInterrupt):
+                            ColorPrinter.warning("Debugger aborted")
+                            return True
+
+                        if cmd in ("", "n", "next", "s", "step"):
+                            self._tick_dmm_text_loop()
+                            self._command_had_error = False
+                            if self.onecmd(line):
+                                return True
+                            if self._exit_on_error and self._command_had_error:
+                                ColorPrinter.error("Script stopped (set -e)")
+                                return True
+                            idx += 1
+                            break
+
+                        elif cmd in ("c", "continue"):
+                            debug_active = False
+                            self._tick_dmm_text_loop()
+                            self._command_had_error = False
+                            if self.onecmd(line):
+                                return True
+                            if self._exit_on_error and self._command_had_error:
+                                ColorPrinter.error("Script stopped (set -e)")
+                                return True
+                            idx += 1
+                            break
+
+                        elif cmd in ("back", "prev"):
+                            if idx > 0:
+                                idx -= 1
+                                ColorPrinter.warning("Moved back — instrument state NOT reversed")
+                                self._debug_show_context(lines, idx, breakpoints)
+                            else:
+                                ColorPrinter.warning("Already at first line")
+
+                        elif cmd.startswith(("goto ", "jump ")):
+                            parts = cmd.split()
+                            try:
+                                target = int(parts[1]) - 1
+                                if 0 <= target < len(lines):
+                                    idx = target
+                                    ColorPrinter.warning(f"Jumped to line {idx + 1} — skipped lines NOT executed/reversed")
+                                    self._debug_show_context(lines, idx, breakpoints)
+                                else:
+                                    ColorPrinter.error(f"Line out of range (1–{len(lines)})")
+                            except (ValueError, IndexError):
+                                ColorPrinter.error("Usage: goto <N>")
+
+                        elif cmd.split()[:1] in (["b"], ["break"]):
+                            parts = cmd.split()
+                            try:
+                                n = int(parts[1])
+                                if 1 <= n <= len(lines):
+                                    breakpoints.add(n)
+                                    ColorPrinter.info(f"Breakpoint set at line {n}: {lines[n - 1]}")
+                                else:
+                                    ColorPrinter.error(f"Line out of range (1–{len(lines)})")
+                            except (ValueError, IndexError):
+                                ColorPrinter.error("Usage: b <N>")
+
+                        elif cmd.split()[:1] in (["d"], ["delete"], ["clear"]):
+                            parts = cmd.split()
+                            try:
+                                n = int(parts[1])
+                                if n in breakpoints:
+                                    breakpoints.discard(n)
+                                    ColorPrinter.info(f"Breakpoint {n} cleared")
+                                else:
+                                    ColorPrinter.warning(f"No breakpoint at line {n}")
+                            except (ValueError, IndexError):
+                                ColorPrinter.error("Usage: d <N>")
+
+                        elif cmd in ("l", "list"):
+                            self._debug_show_context(lines, idx, breakpoints, window=8)
+
+                        elif cmd in ("info", "i", "?"):
+                            ColorPrinter.info(f"Position: line {idx + 1}/{len(lines)}")
+                            if breakpoints:
+                                ColorPrinter.info(f"Breakpoints: {sorted(breakpoints)}")
+                            else:
+                                ColorPrinter.info("No breakpoints set")
+
+                        elif cmd in ("q", "quit", "abort"):
+                            ColorPrinter.warning("Script aborted")
+                            return True
+
+                        elif cmd:
+                            # Allow any REPL command while paused (e.g. psu meas v)
+                            self.onecmd(cmd)
+                else:
+                    # Normal (non-debug) execution
+                    self._tick_dmm_text_loop()
+                    self._command_had_error = False
+                    if self.onecmd(line):
+                        return True
+                    if self._exit_on_error and self._command_had_error:
+                        ColorPrinter.error("Script stopped (set -e)")
+                        return True
+                    idx += 1
+
         except KeyboardInterrupt:
-            ColorPrinter.warning("Script interrupted by user")
+            ColorPrinter.warning("Script interrupted")
         finally:
             self._in_script = False
             self._interrupt_requested = False
+
         return False
+
+    def _run_script_lines(self, lines):
+        expanded = self._expand_script_lines(lines, {})
+        return self._run_expanded(expanded)
 
     def _onecmd_single(self, line):
         # Apply variable substitution using REPL variables
@@ -1788,6 +1927,8 @@ class InstrumentRepl(cmd.Cmd):
                 "script new <name>",
                 "script run <name> [key=val ...]",
                 "  - example: script run my_test voltage=5.0",
+                "script debug <name> [key=val ...]",
+                "  - run script in step-through debugger",
                 "script edit <name>",
                 "script list",
                 "script rm <name>",
@@ -1812,6 +1953,8 @@ class InstrumentRepl(cmd.Cmd):
                 "set <varname> <expr>",
                 "  - compute a value at script build time",
                 "  - example: set v2 ${v1} * 2",
+                "array <varname>  ...  end",
+                "  - build a list across multiple lines; comment lines with # to skip",
                 "import <varname> [varname2 ...]",
                 "  - bring a variable from the parent scope (REPL or calling script)",
                 "  - example: import FREQ VREF",
@@ -1822,6 +1965,21 @@ class InstrumentRepl(cmd.Cmd):
                 "repeat <N>  ...  end",
                 "for <var> <val1> <val2> ...  end",
                 "call <name> [key=val ...]",
+                "breakpoint",
+                "  - pause execution and drop into the debugger at this line",
+                "",
+                "# DEBUGGER COMMANDS (at (dbg) prompt)",
+                "",
+                "n / Enter  step: execute current line and advance",
+                "c          continue: run until next breakpoint or end",
+                "back       move pointer back one line (does NOT undo instrument state)",
+                "goto N     jump to line N (skipped lines NOT executed)",
+                "b N        set breakpoint at line N",
+                "d N        delete breakpoint at line N",
+                "l          list: show more context around current line",
+                "info       show current position and all breakpoints",
+                "q          quit / abort the script",
+                "<cmd>      any REPL command runs immediately while paused",
             ])
             return
 
@@ -1901,31 +2059,40 @@ class InstrumentRepl(cmd.Cmd):
 
             # Only explicitly exported variables survive back to the REPL
             self._script_vars.update(run_exports)
-            
-            self._in_script = True
-            try:
-                for raw_line in expanded:
-                    # Variables already substituted by expand, but onecmd_single might do it again
-                    line = raw_line.strip()
-                    if not line or line.startswith("#"):
-                        continue
-                    self._tick_dmm_text_loop()
-                    
-                    # Reset error flag before executing command
-                    self._command_had_error = False
-                    
-                    if self.onecmd(line):
-                        return True
-                    
-                    # If exit-on-error is enabled and a command failed, stop the script
-                    if self._exit_on_error and getattr(self, '_command_had_error', False):
-                        ColorPrinter.error(f"Script stopped due to error (set -e enabled)")
-                        break  # Exit script loop but stay in REPL
-            except KeyboardInterrupt:
-                ColorPrinter.warning("Script interrupted by user")
-            finally:
-                self._in_script = False
-            return False
+            return self._run_expanded(expanded)
+
+        elif subcmd == "debug":
+            if len(args) < 2:
+                ColorPrinter.warning("Usage: script debug <name> [key=val ...]")
+                return
+            name = args[1]
+            script_path = self._script_file(name)
+            if os.path.exists(script_path):
+                try:
+                    with open(script_path, "r", encoding="utf-8") as f:
+                        lines = [line.rstrip("\n") for line in f.readlines()]
+                    while lines and not lines[-1].strip():
+                        lines.pop()
+                    self.scripts[name] = lines
+                except Exception:
+                    pass
+            lines = self.scripts.get(name)
+            if lines is None:
+                ColorPrinter.warning(f"Script '{name}' not found.")
+                return
+            params = {}
+            for token in args[2:]:
+                if "=" in token:
+                    key, value = token.split("=", 1)
+                    params[key] = value
+            run_vars = dict(params)
+            run_exports = {}
+            expanded = self._expand_script_lines(
+                lines, run_vars, parent_vars=self._script_vars, exports=run_exports
+            )
+            self._script_vars.update(run_exports)
+            ColorPrinter.info(f"Debugger started — {len([l for l in expanded if l.strip() and not l.strip().startswith('#') and l.strip() != '__BREAKPOINT__'])} commands expanded")
+            return self._run_expanded(expanded, debug=True)
 
         elif subcmd == "edit":
             if len(args) < 2:
