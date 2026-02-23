@@ -852,7 +852,7 @@ class InstrumentRepl(cmd.Cmd):
             result = result.replace(f"${{{name}}}", str(value))
         return result
 
-    def _expand_script_lines(self, lines, variables, depth=0):
+    def _expand_script_lines(self, lines, variables, depth=0, parent_vars=None, exports=None):
         if depth > 10:
             ColorPrinter.error("Maximum script call depth (10) exceeded.")
             return []
@@ -867,6 +867,21 @@ class InstrumentRepl(cmd.Cmd):
             if not tokens:
                 continue
             head = tokens[0].lower()
+            if head == "import" and len(tokens) >= 2:
+                for varname in tokens[1:]:
+                    if parent_vars is not None and varname in parent_vars:
+                        variables[varname] = parent_vars[varname]
+                    else:
+                        self._error(f"import: '{varname}' not found in parent scope")
+                continue
+            if head == "export" and len(tokens) >= 2:
+                for varname in tokens[1:]:
+                    if varname in variables:
+                        if exports is not None:
+                            exports[varname] = variables[varname]
+                    else:
+                        self._error(f"export: '{varname}' not set in this scope")
+                continue
             if head == "set" and len(tokens) >= 2:
                 # Handle set -e / set +e (error mode)
                 if len(tokens) == 2 and tokens[1] in ("-e", "+e"):
@@ -898,12 +913,17 @@ class InstrumentRepl(cmd.Cmd):
                 if script_name not in self.scripts:
                     ColorPrinter.error(f"call: script '{script_name}' not found.")
                     continue
-                call_params = dict(variables)
+                call_params = {}
                 for token in tokens[2:]:
                     if "=" in token:
                         k, v = token.split("=", 1)
                         call_params[k] = self._substitute_vars(v, variables)
-                expanded.extend(self._expand_script_lines(self.scripts[script_name], call_params, depth + 1))
+                call_exports = {}
+                expanded.extend(self._expand_script_lines(
+                    self.scripts[script_name], call_params, depth + 1,
+                    parent_vars=variables, exports=call_exports
+                ))
+                variables.update(call_exports)
                 continue
             if head == "repeat" and len(tokens) >= 2:
                 try:
@@ -1767,6 +1787,12 @@ class InstrumentRepl(cmd.Cmd):
                 "set <varname> <expr>",
                 "  - compute a value at script build time",
                 "  - example: set v2 ${v1} * 2",
+                "import <varname> [varname2 ...]",
+                "  - bring a variable from the parent scope (REPL or calling script)",
+                "  - example: import FREQ VREF",
+                "export <varname> [varname2 ...]",
+                "  - push a variable back to the parent scope when script finishes",
+                "  - example: export RESULT",
                 "sleep <seconds>",
                 "repeat <N>  ...  end",
                 "for <var> <val1> <val2> ...  end",
@@ -1838,14 +1864,18 @@ class InstrumentRepl(cmd.Cmd):
                     key, value = token.split("=", 1)
                     params[key] = value
             
-            # Use global variables, overridden by CLI parameters
-            run_vars = self._script_vars.copy()
-            run_vars.update(params)
-            
-            expanded = self._expand_script_lines(lines, run_vars)
-            
-            # Persist any variable changes from the script back to global state
-            self._script_vars.update(run_vars)
+            # Scripts start with an isolated scope — only explicit params are in scope.
+            # Use 'import VAR' inside the script to pull in a REPL variable.
+            # Use 'export VAR' inside the script to push a variable back to the REPL.
+            run_vars = dict(params)
+            run_exports = {}
+
+            expanded = self._expand_script_lines(
+                lines, run_vars, parent_vars=self._script_vars, exports=run_exports
+            )
+
+            # Only explicitly exported variables survive back to the REPL
+            self._script_vars.update(run_exports)
             
             self._in_script = True
             try:
@@ -2736,7 +2766,7 @@ class InstrumentRepl(cmd.Cmd):
             },
             {
                 "id": "scripting", "title": "Scripts & Directives",
-                "intro": "Scripts are named sequences of REPL commands stored in the session. They support variables, loops, and calling other scripts. Script directives (set, for, repeat, print, input, pause, call) are also valid as interactive REPL commands.",
+                "intro": "Scripts are named sequences of REPL commands stored in the session. They support variables, loops, and calling other scripts. Script directives (set, for, repeat, print, input, pause, call, import, export) are also valid as interactive REPL commands. Variables are isolated to each script scope — use 'import VAR' to bring a REPL variable in, and 'export VAR' to send a variable back out.",
                 "commands": [
                     {
                         "id": "script-new", "name": "script new",
