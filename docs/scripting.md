@@ -27,17 +27,23 @@ script new my_psu_test
 Execute a script with optional parameter overrides.
 
 ```
-script run <name> [key=value ...]
+script run <name|path> [key=value ...]
 ```
 
 | Parameter   | Required | Description                                                                                |
 | ----------- | -------- | ------------------------------------------------------------------------------------------ |
-| `name`      | required | Script name (as shown by `script list`).                                                   |
+| `name`      | required | Script name (from `script list`) **or** a file path (absolute or relative to cwd).        |
 | `key=value` | optional | Override script variables. Replaces the default values from `set` lines inside the script. |
 
+Pass a file path — with `/`, `\`, a leading `.`, or a `.scpi` extension — to run a script directly from disk without copying it to the scripts library:
+
 ```
-script run my_psu_test
-script run my_psu_test voltage=3.3 label=test_3v3
+script run my_psu_test                     # named script in scripts dir
+script run my_psu_test voltage=3.3         # with parameter override
+script run ./lab3.scpi                     # run by relative path
+script run ../tests/sweep.scpi             # run by relative path
+script run /home/user/projects/lab3.scpi   # run by absolute path
+script run C:/projects/lab3.scpi           # Windows absolute path
 ```
 
 ### script debug
@@ -45,15 +51,44 @@ script run my_psu_test voltage=3.3 label=test_3v3
 Run a script in the **interactive debugger** — step through commands one at a time, set breakpoints, and inspect state at any point.
 
 ```
-script debug <name> [key=value ...]
+script debug <name|path> [key=value ...]
 ```
 
-See [Debugger](#debugger) for the full reference.
+Accepts the same name-or-path syntax as `script run`. See [Debugger](#debugger) for the full reference.
 
 ```
 script debug lab3
+script debug ./lab3.scpi
 script debug my_test voltage=3.3
 ```
+
+### script dir
+
+Get or set the directory where named scripts are stored for this session.
+
+```
+script dir           # print current scripts directory
+script dir <path>    # switch to a different directory
+script dir reset     # go back to the default
+```
+
+| Example | Effect |
+|---------|--------|
+| `script dir .` | Load named scripts from the current working directory |
+| `script dir ./scripts` | Load from a `scripts/` subfolder of cwd |
+| `script dir /path/to/scripts` | Load from an absolute path |
+| `script dir reset` | Restore default (`~/Documents/scpi-instrument-toolkit/scripts/`) |
+
+Changing the scripts dir immediately reloads all named scripts from the new location. This is useful when your project keeps its `.scpi` files alongside its source code:
+
+```
+script dir .                # point at the project folder
+script list                 # see what's available
+script run lab3             # run lab3.scpi from the project folder
+```
+
+!!! note
+    `script dir` affects named scripts (used by `script run <name>`). To run a one-off file anywhere on disk without changing the scripts dir, use `script run ./path/to/file.scpi` instead.
 
 ### script edit
 
@@ -97,7 +132,7 @@ script import <name> <path>
 
 ### script load / save
 
-Save or restore the entire script library as a JSON file.
+Reload scripts from disk, or show the current scripts directory.
 
 ```
 script save [path]         # save (default: .repl_scripts.json)

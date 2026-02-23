@@ -156,6 +156,8 @@ class InstrumentRepl(cmd.Cmd):
         self._dmm_text_delay = 0.2
         self._dmm_text_last = 0.0
         self._device_override: Optional[str] = None  # set by default() for awg1, scope2, etc.
+        self._data_dir_override: Optional[str] = None    # set by 'data dir <path>'
+        self._scripts_dir_override: Optional[str] = None  # set by 'script dir <path>'
         self._cleanup_done = False
         self._script_vars: Dict[str, str] = {}  # runtime variables set by 'input' during scripts
         self._jerminator = False
@@ -484,6 +486,10 @@ class InstrumentRepl(cmd.Cmd):
         rejects every candidate, so the tool always starts even on locked-down
         machines where spawning cmd is restricted.
         """
+        # 0. Runtime session override (from 'script dir <path>')
+        if self._scripts_dir_override:
+            return self._scripts_dir_override
+
         # 1. Explicit user override — respected unconditionally
         override = os.environ.get("SCPI_SCRIPTS_DIR")
         if override:
@@ -560,10 +566,9 @@ class InstrumentRepl(cmd.Cmd):
     def _get_data_dir(self):
         """Return a directory for saving data files (screenshots, CSVs, etc.).
 
-        Uses the same location logic as _get_scripts_dir() but with 'data'
-        instead of 'scripts' as the subdirectory name.
+        Priority: 'data dir' session override → SCPI_DATA_DIR env var → ~/Documents default.
         """
-        override = os.environ.get("SCPI_DATA_DIR")
+        override = self._data_dir_override or os.environ.get("SCPI_DATA_DIR")
         if override:
             try:
                 os.makedirs(override, exist_ok=True)
@@ -2167,26 +2172,42 @@ class InstrumentRepl(cmd.Cmd):
 
         elif subcmd == "run":
             if len(args) < 2:
-                ColorPrinter.warning("Usage: script run <name> [key=val ...]")
+                ColorPrinter.warning("Usage: script run <name|path> [key=val ...]")
                 return
             name = args[1]
-            
-            # Hot-load: Reload from disk if file exists
-            script_path = self._script_file(name)
-            if os.path.exists(script_path):
+
+            # If name looks like a file path, load directly without touching scripts dir
+            is_path = ('/' in name or '\\' in name or name.startswith('.')
+                       or os.path.isabs(name) or name.endswith('.scpi'))
+            if is_path:
+                file_path = os.path.abspath(name if name.endswith('.scpi') else name + '.scpi')
+                if not os.path.exists(file_path):
+                    file_path = os.path.abspath(name)
                 try:
-                    with open(script_path, "r", encoding="utf-8") as f:
+                    with open(file_path, "r", encoding="utf-8") as f:
                         lines = [line.rstrip("\n") for line in f.readlines()]
                     while lines and not lines[-1].strip():
                         lines.pop()
-                    self.scripts[name] = lines
-                except Exception:
-                    pass  # Keep existing memory version if read fails
-
-            lines = self.scripts.get(name)
-            if lines is None:
-                ColorPrinter.warning(f"Script '{name}' not found.")
-                return
+                    ColorPrinter.info(f"Running script from: {file_path}")
+                except Exception as exc:
+                    ColorPrinter.error(f"Cannot load script '{file_path}': {exc}")
+                    return
+            else:
+                # Hot-load: Reload from disk if file exists in scripts dir
+                script_path = self._script_file(name)
+                if os.path.exists(script_path):
+                    try:
+                        with open(script_path, "r", encoding="utf-8") as f:
+                            lines = [line.rstrip("\n") for line in f.readlines()]
+                        while lines and not lines[-1].strip():
+                            lines.pop()
+                        self.scripts[name] = lines
+                    except Exception:
+                        pass  # Keep existing memory version if read fails
+                lines = self.scripts.get(name)
+                if lines is None:
+                    ColorPrinter.warning(f"Script '{name}' not found.")
+                    return
             params = {}
             for token in args[2:]:
                 if "=" in token:
@@ -2209,23 +2230,39 @@ class InstrumentRepl(cmd.Cmd):
 
         elif subcmd == "debug":
             if len(args) < 2:
-                ColorPrinter.warning("Usage: script debug <name> [key=val ...]")
+                ColorPrinter.warning("Usage: script debug <name|path> [key=val ...]")
                 return
             name = args[1]
-            script_path = self._script_file(name)
-            if os.path.exists(script_path):
+            is_path = ('/' in name or '\\' in name or name.startswith('.')
+                       or os.path.isabs(name) or name.endswith('.scpi'))
+            if is_path:
+                file_path = os.path.abspath(name if name.endswith('.scpi') else name + '.scpi')
+                if not os.path.exists(file_path):
+                    file_path = os.path.abspath(name)
                 try:
-                    with open(script_path, "r", encoding="utf-8") as f:
+                    with open(file_path, "r", encoding="utf-8") as f:
                         lines = [line.rstrip("\n") for line in f.readlines()]
                     while lines and not lines[-1].strip():
                         lines.pop()
-                    self.scripts[name] = lines
-                except Exception:
-                    pass
-            lines = self.scripts.get(name)
-            if lines is None:
-                ColorPrinter.warning(f"Script '{name}' not found.")
-                return
+                    ColorPrinter.info(f"Debugging script from: {file_path}")
+                except Exception as exc:
+                    ColorPrinter.error(f"Cannot load script '{file_path}': {exc}")
+                    return
+            else:
+                script_path = self._script_file(name)
+                if os.path.exists(script_path):
+                    try:
+                        with open(script_path, "r", encoding="utf-8") as f:
+                            lines = [line.rstrip("\n") for line in f.readlines()]
+                        while lines and not lines[-1].strip():
+                            lines.pop()
+                        self.scripts[name] = lines
+                    except Exception:
+                        pass
+                lines = self.scripts.get(name)
+                if lines is None:
+                    ColorPrinter.warning(f"Script '{name}' not found.")
+                    return
             params = {}
             for token in args[2:]:
                 if "=" in token:
@@ -2312,6 +2349,25 @@ class InstrumentRepl(cmd.Cmd):
             # Reload all scripts from disk (picks up any manually edited .scpi files)
             self.scripts = self._load_scripts()
             ColorPrinter.success(f"Reloaded {len(self.scripts)} scripts from {self._get_scripts_dir()}")
+
+        elif subcmd == "dir":
+            if len(args) < 2:
+                ColorPrinter.cyan(f"Current scripts dir: {os.path.abspath(self._get_scripts_dir())}")
+                return
+            path = args[1]
+            if path.lower() == "reset":
+                self._scripts_dir_override = None
+                self.scripts = self._load_scripts()
+                ColorPrinter.success(f"Scripts dir reset to default: {self._get_scripts_dir()} ({len(self.scripts)} scripts loaded)")
+            else:
+                resolved = os.path.abspath(path)
+                try:
+                    os.makedirs(resolved, exist_ok=True)
+                    self._scripts_dir_override = resolved
+                    self.scripts = self._load_scripts()
+                    ColorPrinter.success(f"Scripts dir set to: {resolved} ({len(self.scripts)} scripts loaded)")
+                except Exception as exc:
+                    ColorPrinter.error(f"Cannot use '{resolved}' as scripts dir: {exc}")
 
         elif subcmd == "save":
             # Show where scripts live
@@ -5624,6 +5680,39 @@ allTargets.forEach(t => io.observe(t));
     # --------------------------
     # Logging commands
     # --------------------------
+    def do_data(self, arg):
+        "data dir [path|reset]: get or set the data output directory for this session"
+        args = self._parse_args(arg)
+        args, help_flag = self._strip_help(args)
+        if help_flag or not args:
+            current = self._get_data_dir()
+            ColorPrinter.cyan(f"Current data dir: {current}")
+            self._print_usage([
+                "data dir <path>   # set output dir (absolute or relative to cwd)",
+                "data dir .        # save in current working directory",
+                "data dir reset    # go back to default (~/Documents/...)",
+                "data dir          # show current output dir",
+            ])
+            return
+        if args[0].lower() == "dir":
+            if len(args) < 2:
+                ColorPrinter.cyan(f"Current data dir: {os.path.abspath(self._get_data_dir())}")
+                return
+            path = args[1]
+            if path.lower() == "reset":
+                self._data_dir_override = None
+                ColorPrinter.success(f"Data dir reset to default: {self._get_data_dir()}")
+            else:
+                resolved = os.path.abspath(path)
+                try:
+                    os.makedirs(resolved, exist_ok=True)
+                    self._data_dir_override = resolved
+                    ColorPrinter.success(f"Data dir set to: {resolved}")
+                except Exception as exc:
+                    ColorPrinter.error(f"Cannot use '{resolved}': {exc}")
+        else:
+            ColorPrinter.warning(f"Unknown data command. Use: data dir <path|reset>")
+
     def do_log(self, arg):
         "log <print|save|clear>: show or save measurements"
         args = self._parse_args(arg)

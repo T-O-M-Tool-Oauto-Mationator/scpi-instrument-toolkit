@@ -907,6 +907,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#data-dir-controlling-where-files-are-saved" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        data dir — controlling where files are saved
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#typical-workflow" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1091,6 +1102,17 @@
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#data-dir-controlling-where-files-are-saved" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        data dir — controlling where files are saved
+      
+    </span>
+  </a>
   
 </li>
       
@@ -1345,28 +1367,78 @@
 <a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>calc crest_factor m[&quot;pk2pk&quot;] / (2 * m[&quot;rms&quot;])
 </code></pre></div>
 <hr />
+<h2 id="data-dir-controlling-where-files-are-saved">data dir — controlling where files are saved<a class="headerlink" href="#data-dir-controlling-where-files-are-saved" title="Permanent link">&para;</a></h2>
+<p>By default, screenshots, waveform CSVs, and <code>log save</code> files all land in <code>~/Documents/scpi-instrument-toolkit/data/</code>. Use <code>data dir</code> to point them anywhere you want for the current session.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>data dir &lt;path&gt;    # set output directory (absolute or relative to cwd)
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>data dir           # print the current output directory
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>data dir reset     # go back to the default
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Example</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>data dir .</code></td>
+<td>Save files in the current working directory</td>
+</tr>
+<tr>
+<td><code>data dir ./lab3</code></td>
+<td>Save files in a <code>lab3/</code> subfolder of cwd</td>
+</tr>
+<tr>
+<td><code>data dir /mnt/usb/captures</code></td>
+<td>Save to an absolute path</td>
+</tr>
+<tr>
+<td><code>data dir reset</code></td>
+<td>Restore default (<code>~/Documents/scpi-instrument-toolkit/data/</code>)</td>
+</tr>
+</tbody>
+</table>
+<p>The setting applies to every save command in the session — <code>scope screenshot</code>, <code>scope save</code>, and <code>log save</code> all respect it. Subdirectories within the output dir are still created automatically (e.g. <code>scope screenshot lab3/cap.png</code> → <code>&lt;data_dir&gt;/lab3/cap.png</code>).</p>
+<p>You can also use it inside a <code>.scpi</code> script so the output location is part of the test setup:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a># lab3.scpi
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>data dir .         # save everything relative to where I launched the REPL
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>
+<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a>log clear
+<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a>for VIN ${SWEEP}
+<a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a>  ...
+<a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a>  scope screenshot cap_${VIN}V.png
+<a id="__codelineno-17-8" name="__codelineno-17-8" href="#__codelineno-17-8"></a>  scope save 1,2,3,4 wave_${VIN}V.csv
+<a id="__codelineno-17-9" name="__codelineno-17-9" href="#__codelineno-17-9"></a>end
+<a id="__codelineno-17-10" name="__codelineno-17-10" href="#__codelineno-17-10"></a>log save results.csv
+</code></pre></div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><code>data dir</code> only affects the current REPL session. For a permanent default, set the <code>SCPI_DATA_DIR</code> environment variable before launching the REPL — it takes effect whenever <code>data dir</code> has not been set.</p>
+</div>
+<hr />
 <h2 id="typical-workflow">Typical workflow<a class="headerlink" href="#typical-workflow" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a># 1. Clear previous results
-<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>log clear
-<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>
-<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a># 2. Run measurements
-<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a>psu1 chan 1 on
-<a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a>psu1 set 5.0
-<a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a>sleep 0.5
-<a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a>
-<a id="__codelineno-16-9" name="__codelineno-16-9" href="#__codelineno-16-9"></a>psu1 meas_store v psu_v unit=V     # save as &quot;psu_v&quot;
-<a id="__codelineno-16-10" name="__codelineno-16-10" href="#__codelineno-16-10"></a>psu1 meas_store i psu_i unit=A     # save as &quot;psu_i&quot;
-<a id="__codelineno-16-11" name="__codelineno-16-11" href="#__codelineno-16-11"></a>dmm1 config vdc
-<a id="__codelineno-16-12" name="__codelineno-16-12" href="#__codelineno-16-12"></a>dmm1 meas_store dmm_v unit=V       # save as &quot;dmm_v&quot;
-<a id="__codelineno-16-13" name="__codelineno-16-13" href="#__codelineno-16-13"></a>
-<a id="__codelineno-16-14" name="__codelineno-16-14" href="#__codelineno-16-14"></a># 3. Derive values
-<a id="__codelineno-16-15" name="__codelineno-16-15" href="#__codelineno-16-15"></a>calc power       m[&quot;psu_v&quot;] * m[&quot;psu_i&quot;] unit=W
-<a id="__codelineno-16-16" name="__codelineno-16-16" href="#__codelineno-16-16"></a>calc v_error     m[&quot;dmm_v&quot;] - m[&quot;psu_v&quot;] unit=V
-<a id="__codelineno-16-17" name="__codelineno-16-17" href="#__codelineno-16-17"></a>calc v_error_pct m[&quot;v_error&quot;] / m[&quot;psu_v&quot;] * 100 unit=%
-<a id="__codelineno-16-18" name="__codelineno-16-18" href="#__codelineno-16-18"></a>
-<a id="__codelineno-16-19" name="__codelineno-16-19" href="#__codelineno-16-19"></a># 4. Review and export
-<a id="__codelineno-16-20" name="__codelineno-16-20" href="#__codelineno-16-20"></a>log print
-<a id="__codelineno-16-21" name="__codelineno-16-21" href="#__codelineno-16-21"></a>log save results.csv
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a># 1. Clear previous results
+<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>log clear
+<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>
+<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a># 2. Run measurements
+<a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a>psu1 chan 1 on
+<a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a>psu1 set 5.0
+<a id="__codelineno-18-7" name="__codelineno-18-7" href="#__codelineno-18-7"></a>sleep 0.5
+<a id="__codelineno-18-8" name="__codelineno-18-8" href="#__codelineno-18-8"></a>
+<a id="__codelineno-18-9" name="__codelineno-18-9" href="#__codelineno-18-9"></a>psu1 meas_store v psu_v unit=V     # save as &quot;psu_v&quot;
+<a id="__codelineno-18-10" name="__codelineno-18-10" href="#__codelineno-18-10"></a>psu1 meas_store i psu_i unit=A     # save as &quot;psu_i&quot;
+<a id="__codelineno-18-11" name="__codelineno-18-11" href="#__codelineno-18-11"></a>dmm1 config vdc
+<a id="__codelineno-18-12" name="__codelineno-18-12" href="#__codelineno-18-12"></a>dmm1 meas_store dmm_v unit=V       # save as &quot;dmm_v&quot;
+<a id="__codelineno-18-13" name="__codelineno-18-13" href="#__codelineno-18-13"></a>
+<a id="__codelineno-18-14" name="__codelineno-18-14" href="#__codelineno-18-14"></a># 3. Derive values
+<a id="__codelineno-18-15" name="__codelineno-18-15" href="#__codelineno-18-15"></a>calc power       m[&quot;psu_v&quot;] * m[&quot;psu_i&quot;] unit=W
+<a id="__codelineno-18-16" name="__codelineno-18-16" href="#__codelineno-18-16"></a>calc v_error     m[&quot;dmm_v&quot;] - m[&quot;psu_v&quot;] unit=V
+<a id="__codelineno-18-17" name="__codelineno-18-17" href="#__codelineno-18-17"></a>calc v_error_pct m[&quot;v_error&quot;] / m[&quot;psu_v&quot;] * 100 unit=%
+<a id="__codelineno-18-18" name="__codelineno-18-18" href="#__codelineno-18-18"></a>
+<a id="__codelineno-18-19" name="__codelineno-18-19" href="#__codelineno-18-19"></a># 4. Review and export
+<a id="__codelineno-18-20" name="__codelineno-18-20" href="#__codelineno-18-20"></a>log print
+<a id="__codelineno-18-21" name="__codelineno-18-21" href="#__codelineno-18-21"></a>log save results.csv
 </code></pre></div>
 
 
