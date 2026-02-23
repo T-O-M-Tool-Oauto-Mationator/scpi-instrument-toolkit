@@ -19,20 +19,23 @@ class JDS6600_Generator(DeviceManager):
     Command format: :wNN=DATA.<CR><LF>
     """
 
-    # Waveform types
+    # Waveform types — codes per Joy-IT JDS6600 communication protocol
     WAVEFORMS = {
         'sine': 0,
         'square': 1,
-        'triangle': 3,  # Swapped: triangle and pulse were reversed
-        'pulse': 2,     # Swapped: triangle and pulse were reversed
-        'dc': 4,
-        'noise': 5,
-        'sawtooth': 6,
-        'ramp_up': 6,
-        'ramp_down': 7,
-        'exp_rise': 8,
-        'exp_fall': 9,
-        'cardiac': 10,
+        'pulse': 2,
+        'triangle': 3,
+        'partial_sine': 4,
+        'cmos': 5,
+        'dc': 6,
+        'half_wave': 7,
+        'full_wave': 8,
+        'pos_ladder': 9,
+        'neg_ladder': 10,
+        'noise': 11,
+        'exp_rise': 12,
+        'exp_decay': 13,
+        'multitone': 14,
         'sinc': 15,
         'lorenz': 16,
     }
