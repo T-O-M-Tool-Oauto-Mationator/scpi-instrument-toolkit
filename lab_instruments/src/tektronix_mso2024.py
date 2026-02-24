@@ -149,6 +149,20 @@ class Tektronix_MSO2024(DeviceManager):
         """Set the horizontal scale (seconds per division)."""
         self.send_command(f"HORizontal:SCAle {scale}")
 
+    def set_horizontal_offset(self, offset: float) -> None:
+        """Set horizontal offset (time position) in seconds.
+
+        Enables delay mode and sets the delay time so the trigger point
+        is shifted by the given offset. Negative = earlier time visible;
+        positive = later time visible; zero = trigger at center.
+        """
+        self.send_command("HORizontal:DELay:MODe ON")
+        self.send_command(f"HORizontal:DELay:TIMe {offset}")
+
+    def get_horizontal_offset(self) -> float:
+        """Return the current horizontal delay time in seconds."""
+        return float(self.query("HORizontal:DELay:TIMe?"))
+
     def set_horizontal_position(self, position: float):
         """
         Set the horizontal position (percentage 0-100).
@@ -670,6 +684,24 @@ class Tektronix_MSO2024(DeviceManager):
     def measure_fall_time(self, channel):
         """Helper: Measure Fall Time."""
         return self.measure_bnf(channel, "FALL")
+
+    def get_screenshot(self):
+        """No-op on the MSO2024.
+
+        meas_force calls this to trigger the Rigol DHO804's lazy DSP.
+        The MSO2024 uses MEASUrement:IMMed which is computed on demand —
+        no display refresh is needed, so this is intentionally a no-op.
+        """
+        pass
+
+    def clear_measurements(self):
+        """No-op on the MSO2024.
+
+        meas_clear calls this to hide Rigol DHO804 on-screen measurement
+        slots. The MSO2024 IMMed subsystem has no persistent display panel
+        to clear, so this is intentionally a no-op.
+        """
+        pass
 
     def autoset(self):
         """Perform an autoset on the oscilloscope."""

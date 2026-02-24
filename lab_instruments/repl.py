@@ -4927,7 +4927,7 @@ allTargets.forEach(t => io.observe(t));
             elif cmd_name == "hmove" and len(args) >= 2:
                 delta = float(args[1])
                 try:
-                    current = float(dev.instrument.query(":TIMebase:MAIN:OFFSet?").strip())
+                    current = dev.get_horizontal_offset()
                 except Exception:
                     current = 0.0
                 dev.set_horizontal_offset(current + delta)
