@@ -919,8 +919,18 @@
 <hr />
 <h2 id="psu-chan">psu chan<a class="headerlink" href="#psu-chan" title="Permanent link">&para;</a></h2>
 <p>Enable or disable an output channel.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>psu chan &lt;channel&gt; &lt;on|off&gt;
+<div class="tabbed-set tabbed-alternate" data-tabs="2:2"><input checked="checked" id="__tabbed_2_1" name="__tabbed_2" type="radio" /><input id="__tabbed_2_2" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="__tabbed_2_1">Single-channel PSU</label><label for="__tabbed_2_2">Multi-channel PSU</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>psu chan &lt;on|off&gt;
 </code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>psu chan &lt;channel&gt; &lt;on|off&gt;
+</code></pre></div>
+</div>
+</div>
+</div>
 <table>
 <thead>
 <tr>
@@ -933,9 +943,9 @@
 <tbody>
 <tr>
 <td><code>channel</code></td>
-<td>required</td>
+<td>multi-ch only</td>
 <td><code>1</code>, <code>2</code>, <code>3</code>, <code>all</code></td>
-<td>Channel number. Single-channel PSUs always use <code>1</code>. Use <code>all</code> to toggle all channels at once.</td>
+<td>Channel number. Omit entirely for single-channel PSUs. Use <code>all</code> to toggle all channels at once.</td>
 </tr>
 <tr>
 <td><code>on\|off</code></td>
@@ -945,21 +955,22 @@
 </tr>
 </tbody>
 </table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>psu chan 1 on        # enable output (single-channel PSU)
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>psu chan 2 off       # disable channel 2 (multi-channel PSU)
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>psu chan all off     # disable all channels at once
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>psu chan on          # enable output (single-channel PSU)
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>psu chan off         # disable output (single-channel PSU)
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>psu chan 2 off       # disable channel 2 (multi-channel PSU)
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>psu chan all off     # disable all channels at once
 </code></pre></div>
 <hr />
 <h2 id="psu-set">psu set<a class="headerlink" href="#psu-set" title="Permanent link">&para;</a></h2>
 <p>Set output voltage and optional current limit.</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="2:2"><input checked="checked" id="__tabbed_2_1" name="__tabbed_2" type="radio" /><input id="__tabbed_2_2" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="__tabbed_2_1">Single-channel PSU</label><label for="__tabbed_2_2">Multi-channel PSU</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="3:2"><input checked="checked" id="__tabbed_3_1" name="__tabbed_3" type="radio" /><input id="__tabbed_3_2" name="__tabbed_3" type="radio" /><div class="tabbed-labels"><label for="__tabbed_3_1">Single-channel PSU</label><label for="__tabbed_3_2">Multi-channel PSU</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>psu set &lt;voltage&gt; [current]
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>psu set &lt;voltage&gt; [current]
 </code></pre></div>
 </div>
 <div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>psu set &lt;channel&gt; &lt;voltage&gt; [current]
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>psu set &lt;channel&gt; &lt;voltage&gt; [current]
 </code></pre></div>
 </div>
 </div>
@@ -994,16 +1005,26 @@
 </tr>
 </tbody>
 </table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>psu set 5.0               # set 5 V (single-channel)
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>psu set 5.0 0.5           # set 5 V with 0.5 A limit
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>psu set 2 12.0            # multi-channel: channel 2 to 12 V
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>psu set 2 12.0 1.0        # multi-channel: channel 2, 12 V, 1 A limit
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>psu set 5.0               # set 5 V (single-channel)
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>psu set 5.0 0.5           # set 5 V with 0.5 A limit
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>psu set 2 12.0            # multi-channel: channel 2 to 12 V
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>psu set 2 12.0 1.0        # multi-channel: channel 2, 12 V, 1 A limit
 </code></pre></div>
 <hr />
 <h2 id="psu-meas">psu meas<a class="headerlink" href="#psu-meas" title="Permanent link">&para;</a></h2>
 <p>Measure and print the live output value.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>psu meas &lt;v|i&gt; [channel]
+<div class="tabbed-set tabbed-alternate" data-tabs="4:2"><input checked="checked" id="__tabbed_4_1" name="__tabbed_4" type="radio" /><input id="__tabbed_4_2" name="__tabbed_4" type="radio" /><div class="tabbed-labels"><label for="__tabbed_4_1">Single-channel PSU</label><label for="__tabbed_4_2">Multi-channel PSU</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>psu meas &lt;v|i&gt;
 </code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>psu meas &lt;channel&gt; &lt;v|i&gt;
+</code></pre></div>
+</div>
+</div>
+</div>
 <table>
 <thead>
 <tr>
@@ -1015,22 +1036,22 @@
 </thead>
 <tbody>
 <tr>
+<td><code>channel</code></td>
+<td>multi-ch only</td>
+<td><code>1</code>, <code>2</code>, <code>3</code></td>
+<td>Channel to measure. Required for multi-channel PSUs; omit for single-channel.</td>
+</tr>
+<tr>
 <td><code>v\|i</code></td>
 <td>required</td>
 <td><code>v</code>, <code>i</code></td>
 <td><code>v</code> = measure output voltage; <code>i</code> = measure output current.</td>
 </tr>
-<tr>
-<td><code>channel</code></td>
-<td>multi-ch only</td>
-<td><code>1</code>, <code>2</code>, <code>3</code></td>
-<td>Channel to measure. Required for multi-channel PSUs.</td>
-</tr>
 </tbody>
 </table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>psu meas v         # print output voltage
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>psu meas i         # print output current
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>psu meas v 2       # multi-channel: channel 2 voltage
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>psu meas v         # print output voltage (single-channel)
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>psu meas i         # print output current (single-channel)
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>psu meas 2 v       # multi-channel: channel 2 voltage
 </code></pre></div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
@@ -1039,8 +1060,18 @@
 <hr />
 <h2 id="psu-meas_store">psu meas_store<a class="headerlink" href="#psu-meas_store" title="Permanent link">&para;</a></h2>
 <p>Measure and record to the measurement log.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>psu meas_store &lt;v|i&gt; [channel] &lt;label&gt; [unit=&lt;str&gt;]
+<div class="tabbed-set tabbed-alternate" data-tabs="5:2"><input checked="checked" id="__tabbed_5_1" name="__tabbed_5" type="radio" /><input id="__tabbed_5_2" name="__tabbed_5" type="radio" /><div class="tabbed-labels"><label for="__tabbed_5_1">Single-channel PSU</label><label for="__tabbed_5_2">Multi-channel PSU</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>psu meas_store &lt;v|i&gt; &lt;label&gt; [unit=&lt;str&gt;]
 </code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>psu meas_store &lt;channel&gt; &lt;v|i&gt; &lt;label&gt; [unit=&lt;str&gt;]
+</code></pre></div>
+</div>
+</div>
+</div>
 <table>
 <thead>
 <tr>
@@ -1052,16 +1083,16 @@
 </thead>
 <tbody>
 <tr>
+<td><code>channel</code></td>
+<td>multi-ch only</td>
+<td><code>1</code>, <code>2</code>, <code>3</code></td>
+<td>Channel to measure. Required for multi-channel PSUs; omit for single-channel.</td>
+</tr>
+<tr>
 <td><code>v\|i</code></td>
 <td>required</td>
 <td><code>v</code>, <code>i</code></td>
 <td>Quantity to measure: <code>v</code> = voltage, <code>i</code> = current.</td>
-</tr>
-<tr>
-<td><code>channel</code></td>
-<td>multi-ch only</td>
-<td><code>1</code>, <code>2</code>, <code>3</code></td>
-<td>Channel to measure. Omit for single-channel PSUs.</td>
 </tr>
 <tr>
 <td><code>label</code></td>
@@ -1077,27 +1108,27 @@
 </tr>
 </tbody>
 </table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>psu meas_store v psu_out unit=V        # store as &#39;psu_out&#39;, access as m[&quot;psu_out&quot;]
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>psu meas_store i psu_i unit=A          # store current
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>psu meas_store v 2 ch2_v unit=V       # multi-channel: channel 2 voltage
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>psu meas_store v psu_out unit=V        # store as &#39;psu_out&#39;, access as m[&quot;psu_out&quot;]
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>psu meas_store i psu_i unit=A          # store current
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>psu meas_store 2 v ch2_v unit=V       # multi-channel: channel 2 voltage
 </code></pre></div>
 <p>After storing, view with <code>log print</code> or compute derived values with <code>calc</code>:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>psu meas_store v psu_v unit=V
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>psu meas_store i psu_i unit=A
-<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>calc power m[&quot;psu_v&quot;] * m[&quot;psu_i&quot;] unit=W    # compute power
-<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>log print
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>psu meas_store v psu_v unit=V
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>psu meas_store i psu_i unit=A
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>calc power m[&quot;psu_v&quot;] * m[&quot;psu_i&quot;] unit=W    # compute power
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>log print
 </code></pre></div>
 <p>See <a href="logging.html">Log &amp; Calc</a> for full details.</p>
 <hr />
 <h2 id="psu-get">psu get<a class="headerlink" href="#psu-get" title="Permanent link">&para;</a></h2>
 <p>Show the programmed voltage/current setpoints (not the live measured output).</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>psu get
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>psu get
 </code></pre></div>
 <p>For live measured values use <code>psu meas</code>.</p>
 <hr />
 <h2 id="psu-track">psu track<a class="headerlink" href="#psu-track" title="Permanent link">&para;</a></h2>
 <p>Enable or disable channel tracking mode (multi-channel PSUs only).</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>psu track &lt;on|off&gt;
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>psu track &lt;on|off&gt;
 </code></pre></div>
 <table>
 <thead>
@@ -1116,14 +1147,14 @@
 </tbody>
 </table>
 <p>In tracking mode the two adjustable channels mirror each other — one outputs positive, the other negative — for split-supply configurations.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>psu track on     # enable tracking (±supply mode)
-<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>psu track off    # return to independent channel control
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>psu track on     # enable tracking (±supply mode)
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>psu track off    # return to independent channel control
 </code></pre></div>
 <hr />
 <h2 id="psu-save-recall">psu save / recall<a class="headerlink" href="#psu-save-recall" title="Permanent link">&para;</a></h2>
 <p>Save or restore voltage/current settings to a numbered slot (multi-channel PSUs only).</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>psu save &lt;1-3&gt;
-<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>psu recall &lt;1-3&gt;
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>psu save &lt;1-3&gt;
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>psu recall &lt;1-3&gt;
 </code></pre></div>
 <table>
 <thead>
@@ -1143,12 +1174,12 @@
 </tr>
 </tbody>
 </table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>psu save 1      # save current settings to slot 1
-<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>psu recall 1    # restore settings from slot 1
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>psu save 1      # save current settings to slot 1
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>psu recall 1    # restore settings from slot 1
 </code></pre></div>
 <hr />
 <h2 id="psu-state">psu state<a class="headerlink" href="#psu-state" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>psu state &lt;on|off|safe|reset&gt;
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>psu state &lt;on|off|safe|reset&gt;
 </code></pre></div>
 <table>
 <thead>

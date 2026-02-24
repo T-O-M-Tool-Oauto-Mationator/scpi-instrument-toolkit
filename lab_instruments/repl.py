@@ -2677,16 +2677,16 @@ class InstrumentRepl(cmd.Cmd):
                     {
                         "id": "psu-meas", "name": "psu meas",
                         "brief": "Measure and print PSU output",
-                        "syntax": "psu meas <v|i> [channel]",
+                        "syntax": "psu meas <channel> <v|i>",
                         "desc": "Takes a live measurement from the PSU and prints the result. Does not store the value — use <code>psu meas_store</code> to record it.",
                         "params": [
+                            {"name": "channel", "required": "multi-ch only", "values": "1, 2, 3", "desc": "Channel to measure. Required for multi-channel PSUs; omit for single-channel."},
                             {"name": "v|i", "required": "required", "values": "v, i", "desc": "<code>v</code> = measure output voltage; <code>i</code> = measure output current."},
-                            {"name": "channel", "required": "multi-ch only", "values": "1, 2, 3", "desc": "Channel to measure. Required for multi-channel PSUs."},
                         ],
                         "examples": [
-                            ("psu meas v", "Print output voltage"),
-                            ("psu meas i", "Print output current"),
-                            ("psu meas v 2", "Multi-ch: print channel 2 voltage"),
+                            ("psu meas v", "Print output voltage (single-channel)"),
+                            ("psu meas i", "Print output current (single-channel)"),
+                            ("psu meas 2 v", "Multi-ch: print channel 2 voltage"),
                         ],
                         "notes": [],
                         "see": ["psu-meas_store"],
@@ -2694,7 +2694,7 @@ class InstrumentRepl(cmd.Cmd):
                     {
                         "id": "psu-meas_store", "name": "psu meas_store",
                         "brief": "Measure and record to the measurement log",
-                        "syntax": "psu meas_store <v|i> [channel] <label> [unit=<str>]",
+                        "syntax": "psu meas_store <channel> <v|i> <label> [unit=<str>]",
                         "desc": "Measures the PSU output and appends the result to the session measurement log. Use <code>log print</code> to view all recorded measurements and <code>calc</code> to compute derived values using stored data.",
                         "params": [
                             {"name": "v|i", "required": "required", "values": "v, i", "desc": "<code>v</code> = measure voltage; <code>i</code> = measure current."},
@@ -2705,7 +2705,7 @@ class InstrumentRepl(cmd.Cmd):
                         "examples": [
                             ("psu meas_store v psu_out unit=V", "Store voltage as 'psu_out'; access later as m[\"psu_out\"]"),
                             ("psu meas_store i psu_i unit=A", "Store current as 'psu_i'"),
-                            ("psu meas_store v 2 ch2_v unit=V", "Multi-ch: store channel 2 voltage"),
+                            ("psu meas_store 2 v ch2_v unit=V", "Multi-ch: store channel 2 voltage"),
                         ],
                         "notes": [
                             "Access stored values in <code>calc</code>: <code>calc power m[\"psu_out\"]*m[\"psu_i\"] unit=W</code>",
@@ -4142,9 +4142,9 @@ allTargets.forEach(t => io.observe(t));
                         "  - channels: 1 (6V), 2 (25V+), 3 (25V-)",
                         "  - example: psu set 1 5.0 0.2",
                         "  - example: psu set 2 12.0 0.5",
-                        "psu meas v|i <channel>",
-                        "  - example: psu meas v 1",
-                        "psu meas_store v|i <channel> <label> [unit=]",
+                        "psu meas <channel> v|i",
+                        "  - example: psu meas 1 v",
+                        "psu meas_store <channel> v|i <label> [unit=]",
                         "psu track on|off",
                         "psu save <1-3>",
                         "psu recall <1-3>",
@@ -4212,12 +4212,12 @@ allTargets.forEach(t => io.observe(t));
                     else:
                         ColorPrinter.warning("psu meas v|i")
                 else:
-                    # Multi-channel: psu meas v|i <channel>
+                    # Multi-channel: psu meas <channel> v|i
                     if len(args) < 3:
-                        ColorPrinter.warning("Usage: psu meas v|i <channel>")
+                        ColorPrinter.warning("Usage: psu meas <channel> v|i")
                         return
-                    mode = args[1].lower()
-                    channel = PSU_CHANNEL_ALIASES.get(args[2].lower())
+                    channel = PSU_CHANNEL_ALIASES.get(args[1].lower())
+                    mode = args[2].lower()
                     if not channel:
                         ColorPrinter.warning("Invalid channel. Use 1, 2, or 3")
                         return
@@ -4226,7 +4226,7 @@ allTargets.forEach(t => io.observe(t));
                     elif mode in ("i", "curr", "current"):
                         ColorPrinter.cyan(str(dev.measure_current(channel)))
                     else:
-                        ColorPrinter.warning("psu meas v|i <channel>")
+                        ColorPrinter.warning("psu meas <channel> v|i")
 
             # MEAS_STORE COMMAND - unified for both single and multi-channel
             elif cmd_name == "meas_store":
@@ -4253,12 +4253,12 @@ allTargets.forEach(t => io.observe(t));
                     self._record_measurement(label, value, unit, "psu.meas")
                     ColorPrinter.cyan(str(value))
                 else:
-                    # Multi-channel: psu meas_store v|i <channel> <label> [unit=]
+                    # Multi-channel: psu meas_store <channel> v|i <label> [unit=]
                     if len(args) < 4:
-                        ColorPrinter.warning("Usage: psu meas_store v|i <channel> <label> [unit=]")
+                        ColorPrinter.warning("Usage: psu meas_store <channel> v|i <label> [unit=]")
                         return
-                    mode = args[1].lower()
-                    channel = PSU_CHANNEL_ALIASES.get(args[2].lower())
+                    channel = PSU_CHANNEL_ALIASES.get(args[1].lower())
+                    mode = args[2].lower()
                     label = args[3]
                     for token in args[4:]:
                         token_lower = token.lower()
@@ -4272,7 +4272,7 @@ allTargets.forEach(t => io.observe(t));
                     elif mode in ("i", "curr", "current"):
                         value = dev.measure_current(channel)
                     else:
-                        ColorPrinter.warning("psu meas_store v|i <channel> <label>")
+                        ColorPrinter.warning("psu meas_store <channel> v|i <label>")
                         return
                     self._record_measurement(label, value, unit, "psu.meas")
                     ColorPrinter.cyan(str(value))

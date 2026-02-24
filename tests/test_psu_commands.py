@@ -2,6 +2,7 @@
 import pytest
 import os
 import sys
+import random
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -20,9 +21,31 @@ def make_repl(devices):
     return repl
 
 
+class MockMultiChannelPSU(MockHP_E3631A):
+    """Multi-channel PSU mock — set_voltage has a channel parameter."""
+
+    def set_voltage(self, channel, v):
+        pass
+
+    def set_current_limit(self, channel, i):
+        pass
+
+    def measure_voltage(self, channel=None):
+        return round(random.uniform(4.985, 5.015), 6)
+
+    def measure_current(self, channel=None):
+        return round(random.uniform(0.099, 0.101), 6)
+
+
 @pytest.fixture
 def repl():
     devices = {"psu1": MockHP_E3631A()}
+    return make_repl(devices)
+
+
+@pytest.fixture
+def repl_multi():
+    devices = {"psu1": MockMultiChannelPSU()}
     return make_repl(devices)
 
 
@@ -52,6 +75,22 @@ class TestPsuMeasure:
     def test_meas_store(self, repl):
         repl.onecmd("psu meas_store v test_v unit=V")
         assert len(repl.measurements) == 1
+
+
+class TestPsuMeasureMultiChannel:
+    def test_meas_channel_v(self, repl_multi):
+        repl_multi.onecmd("psu meas 1 v")
+
+    def test_meas_channel_i(self, repl_multi):
+        repl_multi.onecmd("psu meas 2 i")
+
+    def test_meas_store_channel(self, repl_multi):
+        repl_multi.onecmd("psu meas_store 1 v ch1_v unit=V")
+        assert len(repl_multi.measurements) == 1
+
+    def test_meas_store_channel_current(self, repl_multi):
+        repl_multi.onecmd("psu meas_store 2 i ch2_i unit=A")
+        assert len(repl_multi.measurements) == 1
 
 
 class TestPsuGet:

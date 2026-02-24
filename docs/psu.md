@@ -20,17 +20,24 @@ Address a specific PSU directly: `psu1 set 5.0` — or use `use psu1` then `psu 
 
 Enable or disable an output channel.
 
-```
-psu chan <channel> <on|off>
-```
+=== "Single-channel PSU"
+    ```
+    psu chan <on|off>
+    ```
+
+=== "Multi-channel PSU"
+    ```
+    psu chan <channel> <on|off>
+    ```
 
 | Parameter | Required | Values | Description |
 |-----------|----------|--------|-------------|
-| `channel` | required | `1`, `2`, `3`, `all` | Channel number. Single-channel PSUs always use `1`. Use `all` to toggle all channels at once. |
+| `channel` | multi-ch only | `1`, `2`, `3`, `all` | Channel number. Omit entirely for single-channel PSUs. Use `all` to toggle all channels at once. |
 | `on\|off` | required | `on`, `off` | `on` = enable output voltage; `off` = disable output. |
 
 ```
-psu chan 1 on        # enable output (single-channel PSU)
+psu chan on          # enable output (single-channel PSU)
+psu chan off         # disable output (single-channel PSU)
 psu chan 2 off       # disable channel 2 (multi-channel PSU)
 psu chan all off     # disable all channels at once
 ```
@@ -70,19 +77,25 @@ psu set 2 12.0 1.0        # multi-channel: channel 2, 12 V, 1 A limit
 
 Measure and print the live output value.
 
-```
-psu meas <v|i> [channel]
-```
+=== "Single-channel PSU"
+    ```
+    psu meas <v|i>
+    ```
+
+=== "Multi-channel PSU"
+    ```
+    psu meas <channel> <v|i>
+    ```
 
 | Parameter | Required | Values | Description |
 |-----------|----------|--------|-------------|
+| `channel` | multi-ch only | `1`, `2`, `3` | Channel to measure. Required for multi-channel PSUs; omit for single-channel. |
 | `v\|i` | required | `v`, `i` | `v` = measure output voltage; `i` = measure output current. |
-| `channel` | multi-ch only | `1`, `2`, `3` | Channel to measure. Required for multi-channel PSUs. |
 
 ```
-psu meas v         # print output voltage
-psu meas i         # print output current
-psu meas v 2       # multi-channel: channel 2 voltage
+psu meas v         # print output voltage (single-channel)
+psu meas i         # print output current (single-channel)
+psu meas 2 v       # multi-channel: channel 2 voltage
 ```
 
 !!! note
@@ -94,21 +107,27 @@ psu meas v 2       # multi-channel: channel 2 voltage
 
 Measure and record to the measurement log.
 
-```
-psu meas_store <v|i> [channel] <label> [unit=<str>]
-```
+=== "Single-channel PSU"
+    ```
+    psu meas_store <v|i> <label> [unit=<str>]
+    ```
+
+=== "Multi-channel PSU"
+    ```
+    psu meas_store <channel> <v|i> <label> [unit=<str>]
+    ```
 
 | Parameter | Required | Values | Description |
 |-----------|----------|--------|-------------|
+| `channel` | multi-ch only | `1`, `2`, `3` | Channel to measure. Required for multi-channel PSUs; omit for single-channel. |
 | `v\|i` | required | `v`, `i` | Quantity to measure: `v` = voltage, `i` = current. |
-| `channel` | multi-ch only | `1`, `2`, `3` | Channel to measure. Omit for single-channel PSUs. |
 | `label` | required | string, no spaces | **Name for this entry in the log.** Appears as the row identifier in `log print` output. Also used as the dictionary key in `calc` expressions: `m["label"]`. Use underscores instead of spaces — e.g. `ch1_voltage`. |
 | `unit=` | optional | string | Unit label shown in `log print` output (e.g. `V`, `A`). **Display-only** — does not affect the stored numeric value or any calculation. |
 
 ```
 psu meas_store v psu_out unit=V        # store as 'psu_out', access as m["psu_out"]
 psu meas_store i psu_i unit=A          # store current
-psu meas_store v 2 ch2_v unit=V       # multi-channel: channel 2 voltage
+psu meas_store 2 v ch2_v unit=V       # multi-channel: channel 2 voltage
 ```
 
 After storing, view with `log print` or compute derived values with `calc`:
