@@ -21,6 +21,13 @@ scpi-repl           # auto-discovers connected instruments
 scpi-repl --mock    # simulate instruments (no hardware needed)
 ```
 
+!!! tip "Managed machines (school / work computers)"
+    If `scpi-repl` is not recognized, pip installed the script to a directory that isn't on your PATH. Use the module form instead — `python` is always available:
+    ```bash
+    python -m lab_instruments
+    python -m lab_instruments --mock
+    ```
+
 ### 3. Find your instruments
 
 ```

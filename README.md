@@ -54,6 +54,12 @@ scpi-repl
 
 It will automatically scan for connected instruments and show you what it found.
 
+> **On managed machines (school/work computers):** if `scpi-repl` is not recognized, pip may have installed it to a directory that isn't on your PATH. Use this instead — `python` is always available:
+> ```
+> python -m lab_instruments
+> ```
+> All flags work the same way: `python -m lab_instruments --mock`, etc.
+
 ### Try it without any instruments
 
 If you just want to explore the tool without connecting anything:
