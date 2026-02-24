@@ -685,24 +685,6 @@ class Tektronix_MSO2024(DeviceManager):
         """Helper: Measure Fall Time."""
         return self.measure_bnf(channel, "FALL")
 
-    def get_screenshot(self):
-        """No-op on the MSO2024.
-
-        meas_force calls this to trigger the Rigol DHO804's lazy DSP.
-        The MSO2024 uses MEASUrement:IMMed which is computed on demand —
-        no display refresh is needed, so this is intentionally a no-op.
-        """
-        pass
-
-    def clear_measurements(self):
-        """No-op on the MSO2024.
-
-        meas_clear calls this to hide Rigol DHO804 on-screen measurement
-        slots. The MSO2024 IMMed subsystem has no persistent display panel
-        to clear, so this is intentionally a no-op.
-        """
-        pass
-
     def autoset(self):
         """Perform an autoset on the oscilloscope."""
         self.send_command("AUToset EXECute")
