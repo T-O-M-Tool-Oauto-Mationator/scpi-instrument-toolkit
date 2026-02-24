@@ -373,6 +373,27 @@ class Tektronix_MSO2024(DeviceManager):
     # STANDARD MEASUREMENTS
     # ==========================================
 
+    def configure_measurement(self, channel: int, measurement_type: str) -> None:
+        """Configure an immediate measurement without querying the result.
+
+        Sets MEASUrement:IMMed:SOUrce1 and MEASUrement:IMMed:TYPe so the
+        measurement is ready to query with measure_bnf() after a trigger.
+        """
+        if channel not in self.CHANNEL_MAP:
+            raise ValueError(
+                f"Invalid channel. Must be one of: {list(self.CHANNEL_MAP.keys())}"
+            )
+
+        m_type = measurement_type.upper()
+        if m_type not in self.VALID_BNF_MEASURE_TYPES:
+            raise ValueError(
+                f"Invalid BNF Type: {m_type}. Valid: {self.VALID_BNF_MEASURE_TYPES}"
+            )
+
+        scpi_source = self.CHANNEL_MAP[channel]
+        self.send_command(f"MEASUrement:IMMed:SOUrce1 {scpi_source}")
+        self.send_command(f"MEASUrement:IMMed:TYPe {m_type}")
+
     def measure_bnf(self, channel, measure_type):
         """
         Measure a basic measurement function (BNF) on the specified channel.
