@@ -1,4 +1,4 @@
-__version__ = "1.0.0"
+__version__ = "0.1.114"
 __author__ = "Brighton Sikarskie, Cesar Magana"
 
 from .src.device_manager import DeviceManager
