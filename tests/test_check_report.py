@@ -391,7 +391,7 @@ class TestReportPrint:
 class TestReportSave:
     def test_save_missing_path_prints_error(self, repl, capsys):
         repl.onecmd("report save")
-        out = capsys.readouterr().out
+        capsys.readouterr()
         # Should print an error (captured via ColorPrinter)
 
     def test_save_creates_pdf_file(self, repl):

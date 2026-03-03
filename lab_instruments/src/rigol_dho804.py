@@ -6,7 +6,6 @@ Protocol: SCPI over USB-TMC/VISA
 Based on DHO800/DHO900 Programming Guide
 """
 
-import time
 from dataclasses import dataclass
 from typing import Optional
 
@@ -1460,16 +1459,6 @@ class Rigol_DHO804(DeviceManager):
         channels_list = ",".join(str(ch) for ch in sorted(channel_data.keys()))
         print(f"Waveforms from CH{channels_list} saved to {filename}")
 
-    # Autoset
-    def autoset(self):
-        """
-        Perform autoset to automatically configure scope for signal.
-        Note: DHO804 uses :AUToscale command.
-        """
-        print("Running autoset...")
-        self.instrument.write(":AUToscale")
-        time.sleep(2)  # Give scope time to autoset
-        print("Autoset complete")
 
     # ========================================
     # Automated Measurements (Section 3.17)
@@ -4700,10 +4689,7 @@ class Rigol_DHO804(DeviceManager):
             response = self.instrument.query(":COUNter:SOURce?")
             # Response is like "CHAN1" or "CHAN2"
             source_str = response.strip()
-            if source_str.startswith("CHAN"):
-                source = int(source_str[4:])
-            else:
-                source = 1  # Default
+            source = int(source_str[4:]) if source_str.startswith("CHAN") else 1
             print(f"Counter source: CH{source}")
             return source
         except pyvisa.VisaIOError as e:
@@ -4978,10 +4964,7 @@ class Rigol_DHO804(DeviceManager):
             response = self.instrument.query(":DVM:SOURce?")
             # Response is like "CHAN1" or "CHAN2"
             source_str = response.strip()
-            if source_str.startswith("CHAN"):
-                source = int(source_str[4:])
-            else:
-                source = 1  # Default
+            source = int(source_str[4:]) if source_str.startswith("CHAN") else 1
             print(f"DVM source: CH{source}")
             return source
         except pyvisa.VisaIOError as e:
@@ -5173,10 +5156,7 @@ class Rigol_DHO804(DeviceManager):
             response = self.instrument.query(":HISTogram:SOURce?")
             # Response is like "CHAN1" or "CHAN2"
             source_str = response.strip()
-            if source_str.startswith("CHAN"):
-                source = int(source_str[4:])
-            else:
-                source = 1  # Default
+            source = int(source_str[4:]) if source_str.startswith("CHAN") else 1
             print(f"Histogram source: CH{source}")
             return source
         except pyvisa.VisaIOError as e:

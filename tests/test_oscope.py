@@ -1,3 +1,4 @@
+import contextlib
 import sys
 from pathlib import Path
 
@@ -232,10 +233,8 @@ def test_delay_measurement(oscope, awg):
     results["Delay_Measurement"] = user_input != "no"
 
     awg.enable_output(1, False)
-    try:
+    with contextlib.suppress(BaseException):
         awg.enable_output(2, False)
-    except:
-        pass
 
     return results
 

@@ -13,7 +13,7 @@ Triangle Brackets < >: Indicate that you must substitute a value or a code for t
 Vertical Bar |: Separates one of two or more alternative parameters.
 """
 
-from .device_manager import DeviceManager
+from .device_manager import DeviceManager  # noqa: E402
 
 
 class HP_E3631A(DeviceManager):
@@ -117,7 +117,7 @@ class HP_E3631A(DeviceManager):
             value_str = response.strip().split()[0]
             return float(value_str)
         except (ValueError, IndexError) as e:
-            raise ValueError(f"Failed to convert voltage response '{response}' to float: {e}")
+            raise ValueError(f"Failed to convert voltage response '{response}' to float: {e}") from e
 
     def measure_current(self, channel):
         """Measure the output current of a specific channel.
@@ -138,7 +138,7 @@ class HP_E3631A(DeviceManager):
             value_str = response.strip().split()[0]
             return float(value_str)
         except (ValueError, IndexError) as e:
-            raise ValueError(f"Failed to convert current response '{response}' to float: {e}")
+            raise ValueError(f"Failed to convert current response '{response}' to float: {e}") from e
 
     def set_voltage(self, channel, voltage):
         """Set only the voltage for the specified channel."""

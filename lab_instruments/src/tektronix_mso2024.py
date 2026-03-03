@@ -67,7 +67,7 @@ class Tektronix_MSO2024(DeviceManager):
     def disable_all_channels(self):
         """Disable all channels (Analog + Math)."""
         # 1. Analog Channels
-        for channel in self.CHANNEL_MAP.keys():
+        for channel in self.CHANNEL_MAP:
             self.change_channel_status(channel, False)
 
         # 2. Math Channel
@@ -75,7 +75,7 @@ class Tektronix_MSO2024(DeviceManager):
 
     def enable_all_channels(self):
         """Enable all analog channels."""
-        for channel in self.CHANNEL_MAP.keys():
+        for channel in self.CHANNEL_MAP:
             self.change_channel_status(channel, True)
 
     def change_channel_status(self, channel, status: bool):

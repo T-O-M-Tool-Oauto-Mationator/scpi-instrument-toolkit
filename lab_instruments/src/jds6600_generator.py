@@ -119,7 +119,7 @@ class JDS6600_Generator(DeviceManager):
 
         val1 = 1 if ch1 else 0
         val2 = 1 if ch2 else 0
-        response = self._send_command(f":w20={val1},{val2}.")
+        self._send_command(f":w20={val1},{val2}.")
         print(f"Output: CH1={'ON' if ch1 else 'OFF'}, CH2={'ON' if ch2 else 'OFF'}")
 
     def set_waveform(self, channel: int, waveform: str):
@@ -139,7 +139,7 @@ class JDS6600_Generator(DeviceManager):
 
         code = self.WAVEFORMS[waveform]
         func_code = 21 if channel == 1 else 22
-        response = self._send_command(f":w{func_code}={code}.")
+        self._send_command(f":w{func_code}={code}.")
         print(f"CH{channel} waveform: {waveform}")
 
     def set_frequency(self, channel: int, freq_hz: float):
@@ -185,7 +185,7 @@ class JDS6600_Generator(DeviceManager):
                 unit_str = "Hz"
 
         func_code = 23 if channel == 1 else 24
-        response = self._send_command(f":w{func_code}={value},{unit}.")
+        self._send_command(f":w{func_code}={value},{unit}.")
         self._ch_frequency[channel] = freq_hz
         print(f"CH{channel} frequency: {display_freq:.4f} {unit_str}")
 
@@ -204,7 +204,7 @@ class JDS6600_Generator(DeviceManager):
         value = int(amplitude_v * 1000)
 
         func_code = 25 if channel == 1 else 26
-        response = self._send_command(f":w{func_code}={value}.")
+        self._send_command(f":w{func_code}={value}.")
         self._ch_amplitude[channel] = amplitude_v
         print(f"CH{channel} amplitude: {amplitude_v:.3f} Vpp")
 
@@ -226,7 +226,7 @@ class JDS6600_Generator(DeviceManager):
         value = int(duty_percent * 10)
 
         func_code = 29 if channel == 1 else 30
-        response = self._send_command(f":w{func_code}={value}.")
+        self._send_command(f":w{func_code}={value}.")
         print(f"CH{channel} duty cycle: {duty_percent:.1f}%")
 
     def set_offset(self, channel: int, offset_v: float):
@@ -250,7 +250,7 @@ class JDS6600_Generator(DeviceManager):
         value = max(0, min(1999, value))
 
         func_code = 27 if channel == 1 else 28
-        response = self._send_command(f":w{func_code}={value}.")
+        self._send_command(f":w{func_code}={value}.")
         self._ch_offset[channel] = offset_v
         print(f"CH{channel} offset: {offset_v:.3f} V")
 
@@ -272,7 +272,7 @@ class JDS6600_Generator(DeviceManager):
         value = int(phase_deg * 10)
 
         func_code = 31 if channel == 1 else 32
-        response = self._send_command(f":w{func_code}={value}.")
+        self._send_command(f":w{func_code}={value}.")
         print(f"CH{channel} phase: {phase_deg:.1f} degrees")
 
     def set_sync(
@@ -299,7 +299,7 @@ class JDS6600_Generator(DeviceManager):
         val_offset = 1 if offset else 0
         val_duty = 1 if duty else 0
 
-        response = self._send_command(f":w54={val_freq},{val_wave},{val_amp},{val_offset},{val_duty}.")
+        self._send_command(f":w54={val_freq},{val_wave},{val_amp},{val_offset},{val_duty}.")
 
         sync_list = []
         if freq:

@@ -3,6 +3,7 @@ Instrument Discovery and Initialization Module
 """
 
 import concurrent.futures
+import contextlib
 import threading
 import time
 from typing import Any, Dict, Optional, Tuple
@@ -126,10 +127,8 @@ class InstrumentDiscovery:
             inst.timeout = 2000
 
             # Flush stale bytes left by previous probes at wrong baud rates
-            try:
+            with contextlib.suppress(Exception):
                 inst.clear()
-            except Exception:
-                pass
             time.sleep(0.1)
 
             # Enable remote mode first (required for *IDN? to work)
@@ -182,10 +181,10 @@ class InstrumentDiscovery:
                 # Try to get model info
                 try:
                     inst.write(":r00=")
-                    model_resp = inst.read().strip()
+                    inst.read()
                     # Response like ":r00=15." indicates model
                     return "JDS6600"
-                except:
+                except Exception:
                     return "JDS6600"
 
         except Exception:
@@ -208,10 +207,8 @@ class InstrumentDiscovery:
             inst = self.rm.open_resource(resource, timeout=2000)
 
             # Clear buffer if possible
-            try:
+            with contextlib.suppress(BaseException):
                 inst.clear()
-            except:
-                pass
 
             # Query IDN
             idn = None
@@ -344,14 +341,11 @@ class InstrumentDiscovery:
         for generic, _, _, _ in results:
             type_totals[generic] = type_totals.get(generic, 0) + 1
 
-        for generic, driver, model_key, idn in results:
+        for generic, driver, _model_key, _idn in results:
             idx = type_counts.get(generic, 0)
             total = type_totals[generic]
 
-            if total == 1:
-                final_name = generic
-            else:
-                final_name = f"{generic}{idx + 1}"
+            final_name = generic if total == 1 else f"{generic}{idx + 1}"
 
             type_counts[generic] = idx + 1
             final_drivers[final_name] = driver

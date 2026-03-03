@@ -215,7 +215,7 @@ class HP_34401A(DeviceManager):
             value_str = result_str.strip().split()[0]
             return float(value_str)
         except (ValueError, IndexError) as e:
-            raise ValueError(f"Failed to convert DMM response '{result_str}' to float: {e}")
+            raise ValueError(f"Failed to convert DMM response '{result_str}' to float: {e}") from e
 
     def fetch(self):
         """
@@ -237,7 +237,7 @@ class HP_34401A(DeviceManager):
             value_str = result_str.strip().split()[0]
             return float(value_str)
         except (ValueError, IndexError) as e:
-            raise ValueError(f"Failed to convert DMM response '{result_str}' to float: {e}")
+            raise ValueError(f"Failed to convert DMM response '{result_str}' to float: {e}") from e
 
     # ==========================================
     # IMMEDIATE MEASUREMENT METHODS (MEASure?)
@@ -287,7 +287,7 @@ class HP_34401A(DeviceManager):
             value_str = result_str.strip().split()[0]
             return float(value_str)
         except (ValueError, IndexError) as e:
-            raise ValueError(f"Failed to convert continuity response '{result_str}' to float: {e}")
+            raise ValueError(f"Failed to convert continuity response '{result_str}' to float: {e}") from e
 
     def measure_diode(self):
         """
@@ -301,7 +301,7 @@ class HP_34401A(DeviceManager):
             value_str = result_str.strip().split()[0]
             return float(value_str)
         except (ValueError, IndexError) as e:
-            raise ValueError(f"Failed to convert diode response '{result_str}' to float: {e}")
+            raise ValueError(f"Failed to convert diode response '{result_str}' to float: {e}") from e
 
     def _measure(self, function, range_val="DEF", resolution="DEF"):
         """
@@ -321,7 +321,7 @@ class HP_34401A(DeviceManager):
             value_str = result_str.strip().split()[0]
             return float(value_str)
         except (ValueError, IndexError) as e:
-            raise ValueError(f"Failed to convert measurement response '{result_str}' to float: {e}")
+            raise ValueError(f"Failed to convert measurement response '{result_str}' to float: {e}") from e
 
     # ==========================================
     # TRIGGER CONFIGURATION

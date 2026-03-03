@@ -12,6 +12,7 @@ import atexit
 
 # os.environ['PYVISA_LIBRARY'] = '@py'  # Disabled - need NI-VISA for USB
 import cmd
+import contextlib
 import inspect
 import json
 import os
@@ -105,7 +106,7 @@ def _check_for_updates(force=False):
         return False  # Network error or no internet — ignore silently
 
 
-from lab_instruments import ColorPrinter, InstrumentDiscovery
+from lab_instruments import ColorPrinter, InstrumentDiscovery  # noqa: E402
 
 DEVICE_NAMES = ("scope", "psu", "awg", "dmm", "dds")
 
@@ -299,10 +300,7 @@ class InstrumentRepl(cmd.Cmd):
                         else:
                             self.lastcmd = ""
                             line = self.stdin.readline()
-                            if not len(line):
-                                line = "EOF"
-                            else:
-                                line = line.rstrip("\r\n")
+                            line = "EOF" if not len(line) else line.rstrip("\r\n")
                     line = self.precmd(line)
                     stop = self.onecmd(line)
                     line = self.postcmd(stop, line)
@@ -548,10 +546,8 @@ class InstrumentRepl(cmd.Cmd):
                 # Subprocess unavailable or timed out — degrade gracefully
                 visible = os.path.exists(probe)
             finally:
-                try:
+                with contextlib.suppress(Exception):
                     os.remove(probe)
-                except Exception:
-                    pass
             return visible
         except Exception:
             return False
@@ -801,10 +797,8 @@ class InstrumentRepl(cmd.Cmd):
             return result
         finally:
             if tmp_path and os.path.exists(tmp_path):
-                try:
+                with contextlib.suppress(OSError):
                     os.remove(tmp_path)
-                except OSError:
-                    pass
 
     def _open_file_nonblocking(self, path):
         if os.name == "nt":
@@ -1034,10 +1028,8 @@ class InstrumentRepl(cmd.Cmd):
                     try:
                         num_vars = {}
                         for k, v in variables.items():
-                            try:
+                            with contextlib.suppress(TypeError, ValueError):
                                 num_vars[k] = float(v)
-                            except (TypeError, ValueError):
-                                pass
                         result = self._safe_eval(raw_val, num_vars)
                         variables[key] = str(result)
                     except Exception:
@@ -1464,10 +1456,7 @@ class InstrumentRepl(cmd.Cmd):
             except ValueError:
                 return super().onecmd(line)
             cmd_line = " ".join(tokens[2:])
-            for _ in range(count):
-                if super().onecmd(cmd_line):
-                    return True
-            return False
+            return any(super().onecmd(cmd_line) for _ in range(count))
 
         # Expand 'all' channel token into one call per channel
         # e.g. "awg wave all sine freq=1000" → "awg wave 1 sine ..." + "awg wave 2 sine ..."
@@ -1560,10 +1549,7 @@ class InstrumentRepl(cmd.Cmd):
                 if repeat_all:
                     count = int(tokens[idx + 1])
                     cmd_line = " ".join(tokens[idx + 2 :])
-                    for _ in range(count):
-                        if self.onecmd(cmd_line):
-                            return True
-                    return False
+                    return any(self.onecmd(cmd_line) for _ in range(count))
             except (ValueError, IndexError):
                 pass
         if len(tokens) >= 3 and tokens[0].lower() == "repeatall":
@@ -1572,10 +1558,7 @@ class InstrumentRepl(cmd.Cmd):
             except ValueError:
                 return super().onecmd(line)
             cmd_line = " ".join(tokens[2:])
-            for _ in range(count):
-                if super().onecmd(cmd_line):
-                    return True
-            return False
+            return any(super().onecmd(cmd_line) for _ in range(count))
         if ";" in line:
             should_exit = False
             for chunk in _split_on_semicolons(line):
@@ -1663,10 +1646,8 @@ class InstrumentRepl(cmd.Cmd):
                         dev.disable_all_channels()
                     elif hasattr(dev, "disable_channel"):
                         for ch in range(1, 5):
-                            try:
+                            with contextlib.suppress(Exception):
                                 dev.disable_channel(ch)
-                            except Exception:
-                                pass
                     # Disable built-in AWG and zero its setpoints if present
                     if hasattr(dev, "awg_set_output_enable"):
                         try:
@@ -1678,9 +1659,8 @@ class InstrumentRepl(cmd.Cmd):
                         except Exception:
                             pass
                 # DMM devices (dmm, dmm1, dmm2, ...)
-                elif name.startswith("dmm"):
-                    if hasattr(dev, "reset"):
-                        dev.reset()
+                elif name.startswith("dmm") and hasattr(dev, "reset"):
+                    dev.reset()
                 ColorPrinter.success(f"{name}: safe state applied")
             except Exception as exc:
                 ColorPrinter.error(f"{name}: {exc}")
@@ -1728,16 +1708,13 @@ class InstrumentRepl(cmd.Cmd):
                         ColorPrinter.success(f"{name}: channels disabled")
                     elif hasattr(dev, "disable_channel"):
                         for ch in range(1, 5):
-                            try:
+                            with contextlib.suppress(Exception):
                                 dev.disable_channel(ch)
-                            except Exception:
-                                pass
                         ColorPrinter.success(f"{name}: all channels (1-4) disabled")
                 # DMM devices (dmm, dmm1, dmm2, ...)
-                elif name.startswith("dmm"):
-                    if hasattr(dev, "reset"):
-                        dev.reset()
-                        ColorPrinter.success(f"{name}: reset")
+                elif name.startswith("dmm") and hasattr(dev, "reset"):
+                    dev.reset()
+                    ColorPrinter.success(f"{name}: reset")
             except Exception as exc:
                 ColorPrinter.error(f"{name}: {exc}")
 
@@ -1768,10 +1745,9 @@ class InstrumentRepl(cmd.Cmd):
                             dev.enable_output(2, True)
                         ColorPrinter.success(f"{name}: outputs enabled")
                 # Oscilloscope (scope, scope1, scope2, ...)
-                elif name.startswith("scope"):
-                    if hasattr(dev, "enable_all_channels"):
-                        dev.enable_all_channels()
-                        ColorPrinter.success(f"{name}: channels enabled")
+                elif name.startswith("scope") and hasattr(dev, "enable_all_channels"):
+                    dev.enable_all_channels()
+                    ColorPrinter.success(f"{name}: channels enabled")
                 # DMM devices - no "on" state, nothing to do
             except Exception as exc:
                 ColorPrinter.error(f"{name}: {exc}")
@@ -1812,14 +1788,10 @@ class InstrumentRepl(cmd.Cmd):
         self._stop_dmm_text_loop()
         dev = self.devices.get("dmm")
         if dev:
-            try:
+            with contextlib.suppress(Exception):
                 dev.clear_display()
-            except Exception:
-                pass
-            try:
+            with contextlib.suppress(Exception):
                 dev.set_display(True)
-            except Exception:
-                pass
         ColorPrinter.success("Shawn has stopped sawing.")
 
     def do_version(self, arg):
@@ -1834,10 +1806,8 @@ class InstrumentRepl(cmd.Cmd):
         "reload: restart the REPL process to pick up changes to repl.py and lab_instruments"
         ColorPrinter.info("Disconnecting all instruments...")
         for dev in list(self.devices.values()):
-            try:
+            with contextlib.suppress(Exception):
                 dev.disconnect()
-            except Exception:
-                pass
 
         ColorPrinter.success("Restarting process...")
         # sys.argv[0] may be an installed entry-point wrapper (e.g. Scripts\scpi-repl),
@@ -1926,14 +1896,10 @@ class InstrumentRepl(cmd.Cmd):
                 while getattr(self, "_jerminator", False):
                     dev = self.devices.get("dmm")
                     if dev:
-                        try:
+                        with contextlib.suppress(Exception):
                             dev.display_text(msgs[i % len(msgs)])
-                        except Exception:
-                            pass
-                        try:
+                        with contextlib.suppress(Exception):
                             dev.beep()
-                        except Exception:
-                            pass
                     i += 1
                     time.sleep(0.5)
 
@@ -2134,20 +2100,16 @@ class InstrumentRepl(cmd.Cmd):
                         dev.disable_all_channels()
                     elif hasattr(dev, "disable_channel"):
                         for ch in range(1, 5):
-                            try:
+                            with contextlib.suppress(Exception):
                                 dev.disable_channel(ch)
-                            except Exception:
-                                pass
                     ColorPrinter.success(f"{name}: channels disabled")
                 elif state == "on":
                     if hasattr(dev, "enable_all_channels"):
                         dev.enable_all_channels()
                     elif hasattr(dev, "enable_channel"):
                         for ch in range(1, 5):
-                            try:
+                            with contextlib.suppress(Exception):
                                 dev.enable_channel(ch)
-                            except Exception:
-                                pass
                     ColorPrinter.success(f"{name}: channels enabled")
                 elif state == "reset":
                     dev.reset()
@@ -2318,10 +2280,8 @@ class InstrumentRepl(cmd.Cmd):
             # Try to evaluate as math expression
             num_vars = {}
             for k, v in self._script_vars.items():
-                try:
+                with contextlib.suppress(TypeError, ValueError):
                     num_vars[k] = float(v)
-                except (TypeError, ValueError):
-                    pass
             result = self._safe_eval(raw_val, num_vars)
             self._script_vars[key] = str(result)
         except Exception:
@@ -5061,8 +5021,8 @@ class InstrumentRepl(cmd.Cmd):
         sidebar_links = '<a href="#quick-start">Quick Start</a>\n'
         for sec in SECTIONS:
             sidebar_links += f'<a href="#{e(sec["id"])}">{e(sec["title"])}</a>\n'
-            for cmd in sec["commands"]:
-                sidebar_links += f'<a class="sub-link" href="#{e(cmd["id"])}">{e(cmd["name"])}</a>\n'
+            for cmd_item in sec["commands"]:
+                sidebar_links += f'<a class="sub-link" href="#{e(cmd_item["id"])}">{e(cmd_item["name"])}</a>\n'
         sidebar_links += '<a href="#examples">Examples</a>\n'
         sidebar_links += '<a href="#instruments">Instruments</a>\n'
 
@@ -5558,9 +5518,8 @@ allTargets.forEach(t => io.observe(t));
                 if param_key.endswith("_upper"):
                     if param_key not in merged or val < merged[param_key]:
                         merged[param_key] = val
-                elif param_key.endswith("_lower"):
-                    if param_key not in merged or val > merged[param_key]:
-                        merged[param_key] = val
+                elif param_key.endswith("_lower") and (param_key not in merged or val > merged[param_key]):
+                    merged[param_key] = val
         return merged
 
     def _check_psu_limits(self, device_name: str, channel: Optional[int], voltage=None, current=None) -> bool:
@@ -6095,10 +6054,8 @@ allTargets.forEach(t => io.observe(t));
                                 f"{limits['current_lower']}A"
                             )
                 if violated and output_on:
-                    try:
+                    with contextlib.suppress(Exception):
                         dev.enable_output(False)
-                    except Exception:
-                        pass
 
             # --- AWG ---
             elif dev_type == "awg":
@@ -6799,10 +6756,8 @@ allTargets.forEach(t => io.observe(t));
                 timeout = 10.0
                 for tok in args[1:]:
                     if tok.lower().startswith("timeout="):
-                        try:
+                        with contextlib.suppress(ValueError):
                             timeout = float(tok.split("=", 1)[1])
-                        except ValueError:
-                            pass
                 if hasattr(dev, "wait_for_stop"):
                     triggered = dev.wait_for_stop(timeout)
                     if triggered:
@@ -7968,7 +7923,6 @@ allTargets.forEach(t => io.observe(t));
             R = ColorPrinter.RED
             Y = ColorPrinter.YELLOW
             RST = ColorPrinter.RESET
-            W = ColorPrinter.WHITE if hasattr(ColorPrinter, "WHITE") else ""
             header = f"{'Label':<20} {'Value':>14} {'Unit':<8} {'Limits':<22} {'Status'}"
             print(f"{Y}{header}{RST}")
             print("-" * len(header))
