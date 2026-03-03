@@ -1,5 +1,9 @@
 import sys
+import pytest
 from pathlib import Path
+
+# Hardware integration test — run manually with real instruments, not in CI
+pytestmark = pytest.mark.skip(reason="hardware integration test — requires physical oscilloscope/AWG")
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
