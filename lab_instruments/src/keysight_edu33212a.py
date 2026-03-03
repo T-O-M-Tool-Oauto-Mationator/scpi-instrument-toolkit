@@ -71,10 +71,11 @@ class Keysight_EDU33212A(DeviceManager):
         self.send_command(f"OUTPut{channel} {state}")
 
     def disable_all_channels(self):
-        """Zeroes SINE memory (0V amp/offset), switches to DC 0V, then disables output."""
+        """Zeroes SINE memory (0Hz freq, 0V amp/offset), switches to DC 0V, then disables output."""
         for channel in self.CHANNEL_MAP:
             # Zero stored SINE parameters so they are safe if the user switches back
             self.set_function(channel, 'SIN')
+            self.set_frequency(channel, 0.0)
             self.set_amplitude(channel, 0.0)
             self.set_offset(channel, 0.0)
             # Then switch to DC at 0V and disable

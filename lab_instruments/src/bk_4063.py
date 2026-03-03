@@ -47,10 +47,10 @@ class BK_4063(DeviceManager):
     # ==========================================
 
     def disable_all_channels(self):
-        """Zeroes SINE memory (0V amp/offset), switches to DC 0V, then disables output."""
+        """Zeroes SINE memory (0Hz freq, 0V amp/offset), switches to DC 0V, then disables output."""
         for channel in self.CHANNEL_MAP:
             # Zero stored SINE parameters so they are safe if the user switches back
-            self.set_waveform(channel, 'SINE', amplitude=0.0, offset=0.0)
+            self.set_waveform(channel, 'SINE', frequency=0.0, amplitude=0.0, offset=0.0)
             # Then switch to DC at 0V and disable
             self.set_dc_output(channel, 0.0)
             self.enable_output(channel, False)
