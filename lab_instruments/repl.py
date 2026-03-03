@@ -1735,7 +1735,14 @@ class InstrumentRepl(cmd.Cmd):
         "scan: discover and connect to instruments"
         args = self._parse_args(arg)
         if self._is_help(args):
-            self._print_usage(["scan  # rescan and connect to instruments"])
+            self._print_colored_usage([
+                "# SCAN",
+                "",
+                "scan",
+                "  - discover and connect to all VISA instruments",
+                "  - instruments are assigned names: psu1, awg1, dmm1, scope1, …",
+                "  - re-run at any time to pick up newly connected devices",
+            ])
             return
         if not self._scan_done.is_set():
             # Background startup scan still running — just wait for it
@@ -1795,7 +1802,13 @@ class InstrumentRepl(cmd.Cmd):
         "list: show connected instruments"
         args = self._parse_args(arg)
         if self._is_help(args):
-            self._print_usage(["list  # show connected instruments"])
+            self._print_colored_usage([
+                "# LIST",
+                "",
+                "list",
+                "  - show all connected instruments and their assigned names",
+                "  - the active instrument (set via 'use') is highlighted",
+            ])
             return
         self._print_devices()
 
@@ -1882,13 +1895,16 @@ class InstrumentRepl(cmd.Cmd):
         "idn [name]: query *IDN? for selected or named instrument"
         args = self._parse_args(arg)
         if self._is_help(args):
-            self._print_usage(
-                [
-                    "idn [name]",
-                    "  - example: idn",
-                    "  - example: idn dmm",
-                ]
-            )
+            self._print_colored_usage([
+                "# IDN",
+                "",
+                "idn",
+                "  - query *IDN? on the active instrument",
+                "idn <name>",
+                "  - query *IDN? on a specific named instrument",
+                "  - example: idn dmm",
+                "  - example: idn psu2",
+            ])
             return
         name = args[0] if args else None
         dev = self._get_device(name)
@@ -1904,13 +1920,19 @@ class InstrumentRepl(cmd.Cmd):
         args = self._parse_args(arg)
         args, help_flag = self._strip_help(args)
         if not args or help_flag:
-            self._print_usage(
-                [
-                    "raw [name] <scpi>",
-                    "  - example: raw *IDN?",
-                    "  - example: raw scope MEASUrement:IMMed:VALue?",
-                ]
-            )
+            self._print_colored_usage([
+                "# RAW",
+                "",
+                "raw <scpi>",
+                "  - send a raw SCPI command to the active instrument",
+                "  - commands ending with ? are queries — response is printed",
+                "raw <name> <scpi>",
+                "  - send to a specific named instrument",
+                "  - example: raw *IDN?",
+                "  - example: raw *RST",
+                "  - example: raw scope MEASUrement:IMMed:VALue?",
+                "  - example: raw psu2 MEAS:VOLT?",
+            ])
             return
         name = None
         if args[0] in self.devices:
@@ -1933,28 +1955,44 @@ class InstrumentRepl(cmd.Cmd):
         "state [safe|reset|list] or state <device> <safe|reset|on|off>"
         args = self._parse_args(arg)
         if self._is_help(args):
-            self._print_usage(
-                [
-                    "state off                # outputs off for all devices",
-                    "state on                 # outputs on for all devices",
-                    "state safe               # safe state for all devices",
-                    "state reset              # *RST for all devices",
-                    "state <dev> on|off|safe|reset",
-                    "state list",
-                ]
-            )
+            self._print_colored_usage([
+                "# STATE",
+                "",
+                "state on",
+                "  - enable outputs on all instruments",
+                "state off",
+                "  - disable outputs on all instruments",
+                "state safe",
+                "  - apply safe state to all instruments (voltage/current to minimum)",
+                "state reset",
+                "  - send *RST to all instruments",
+                "state <device> on|off|safe|reset",
+                "  - apply a state to one specific instrument",
+                "  - example: state psu1 off",
+                "  - example: state awg safe",
+                "state list",
+                "  - show current output state of all instruments",
+            ])
             return
         if not args or args[0] == "list":
-            self._print_usage(
-                [
-                    "state off                # outputs off for all devices",
-                    "state on                 # outputs on for all devices",
-                    "state safe               # safe state for all devices",
-                    "state reset              # *RST for all devices",
-                    "state <dev> on|off|safe|reset",
-                    "state list",
-                ]
-            )
+            self._print_colored_usage([
+                "# STATE",
+                "",
+                "state on",
+                "  - enable outputs on all instruments",
+                "state off",
+                "  - disable outputs on all instruments",
+                "state safe",
+                "  - apply safe state to all instruments (voltage/current to minimum)",
+                "state reset",
+                "  - send *RST to all instruments",
+                "state <device> on|off|safe|reset",
+                "  - apply a state to one specific instrument",
+                "  - example: state psu1 off",
+                "  - example: state awg safe",
+                "state list",
+                "  - show current output state of all instruments",
+            ])
             return
 
         if args[0] in ("safe", "reset", "off", "on"):
@@ -2062,7 +2100,13 @@ class InstrumentRepl(cmd.Cmd):
         "close: disconnect all instruments"
         args = self._parse_args(arg)
         if self._is_help(args):
-            self._print_usage(["close  # disconnect all instruments"])
+            self._print_colored_usage([
+                "# CLOSE",
+                "",
+                "close",
+                "  - disconnect all instruments and release VISA resources",
+                "  - use 'scan' to reconnect",
+            ])
             return
         for name, dev in self.devices.items():
             try:
@@ -2077,7 +2121,13 @@ class InstrumentRepl(cmd.Cmd):
         "status: show current selection"
         args = self._parse_args(arg)
         if self._is_help(args):
-            self._print_usage(["status  # show current selection"])
+            self._print_colored_usage([
+                "# STATUS",
+                "",
+                "status",
+                "  - show all connected instruments and their assigned names",
+                "  - indicates which instrument is currently active (set via 'use')",
+            ])
             return
         if not self.devices:
             ColorPrinter.warning("No instruments connected.")
@@ -2090,15 +2140,19 @@ class InstrumentRepl(cmd.Cmd):
         args = self._parse_args(arg)
         args, help_flag = self._strip_help(args)
         if not args or help_flag:
-            self._print_usage(
-                [
-                    "sleep <duration>[us|ms|s|m]",
-                    "  - sleep 500ms   (500 milliseconds)",
-                    "  - sleep 1.5     (1.5 seconds, default unit)",
-                    "  - sleep 100us   (100 microseconds)",
-                    "  - sleep 2m      (2 minutes)",
-                ]
-            )
+            self._print_colored_usage([
+                "# SLEEP",
+                "",
+                "sleep <duration>[us|ms|s|m]",
+                "  - pause execution for the specified duration",
+                "  - default unit is seconds when no suffix is given",
+                "  - example: sleep 500ms    (500 milliseconds)",
+                "  - example: sleep 1.5      (1.5 seconds)",
+                "  - example: sleep 100us    (100 microseconds)",
+                "  - example: sleep 2m       (2 minutes)",
+                "wait <duration>[us|ms|s|m]",
+                "  - alias for sleep",
+            ])
             return
         raw = args[0].strip()
         _suffix_map = [("us", 1e-6), ("ms", 1e-3), ("min", 60.0), ("m", 60.0), ("s", 1.0)]
@@ -4376,14 +4430,18 @@ allTargets.forEach(t => io.observe(t));
         args = self._parse_args(arg)
         args, help_flag = self._strip_help(args)
         if not args or help_flag:
-            self._print_usage(
-                [
-                    "all on",
-                    "all off",
-                    "all safe",
-                    "all reset",
-                ]
-            )
+            self._print_colored_usage([
+                "# ALL",
+                "",
+                "all on",
+                "  - enable outputs on every connected instrument",
+                "all off",
+                "  - disable outputs on every connected instrument",
+                "all safe",
+                "  - apply safe state to every instrument (voltages/currents to minimum)",
+                "all reset",
+                "  - send *RST to every connected instrument",
+            ])
             return
         state = args[0].lower()
         if state == "on":
@@ -4410,10 +4468,15 @@ allTargets.forEach(t => io.observe(t));
         if arg:
             # "help all" — dump full rich help for every documented command
             if arg.strip().lower() == "all":
-                for cmd_name in ["upper_limit", "lower_limit", "log", "calc", "script"]:
-                    fn = getattr(self, f"do_{cmd_name}", None)
+                for cmd_name in [
+                    "scan", "list", "use", "status", "state", "idn", "raw",
+                    "sleep", "close", "all",
+                    "upper_limit", "lower_limit",
+                    "log", "calc", "data", "script",
+                ]:
+                    fn = getattr(self, f"help_{cmd_name}", None)
                     if fn:
-                        fn("")
+                        fn()
                 C = ColorPrinter.CYAN
                 Y = ColorPrinter.YELLOW
                 B = ColorPrinter.BOLD
@@ -4517,6 +4580,70 @@ allTargets.forEach(t => io.observe(t));
 
     def help_script(self):
         self.do_script("")
+
+    def help_raw(self):
+        self.do_raw("")
+
+    def help_state(self):
+        self.do_state("")
+
+    def help_sleep(self):
+        self.do_sleep("")
+
+    def help_all(self):
+        self.do_all("")
+
+    def help_data(self):
+        self.do_data("")
+
+    def help_scan(self):
+        self._print_colored_usage([
+            "# SCAN",
+            "",
+            "scan",
+            "  - discover and connect to all VISA instruments",
+            "  - instruments are assigned names: psu1, awg1, dmm1, scope1, …",
+            "  - re-run at any time to pick up newly connected devices",
+        ])
+
+    def help_list(self):
+        self._print_colored_usage([
+            "# LIST",
+            "",
+            "list",
+            "  - show all connected instruments and their assigned names",
+            "  - the active instrument (set via 'use') is highlighted",
+        ])
+
+    def help_idn(self):
+        self._print_colored_usage([
+            "# IDN",
+            "",
+            "idn",
+            "  - query *IDN? on the active instrument",
+            "idn <name>",
+            "  - query *IDN? on a specific named instrument",
+            "  - example: idn dmm",
+            "  - example: idn psu2",
+        ])
+
+    def help_close(self):
+        self._print_colored_usage([
+            "# CLOSE",
+            "",
+            "close",
+            "  - disconnect all instruments and release VISA resources",
+            "  - use 'scan' to reconnect",
+        ])
+
+    def help_status(self):
+        self._print_colored_usage([
+            "# STATUS",
+            "",
+            "status",
+            "  - show all connected instruments and their assigned names",
+            "  - indicates which instrument is currently active (set via 'use')",
+        ])
 
     # --------------------------
     # PSU commands
@@ -6344,14 +6471,22 @@ allTargets.forEach(t => io.observe(t));
 
         if help_flag or not args:
             ColorPrinter.cyan(f"Current data dir: {os.path.abspath(self._get_data_dir())}")
-            self._print_usage([
-                "data dir              # show current output directory",
-                "data dir <path>       # set output dir (absolute or relative to cwd)",
-                "data dir .            # save in current working directory",
-                "data dir reset        # go back to default",
-                "# Forward slashes work on all platforms.",
-                "# Paths with spaces don't need quotes: data dir C:/My Folder",
-                "# Backslashes work too:               data dir C:\\Users\\lab",
+            self._print_colored_usage([
+                "# DATA DIR",
+                "",
+                "data dir",
+                "  - show the current output directory",
+                "data dir <path>",
+                "  - set the output directory (absolute or relative to cwd)",
+                "  - example: data dir .",
+                "  - example: data dir ./lab3_out",
+                "  - example: data dir C:/Users/lab/results",
+                "data dir reset",
+                "  - restore the default output directory",
+                "",
+                "  Affects: scope screenshot, scope save, log save",
+                "  Forward slashes work on all platforms.",
+                "  Paths with spaces do not need quotes.",
             ])
             return
 
