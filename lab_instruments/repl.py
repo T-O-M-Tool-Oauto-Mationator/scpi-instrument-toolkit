@@ -25,7 +25,7 @@ import inspect
 import traceback
 import signal
 import atexit
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Tuple
 try:
     from importlib.metadata import version as _pkg_version
     _REPL_VERSION = _pkg_version("scpi-instrument-toolkit")
@@ -197,6 +197,12 @@ class InstrumentRepl(cmd.Cmd):
         self._should_exit = False  # Flag to signal that we should exit the REPL
         self._in_debugger = False  # True while the script debugger is active
         self._record_script = None  # Name of script currently being recorded to
+        self._safety_limits: Dict[Tuple[str, Optional[int]], Dict[str, float]] = {}  # populated by 'lower_limit'/'upper_limit' directives
+        self._awg_channel_state: Dict[tuple, Dict[str, Optional[float]]] = {}  # (dev, ch) → {vpp, offset}
+        self.test_results = []              # list of check result dicts
+        self._report_title = "Lab Test Report"
+        self._report_operator = ""
+        self._report_screenshots = []       # absolute paths of captured screenshots
 
         # Save terminal state so we can restore it on any exit path
         self._term_fd = None
@@ -978,6 +984,9 @@ class InstrumentRepl(cmd.Cmd):
         if depth > 10:
             ColorPrinter.error("Maximum script call depth (10) exceeded.")
             return []
+        if depth == 0:
+            self._safety_limits = {}
+            self._awg_channel_state = {}
         expanded = []
         idx = 0
         while idx < len(lines):
@@ -1156,6 +1165,52 @@ class InstrumentRepl(cmd.Cmd):
                         ))
                 continue
             if head == "end":
+                continue
+            if head in ("lower_limit", "upper_limit") and len(tokens) >= 4:
+                direction = "lower" if head == "lower_limit" else "upper"
+                device_str = tokens[1].lower()
+                base_type = re.sub(r'\d+$', '', device_str)
+                VALID_PARAMS = {
+                    "awg": {"vpeak", "vtrough", "vpp", "freq"},
+                    "psu": {"voltage", "current"},
+                }
+                if base_type not in VALID_PARAMS:
+                    self._error(f"{head}: unknown device type '{device_str}'")
+                    expanded.append(("__NOP__", _loop_ctx + raw_line))
+                    continue
+                # Parse optional chan N, then param, then value
+                channel_or_none = None
+                rest = tokens[2:]
+                if rest and rest[0].lower() == "chan":
+                    if len(rest) < 4:
+                        self._error(f"{head}: 'chan' requires a channel number, param, and value")
+                        expanded.append(("__NOP__", _loop_ctx + raw_line))
+                        continue
+                    try:
+                        channel_or_none = int(rest[1])
+                    except ValueError:
+                        self._error(f"{head}: invalid channel number '{rest[1]}'")
+                        expanded.append(("__NOP__", _loop_ctx + raw_line))
+                        continue
+                    rest = rest[2:]
+                if len(rest) < 2:
+                    self._error(f"{head}: requires <param> <value>")
+                    expanded.append(("__NOP__", _loop_ctx + raw_line))
+                    continue
+                param = rest[0].lower()
+                try:
+                    value = float(rest[1])
+                except ValueError:
+                    self._error(f"{head}: '{rest[1]}' is not a number")
+                    expanded.append(("__NOP__", _loop_ctx + raw_line))
+                    continue
+                if param not in VALID_PARAMS[base_type]:
+                    self._error(f"{head}: unknown param '{param}' for '{base_type}'")
+                    expanded.append(("__NOP__", _loop_ctx + raw_line))
+                    continue
+                key = (device_str, channel_or_none)
+                self._safety_limits.setdefault(key, {})[f"{param}_{direction}"] = value
+                expanded.append(("__NOP__", f"{_loop_ctx}{raw_line}  →  limit set"))
                 continue
             expanded.append((self._substitute_vars(raw_line, variables), _loop_ctx + raw_line))
         return expanded
@@ -4261,6 +4316,52 @@ allTargets.forEach(t => io.observe(t));
             is_single_channel = False
         return self._handle_psu_unified(arg, dev, psu_name, is_single_channel)
 
+    def _collect_limits(self, device_name: str, device_type: str, channel: Optional[int]) -> Dict[str, float]:
+        """Return merged limits dict with the tightest bound per param for this device/channel."""
+        lookup_keys = [
+            (device_name, channel),   # most specific: named device, this channel
+            (device_name, None),      # named device, any channel
+            (device_type, channel),   # device type, this channel
+            (device_type, None),      # device type, any channel
+        ]
+        seen: set = set()
+        merged: Dict[str, float] = {}
+        for k in lookup_keys:
+            if k in seen:
+                continue
+            seen.add(k)
+            for param_key, val in self._safety_limits.get(k, {}).items():
+                if param_key.endswith("_upper"):
+                    if param_key not in merged or val < merged[param_key]:
+                        merged[param_key] = val
+                elif param_key.endswith("_lower"):
+                    if param_key not in merged or val > merged[param_key]:
+                        merged[param_key] = val
+        return merged
+
+    def _check_psu_limits(self, device_name: str, channel: Optional[int],
+                          voltage=None, current=None) -> bool:
+        device_type = re.sub(r'\d+$', '', device_name)
+        limits = self._collect_limits(device_name, device_type, channel)
+        if not limits:
+            return True
+        ch_str = f" ch{channel}" if channel is not None else ""
+        if voltage is not None:
+            if "voltage_upper" in limits and voltage > limits["voltage_upper"]:
+                self._error(f"Safety limit exceeded: {device_name}{ch_str} voltage {voltage}V > {limits['voltage_upper']}V")
+                return False
+            if "voltage_lower" in limits and voltage < limits["voltage_lower"]:
+                self._error(f"Safety limit exceeded: {device_name}{ch_str} voltage {voltage}V < {limits['voltage_lower']}V")
+                return False
+        if current is not None:
+            if "current_upper" in limits and current > limits["current_upper"]:
+                self._error(f"Safety limit exceeded: {device_name}{ch_str} current {current}A > {limits['current_upper']}A")
+                return False
+            if "current_lower" in limits and current < limits["current_lower"]:
+                self._error(f"Safety limit exceeded: {device_name}{ch_str} current {current}A < {limits['current_lower']}A")
+                return False
+        return True
+
     def _handle_psu_unified(self, arg, dev, psu_name, is_single_channel):
         """Unified PSU command handler for all PSU types"""
         args = self._parse_args(arg)
@@ -4324,6 +4425,8 @@ allTargets.forEach(t => io.observe(t));
                         return
                     voltage = float(args[1])
                     current = float(args[2]) if len(args) >= 3 else None
+                    if not self._check_psu_limits(psu_name, None, voltage=voltage, current=current):
+                        return
                     dev.set_voltage(voltage)
                     if current is not None:
                         dev.set_current_limit(current)
@@ -4342,6 +4445,9 @@ allTargets.forEach(t => io.observe(t));
                         return
                     voltage = float(args[2])
                     current = float(args[3]) if len(args) >= 4 else None
+                    psu_ch = int(args[1]) if args[1].isdigit() else None
+                    if not self._check_psu_limits(psu_name, psu_ch, voltage=voltage, current=current):
+                        return
                     dev.set_output_channel(channel, voltage, current)
                     ColorPrinter.success(f"Set {args[1].upper()}: {voltage}V" + (f" @ {current}A" if current else ""))
 
@@ -4466,6 +4572,52 @@ allTargets.forEach(t => io.observe(t));
         except Exception as exc:
             ColorPrinter.error(str(exc))
 
+    def _check_awg_limits(self, device_name, channel,
+                           new_vpp=None, new_offset=None, new_freq=None) -> bool:
+        device_type = re.sub(r'\d+$', '', device_name)
+        limits = self._collect_limits(device_name, device_type, channel)
+        if not limits:
+            return True
+        state  = self._awg_channel_state.get((device_name, channel), {})
+        vpp    = new_vpp    if new_vpp    is not None else (state.get("vpp")    or 0.0)
+        offset = new_offset if new_offset is not None else (state.get("offset") or 0.0)
+
+        if "vpp_upper" in limits and vpp > limits["vpp_upper"]:
+            self._error(f"Safety limit exceeded: AWG Vpp {vpp}V > {limits['vpp_upper']}V")
+            return False
+
+        if new_freq is not None:
+            if "freq_upper" in limits and new_freq > limits["freq_upper"]:
+                self._error(f"Safety limit exceeded: AWG freq {new_freq}Hz > {limits['freq_upper']}Hz")
+                return False
+            if "freq_lower" in limits and new_freq < limits["freq_lower"]:
+                self._error(f"Safety limit exceeded: AWG freq {new_freq}Hz < {limits['freq_lower']}Hz")
+                return False
+
+        peak   = offset + vpp / 2.0
+        trough = offset - vpp / 2.0
+
+        if "vpeak_upper" in limits and peak > limits["vpeak_upper"]:
+            self._error(f"Safety limit exceeded: AWG peak {peak:.4g}V > {limits['vpeak_upper']}V")
+            return False
+        if "vtrough_lower" in limits and trough < limits["vtrough_lower"]:
+            self._error(f"Safety limit exceeded: AWG trough {trough:.4g}V < {limits['vtrough_lower']}V")
+            return False
+        if "vpeak_lower" in limits and peak < limits["vpeak_lower"]:
+            self._error(f"Safety limit exceeded: AWG peak {peak:.4g}V < {limits['vpeak_lower']}V")
+            return False
+        if "vtrough_upper" in limits and trough > limits["vtrough_upper"]:
+            self._error(f"Safety limit exceeded: AWG trough {trough:.4g}V > {limits['vtrough_upper']}V")
+            return False
+
+        return True
+
+    def _update_awg_state(self, device_name, channel, vpp=None, offset=None):
+        key = (device_name, channel)
+        self._awg_channel_state.setdefault(key, {"vpp": None, "offset": None})
+        if vpp    is not None: self._awg_channel_state[key]["vpp"]    = vpp
+        if offset is not None: self._awg_channel_state[key]["offset"] = offset
+
     # --------------------------
     # AWG commands
     # --------------------------
@@ -4538,7 +4690,13 @@ allTargets.forEach(t => io.observe(t));
                         params[key.lower()] = float(value)
 
                 param_str = "  " + "  ".join(f"{k}={v}" for k, v in params.items()) if params else ""
+                wave_vpp    = params.get("amp", params.get("amplitude"))
+                wave_offset = params.get("offset")
+                wave_freq   = params.get("freq", params.get("frequency"))
                 for channel in channels:
+                    if not self._check_awg_limits(awg_name, channel,
+                                                  new_vpp=wave_vpp, new_offset=wave_offset, new_freq=wave_freq):
+                        return
                     if is_jds6600:
                         dev.set_waveform(channel, waveform)
                         if "freq" in params or "frequency" in params:
@@ -4560,6 +4718,7 @@ allTargets.forEach(t => io.observe(t));
                             if mapped_key:
                                 kwargs[mapped_key] = value
                         dev.set_waveform(channel, scpi_wave, **kwargs)
+                    self._update_awg_state(awg_name, channel, vpp=wave_vpp, offset=wave_offset)
                     ColorPrinter.success(f"CH{channel}: {AWG_WAVE_ALIASES.get(waveform, waveform.upper())}{param_str}")
 
             # FREQ COMMAND
@@ -4570,6 +4729,8 @@ allTargets.forEach(t => io.observe(t));
                     ColorPrinter.warning("Frequency not supported independently. Use 'awg wave' with freq=")
                     return
                 for channel in channels:
+                    if not self._check_awg_limits(awg_name, channel, new_freq=frequency):
+                        return
                     dev.set_frequency(channel, frequency)
                     ColorPrinter.success(f"CH{channel}: {frequency} Hz")
 
@@ -4581,7 +4742,10 @@ allTargets.forEach(t => io.observe(t));
                     ColorPrinter.warning("Amplitude not supported independently. Use 'awg wave' with amp=")
                     return
                 for channel in channels:
+                    if not self._check_awg_limits(awg_name, channel, new_vpp=amplitude):
+                        return
                     dev.set_amplitude(channel, amplitude)
+                    self._update_awg_state(awg_name, channel, vpp=amplitude)
                     ColorPrinter.success(f"CH{channel}: {amplitude} Vpp")
 
             # OFFSET COMMAND
@@ -4592,7 +4756,10 @@ allTargets.forEach(t => io.observe(t));
                     ColorPrinter.warning("Offset not supported independently. Use 'awg wave' with offset=")
                     return
                 for channel in channels:
+                    if not self._check_awg_limits(awg_name, channel, new_offset=offset):
+                        return
                     dev.set_offset(channel, offset)
+                    self._update_awg_state(awg_name, channel, offset=offset)
                     ColorPrinter.success(f"CH{channel}: offset {offset} V")
 
             # DUTY COMMAND
@@ -5290,6 +5457,7 @@ allTargets.forEach(t => io.observe(t));
                 with open(filepath, "wb") as f:
                     f.write(data)
                 ColorPrinter.success(f"Screenshot saved to {filepath}")
+                self._report_screenshots.append(os.path.abspath(filepath))
             elif cmd_name == "label" and len(args) >= 3:
                 channels = self._parse_channels(args[1], max_ch=4)
                 label_text = " ".join(args[2:])
@@ -6038,6 +6206,298 @@ allTargets.forEach(t => io.observe(t));
             print(f"{C}{label}{R} = {G}{value}{R}{Y}{suffix}{R}")
         except Exception as exc:
             ColorPrinter.error(f"calc failed: {exc}")
+
+    # --------------------------
+    def do_check(self, arg):
+        "check <label> <min> <max> | <expected> tol=<N>[%]: pass/fail assertion on last measurement"
+        args = self._parse_args(arg)
+        args, help_flag = self._strip_help(args)
+        if help_flag or len(args) < 3:
+            self._print_colored_usage(
+                [
+                    "# CHECK — pass/fail assertion on a stored measurement",
+                    "",
+                    "check <label> <min> <max>          # pass if min ≤ value ≤ max",
+                    "check <label> <expected> tol=<N>   # pass if |value - expected| ≤ N",
+                    "check <label> <expected> tol=<N>%  # pass if |value - expected| ≤ N/100 * expected",
+                    "",
+                    "  - looks up the last measurement whose label matches <label>",
+                    "  - prints green [PASS] or red [FAIL]",
+                    "  - FAIL sets the error flag (aborts script when 'set -e' is active)",
+                ]
+            )
+            return
+        label = args[0]
+        # Find last measurement with matching label
+        entry = None
+        for e in reversed(self.measurements):
+            if e["label"] == label:
+                entry = e
+                break
+        if entry is None:
+            ColorPrinter.error(f"check: no measurement found with label '{label}'")
+            self._command_had_error = True
+            return
+        value = float(entry["value"])
+        unit = entry.get("unit", "")
+        # Parse limits
+        import re as _re
+        tol_arg = None
+        for a in args[2:]:
+            if a.lower().startswith("tol="):
+                tol_arg = a.split("=", 1)[1]
+                break
+        if tol_arg is not None:
+            # Tolerance mode
+            try:
+                expected = float(args[1])
+            except ValueError:
+                ColorPrinter.error(f"check: invalid expected value '{args[1]}'")
+                self._command_had_error = True
+                return
+            if tol_arg.endswith("%"):
+                pct = float(tol_arg[:-1])
+                tol = abs(pct / 100.0 * expected)
+                limits_str = f"{expected} ±{pct}%"
+            else:
+                tol = float(tol_arg)
+                limits_str = f"{expected} ±{tol}"
+            min_val = expected - tol
+            max_val = expected + tol
+        else:
+            # Range mode
+            if len(args) < 3:
+                ColorPrinter.error("check: expected <label> <min> <max>")
+                self._command_had_error = True
+                return
+            try:
+                min_val = float(args[1])
+                max_val = float(args[2])
+            except ValueError:
+                ColorPrinter.error(f"check: invalid range values '{args[1]}' '{args[2]}'")
+                self._command_had_error = True
+                return
+            limits_str = f"[{min_val}, {max_val}]"
+        passed = min_val <= value <= max_val
+        G = ColorPrinter.GREEN
+        R = ColorPrinter.RED
+        RST = ColorPrinter.RESET
+        C = ColorPrinter.CYAN
+        Y = ColorPrinter.YELLOW
+        unit_str = f" {unit}" if unit else ""
+        status_str = f"{G}[PASS]{RST}" if passed else f"{R}[FAIL]{RST}"
+        print(f"{status_str} {C}{label}{RST} = {value}{unit_str}  limits: {Y}{limits_str}{RST}")
+        self.test_results.append(
+            {
+                "label": label,
+                "value": value,
+                "unit": unit,
+                "min": min_val,
+                "max": max_val,
+                "passed": passed,
+                "limits_str": limits_str,
+            }
+        )
+        if not passed:
+            self._command_had_error = True
+
+    # --------------------------
+    def do_report(self, arg):
+        "report print|save <path>|clear|title <text>|operator <name>: view or export test report"
+        args = self._parse_args(arg)
+        args, help_flag = self._strip_help(args)
+        if help_flag or not args:
+            self._print_colored_usage(
+                [
+                    "# REPORT — view or export a lab test report",
+                    "",
+                    "report print                  # print check results table to terminal",
+                    "report save <path>            # generate PDF report (uses data dir for relative paths)",
+                    "report clear                  # clear test results and screenshot list",
+                    "report title <text>           # set report title",
+                    "report operator <name>        # set operator name shown in report header",
+                ]
+            )
+            return
+        sub = args[0].lower()
+        if sub == "print":
+            if not self.test_results:
+                ColorPrinter.warning("No check results recorded. Use 'check' command first.")
+                return
+            C = ColorPrinter.CYAN
+            G = ColorPrinter.GREEN
+            R = ColorPrinter.RED
+            Y = ColorPrinter.YELLOW
+            RST = ColorPrinter.RESET
+            W = ColorPrinter.WHITE if hasattr(ColorPrinter, "WHITE") else ""
+            header = f"{'Label':<20} {'Value':>14} {'Unit':<8} {'Limits':<22} {'Status'}"
+            print(f"{Y}{header}{RST}")
+            print("-" * len(header))
+            for tr in self.test_results:
+                status = f"{G}PASS{RST}" if tr["passed"] else f"{R}FAIL{RST}"
+                unit_s = tr["unit"] or ""
+                print(f"{C}{tr['label']:<20}{RST} {tr['value']:>14g} {unit_s:<8} {tr['limits_str']:<22} {status}")
+            total = len(self.test_results)
+            n_pass = sum(1 for t in self.test_results if t["passed"])
+            n_fail = total - n_pass
+            verdict = f"{G}PASS{RST}" if n_fail == 0 else f"{R}FAIL{RST}"
+            print(f"\nOverall: {verdict}  ({n_pass}/{total} passed)")
+        elif sub == "save":
+            if len(args) < 2:
+                ColorPrinter.error("report save requires a path argument.")
+                return
+            path = args[1]
+            if not os.path.isabs(path):
+                data_dir = self._get_data_dir()
+                path = os.path.join(data_dir, path)
+            os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+            try:
+                self._generate_pdf_report(path)
+                ColorPrinter.success(f"Report saved to {path}")
+            except ImportError:
+                ColorPrinter.error("fpdf2 is required for PDF reports. Install it with: pip install fpdf2")
+            except Exception as exc:
+                ColorPrinter.error(f"Failed to generate report: {exc}")
+        elif sub == "clear":
+            self.test_results = []
+            self._report_screenshots = []
+            ColorPrinter.success("Cleared test results and screenshots.")
+        elif sub == "title":
+            if len(args) < 2:
+                ColorPrinter.error("report title requires text.")
+                return
+            self._report_title = " ".join(args[1:])
+            ColorPrinter.success(f"Report title set to: {self._report_title}")
+        elif sub == "operator":
+            if len(args) < 2:
+                ColorPrinter.error("report operator requires a name.")
+                return
+            self._report_operator = " ".join(args[1:])
+            ColorPrinter.success(f"Report operator set to: {self._report_operator}")
+        else:
+            ColorPrinter.warning(f"Unknown report sub-command: {sub}. Use: print|save|clear|title|operator")
+
+    def _generate_pdf_report(self, path):
+        """Generate a PDF lab report using fpdf2."""
+        from fpdf import FPDF
+
+        pdf = FPDF()
+        pdf.set_auto_page_break(auto=True, margin=15)
+        pdf.add_page()
+
+        # ── Header ────────────────────────────────────────────────────────────
+        pdf.set_font("Helvetica", "B", 20)
+        pdf.cell(0, 12, self._report_title, ln=True, align="C")
+        pdf.set_font("Helvetica", "", 11)
+        if self._report_operator:
+            pdf.cell(0, 7, f"Operator: {self._report_operator}", ln=True, align="C")
+        import datetime
+        ts = datetime.datetime.now().strftime("%Y-%m-%d  %H:%M:%S")
+        pdf.cell(0, 7, f"Generated: {ts}", ln=True, align="C")
+        pdf.ln(4)
+
+        # ── Overall verdict box ───────────────────────────────────────────────
+        total = len(self.test_results)
+        n_pass = sum(1 for t in self.test_results if t["passed"])
+        n_fail = total - n_pass
+        verdict = "PASS" if (total > 0 and n_fail == 0) else ("FAIL" if total > 0 else "N/A")
+        if verdict == "PASS":
+            pdf.set_fill_color(34, 139, 34)   # green
+            pdf.set_text_color(255, 255, 255)
+        elif verdict == "FAIL":
+            pdf.set_fill_color(180, 30, 30)   # red
+            pdf.set_text_color(255, 255, 255)
+        else:
+            pdf.set_fill_color(180, 180, 180)
+            pdf.set_text_color(50, 50, 50)
+        pdf.set_font("Helvetica", "B", 28)
+        pdf.cell(0, 18, verdict, ln=True, align="C", fill=True)
+        pdf.set_text_color(0, 0, 0)
+        pdf.set_font("Helvetica", "", 10)
+        pdf.cell(0, 7, f"{n_pass} passed  /  {n_fail} failed  /  {total} total", ln=True, align="C")
+        pdf.ln(6)
+
+        # ── Check Results ─────────────────────────────────────────────────────
+        pdf.set_font("Helvetica", "B", 13)
+        pdf.cell(0, 8, "Check Results", ln=True)
+        pdf.set_draw_color(180, 180, 180)
+        pdf.line(pdf.get_x(), pdf.get_y(), pdf.get_x() + 190, pdf.get_y())
+        pdf.ln(2)
+        if not self.test_results:
+            pdf.set_font("Helvetica", "I", 10)
+            pdf.cell(0, 7, "No checks recorded.", ln=True)
+        else:
+            col_w = [60, 28, 18, 52, 22]
+            headers = ["Label", "Value", "Unit", "Limits", "Status"]
+            pdf.set_font("Helvetica", "B", 10)
+            pdf.set_fill_color(220, 220, 220)
+            for w, h in zip(col_w, headers):
+                pdf.cell(w, 7, h, border=1, fill=True)
+            pdf.ln()
+            pdf.set_font("Helvetica", "", 10)
+            for tr in self.test_results:
+                passed = tr["passed"]
+                pdf.cell(col_w[0], 7, str(tr["label"]), border=1)
+                pdf.cell(col_w[1], 7, f"{tr['value']:.6g}", border=1, align="R")
+                pdf.cell(col_w[2], 7, str(tr["unit"]), border=1)
+                pdf.cell(col_w[3], 7, str(tr["limits_str"]), border=1)
+                if passed:
+                    pdf.set_fill_color(200, 240, 200)
+                    pdf.set_text_color(0, 120, 0)
+                else:
+                    pdf.set_fill_color(255, 200, 200)
+                    pdf.set_text_color(160, 0, 0)
+                pdf.cell(col_w[4], 7, "PASS" if passed else "FAIL", border=1, fill=True, align="C")
+                pdf.set_text_color(0, 0, 0)
+                pdf.ln()
+        pdf.ln(6)
+
+        # ── All Measurements ──────────────────────────────────────────────────
+        pdf.set_font("Helvetica", "B", 13)
+        pdf.cell(0, 8, "All Measurements", ln=True)
+        pdf.line(pdf.get_x(), pdf.get_y(), pdf.get_x() + 190, pdf.get_y())
+        pdf.ln(2)
+        if not self.measurements:
+            pdf.set_font("Helvetica", "I", 10)
+            pdf.cell(0, 7, "No measurements recorded.", ln=True)
+        else:
+            col_w2 = [65, 55, 30, 40]
+            headers2 = ["Label", "Value", "Unit", "Source"]
+            pdf.set_font("Helvetica", "B", 10)
+            pdf.set_fill_color(220, 220, 220)
+            for w, h in zip(col_w2, headers2):
+                pdf.cell(w, 7, h, border=1, fill=True)
+            pdf.ln()
+            pdf.set_font("Helvetica", "", 10)
+            for m in self.measurements:
+                pdf.cell(col_w2[0], 7, str(m["label"]), border=1)
+                pdf.cell(col_w2[1], 7, f"{m['value']:.6g}", border=1, align="R")
+                pdf.cell(col_w2[2], 7, str(m.get("unit", "")), border=1)
+                pdf.cell(col_w2[3], 7, str(m.get("source", "")), border=1)
+                pdf.ln()
+        pdf.ln(6)
+
+        # ── Scope Screenshots ─────────────────────────────────────────────────
+        valid_shots = [p for p in self._report_screenshots if os.path.isfile(p)]
+        if valid_shots:
+            pdf.set_font("Helvetica", "B", 13)
+            pdf.cell(0, 8, "Scope Screenshots", ln=True)
+            pdf.line(pdf.get_x(), pdf.get_y(), pdf.get_x() + 190, pdf.get_y())
+            pdf.ln(2)
+            page_w = pdf.w - pdf.l_margin - pdf.r_margin
+            for shot_path in valid_shots:
+                caption = os.path.basename(shot_path)
+                pdf.add_page()
+                pdf.set_font("Helvetica", "I", 9)
+                pdf.cell(0, 6, caption, ln=True, align="C")
+                try:
+                    pdf.image(shot_path, x=pdf.l_margin, w=page_w)
+                except Exception:
+                    pdf.set_font("Helvetica", "", 10)
+                    pdf.cell(0, 7, f"[Could not embed image: {caption}]", ln=True)
+                pdf.ln(3)
+
+        pdf.output(path)
 
     # --------------------------
     def do_python(self, arg):
