@@ -437,6 +437,32 @@ class InstrumentRepl(cmd.Cmd):
             ColorPrinter.error(f"Parse error: {exc}")
             return []
 
+    def _raw_path_arg(self, raw, strip_word=None):
+        """Extract a path from a raw argument string without shlex processing.
+
+        Unlike _parse_args (shlex), this preserves backslashes so Windows paths
+        like C:\\Users\\foo are not mangled.  Balanced surrounding quotes are
+        stripped, which lets callers quote paths that contain spaces:
+            data dir "C:\\Users\\My Documents\\lab"
+        Everything after the optional strip_word is treated as the path, so
+        spaces in the path are also preserved without quoting:
+            data dir C:/Users/My Documents/lab
+        Returns None if the resulting string is empty.
+        """
+        s = raw.strip()
+        if strip_word:
+            prefix = strip_word.lower()
+            if s.lower().startswith(prefix) and (
+                len(s) == len(prefix) or s[len(prefix)].isspace()
+            ):
+                s = s[len(prefix):].lstrip()
+        if not s:
+            return None
+        # Strip balanced surrounding quotes
+        if len(s) >= 2 and s[0] in ('"', "'") and s[-1] == s[0]:
+            s = s[1:-1]
+        return s or None
+
     def _channels_for_device(self, dev, base_type: str):
         """Return the list of channel numbers for a device, or None if not applicable."""
         if hasattr(dev, 'CHANNEL_MAP'):
@@ -2375,7 +2401,12 @@ class InstrumentRepl(cmd.Cmd):
             if len(args) < 2:
                 ColorPrinter.cyan(f"Current scripts dir: {os.path.abspath(self._get_scripts_dir())}")
                 return
-            path = args[1]
+            # Use the raw arg string so backslashes and spaces are preserved as-is.
+            # shlex would mangle C:\Users\foo → C:Usersfoo on Windows.
+            path = self._raw_path_arg(arg, strip_word="dir")
+            if not path:
+                ColorPrinter.cyan(f"Current scripts dir: {os.path.abspath(self._get_scripts_dir())}")
+                return
             if path.lower() == "reset":
                 self._scripts_dir_override = None
                 self.scripts = self._load_scripts()
@@ -3511,12 +3542,14 @@ class InstrumentRepl(cmd.Cmd):
                             ("script dir", "Print current scripts directory"),
                             ("script dir .", "Load scripts from current working directory"),
                             ("script dir ./scripts", "Load scripts from a subfolder of cwd"),
-                            ("script dir reset", "Restore default (~/Documents/scpi-instrument-toolkit/scripts/)"),
+                            ("script dir C:/Users/lab/scripts", "Windows path with forward slashes"),
+                            ("script dir reset", "Restore default"),
                         ],
                         "notes": [
                             "Changing the scripts dir reloads all named scripts — <code>script list</code> will reflect the new contents.",
                             "To run a single file without changing the scripts dir, use <code>script run ./file.scpi</code> instead.",
                             "For a permanent default, set the <code>SCPI_SCRIPTS_DIR</code> environment variable before launching.",
+                            "Forward slashes work on all platforms. Backslashes and spaces in paths are also supported without quoting.",
                         ],
                         "see": ["script-run", "cmd-data"],
                     },
@@ -3715,6 +3748,7 @@ class InstrumentRepl(cmd.Cmd):
                             ("data dir .", "Save files in the current working directory"),
                             ("data dir ./lab3_out", "Save files in a subfolder of cwd"),
                             ("data dir /mnt/usb/captures", "Save to an absolute path"),
+                            ("data dir C:/Users/lab/output", "Windows path with forward slashes"),
                             ("data dir reset", "Restore default"),
                         ],
                         "notes": [
@@ -3722,6 +3756,7 @@ class InstrumentRepl(cmd.Cmd):
                             "Subdirectories within the output dir are still created automatically — e.g. <code>scope screenshot lab3/cap.png</code> becomes <code>&lt;data_dir&gt;/lab3/cap.png</code>.",
                             "For a permanent default, set the <code>SCPI_DATA_DIR</code> environment variable before launching.",
                             "Can be used in scripts: put <code>data dir .</code> at the top of a <code>.scpi</code> file to keep output alongside the project.",
+                            "Forward slashes work on all platforms. Backslashes and spaces in paths are also supported without quoting.",
                         ],
                         "see": ["script-dir", "cmd-log", "scope-screenshot"],
                     },
@@ -5823,7 +5858,8 @@ allTargets.forEach(t => io.observe(t));
         args, help_flag = self._strip_help(args)
 
         # Accept 'data dir [path|reset]' (canonical) or 'data [path|reset]' (legacy alias)
-        if args and args[0].lower() == "dir":
+        has_dir_prefix = bool(args and args[0].lower() == "dir")
+        if has_dir_prefix:
             args = args[1:]
 
         if help_flag or not args:
@@ -5833,9 +5869,19 @@ allTargets.forEach(t => io.observe(t));
                 "data dir <path>       # set output dir (absolute or relative to cwd)",
                 "data dir .            # save in current working directory",
                 "data dir reset        # go back to default",
+                "# Forward slashes work on all platforms.",
+                "# Paths with spaces don't need quotes: data dir C:/My Folder",
+                "# Backslashes work too:               data dir C:\\Users\\lab",
             ])
             return
-        path = args[0]
+
+        # Use the raw arg string so backslashes and spaces are preserved as-is.
+        # shlex would mangle C:\Users\foo → C:Usersfoo on Windows.
+        path = self._raw_path_arg(arg, strip_word="dir" if has_dir_prefix else None)
+        if not path:
+            ColorPrinter.error("No path provided.")
+            return
+
         if path.lower() == "reset":
             self._data_dir_override = None
             ColorPrinter.success(f"Data dir reset to default: {self._get_data_dir()}")
