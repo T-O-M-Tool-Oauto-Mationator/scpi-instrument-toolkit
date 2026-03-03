@@ -275,7 +275,7 @@ class InstrumentRepl(cmd.Cmd):
         """Override cmdloop to catch KeyboardInterrupt without exiting the REPL."""
         if intro is not None:
             self.intro = intro
-        self._wait_for_scan()
+        self._scan_done.wait()  # wait silently; _wait_for_scan() prints, which races with the header
         if self.intro:
             print(self.intro)
         stop = None
