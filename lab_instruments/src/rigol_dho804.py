@@ -1459,7 +1459,6 @@ class Rigol_DHO804(DeviceManager):
         channels_list = ",".join(str(ch) for ch in sorted(channel_data.keys()))
         print(f"Waveforms from CH{channels_list} saved to {filename}")
 
-
     # ========================================
     # Automated Measurements (Section 3.17)
     # Reference: pdf_chapters/3.17*.pdf
