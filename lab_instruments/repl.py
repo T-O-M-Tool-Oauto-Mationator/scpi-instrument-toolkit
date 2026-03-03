@@ -1634,6 +1634,8 @@ class InstrumentRepl(cmd.Cmd):
                 if name.startswith("psu"):
                     if hasattr(dev, 'disable_all_channels'):
                         dev.disable_all_channels()
+                    elif hasattr(dev, 'disable_output'):
+                        dev.disable_output()
                     elif hasattr(dev, 'enable_output'):
                         dev.enable_output(False)
                 # AWG/DDS devices (awg, awg1, awg2, dds)
@@ -1687,7 +1689,13 @@ class InstrumentRepl(cmd.Cmd):
             try:
                 # PSU devices (psu, psu1, psu2, ...)
                 if name.startswith("psu"):
-                    if hasattr(dev, 'enable_output'):
+                    if hasattr(dev, 'disable_all_channels'):
+                        dev.disable_all_channels()
+                        ColorPrinter.success(f"{name}: channels disabled")
+                    elif hasattr(dev, 'disable_output'):
+                        dev.disable_output()
+                        ColorPrinter.success(f"{name}: output disabled")
+                    elif hasattr(dev, 'enable_output'):
                         dev.enable_output(False)
                         ColorPrinter.success(f"{name}: output disabled")
                 # AWG/DDS devices (awg, awg1, awg2, dds)
@@ -4760,6 +4768,7 @@ allTargets.forEach(t => io.observe(t));
                     [
                         "# PSU",
                         "",
+                        "psu on|off",
                         "psu chan on|off",
                         "psu set <voltage> [current]",
                         "  - voltage: 0-60V, current: 0-10A",
@@ -4950,6 +4959,14 @@ allTargets.forEach(t => io.observe(t));
                     dev.recall_state(int(args[1]))
                 else:
                     ColorPrinter.warning("'recall' command not available for single-channel PSU")
+
+            # ON / OFF SHORTHAND — psu on / psu off
+            elif cmd_name in ("on", "off") and len(args) == 1:
+                state = cmd_name == "on"
+                if state and not self._check_psu_output_allowed(psu_name):
+                    return
+                dev.enable_output(state)
+                ColorPrinter.success(f"Output {'enabled' if state else 'disabled'}")
 
             # STATE COMMAND
             elif cmd_name == "state" and len(args) >= 2:

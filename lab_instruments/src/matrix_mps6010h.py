@@ -33,7 +33,7 @@ class MATRIX_MPS6010H(DeviceManager):
 
         # Internal state cache (since device doesn't support queries)
         self._voltage_setpoint = 0.0
-        self._current_limit = 0.1
+        self._current_limit = 0.0
         self._output_enabled = False
 
     def connect(self):
