@@ -40,6 +40,14 @@ class TestMockBase:
     def test_send_command_does_not_raise(self):
         MockBase().send_command("*RST")
 
+    def test_write_does_not_raise(self):
+        MockBase().write("*RST")
+
+    def test_get_error_returns_string(self):
+        result = MockBase().get_error()
+        assert isinstance(result, str)
+        assert "No error" in result
+
 
 class TestMockPSU:
     def test_measure_voltage_range(self):
@@ -85,6 +93,20 @@ class TestMockPSU:
     def test_set_tracking_does_not_raise(self):
         MockPSU().set_tracking(True)
 
+    def test_measure_voltage_tracks_setpoint(self):
+        psu = MockPSU()
+        psu.set_voltage(20.0)
+        for _ in range(20):
+            v = psu.measure_voltage()
+            assert 19.985 <= v <= 20.015
+
+    def test_measure_current_tracks_setpoint(self):
+        psu = MockPSU()
+        psu.set_current_limit(5.0)
+        for _ in range(20):
+            i = psu.measure_current()
+            assert 4.999 <= i <= 5.001
+
 
 class TestMockAWG:
     def test_enable_output_ch1(self):
@@ -110,6 +132,13 @@ class TestMockAWG:
     def test_set_waveform_does_not_raise(self):
         awg = MockAWG()
         awg.set_waveform(1, "sine", frequency=1000)
+
+    def test_set_waveform_tracks_type(self):
+        awg = MockAWG()
+        awg.set_waveform(1, "square")
+        assert awg.get_waveform(1) == "SQUARE"
+        awg.set_waveform(2, "triangle")
+        assert awg.get_waveform(2) == "TRIANGLE"
 
     def test_disable_all_channels(self):
         awg = MockAWG()
@@ -198,6 +227,53 @@ class TestMockDHO804:
 
     def test_get_mask_statistics_total(self):
         assert MockDHO804().get_mask_statistics()["total"] == 100
+
+
+class TestMockMPS6010H_Validation:
+    def test_set_voltage_boundary_zero(self):
+        psu = MockMPS6010H()
+        psu.set_voltage(0.0)
+        assert psu.get_voltage_setpoint() == 0.0
+
+    def test_set_voltage_boundary_max(self):
+        psu = MockMPS6010H()
+        psu.set_voltage(60.0)
+        assert psu.get_voltage_setpoint() == 60.0
+
+    def test_set_voltage_over_max_raises(self):
+        psu = MockMPS6010H()
+        with pytest.raises(ValueError):
+            psu.set_voltage(60.001)
+
+    def test_set_voltage_negative_raises(self):
+        psu = MockMPS6010H()
+        with pytest.raises(ValueError):
+            psu.set_voltage(-0.001)
+
+    def test_set_current_boundary_zero(self):
+        psu = MockMPS6010H()
+        psu.set_current_limit(0.0)
+        assert psu.get_current_limit() == 0.0
+
+    def test_set_current_boundary_max(self):
+        psu = MockMPS6010H()
+        psu.set_current_limit(10.0)
+        assert psu.get_current_limit() == 10.0
+
+    def test_set_current_over_max_raises(self):
+        psu = MockMPS6010H()
+        with pytest.raises(ValueError):
+            psu.set_current_limit(10.001)
+
+    def test_set_current_negative_raises(self):
+        psu = MockMPS6010H()
+        with pytest.raises(ValueError):
+            psu.set_current_limit(-0.001)
+
+    def test_set_output_channel_validates(self):
+        psu = MockMPS6010H()
+        with pytest.raises(ValueError):
+            psu.set_output_channel(1, 70.0)
 
 
 class TestGetMockDevices:

@@ -21,6 +21,12 @@ class MockBase:
     def send_command(self, cmd):
         pass
 
+    def write(self, command):
+        self.send_command(command)
+
+    def get_error(self):
+        return "0,No error"
+
 
 class MockPSU(MockBase):
     def __init__(self):
@@ -46,10 +52,10 @@ class MockPSU(MockBase):
             self._current = float(i)
 
     def measure_voltage(self, ch=None):
-        return round(random.uniform(4.985, 5.015), 6)
+        return round(self._voltage + random.uniform(-0.015, 0.015), 6)
 
     def measure_current(self, ch=None):
-        return round(random.uniform(0.0990, 0.1010), 6)
+        return round(self._current + random.uniform(-0.001, 0.001), 6)
 
     def get_voltage_setpoint(self):
         return self._voltage
@@ -76,6 +82,7 @@ class MockAWG(MockBase):
         self._ch_offset = {1: 0.0, 2: 0.0}
         self._ch_frequency = {1: 10000.0, 2: 10000.0}
         self._ch_output = {1: False, 2: False}
+        self._ch_waveform = {1: "SIN", 2: "SIN"}
 
     def enable_output(self, ch_or_state=None, state=None, ch1=None, ch2=None):
         if ch1 is not None:
@@ -90,7 +97,10 @@ class MockAWG(MockBase):
         self._ch_output[2] = False
 
     def set_waveform(self, ch, wave, **kwargs):
-        pass
+        self._ch_waveform[int(ch)] = str(wave).upper()
+
+    def get_waveform(self, ch):
+        return self._ch_waveform.get(int(ch))
 
     def set_frequency(self, ch, freq):
         self._ch_frequency[int(ch)] = float(freq)
@@ -540,6 +550,30 @@ class MockMSO2024(MockScope):
 
 class MockMPS6010H(MockPSU):
     """Mock Matrix MPS-6010H power supply with remote mode."""
+
+    MAX_VOLTAGE = 60.0
+    MAX_CURRENT = 10.0
+
+    def set_voltage(self, v):
+        v = float(v)
+        if not (0.0 <= v <= self.MAX_VOLTAGE):
+            raise ValueError(
+                f"Voltage must be between 0 and {self.MAX_VOLTAGE}V. Got {v}V."
+            )
+        self._voltage = v
+
+    def set_current_limit(self, i):
+        i = float(i)
+        if not (0.0 <= i <= self.MAX_CURRENT):
+            raise ValueError(
+                f"Current must be between 0 and {self.MAX_CURRENT}A. Got {i}A."
+            )
+        self._current = i
+
+    def set_output_channel(self, ch, v, i=None):
+        self.set_voltage(v)
+        if i is not None:
+            self.set_current_limit(i)
 
     def set_remote_mode(self, on):
         pass
