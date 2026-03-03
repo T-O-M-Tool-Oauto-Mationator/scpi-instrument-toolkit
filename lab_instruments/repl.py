@@ -4851,6 +4851,14 @@ allTargets.forEach(t => io.observe(t));
 
             # MEAS COMMAND - unified for both single and multi-channel
             elif cmd_name == "meas":
+                no_readback = getattr(dev, 'SUPPORTS_READBACK', True) is False
+                if no_readback:
+                    ColorPrinter.warning(
+                        f"{psu_name}: this device has no readback support — "
+                        "use an external DMM for real measurements. "
+                        "Use 'psu get' to see cached setpoints."
+                    )
+                    return
                 if is_single_channel:
                     # Single-channel: psu meas v|i
                     if len(args) < 2:
@@ -4884,6 +4892,12 @@ allTargets.forEach(t => io.observe(t));
 
             # MEAS_STORE COMMAND - unified for both single and multi-channel
             elif cmd_name == "meas_store":
+                if getattr(dev, 'SUPPORTS_READBACK', True) is False:
+                    ColorPrinter.warning(
+                        f"{psu_name}: this device has no readback support — "
+                        "cannot store measurements. Use an external DMM."
+                    )
+                    return
                 unit = ""
                 if is_single_channel:
                     # Single-channel: psu meas_store v|i <label> [unit=]

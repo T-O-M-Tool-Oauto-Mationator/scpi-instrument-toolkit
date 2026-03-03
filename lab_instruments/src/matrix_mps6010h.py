@@ -27,6 +27,9 @@ class MATRIX_MPS6010H(DeviceManager):
     MAX_VOLTAGE = 60.0  # Volts
     MAX_CURRENT = 10.0  # Amps
 
+    # This device has no readback — all "measurements" are cached setpoints
+    SUPPORTS_READBACK = False
+
     def __init__(self, resource_name):
         """Initialize the MATRIX MPS-6010H-1C PSU."""
         super().__init__(resource_name)
