@@ -102,6 +102,40 @@ class TestRigol_ProbeRatio:
             scope.set_probe_ratio(1, 7)
 
 
+class TestRigol_GetError:
+    def test_queries_system_error(self, rigol_dho804):
+        scope, mi = rigol_dho804
+        mi.query.return_value = '0,"No error"'
+        result = scope.get_error()
+        mi.query.assert_called_with(":SYSTem:ERRor?")
+        assert "No error" in result
+
+
+class TestRigol_ContextManager:
+    def test_enter_sends_cls_rst_and_disables(self, rigol_dho804):
+        scope, mi = rigol_dho804
+        scope.__enter__()
+        cmds = _writes(mi)
+        assert "*CLS" in cmds
+        assert "*RST" in cmds
+        for ch in range(1, 5):
+            assert f":CHANnel{ch}:DISPlay OFF" in cmds
+
+    def test_exit_disables_all_channels(self, rigol_dho804):
+        scope, mi = rigol_dho804
+        scope.__exit__(None, None, None)
+        cmds = _writes(mi)
+        for ch in range(1, 5):
+            assert f":CHANnel{ch}:DISPlay OFF" in cmds
+
+    def test_exit_called_after_exception(self, rigol_dho804):
+        scope, mi = rigol_dho804
+        with pytest.raises(RuntimeError), scope:
+            raise RuntimeError("test")
+        cmds = _writes(mi)
+        assert ":CHANnel1:DISPlay OFF" in cmds
+
+
 # ===========================================================================
 # Tektronix_MSO2024  (uses DeviceManager.send_command → instrument.write)
 # ===========================================================================

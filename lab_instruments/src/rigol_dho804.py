@@ -3305,6 +3305,27 @@ class Rigol_DHO804(DeviceManager):
             print(f"Failed to clear status: {e}")
             raise
 
+    def get_error(self) -> str:
+        """Query the instrument error queue.
+
+        Returns:
+            str: Error string from :SYSTem:ERRor? query
+        """
+        return self.instrument.query(":SYSTem:ERRor?").strip()
+
+    def __enter__(self):
+        """Context manager entry: clear status, reset, disable all channel displays."""
+        self.instrument.write("*CLS")
+        self.reset()
+        for ch in range(1, 5):
+            self.instrument.write(f":CHANnel{ch}:DISPlay OFF")
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        """Context manager exit: disable all channel displays."""
+        for ch in range(1, 5):
+            self.instrument.write(f":CHANnel{ch}:DISPlay OFF")
+
     def operation_complete(self) -> None:
         """
         Set Operation Complete bit when all pending operations finish.
