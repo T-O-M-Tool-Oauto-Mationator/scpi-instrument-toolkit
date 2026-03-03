@@ -275,9 +275,9 @@ class InstrumentRepl(cmd.Cmd):
         """Override cmdloop to catch KeyboardInterrupt without exiting the REPL."""
         if intro is not None:
             self.intro = intro
+        self._wait_for_scan()
         if self.intro:
             print(self.intro)
-        self._wait_for_scan()
         stop = None
         try:
             while not stop and not self._should_exit:
@@ -6387,13 +6387,13 @@ allTargets.forEach(t => io.observe(t));
 
         # ── Header ────────────────────────────────────────────────────────────
         pdf.set_font("Helvetica", "B", 20)
-        pdf.cell(0, 12, self._report_title, ln=True, align="C")
+        pdf.cell(0, 12, self._report_title, new_x="LMARGIN", new_y="NEXT", align="C")
         pdf.set_font("Helvetica", "", 11)
         if self._report_operator:
-            pdf.cell(0, 7, f"Operator: {self._report_operator}", ln=True, align="C")
+            pdf.cell(0, 7, f"Operator: {self._report_operator}", new_x="LMARGIN", new_y="NEXT", align="C")
         import datetime
         ts = datetime.datetime.now().strftime("%Y-%m-%d  %H:%M:%S")
-        pdf.cell(0, 7, f"Generated: {ts}", ln=True, align="C")
+        pdf.cell(0, 7, f"Generated: {ts}", new_x="LMARGIN", new_y="NEXT", align="C")
         pdf.ln(4)
 
         # ── Overall verdict box ───────────────────────────────────────────────
@@ -6411,21 +6411,21 @@ allTargets.forEach(t => io.observe(t));
             pdf.set_fill_color(180, 180, 180)
             pdf.set_text_color(50, 50, 50)
         pdf.set_font("Helvetica", "B", 28)
-        pdf.cell(0, 18, verdict, ln=True, align="C", fill=True)
+        pdf.cell(0, 18, verdict, new_x="LMARGIN", new_y="NEXT", align="C", fill=True)
         pdf.set_text_color(0, 0, 0)
         pdf.set_font("Helvetica", "", 10)
-        pdf.cell(0, 7, f"{n_pass} passed  /  {n_fail} failed  /  {total} total", ln=True, align="C")
+        pdf.cell(0, 7, f"{n_pass} passed  /  {n_fail} failed  /  {total} total", new_x="LMARGIN", new_y="NEXT", align="C")
         pdf.ln(6)
 
         # ── Check Results ─────────────────────────────────────────────────────
         pdf.set_font("Helvetica", "B", 13)
-        pdf.cell(0, 8, "Check Results", ln=True)
+        pdf.cell(0, 8, "Check Results", new_x="LMARGIN", new_y="NEXT")
         pdf.set_draw_color(180, 180, 180)
         pdf.line(pdf.get_x(), pdf.get_y(), pdf.get_x() + 190, pdf.get_y())
         pdf.ln(2)
         if not self.test_results:
             pdf.set_font("Helvetica", "I", 10)
-            pdf.cell(0, 7, "No checks recorded.", ln=True)
+            pdf.cell(0, 7, "No checks recorded.", new_x="LMARGIN", new_y="NEXT")
         else:
             col_w = [60, 28, 18, 52, 22]
             headers = ["Label", "Value", "Unit", "Limits", "Status"]
@@ -6454,12 +6454,12 @@ allTargets.forEach(t => io.observe(t));
 
         # ── All Measurements ──────────────────────────────────────────────────
         pdf.set_font("Helvetica", "B", 13)
-        pdf.cell(0, 8, "All Measurements", ln=True)
+        pdf.cell(0, 8, "All Measurements", new_x="LMARGIN", new_y="NEXT")
         pdf.line(pdf.get_x(), pdf.get_y(), pdf.get_x() + 190, pdf.get_y())
         pdf.ln(2)
         if not self.measurements:
             pdf.set_font("Helvetica", "I", 10)
-            pdf.cell(0, 7, "No measurements recorded.", ln=True)
+            pdf.cell(0, 7, "No measurements recorded.", new_x="LMARGIN", new_y="NEXT")
         else:
             col_w2 = [65, 55, 30, 40]
             headers2 = ["Label", "Value", "Unit", "Source"]
@@ -6481,7 +6481,7 @@ allTargets.forEach(t => io.observe(t));
         valid_shots = [p for p in self._report_screenshots if os.path.isfile(p)]
         if valid_shots:
             pdf.set_font("Helvetica", "B", 13)
-            pdf.cell(0, 8, "Scope Screenshots", ln=True)
+            pdf.cell(0, 8, "Scope Screenshots", new_x="LMARGIN", new_y="NEXT")
             pdf.line(pdf.get_x(), pdf.get_y(), pdf.get_x() + 190, pdf.get_y())
             pdf.ln(2)
             page_w = pdf.w - pdf.l_margin - pdf.r_margin
@@ -6489,12 +6489,12 @@ allTargets.forEach(t => io.observe(t));
                 caption = os.path.basename(shot_path)
                 pdf.add_page()
                 pdf.set_font("Helvetica", "I", 9)
-                pdf.cell(0, 6, caption, ln=True, align="C")
+                pdf.cell(0, 6, caption, new_x="LMARGIN", new_y="NEXT", align="C")
                 try:
                     pdf.image(shot_path, x=pdf.l_margin, w=page_w)
                 except Exception:
                     pdf.set_font("Helvetica", "", 10)
-                    pdf.cell(0, 7, f"[Could not embed image: {caption}]", ln=True)
+                    pdf.cell(0, 7, f"[Could not embed image: {caption}]", new_x="LMARGIN", new_y="NEXT")
                 pdf.ln(3)
 
         pdf.output(path)
