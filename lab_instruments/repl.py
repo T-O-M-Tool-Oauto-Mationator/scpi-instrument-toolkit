@@ -2204,15 +2204,54 @@ class InstrumentRepl(cmd.Cmd):
         "upper_limit <device> [chan <N>] <param> <value>  —  set an upper safety limit"
         if not arg:
             self._print_colored_usage([
+                "# UPPER LIMIT",
+                "",
                 "upper_limit <device> [chan <N>] <param> <value>",
-                "  device: psu, awg, psu1, awg1, …",
-                "  param (psu):  voltage | current",
-                "  param (awg):  voltage | vpp | freq   (voltage = vpeak/vtrough alias)",
-                "  examples:",
-                "    upper_limit psu voltage 5.0",
-                "    upper_limit psu chan 1 voltage 2.1",
-                "    upper_limit awg voltage 5.0",
-                "    upper_limit awg chan 1 freq 1e6",
+                "",
+                "  device    psu | awg | psu1 | awg1 | …  (type or specific name)",
+                "  chan N     optional — restrict to channel N; omit for all channels",
+                "  value      numeric ceiling (inclusive — equal value is allowed)",
+                "",
+                "# PSU PARAMS",
+                "",
+                "upper_limit psu voltage <V>",
+                "  - cap output voltage on all PSU channels",
+                "upper_limit psu current <A>",
+                "  - cap the current-limit setting",
+                "upper_limit psu chan <N> voltage <V>",
+                "  - restrict a specific channel; other channels are unaffected",
+                "",
+                "# AWG PARAMS",
+                "",
+                "upper_limit awg voltage <V>",
+                "  - alias → vpeak  (peak = offset + vpp/2)  blocks if peak > value",
+                "upper_limit awg vpp <V>",
+                "  - cap peak-to-peak amplitude",
+                "upper_limit awg freq <Hz>",
+                "  - cap output frequency",
+                "upper_limit awg chan <N> voltage <V>",
+                "  - channel-specific peak cap",
+                "",
+                "  Hierarchy: tightest bound wins across named-device, device-type,",
+                "  and channel-specific scopes. Most-specific limit always takes effect.",
+                "",
+                "  Retroactive: after setting a limit the REPL immediately warns if any",
+                "  current instrument state already violates it (advisory only, no block).",
+                "",
+                "# EXAMPLES",
+                "",
+                "upper_limit psu voltage 5.0",
+                "  - PSU output must stay ≤ 5 V on every channel",
+                "upper_limit psu chan 1 voltage 2.1",
+                "  - channel 1 only: ≤ 2.1 V  (ch2+ are unaffected)",
+                "upper_limit psu1 voltage 3.3",
+                "  - named instrument psu1: ≤ 3.3 V",
+                "upper_limit awg voltage 3.3",
+                "  - AWG peak ≤ 3.3 V  (sets vpeak limit via voltage alias)",
+                "upper_limit awg vpp 10.0",
+                "  - AWG amplitude ≤ 10 Vpp",
+                "upper_limit awg chan 1 freq 1e6",
+                "  - channel 1: frequency ≤ 1 MHz",
             ])
             return
         before = self._command_had_error
@@ -2227,14 +2266,52 @@ class InstrumentRepl(cmd.Cmd):
         "lower_limit <device> [chan <N>] <param> <value>  —  set a lower safety limit"
         if not arg:
             self._print_colored_usage([
+                "# LOWER LIMIT",
+                "",
                 "lower_limit <device> [chan <N>] <param> <value>",
-                "  device: psu, awg, psu1, awg1, …",
-                "  param (psu):  voltage | current",
-                "  param (awg):  voltage | vpp | freq   (voltage = vpeak/vtrough alias)",
-                "  examples:",
-                "    lower_limit psu voltage 0.5",
-                "    lower_limit psu chan 1 voltage 0.1",
-                "    lower_limit awg voltage -0.3",
+                "",
+                "  device    psu | awg | psu1 | awg1 | …  (type or specific name)",
+                "  chan N     optional — restrict to channel N; omit for all channels",
+                "  value      numeric floor (inclusive — equal value is allowed)",
+                "",
+                "# PSU PARAMS",
+                "",
+                "lower_limit psu voltage <V>",
+                "  - floor for output voltage on all PSU channels",
+                "lower_limit psu current <A>",
+                "  - floor for the current-limit setting",
+                "lower_limit psu chan <N> voltage <V>",
+                "  - channel-specific voltage floor",
+                "",
+                "# AWG PARAMS",
+                "",
+                "lower_limit awg voltage <V>",
+                "  - alias → vtrough  (trough = offset − vpp/2)  blocks if trough < value",
+                "lower_limit awg vpp <V>",
+                "  - minimum peak-to-peak amplitude",
+                "lower_limit awg freq <Hz>",
+                "  - minimum output frequency",
+                "lower_limit awg chan <N> voltage <V>",
+                "  - channel-specific trough floor",
+                "",
+                "  Hierarchy: tightest bound wins across named-device, device-type,",
+                "  and channel-specific scopes. Most-specific limit always takes effect.",
+                "",
+                "  Retroactive: after setting a limit the REPL immediately warns if any",
+                "  current instrument state already violates it (advisory only, no block).",
+                "",
+                "# EXAMPLES",
+                "",
+                "lower_limit psu voltage 0.5",
+                "  - PSU output must stay ≥ 0.5 V on every channel",
+                "lower_limit psu chan 1 voltage 0.1",
+                "  - channel 1 only: ≥ 0.1 V  (ch2+ are unaffected)",
+                "lower_limit awg voltage -0.3",
+                "  - AWG trough ≥ −0.3 V  (sets vtrough limit via voltage alias)",
+                "lower_limit awg vpp 1.0",
+                "  - AWG amplitude ≥ 1.0 Vpp",
+                "lower_limit awg chan 2 vtrough -5.0",
+                "  - channel 2 trough floor of −5 V",
             ])
             return
         before = self._command_had_error
@@ -3861,27 +3938,29 @@ class InstrumentRepl(cmd.Cmd):
                         "id": "directive-upper-limit", "name": "upper_limit",
                         "brief": "Set an upper safety bound on an instrument parameter",
                         "syntax": "upper_limit &lt;device&gt; [chan &lt;N&gt;] &lt;param&gt; &lt;value&gt;",
-                        "desc": "Declares a maximum allowed value for a PSU or AWG parameter. Any subsequent command that would exceed this bound is rejected with an error. Limits apply to the specified device and channel; omitting <code>chan N</code> applies the limit to all channels. Use a device type (<code>psu</code>, <code>awg</code>) to constrain every instrument of that type, or a specific name (<code>psu1</code>, <code>awg2</code>) to target one instrument only. Multiple levels of limits are evaluated together — the tightest bound always wins.",
+                        "desc": "Declares a maximum allowed value for a PSU or AWG parameter. Any subsequent command that would exceed this bound is rejected with an error. Limits apply to the specified device and channel; omitting <code>chan N</code> applies the limit to all channels. Use a device type (<code>psu</code>, <code>awg</code>) to constrain every instrument of that type, or a specific name (<code>psu1</code>, <code>awg2</code>) to target one instrument only. Multiple levels of limits are evaluated together — the tightest bound always wins. After setting a limit interactively, the REPL immediately warns if the current instrument state already violates it (retroactive check — advisory only, no command is blocked).",
                         "params": [
                             {"name": "device", "required": "required", "values": "psu, awg, psu1, awg1, …", "desc": "Device type or specific name."},
                             {"name": "chan N", "required": "optional", "values": "integer", "desc": "If given, limit applies to channel N only; otherwise to all channels."},
-                            {"name": "param", "required": "required", "values": "voltage, current (psu)  /  vpeak, vtrough, vpp, freq (awg)", "desc": "The parameter being bounded."},
-                            {"name": "value", "required": "required", "values": "float", "desc": "Maximum permitted value (inclusive)."},
+                            {"name": "param (psu)", "required": "required", "values": "voltage, current", "desc": "Output voltage or current-limit setting."},
+                            {"name": "param (awg)", "required": "required", "values": "voltage, vpp, freq, vpeak, vtrough", "desc": "<code>voltage</code> is a smart alias: <code>upper_limit awg voltage N</code> sets a <em>vpeak</em> cap (peak = offset + vpp/2). Use <code>vpeak</code>/<code>vtrough</code> directly for explicit control."},
+                            {"name": "value", "required": "required", "values": "float", "desc": "Maximum permitted value (inclusive — equal value is allowed)."},
                         ],
                         "examples": [
                             ("upper_limit psu voltage 5.0", "Cap PSU output to 5 V on all channels"),
                             ("upper_limit psu chan 1 voltage 2.1", "Cap channel 1 only to 2.1 V"),
                             ("upper_limit psu1 voltage 3.3", "Cap the named instrument psu1 to 3.3 V"),
-                            ("upper_limit awg vpeak 5.0", "Prevent AWG peak from exceeding 5 V"),
+                            ("upper_limit awg voltage 3.3", "Prevent AWG peak from exceeding 3.3 V (voltage alias → vpeak)"),
+                            ("upper_limit awg vpeak 5.0", "Prevent AWG peak from exceeding 5 V (explicit)"),
                             ("upper_limit awg vpp 10.0", "Limit peak-to-peak swing to 10 Vpp"),
                             ("upper_limit awg freq 1e6", "Limit frequency to 1 MHz"),
-                            ("upper_limit awg chan 1 vpeak 3.3", "Channel 1 peak ≤ 3.3 V"),
+                            ("upper_limit awg chan 1 voltage 3.3", "Channel 1 peak ≤ 3.3 V"),
                         ],
                         "notes": [
                             "Limits accumulate — multiple directives for the same device narrow the allowed range.",
                             "When a type-wide limit and a channel-specific limit both apply, the tighter of the two is enforced.",
                             "Limits are cleared at the start of each new top-level script run. Set them at the top of every script that needs them.",
-                            "Works at the interactive REPL prompt too — use <code>upper_limit psu voltage 5.0</code> before issuing manual commands.",
+                            "Works at the interactive REPL prompt — after setting a limit the REPL immediately warns if the current instrument state already violates it (retroactive check, advisory only).",
                         ],
                         "see": ["directive-lower-limit"],
                     },
@@ -3889,23 +3968,25 @@ class InstrumentRepl(cmd.Cmd):
                         "id": "directive-lower-limit", "name": "lower_limit",
                         "brief": "Set a lower safety bound on an instrument parameter",
                         "syntax": "lower_limit &lt;device&gt; [chan &lt;N&gt;] &lt;param&gt; &lt;value&gt;",
-                        "desc": "Declares a minimum allowed value for a PSU or AWG parameter. Any subsequent command that would go below this bound is rejected with an error. Follows the same device, channel, and hierarchy rules as <code>upper_limit</code>.",
+                        "desc": "Declares a minimum allowed value for a PSU or AWG parameter. Any subsequent command that would go below this bound is rejected with an error. Follows the same device, channel, and hierarchy rules as <code>upper_limit</code>. After setting a limit interactively, the REPL immediately warns if the current instrument state already violates it (retroactive check — advisory only).",
                         "params": [
                             {"name": "device", "required": "required", "values": "psu, awg, psu1, awg1, …", "desc": "Device type or specific name."},
                             {"name": "chan N", "required": "optional", "values": "integer", "desc": "If given, limit applies to channel N only; otherwise to all channels."},
-                            {"name": "param", "required": "required", "values": "voltage, current (psu)  /  vpeak, vtrough, vpp, freq (awg)", "desc": "The parameter being bounded."},
-                            {"name": "value", "required": "required", "values": "float", "desc": "Minimum permitted value (inclusive)."},
+                            {"name": "param (psu)", "required": "required", "values": "voltage, current", "desc": "Output voltage or current-limit setting."},
+                            {"name": "param (awg)", "required": "required", "values": "voltage, vpp, freq, vpeak, vtrough", "desc": "<code>voltage</code> is a smart alias: <code>lower_limit awg voltage N</code> sets a <em>vtrough</em> floor (trough = offset − vpp/2). Use <code>vtrough</code>/<code>vpeak</code> directly for explicit control."},
+                            {"name": "value", "required": "required", "values": "float", "desc": "Minimum permitted value (inclusive — equal value is allowed)."},
                         ],
                         "examples": [
                             ("lower_limit psu voltage 0.5", "Require PSU output to stay at or above 0.5 V"),
                             ("lower_limit psu chan 1 voltage 0.1", "Channel 1 minimum 0.1 V"),
-                            ("lower_limit awg vtrough -0.3", "Prevent AWG trough from going below −0.3 V (common DUT abs-min)"),
+                            ("lower_limit awg voltage -0.3", "Prevent AWG trough from going below −0.3 V (voltage alias → vtrough)"),
+                            ("lower_limit awg vtrough -0.3", "Same as above but explicit"),
                             ("lower_limit awg chan 2 vtrough -5.0", "Channel 2 trough floor of −5 V"),
                         ],
                         "notes": [
                             "Combine with <code>upper_limit</code> to define a safe operating window: <code>lower_limit psu chan 1 voltage 0.5</code> + <code>upper_limit psu chan 1 voltage 2.1</code>.",
                             "Limits are cleared at the start of each new top-level script run.",
-                            "Works at the interactive REPL prompt — use before issuing manual commands to guard against accidental over/under-drive.",
+                            "Works at the interactive REPL prompt — after setting a limit the REPL immediately warns if the current instrument state already violates it (retroactive check, advisory only).",
                         ],
                         "see": ["directive-upper-limit"],
                     },
@@ -4325,9 +4406,30 @@ allTargets.forEach(t => io.observe(t));
         return True
 
     def do_help(self, arg):
-        "help [command]: show help for a command, or list all commands"
+        "help [command|all]: show help for a command, or list all commands"
         if arg:
-            # Per-command help: show docstring, colorized
+            # "help all" — dump full rich help for every documented command
+            if arg.strip().lower() == "all":
+                for cmd_name in ["upper_limit", "lower_limit", "log", "calc", "script"]:
+                    fn = getattr(self, f"do_{cmd_name}", None)
+                    if fn:
+                        fn("")
+                C = ColorPrinter.CYAN
+                Y = ColorPrinter.YELLOW
+                B = ColorPrinter.BOLD
+                R = ColorPrinter.RESET
+                print(f"\n{Y}{B}INSTRUMENT COMMANDS{R}  (type the command with no args for full help)")
+                for name, desc in [
+                    ("psu",   "power supply  — chan, set, meas, meas_store, track, save, recall, state"),
+                    ("awg",   "function gen  — chan, wave, freq, amp, offset, duty, phase, sync, state"),
+                    ("dmm",   "multimeter    — config, read, fetch, meas, meas_store, beep, display"),
+                    ("scope", "oscilloscope  — chan, meas, save, screenshot, trigger, awg, dvm, counter"),
+                ]:
+                    print(f"  {C}{name:<8}{R} {desc}")
+                print()
+                return
+
+            # Per-command help: prefer a dedicated help_<cmd>() method, then docstring
             try:
                 func = getattr(self, f"help_{arg}")
                 func()
@@ -4360,46 +4462,61 @@ allTargets.forEach(t => io.observe(t));
             print(f"\n{Y}{B}{title}{R}")
 
         def cmd_line(name, desc):
-            print(f"  {C}{name:<12}{R} {desc}")
+            print(f"  {C}{name:<14}{R} {desc}")
 
-        print(f"{B}ESET Instrument REPL{R} {Y}v{_REPL_VERSION}{R}  —  type {C}help <command>{R} for details\n")
+        print(f"{B}ESET Instrument REPL{R} {Y}v{_REPL_VERSION}{R}  —  type {C}help <command>{R} for full details\n")
 
         section("GENERAL")
-        cmd_line("scan",    "discover and connect to instruments")
-        cmd_line("reload",  "restart the REPL process")
-        cmd_line("list",    "show connected instruments")
-        cmd_line("use",     "set active instrument  (use <name>)")
-        cmd_line("status",  "show current selection")
-        cmd_line("state",   "set instrument state  (safe/reset/on/off)")
-        cmd_line("all",     "apply state to all instruments")
-        cmd_line("idn",     "query *IDN?")
-        cmd_line("raw",     "send raw SCPI command or query")
-        cmd_line("sleep",   "pause between actions  (sleep <seconds>)")
-        cmd_line("wait",    "alias for sleep")
-        cmd_line("version", "show toolkit version")
-        cmd_line("close",   "disconnect all instruments")
-        cmd_line("exit",    "quit the REPL")
+        cmd_line("scan",        "discover and connect to instruments")
+        cmd_line("reload",      "restart the REPL process")
+        cmd_line("list",        "show connected instruments")
+        cmd_line("use",         "set active instrument  (use <name>)")
+        cmd_line("status",      "show current selection")
+        cmd_line("state",       "set instrument state  (safe/reset/on/off)")
+        cmd_line("all",         "apply state to all instruments")
+        cmd_line("idn",         "query *IDN?")
+        cmd_line("raw",         "send raw SCPI command or query")
+        cmd_line("sleep",       "pause between actions  (sleep <seconds>)")
+        cmd_line("wait",        "alias for sleep")
+        cmd_line("version",     "show toolkit version")
+        cmd_line("close",       "disconnect all instruments")
+        cmd_line("exit",        "quit the REPL")
 
-        section("INSTRUMENTS")
-        cmd_line("psu",     "power supply  (chan, set, meas, track, save, recall)")
-        cmd_line("awg",     "function generator  (chan, wave, freq, amp, offset, duty, phase)")
-        cmd_line("dmm",     "multimeter  (config, read, fetch, meas, beep, display)")
-        cmd_line("scope",   "oscilloscope  (chan, meas, save, trigger, awg, dvm, counter)")
+        section("INSTRUMENTS  (run with no args for full sub-command help)")
+        cmd_line("psu",         "power supply  — chan, set, meas, track, save, recall")
+        cmd_line("awg",         "function generator  — chan, wave, freq, amp, offset, duty, phase")
+        cmd_line("dmm",         "multimeter  — config, read, fetch, meas, beep, display")
+        cmd_line("scope",       "oscilloscope  — chan, meas, save, trigger, awg, dvm, counter")
 
         section("SCRIPTING")
-        cmd_line("script",       "manage and run named scripts  (new, run, debug, edit, list, rm, show, dir, import, load, save)")
-        cmd_line("examples",     "list or load bundled example workflows  (load <name> | load all)")
-        cmd_line("python",       "execute an external Python script with REPL context")
-        cmd_line("docs",         "open full HTML documentation in your browser")
-        cmd_line("upper_limit",  "set an upper safety bound  (upper_limit <device> [chan <N>] <param> <value>)")
-        cmd_line("lower_limit",  "set a lower safety bound  (lower_limit <device> [chan <N>] <param> <value>)")
+        cmd_line("script",      "manage and run named scripts  — new, run, debug, edit, list, rm, show, dir")
+        cmd_line("examples",    "list or load bundled example workflows  (load <name> | load all)")
+        cmd_line("python",      "execute an external Python script with REPL context")
+        cmd_line("docs",        "open full HTML documentation in your browser")
+        cmd_line("upper_limit", "set an upper safety bound  — psu/awg, optional chan, param, value")
+        cmd_line("lower_limit", "set a lower safety bound  — psu/awg, optional chan, param, value")
 
         section("LOGGING & MATH")
-        cmd_line("log",     "show or save recorded measurements  (print, save, clear)")
-        cmd_line("calc",    "compute a value from logged measurements")
-        cmd_line("data dir","get or set the data output directory  (data dir [path|reset])")
+        cmd_line("log",         "show or save recorded measurements  — print, save, clear")
+        cmd_line("calc",        "compute a value from logged measurements")
+        cmd_line("data dir",    "get or set the data output directory  (data dir [path|reset])")
 
-        print()
+        print(f"\n  {Y}help <command>{R}  for full documentation   {Y}help all{R}  for everything at once\n")
+
+    def help_upper_limit(self):
+        self.do_upper_limit("")
+
+    def help_lower_limit(self):
+        self.do_lower_limit("")
+
+    def help_log(self):
+        self.do_log("")
+
+    def help_calc(self):
+        self.do_calc("")
+
+    def help_script(self):
+        self.do_script("")
 
     # --------------------------
     # PSU commands
@@ -6262,13 +6379,20 @@ allTargets.forEach(t => io.observe(t));
         args = self._parse_args(arg)
         args, help_flag = self._strip_help(args)
         if help_flag or not args:
-            self._print_usage(
-                [
-                    "log print",
-                    "log save <path> [csv|txt]",
-                    "log clear",
-                ]
-            )
+            self._print_colored_usage([
+                "# LOG",
+                "",
+                "log print",
+                "  - display all stored measurements in a formatted table",
+                "  - columns: Label | Value | Unit | Source",
+                "log save <path> [csv|txt]",
+                "  - export measurements to a file",
+                "  - format inferred from extension; override with csv or txt",
+                "  - example: log save results.csv",
+                "  - example: log save /tmp/out.txt txt",
+                "log clear",
+                "  - erase all stored measurements from this session",
+            ])
             return
         cmd_name = args[0].lower()
         if cmd_name == "clear":

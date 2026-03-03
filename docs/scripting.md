@@ -695,10 +695,22 @@ lower_limit <device> [chan <N>] <param> <value>
 |--------|-------|-----------------|
 | `psu` | `voltage` | Output voltage |
 | `psu` | `current` | Current-limit setting |
+| `awg` | **`voltage`** | **Smart alias** — direction determines which bound (see below) |
 | `awg` | `vpeak` | Peak voltage = offset + vpp/2 |
 | `awg` | `vtrough` | Trough voltage = offset − vpp/2 |
 | `awg` | `vpp` | Peak-to-peak amplitude |
 | `awg` | `freq` | Frequency (Hz) |
+
+#### AWG `voltage` alias
+
+`voltage` is a convenient shorthand for AWG limits that mirrors PSU syntax:
+
+| Command | Resolves to | Stored as |
+|---------|-------------|-----------|
+| `upper_limit awg voltage 5.0` | vpeak cap | `vpeak_upper = 5.0` |
+| `lower_limit awg voltage -0.3` | vtrough floor | `vtrough_lower = -0.3` |
+
+The direction (`upper`/`lower`) determines whether the alias maps to the peak or the trough. Use `vpeak`/`vtrough` directly if you need an upper floor on the trough or a lower ceiling on the peak.
 
 ### Hierarchy — tightest bound wins
 
@@ -711,12 +723,25 @@ Multiple limits can coexist. When a command is issued to `psu1` channel 1, the e
 4. ("psu",  None) — device type, any channel        (least specific)
 ```
 
+### Retroactive check
+
+When you set a limit at the **interactive prompt**, the REPL immediately checks all known instrument states against the new guard and prints a `[WARNING]` for any existing violations. The instrument state is **not changed** — the warning is advisory only.
+
+```
+eset> upper_limit psu voltage 1
+[SUCCESS] Limit set: upper_limit psu voltage 1
+[WARNING] Retroactive: psu1 setpoint 5.0V already exceeds limit 1.0V — consider reducing output
+```
+
+!!! note
+    Retroactive checks use the last known setpoint value, not a live query. AWG frequency is not tracked in session state and cannot be retroactively checked — a separate warning is emitted if a frequency limit is set.
+
 ### Examples
 
 ```scpi
 # TPS22968 DUT: abs min −0.3 V, preferred max 5 V
-upper_limit awg vpeak  5.0      # AWG peak ≤ 5 V
-lower_limit awg vtrough -0.3    # AWG trough ≥ −0.3 V
+upper_limit awg voltage 5.0     # AWG peak ≤ 5 V  (voltage alias → vpeak)
+lower_limit awg voltage -0.3    # AWG trough ≥ −0.3 V  (voltage alias → vtrough)
 upper_limit psu voltage 5.0     # PSU output ≤ 5 V
 
 # Multi-channel PSU: ch1 holds a 1.8 V DUT, ch2 is a 5 V rail
@@ -727,13 +752,17 @@ upper_limit psu current 1.0          # all channels: I ≤ 1.0 A
 # Named PSU — only psu1 is affected
 upper_limit psu1 chan 1 voltage 3.3
 upper_limit psu2 voltage 12.0
+
+# Explicit AWG peak/trough params (equivalent to the voltage alias above)
+upper_limit awg vpeak 5.0
+lower_limit awg vtrough -0.3
 ```
 
 !!! note
     Limits are cleared automatically at the start of each top-level `script run`. Place them at the top of every script that needs them.
 
 !!! tip
-    `upper_limit` and `lower_limit` work at the **interactive REPL prompt** too — set them before issuing manual commands to protect your DUT during hands-on testing.
+    `upper_limit` and `lower_limit` work at the **interactive REPL prompt** too — set them before issuing manual commands to protect your DUT during hands-on testing. After each limit is set, the REPL retroactively checks current instrument state and warns of any existing violations.
 
 ---
 
