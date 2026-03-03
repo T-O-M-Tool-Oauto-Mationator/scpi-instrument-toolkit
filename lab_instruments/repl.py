@@ -2717,8 +2717,8 @@ class InstrumentRepl(cmd.Cmd):
                     {
                         "id": "cmd-reload", "name": "reload / version / clear / exit",
                         "brief": "Utility commands",
-                        "syntax": "reload  |  version  |  clear  |  exit  |  quit",
-                        "desc": "<code>reload</code> restarts the REPL process. <code>version</code> prints the installed toolkit version. <code>clear</code> clears the terminal. <code>exit</code>/<code>quit</code> close the REPL.",
+                        "syntax": "reload  |  version  |  clear  |  exit",
+                        "desc": "<code>reload</code> restarts the REPL process. <code>version</code> prints the installed toolkit version. <code>clear</code> clears the terminal. <code>exit</code> closes the REPL.",
                         "params": [],
                         "examples": [
                             ("version", "Print installed version"),
@@ -3702,26 +3702,26 @@ class InstrumentRepl(cmd.Cmd):
                 "intro": "All meas_store commands write to a shared in-session measurement log. Use log to view or export the results, and calc to derive new values from stored measurements.",
                 "commands": [
                     {
-                        "id": "cmd-data", "name": "data",
+                        "id": "cmd-data", "name": "data dir",
                         "brief": "Get or set the data output directory for this session",
-                        "syntax": "data [path|reset]",
-                        "desc": "Changes where all data files are saved — screenshots (<code>scope screenshot</code>), waveform CSVs (<code>scope save</code>), and measurement exports (<code>log save</code>). Relative paths within those commands are resolved against this directory. Use <code>data reset</code> to restore the default.",
+                        "syntax": "data dir [path|reset]",
+                        "desc": "Changes where all data files are saved — screenshots (<code>scope screenshot</code>), waveform CSVs (<code>scope save</code>), and measurement exports (<code>log save</code>). Relative paths within those commands are resolved against this directory. Use <code>data dir reset</code> to restore the default.",
                         "params": [
                             {"name": "path", "required": "optional", "values": "directory path (absolute or relative to cwd)", "desc": "New output directory. Created automatically if it does not exist."},
                             {"name": "reset", "required": "optional", "values": "reset", "desc": "Clear the override and restore the default output directory."},
                         ],
                         "examples": [
-                            ("data", "Print current output directory"),
-                            ("data .", "Save files in the current working directory"),
-                            ("data ./lab3_out", "Save files in a subfolder of cwd"),
-                            ("data /mnt/usb/captures", "Save to an absolute path"),
-                            ("data reset", "Restore default (~/Documents/scpi-instrument-toolkit/data/)"),
+                            ("data dir", "Print current output directory"),
+                            ("data dir .", "Save files in the current working directory"),
+                            ("data dir ./lab3_out", "Save files in a subfolder of cwd"),
+                            ("data dir /mnt/usb/captures", "Save to an absolute path"),
+                            ("data dir reset", "Restore default"),
                         ],
                         "notes": [
                             "Affects all save commands: <code>scope screenshot</code>, <code>scope save</code>, <code>log save</code>.",
                             "Subdirectories within the output dir are still created automatically — e.g. <code>scope screenshot lab3/cap.png</code> becomes <code>&lt;data_dir&gt;/lab3/cap.png</code>.",
                             "For a permanent default, set the <code>SCPI_DATA_DIR</code> environment variable before launching.",
-                            "Can be used in scripts: put <code>data .</code> at the top of a <code>.scpi</code> file to keep output alongside the project.",
+                            "Can be used in scripts: put <code>data dir .</code> at the top of a <code>.scpi</code> file to keep output alongside the project.",
                         ],
                         "see": ["script-dir", "cmd-log", "scope-screenshot"],
                     },
@@ -4163,7 +4163,6 @@ allTargets.forEach(t => io.observe(t));
         cmd_line("version", "show toolkit version")
         cmd_line("close",   "disconnect all instruments")
         cmd_line("exit",    "quit the REPL")
-        cmd_line("quit",    "quit the REPL")
 
         section("INSTRUMENTS")
         cmd_line("psu",     "power supply  (chan, set, meas, track, save, recall)")
@@ -4180,7 +4179,7 @@ allTargets.forEach(t => io.observe(t));
         section("LOGGING & MATH")
         cmd_line("log",     "show or save recorded measurements  (print, save, clear)")
         cmd_line("calc",    "compute a value from logged measurements")
-        cmd_line("data",    "get or set the data output directory  (data <path> | data reset)")
+        cmd_line("data dir","get or set the data output directory  (data dir [path|reset])")
 
         print()
 
@@ -5819,16 +5818,21 @@ allTargets.forEach(t => io.observe(t));
     # Logging commands
     # --------------------------
     def do_data(self, arg):
-        "data [path|reset]: get or set the data output directory for this session"
+        "data dir [path|reset]: get or set the data output directory for this session"
         args = self._parse_args(arg)
         args, help_flag = self._strip_help(args)
+
+        # Accept 'data dir [path|reset]' (canonical) or 'data [path|reset]' (legacy alias)
+        if args and args[0].lower() == "dir":
+            args = args[1:]
+
         if help_flag or not args:
             ColorPrinter.cyan(f"Current data dir: {os.path.abspath(self._get_data_dir())}")
             self._print_usage([
-                "data              # show current output directory",
-                "data <path>       # set output dir (absolute or relative to cwd)",
-                "data .            # save in current working directory",
-                "data reset        # go back to default (~/Documents/...)",
+                "data dir              # show current output directory",
+                "data dir <path>       # set output dir (absolute or relative to cwd)",
+                "data dir .            # save in current working directory",
+                "data dir reset        # go back to default",
             ])
             return
         path = args[0]
