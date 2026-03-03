@@ -4,12 +4,11 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "scpi-instrument-toolkit"
-version = "0.1.137"
+version = "0.1.138"
 description = "Python drivers and interactive REPL for SCPI test and measurement instruments"
 readme = "README.md"
 requires-python = ">=3.8"
-license = "MIT"
-license-files = ["LICENSE"]
+license = {text = "MIT"}
 authors = [
     {name = "Brighton Sikarskie"},
     {name = "Cesar Magana"},
