@@ -2,7 +2,7 @@
 
 Scripts are named sequences of REPL commands stored in the session. They support variables, loops, sub-scripts, and operator interaction — letting you automate full test sequences.
 
-Script directives (`set`, `array`, `print`, `pause`, `input`, `sleep`, `repeat`, `for`, `call`, `import`, `export`, `breakpoint`) are also valid as **interactive REPL commands** — you can test them at the prompt before putting them in a script.
+Script directives (`set`, `array`, `print`, `pause`, `input`, `sleep`, `repeat`, `for`, `call`, `import`, `export`, `breakpoint`, `upper_limit`, `lower_limit`) are also valid as **interactive REPL commands** — you can test them at the prompt before putting them in a script.
 
 ---
 
@@ -670,6 +670,70 @@ log print
 
 !!! note
 Parameters passed via `call` override `set` defaults in the called script — same priority rules as `script run`.
+
+---
+
+## Safety Limits
+
+Safety limits guard your DUT against accidental over-voltage, over-current, or out-of-range signals. Set them at the top of a script and every subsequent instrument command is checked against them automatically.
+
+```
+upper_limit <device> [chan <N>] <param> <value>
+lower_limit <device> [chan <N>] <param> <value>
+```
+
+| Part | Meaning |
+|------|---------|
+| `device` | Device type (`psu`, `awg`) **or** specific name (`psu1`, `awg2`, …) |
+| `chan N` | Optional. Restrict to channel N only; omit to apply to all channels |
+| `param` | What to bound — see table below |
+| `value` | Numeric limit (inclusive) |
+
+### Valid parameters
+
+| Device | Param | Physical meaning |
+|--------|-------|-----------------|
+| `psu` | `voltage` | Output voltage |
+| `psu` | `current` | Current-limit setting |
+| `awg` | `vpeak` | Peak voltage = offset + vpp/2 |
+| `awg` | `vtrough` | Trough voltage = offset − vpp/2 |
+| `awg` | `vpp` | Peak-to-peak amplitude |
+| `awg` | `freq` | Frequency (Hz) |
+
+### Hierarchy — tightest bound wins
+
+Multiple limits can coexist. When a command is issued to `psu1` channel 1, the engine checks all four scopes and applies the tightest (most restrictive) value per parameter:
+
+```
+1. ("psu1", 1)    — named device, specific channel  (most specific)
+2. ("psu1", None) — named device, any channel
+3. ("psu",  1)    — device type, specific channel
+4. ("psu",  None) — device type, any channel        (least specific)
+```
+
+### Examples
+
+```scpi
+# TPS22968 DUT: abs min −0.3 V, preferred max 5 V
+upper_limit awg vpeak  5.0      # AWG peak ≤ 5 V
+lower_limit awg vtrough -0.3    # AWG trough ≥ −0.3 V
+upper_limit psu voltage 5.0     # PSU output ≤ 5 V
+
+# Multi-channel PSU: ch1 holds a 1.8 V DUT, ch2 is a 5 V rail
+upper_limit psu chan 1 voltage 2.1   # ch1 ≤ 2.1 V
+upper_limit psu chan 2 voltage 5.5   # ch2 ≤ 5.5 V
+upper_limit psu current 1.0          # all channels: I ≤ 1.0 A
+
+# Named PSU — only psu1 is affected
+upper_limit psu1 chan 1 voltage 3.3
+upper_limit psu2 voltage 12.0
+```
+
+!!! note
+    Limits are cleared automatically at the start of each top-level `script run`. Place them at the top of every script that needs them.
+
+!!! tip
+    `upper_limit` and `lower_limit` work at the **interactive REPL prompt** too — set them before issuing manual commands to protect your DUT during hands-on testing.
 
 ---
 

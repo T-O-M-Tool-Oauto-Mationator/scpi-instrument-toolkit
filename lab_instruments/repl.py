@@ -3852,6 +3852,58 @@ class InstrumentRepl(cmd.Cmd):
                         "notes": ["Works even during <code>script run</code> — not just <code>script debug</code>."],
                         "see": ["script-debug"],
                     },
+                    {
+                        "id": "directive-upper-limit", "name": "upper_limit",
+                        "brief": "Set an upper safety bound on an instrument parameter",
+                        "syntax": "upper_limit &lt;device&gt; [chan &lt;N&gt;] &lt;param&gt; &lt;value&gt;",
+                        "desc": "Declares a maximum allowed value for a PSU or AWG parameter. Any subsequent command that would exceed this bound is rejected with an error. Limits apply to the specified device and channel; omitting <code>chan N</code> applies the limit to all channels. Use a device type (<code>psu</code>, <code>awg</code>) to constrain every instrument of that type, or a specific name (<code>psu1</code>, <code>awg2</code>) to target one instrument only. Multiple levels of limits are evaluated together — the tightest bound always wins.",
+                        "params": [
+                            {"name": "device", "required": "required", "values": "psu, awg, psu1, awg1, …", "desc": "Device type or specific name."},
+                            {"name": "chan N", "required": "optional", "values": "integer", "desc": "If given, limit applies to channel N only; otherwise to all channels."},
+                            {"name": "param", "required": "required", "values": "voltage, current (psu)  /  vpeak, vtrough, vpp, freq (awg)", "desc": "The parameter being bounded."},
+                            {"name": "value", "required": "required", "values": "float", "desc": "Maximum permitted value (inclusive)."},
+                        ],
+                        "examples": [
+                            ("upper_limit psu voltage 5.0", "Cap PSU output to 5 V on all channels"),
+                            ("upper_limit psu chan 1 voltage 2.1", "Cap channel 1 only to 2.1 V"),
+                            ("upper_limit psu1 voltage 3.3", "Cap the named instrument psu1 to 3.3 V"),
+                            ("upper_limit awg vpeak 5.0", "Prevent AWG peak from exceeding 5 V"),
+                            ("upper_limit awg vpp 10.0", "Limit peak-to-peak swing to 10 Vpp"),
+                            ("upper_limit awg freq 1e6", "Limit frequency to 1 MHz"),
+                            ("upper_limit awg chan 1 vpeak 3.3", "Channel 1 peak ≤ 3.3 V"),
+                        ],
+                        "notes": [
+                            "Limits accumulate — multiple directives for the same device narrow the allowed range.",
+                            "When a type-wide limit and a channel-specific limit both apply, the tighter of the two is enforced.",
+                            "Limits are cleared at the start of each new top-level script run. Set them at the top of every script that needs them.",
+                            "Works at the interactive REPL prompt too — use <code>upper_limit psu voltage 5.0</code> before issuing manual commands.",
+                        ],
+                        "see": ["directive-lower-limit"],
+                    },
+                    {
+                        "id": "directive-lower-limit", "name": "lower_limit",
+                        "brief": "Set a lower safety bound on an instrument parameter",
+                        "syntax": "lower_limit &lt;device&gt; [chan &lt;N&gt;] &lt;param&gt; &lt;value&gt;",
+                        "desc": "Declares a minimum allowed value for a PSU or AWG parameter. Any subsequent command that would go below this bound is rejected with an error. Follows the same device, channel, and hierarchy rules as <code>upper_limit</code>.",
+                        "params": [
+                            {"name": "device", "required": "required", "values": "psu, awg, psu1, awg1, …", "desc": "Device type or specific name."},
+                            {"name": "chan N", "required": "optional", "values": "integer", "desc": "If given, limit applies to channel N only; otherwise to all channels."},
+                            {"name": "param", "required": "required", "values": "voltage, current (psu)  /  vpeak, vtrough, vpp, freq (awg)", "desc": "The parameter being bounded."},
+                            {"name": "value", "required": "required", "values": "float", "desc": "Minimum permitted value (inclusive)."},
+                        ],
+                        "examples": [
+                            ("lower_limit psu voltage 0.5", "Require PSU output to stay at or above 0.5 V"),
+                            ("lower_limit psu chan 1 voltage 0.1", "Channel 1 minimum 0.1 V"),
+                            ("lower_limit awg vtrough -0.3", "Prevent AWG trough from going below −0.3 V (common DUT abs-min)"),
+                            ("lower_limit awg chan 2 vtrough -5.0", "Channel 2 trough floor of −5 V"),
+                        ],
+                        "notes": [
+                            "Combine with <code>upper_limit</code> to define a safe operating window: <code>lower_limit psu chan 1 voltage 0.5</code> + <code>upper_limit psu chan 1 voltage 2.1</code>.",
+                            "Limits are cleared at the start of each new top-level script run.",
+                            "Works at the interactive REPL prompt — use before issuing manual commands to guard against accidental over/under-drive.",
+                        ],
+                        "see": ["directive-upper-limit"],
+                    },
                 ],
             },
             {
@@ -4330,10 +4382,12 @@ allTargets.forEach(t => io.observe(t));
         cmd_line("scope",   "oscilloscope  (chan, meas, save, trigger, awg, dvm, counter)")
 
         section("SCRIPTING")
-        cmd_line("script",    "manage and run named scripts  (new, run, debug, edit, list, rm, show, dir, import, load, save)")
-        cmd_line("examples",  "list or load bundled example workflows  (load <name> | load all)")
-        cmd_line("python",    "execute an external Python script with REPL context")
-        cmd_line("docs",      "open full HTML documentation in your browser")
+        cmd_line("script",       "manage and run named scripts  (new, run, debug, edit, list, rm, show, dir, import, load, save)")
+        cmd_line("examples",     "list or load bundled example workflows  (load <name> | load all)")
+        cmd_line("python",       "execute an external Python script with REPL context")
+        cmd_line("docs",         "open full HTML documentation in your browser")
+        cmd_line("upper_limit",  "set an upper safety bound  (upper_limit <device> [chan <N>] <param> <value>)")
+        cmd_line("lower_limit",  "set a lower safety bound  (lower_limit <device> [chan <N>] <param> <value>)")
 
         section("LOGGING & MATH")
         cmd_line("log",     "show or save recorded measurements  (print, save, clear)")

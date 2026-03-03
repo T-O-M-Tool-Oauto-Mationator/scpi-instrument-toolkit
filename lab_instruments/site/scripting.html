@@ -1217,6 +1217,56 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#safety-limits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Safety Limits
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Safety Limits">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#valid-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Valid parameters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hierarchy-tightest-bound-wins" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hierarchy — tightest bound wins
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Examples
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#comments" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1918,6 +1968,56 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#safety-limits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Safety Limits
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Safety Limits">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#valid-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Valid parameters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hierarchy-tightest-bound-wins" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hierarchy — tightest bound wins
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Examples
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#comments" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2022,7 +2122,7 @@
 
 <h1 id="scripts-directives">Scripts &amp; Directives<a class="headerlink" href="#scripts-directives" title="Permanent link">&para;</a></h1>
 <p>Scripts are named sequences of REPL commands stored in the session. They support variables, loops, sub-scripts, and operator interaction — letting you automate full test sequences.</p>
-<p>Script directives (<code>set</code>, <code>array</code>, <code>print</code>, <code>pause</code>, <code>input</code>, <code>sleep</code>, <code>repeat</code>, <code>for</code>, <code>call</code>, <code>import</code>, <code>export</code>, <code>breakpoint</code>) are also valid as <strong>interactive REPL commands</strong> — you can test them at the prompt before putting them in a script.</p>
+<p>Script directives (<code>set</code>, <code>array</code>, <code>print</code>, <code>pause</code>, <code>input</code>, <code>sleep</code>, <code>repeat</code>, <code>for</code>, <code>call</code>, <code>import</code>, <code>export</code>, <code>breakpoint</code>, <code>upper_limit</code>, <code>lower_limit</code>) are also valid as <strong>interactive REPL commands</strong> — you can test them at the prompt before putting them in a script.</p>
 <hr />
 <h2 id="script-management">Script Management<a class="headerlink" href="#script-management" title="Permanent link">&para;</a></h2>
 <h3 id="script-new">script new<a class="headerlink" href="#script-new" title="Permanent link">&para;</a></h3>
@@ -2620,40 +2720,144 @@
 </div>
 <p>Parameters passed via <code>call</code> override <code>set</code> defaults in the called script — same priority rules as <code>script run</code>.</p>
 <hr />
+<h2 id="safety-limits">Safety Limits<a class="headerlink" href="#safety-limits" title="Permanent link">&para;</a></h2>
+<p>Safety limits guard your DUT against accidental over-voltage, over-current, or out-of-range signals. Set them at the top of a script and every subsequent instrument command is checked against them automatically.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-58-1" name="__codelineno-58-1" href="#__codelineno-58-1"></a>upper_limit &lt;device&gt; [chan &lt;N&gt;] &lt;param&gt; &lt;value&gt;
+<a id="__codelineno-58-2" name="__codelineno-58-2" href="#__codelineno-58-2"></a>lower_limit &lt;device&gt; [chan &lt;N&gt;] &lt;param&gt; &lt;value&gt;
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Part</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>device</code></td>
+<td>Device type (<code>psu</code>, <code>awg</code>) <strong>or</strong> specific name (<code>psu1</code>, <code>awg2</code>, …)</td>
+</tr>
+<tr>
+<td><code>chan N</code></td>
+<td>Optional. Restrict to channel N only; omit to apply to all channels</td>
+</tr>
+<tr>
+<td><code>param</code></td>
+<td>What to bound — see table below</td>
+</tr>
+<tr>
+<td><code>value</code></td>
+<td>Numeric limit (inclusive)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="valid-parameters">Valid parameters<a class="headerlink" href="#valid-parameters" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Device</th>
+<th>Param</th>
+<th>Physical meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>psu</code></td>
+<td><code>voltage</code></td>
+<td>Output voltage</td>
+</tr>
+<tr>
+<td><code>psu</code></td>
+<td><code>current</code></td>
+<td>Current-limit setting</td>
+</tr>
+<tr>
+<td><code>awg</code></td>
+<td><code>vpeak</code></td>
+<td>Peak voltage = offset + vpp/2</td>
+</tr>
+<tr>
+<td><code>awg</code></td>
+<td><code>vtrough</code></td>
+<td>Trough voltage = offset − vpp/2</td>
+</tr>
+<tr>
+<td><code>awg</code></td>
+<td><code>vpp</code></td>
+<td>Peak-to-peak amplitude</td>
+</tr>
+<tr>
+<td><code>awg</code></td>
+<td><code>freq</code></td>
+<td>Frequency (Hz)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="hierarchy-tightest-bound-wins">Hierarchy — tightest bound wins<a class="headerlink" href="#hierarchy-tightest-bound-wins" title="Permanent link">&para;</a></h3>
+<p>Multiple limits can coexist. When a command is issued to <code>psu1</code> channel 1, the engine checks all four scopes and applies the tightest (most restrictive) value per parameter:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-59-1" name="__codelineno-59-1" href="#__codelineno-59-1"></a>1. (&quot;psu1&quot;, 1)    — named device, specific channel  (most specific)
+<a id="__codelineno-59-2" name="__codelineno-59-2" href="#__codelineno-59-2"></a>2. (&quot;psu1&quot;, None) — named device, any channel
+<a id="__codelineno-59-3" name="__codelineno-59-3" href="#__codelineno-59-3"></a>3. (&quot;psu&quot;,  1)    — device type, specific channel
+<a id="__codelineno-59-4" name="__codelineno-59-4" href="#__codelineno-59-4"></a>4. (&quot;psu&quot;,  None) — device type, any channel        (least specific)
+</code></pre></div>
+<h3 id="examples">Examples<a class="headerlink" href="#examples" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-60-1" name="__codelineno-60-1" href="#__codelineno-60-1"></a># TPS22968 DUT: abs min −0.3 V, preferred max 5 V
+<a id="__codelineno-60-2" name="__codelineno-60-2" href="#__codelineno-60-2"></a>upper_limit awg vpeak  5.0      # AWG peak ≤ 5 V
+<a id="__codelineno-60-3" name="__codelineno-60-3" href="#__codelineno-60-3"></a>lower_limit awg vtrough -0.3    # AWG trough ≥ −0.3 V
+<a id="__codelineno-60-4" name="__codelineno-60-4" href="#__codelineno-60-4"></a>upper_limit psu voltage 5.0     # PSU output ≤ 5 V
+<a id="__codelineno-60-5" name="__codelineno-60-5" href="#__codelineno-60-5"></a>
+<a id="__codelineno-60-6" name="__codelineno-60-6" href="#__codelineno-60-6"></a># Multi-channel PSU: ch1 holds a 1.8 V DUT, ch2 is a 5 V rail
+<a id="__codelineno-60-7" name="__codelineno-60-7" href="#__codelineno-60-7"></a>upper_limit psu chan 1 voltage 2.1   # ch1 ≤ 2.1 V
+<a id="__codelineno-60-8" name="__codelineno-60-8" href="#__codelineno-60-8"></a>upper_limit psu chan 2 voltage 5.5   # ch2 ≤ 5.5 V
+<a id="__codelineno-60-9" name="__codelineno-60-9" href="#__codelineno-60-9"></a>upper_limit psu current 1.0          # all channels: I ≤ 1.0 A
+<a id="__codelineno-60-10" name="__codelineno-60-10" href="#__codelineno-60-10"></a>
+<a id="__codelineno-60-11" name="__codelineno-60-11" href="#__codelineno-60-11"></a># Named PSU — only psu1 is affected
+<a id="__codelineno-60-12" name="__codelineno-60-12" href="#__codelineno-60-12"></a>upper_limit psu1 chan 1 voltage 3.3
+<a id="__codelineno-60-13" name="__codelineno-60-13" href="#__codelineno-60-13"></a>upper_limit psu2 voltage 12.0
+</code></pre></div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Limits are cleared automatically at the start of each top-level <code>script run</code>. Place them at the top of every script that needs them.</p>
+</div>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p><code>upper_limit</code> and <code>lower_limit</code> work at the <strong>interactive REPL prompt</strong> too — set them before issuing manual commands to protect your DUT during hands-on testing.</p>
+</div>
+<hr />
 <h2 id="comments">Comments<a class="headerlink" href="#comments" title="Permanent link">&para;</a></h2>
 <p>Lines beginning with <code>#</code> are ignored during execution.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-58-1" name="__codelineno-58-1" href="#__codelineno-58-1"></a># This is a comment
-<a id="__codelineno-58-2" name="__codelineno-58-2" href="#__codelineno-58-2"></a>set voltage 5.0     # inline comments work too
+<div class="highlight"><pre><span></span><code><a id="__codelineno-61-1" name="__codelineno-61-1" href="#__codelineno-61-1"></a># This is a comment
+<a id="__codelineno-61-2" name="__codelineno-61-2" href="#__codelineno-61-2"></a>set voltage 5.0     # inline comments work too
 </code></pre></div>
 <p>Use comments liberally to document what each section does, expected values, and any hardware setup required.</p>
 <hr />
 <h2 id="debugger">Debugger<a class="headerlink" href="#debugger" title="Permanent link">&para;</a></h2>
 <p>The script debugger lets you step through a script one command at a time, set breakpoints, jump around, and run live REPL commands while paused. Because all loops and variables are fully expanded before the debugger starts, every iteration of a <code>for</code> loop appears as a separate numbered line — you can set a breakpoint on exactly the one point you care about.</p>
 <h3 id="starting-the-debugger">Starting the debugger<a class="headerlink" href="#starting-the-debugger" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-59-1" name="__codelineno-59-1" href="#__codelineno-59-1"></a>script debug &lt;name&gt; [key=value ...]
+<div class="highlight"><pre><span></span><code><a id="__codelineno-62-1" name="__codelineno-62-1" href="#__codelineno-62-1"></a>script debug &lt;name&gt; [key=value ...]
 </code></pre></div>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-60-1" name="__codelineno-60-1" href="#__codelineno-60-1"></a>script debug lab3
-<a id="__codelineno-60-2" name="__codelineno-60-2" href="#__codelineno-60-2"></a>script debug my_sweep voltage=3.3
+<div class="highlight"><pre><span></span><code><a id="__codelineno-63-1" name="__codelineno-63-1" href="#__codelineno-63-1"></a>script debug lab3
+<a id="__codelineno-63-2" name="__codelineno-63-2" href="#__codelineno-63-2"></a>script debug my_sweep voltage=3.3
 </code></pre></div>
 <h3 id="in-script-breakpoints">In-script breakpoints<a class="headerlink" href="#in-script-breakpoints" title="Permanent link">&para;</a></h3>
 <p>Add <code>breakpoint</code> anywhere in a script file to automatically pause there, even when running with <code>script run</code>:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-61-1" name="__codelineno-61-1" href="#__codelineno-61-1"></a>psu set ${VIN} 0.5
-<a id="__codelineno-61-2" name="__codelineno-61-2" href="#__codelineno-61-2"></a>psu chan on
-<a id="__codelineno-61-3" name="__codelineno-61-3" href="#__codelineno-61-3"></a>breakpoint          ← execution pauses here; drops into debugger
-<a id="__codelineno-61-4" name="__codelineno-61-4" href="#__codelineno-61-4"></a>scope single
+<div class="highlight"><pre><span></span><code><a id="__codelineno-64-1" name="__codelineno-64-1" href="#__codelineno-64-1"></a>psu set ${VIN} 0.5
+<a id="__codelineno-64-2" name="__codelineno-64-2" href="#__codelineno-64-2"></a>psu chan on
+<a id="__codelineno-64-3" name="__codelineno-64-3" href="#__codelineno-64-3"></a>breakpoint          ← execution pauses here; drops into debugger
+<a id="__codelineno-64-4" name="__codelineno-64-4" href="#__codelineno-64-4"></a>scope single
 </code></pre></div>
 <h3 id="debugger-display">Debugger display<a class="headerlink" href="#debugger-display" title="Permanent link">&para;</a></h3>
 <p>When paused, the debugger shows a context window around the current line. The current line is highlighted in cyan. Lines with breakpoints are marked with <code>●</code>:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-62-1" name="__codelineno-62-1" href="#__codelineno-62-1"></a>  ────────────────────────────────────────────────────────────
-<a id="__codelineno-62-2" name="__codelineno-62-2" href="#__codelineno-62-2"></a>      12     psu chan off
-<a id="__codelineno-62-3" name="__codelineno-62-3" href="#__codelineno-62-3"></a>      13     sleep 0.5
-<a id="__codelineno-62-4" name="__codelineno-62-4" href="#__codelineno-62-4"></a>  →   14     psu set 5.0 0.5
-<a id="__codelineno-62-5" name="__codelineno-62-5" href="#__codelineno-62-5"></a>  ●   15     psu chan on
-<a id="__codelineno-62-6" name="__codelineno-62-6" href="#__codelineno-62-6"></a>      16     sleep 0.3
-<a id="__codelineno-62-7" name="__codelineno-62-7" href="#__codelineno-62-7"></a>  ────────────────────────────────────────────────────────────
-<a id="__codelineno-62-8" name="__codelineno-62-8" href="#__codelineno-62-8"></a>  14/42  │  n=step  c=continue  back  goto N  b N=break  d N=del  l=list  q=quit
-<a id="__codelineno-62-9" name="__codelineno-62-9" href="#__codelineno-62-9"></a>
-<a id="__codelineno-62-10" name="__codelineno-62-10" href="#__codelineno-62-10"></a>(dbg) _
+<div class="highlight"><pre><span></span><code><a id="__codelineno-65-1" name="__codelineno-65-1" href="#__codelineno-65-1"></a>  ────────────────────────────────────────────────────────────
+<a id="__codelineno-65-2" name="__codelineno-65-2" href="#__codelineno-65-2"></a>      12     psu chan off
+<a id="__codelineno-65-3" name="__codelineno-65-3" href="#__codelineno-65-3"></a>      13     sleep 0.5
+<a id="__codelineno-65-4" name="__codelineno-65-4" href="#__codelineno-65-4"></a>  →   14     psu set 5.0 0.5
+<a id="__codelineno-65-5" name="__codelineno-65-5" href="#__codelineno-65-5"></a>  ●   15     psu chan on
+<a id="__codelineno-65-6" name="__codelineno-65-6" href="#__codelineno-65-6"></a>      16     sleep 0.3
+<a id="__codelineno-65-7" name="__codelineno-65-7" href="#__codelineno-65-7"></a>  ────────────────────────────────────────────────────────────
+<a id="__codelineno-65-8" name="__codelineno-65-8" href="#__codelineno-65-8"></a>  14/42  │  n=step  c=continue  back  goto N  b N=break  d N=del  l=list  q=quit
+<a id="__codelineno-65-9" name="__codelineno-65-9" href="#__codelineno-65-9"></a>
+<a id="__codelineno-65-10" name="__codelineno-65-10" href="#__codelineno-65-10"></a>(dbg) _
 </code></pre></div>
 <h3 id="debugger-commands">Debugger commands<a class="headerlink" href="#debugger-commands" title="Permanent link">&para;</a></h3>
 <table>
@@ -2717,51 +2921,51 @@
 <hr />
 <h2 id="complete-example">Complete Example<a class="headerlink" href="#complete-example" title="Permanent link">&para;</a></h2>
 <p>A script combining all features:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-63-1" name="__codelineno-63-1" href="#__codelineno-63-1"></a># full_test.repl
-<a id="__codelineno-63-2" name="__codelineno-63-2" href="#__codelineno-63-2"></a># Full voltage characterization test
-<a id="__codelineno-63-3" name="__codelineno-63-3" href="#__codelineno-63-3"></a># Params: dut_name, v_min, v_max, steps
-<a id="__codelineno-63-4" name="__codelineno-63-4" href="#__codelineno-63-4"></a>
-<a id="__codelineno-63-5" name="__codelineno-63-5" href="#__codelineno-63-5"></a># ── Defaults ────────────────────────────────
-<a id="__codelineno-63-6" name="__codelineno-63-6" href="#__codelineno-63-6"></a>set dut_name my_dut
-<a id="__codelineno-63-7" name="__codelineno-63-7" href="#__codelineno-63-7"></a>set v_min 1.0
-<a id="__codelineno-63-8" name="__codelineno-63-8" href="#__codelineno-63-8"></a>set v_max 5.0
-<a id="__codelineno-63-9" name="__codelineno-63-9" href="#__codelineno-63-9"></a>set steps 5
-<a id="__codelineno-63-10" name="__codelineno-63-10" href="#__codelineno-63-10"></a>set delay 0.5
-<a id="__codelineno-63-11" name="__codelineno-63-11" href="#__codelineno-63-11"></a>
-<a id="__codelineno-63-12" name="__codelineno-63-12" href="#__codelineno-63-12"></a># ── Operator setup ───────────────────────────
-<a id="__codelineno-63-13" name="__codelineno-63-13" href="#__codelineno-63-13"></a>print === Voltage Characterization Test ===
-<a id="__codelineno-63-14" name="__codelineno-63-14" href="#__codelineno-63-14"></a>print DUT: ${dut_name}
-<a id="__codelineno-63-15" name="__codelineno-63-15" href="#__codelineno-63-15"></a>pause Connect DUT and DMM probes, then press Enter
-<a id="__codelineno-63-16" name="__codelineno-63-16" href="#__codelineno-63-16"></a>
-<a id="__codelineno-63-17" name="__codelineno-63-17" href="#__codelineno-63-17"></a># ── Optional runtime input ────────────────────
-<a id="__codelineno-63-18" name="__codelineno-63-18" href="#__codelineno-63-18"></a>input operator Operator initials:
-<a id="__codelineno-63-19" name="__codelineno-63-19" href="#__codelineno-63-19"></a>
-<a id="__codelineno-63-20" name="__codelineno-63-20" href="#__codelineno-63-20"></a># ── PSU on ───────────────────────────────────
-<a id="__codelineno-63-21" name="__codelineno-63-21" href="#__codelineno-63-21"></a>psu1 chan 1 on
-<a id="__codelineno-63-22" name="__codelineno-63-22" href="#__codelineno-63-22"></a>print PSU enabled
-<a id="__codelineno-63-23" name="__codelineno-63-23" href="#__codelineno-63-23"></a>dmm1 config vdc
-<a id="__codelineno-63-24" name="__codelineno-63-24" href="#__codelineno-63-24"></a>
-<a id="__codelineno-63-25" name="__codelineno-63-25" href="#__codelineno-63-25"></a># ── Sweep ────────────────────────────────────
-<a id="__codelineno-63-26" name="__codelineno-63-26" href="#__codelineno-63-26"></a>for v 1.0 2.0 3.3 5.0 9.0 12.0
-<a id="__codelineno-63-27" name="__codelineno-63-27" href="#__codelineno-63-27"></a>  print Testing ${v}V...
-<a id="__codelineno-63-28" name="__codelineno-63-28" href="#__codelineno-63-28"></a>  psu1 set ${v}
-<a id="__codelineno-63-29" name="__codelineno-63-29" href="#__codelineno-63-29"></a>  sleep ${delay}
-<a id="__codelineno-63-30" name="__codelineno-63-30" href="#__codelineno-63-30"></a>  psu1 meas_store v psu_${v} unit=V
-<a id="__codelineno-63-31" name="__codelineno-63-31" href="#__codelineno-63-31"></a>  dmm1 meas_store dmm_${v} unit=V
-<a id="__codelineno-63-32" name="__codelineno-63-32" href="#__codelineno-63-32"></a>  calc err_${v} (m[&quot;dmm_${v}&quot;] - m[&quot;psu_${v}&quot;]) / m[&quot;psu_${v}&quot;] * 100 unit=%
-<a id="__codelineno-63-33" name="__codelineno-63-33" href="#__codelineno-63-33"></a>end
-<a id="__codelineno-63-34" name="__codelineno-63-34" href="#__codelineno-63-34"></a>
-<a id="__codelineno-63-35" name="__codelineno-63-35" href="#__codelineno-63-35"></a># ── Results ────────────────────────────────────
-<a id="__codelineno-63-36" name="__codelineno-63-36" href="#__codelineno-63-36"></a>print === Test complete ===
-<a id="__codelineno-63-37" name="__codelineno-63-37" href="#__codelineno-63-37"></a>log print
-<a id="__codelineno-63-38" name="__codelineno-63-38" href="#__codelineno-63-38"></a>log save ${dut_name}_results.csv
-<a id="__codelineno-63-39" name="__codelineno-63-39" href="#__codelineno-63-39"></a>
-<a id="__codelineno-63-40" name="__codelineno-63-40" href="#__codelineno-63-40"></a># ── Safe state ────────────────────────────────
-<a id="__codelineno-63-41" name="__codelineno-63-41" href="#__codelineno-63-41"></a>psu1 chan 1 off
-<a id="__codelineno-63-42" name="__codelineno-63-42" href="#__codelineno-63-42"></a>print PSU off — done
+<div class="highlight"><pre><span></span><code><a id="__codelineno-66-1" name="__codelineno-66-1" href="#__codelineno-66-1"></a># full_test.repl
+<a id="__codelineno-66-2" name="__codelineno-66-2" href="#__codelineno-66-2"></a># Full voltage characterization test
+<a id="__codelineno-66-3" name="__codelineno-66-3" href="#__codelineno-66-3"></a># Params: dut_name, v_min, v_max, steps
+<a id="__codelineno-66-4" name="__codelineno-66-4" href="#__codelineno-66-4"></a>
+<a id="__codelineno-66-5" name="__codelineno-66-5" href="#__codelineno-66-5"></a># ── Defaults ────────────────────────────────
+<a id="__codelineno-66-6" name="__codelineno-66-6" href="#__codelineno-66-6"></a>set dut_name my_dut
+<a id="__codelineno-66-7" name="__codelineno-66-7" href="#__codelineno-66-7"></a>set v_min 1.0
+<a id="__codelineno-66-8" name="__codelineno-66-8" href="#__codelineno-66-8"></a>set v_max 5.0
+<a id="__codelineno-66-9" name="__codelineno-66-9" href="#__codelineno-66-9"></a>set steps 5
+<a id="__codelineno-66-10" name="__codelineno-66-10" href="#__codelineno-66-10"></a>set delay 0.5
+<a id="__codelineno-66-11" name="__codelineno-66-11" href="#__codelineno-66-11"></a>
+<a id="__codelineno-66-12" name="__codelineno-66-12" href="#__codelineno-66-12"></a># ── Operator setup ───────────────────────────
+<a id="__codelineno-66-13" name="__codelineno-66-13" href="#__codelineno-66-13"></a>print === Voltage Characterization Test ===
+<a id="__codelineno-66-14" name="__codelineno-66-14" href="#__codelineno-66-14"></a>print DUT: ${dut_name}
+<a id="__codelineno-66-15" name="__codelineno-66-15" href="#__codelineno-66-15"></a>pause Connect DUT and DMM probes, then press Enter
+<a id="__codelineno-66-16" name="__codelineno-66-16" href="#__codelineno-66-16"></a>
+<a id="__codelineno-66-17" name="__codelineno-66-17" href="#__codelineno-66-17"></a># ── Optional runtime input ────────────────────
+<a id="__codelineno-66-18" name="__codelineno-66-18" href="#__codelineno-66-18"></a>input operator Operator initials:
+<a id="__codelineno-66-19" name="__codelineno-66-19" href="#__codelineno-66-19"></a>
+<a id="__codelineno-66-20" name="__codelineno-66-20" href="#__codelineno-66-20"></a># ── PSU on ───────────────────────────────────
+<a id="__codelineno-66-21" name="__codelineno-66-21" href="#__codelineno-66-21"></a>psu1 chan 1 on
+<a id="__codelineno-66-22" name="__codelineno-66-22" href="#__codelineno-66-22"></a>print PSU enabled
+<a id="__codelineno-66-23" name="__codelineno-66-23" href="#__codelineno-66-23"></a>dmm1 config vdc
+<a id="__codelineno-66-24" name="__codelineno-66-24" href="#__codelineno-66-24"></a>
+<a id="__codelineno-66-25" name="__codelineno-66-25" href="#__codelineno-66-25"></a># ── Sweep ────────────────────────────────────
+<a id="__codelineno-66-26" name="__codelineno-66-26" href="#__codelineno-66-26"></a>for v 1.0 2.0 3.3 5.0 9.0 12.0
+<a id="__codelineno-66-27" name="__codelineno-66-27" href="#__codelineno-66-27"></a>  print Testing ${v}V...
+<a id="__codelineno-66-28" name="__codelineno-66-28" href="#__codelineno-66-28"></a>  psu1 set ${v}
+<a id="__codelineno-66-29" name="__codelineno-66-29" href="#__codelineno-66-29"></a>  sleep ${delay}
+<a id="__codelineno-66-30" name="__codelineno-66-30" href="#__codelineno-66-30"></a>  psu1 meas_store v psu_${v} unit=V
+<a id="__codelineno-66-31" name="__codelineno-66-31" href="#__codelineno-66-31"></a>  dmm1 meas_store dmm_${v} unit=V
+<a id="__codelineno-66-32" name="__codelineno-66-32" href="#__codelineno-66-32"></a>  calc err_${v} (m[&quot;dmm_${v}&quot;] - m[&quot;psu_${v}&quot;]) / m[&quot;psu_${v}&quot;] * 100 unit=%
+<a id="__codelineno-66-33" name="__codelineno-66-33" href="#__codelineno-66-33"></a>end
+<a id="__codelineno-66-34" name="__codelineno-66-34" href="#__codelineno-66-34"></a>
+<a id="__codelineno-66-35" name="__codelineno-66-35" href="#__codelineno-66-35"></a># ── Results ────────────────────────────────────
+<a id="__codelineno-66-36" name="__codelineno-66-36" href="#__codelineno-66-36"></a>print === Test complete ===
+<a id="__codelineno-66-37" name="__codelineno-66-37" href="#__codelineno-66-37"></a>log print
+<a id="__codelineno-66-38" name="__codelineno-66-38" href="#__codelineno-66-38"></a>log save ${dut_name}_results.csv
+<a id="__codelineno-66-39" name="__codelineno-66-39" href="#__codelineno-66-39"></a>
+<a id="__codelineno-66-40" name="__codelineno-66-40" href="#__codelineno-66-40"></a># ── Safe state ────────────────────────────────
+<a id="__codelineno-66-41" name="__codelineno-66-41" href="#__codelineno-66-41"></a>psu1 chan 1 off
+<a id="__codelineno-66-42" name="__codelineno-66-42" href="#__codelineno-66-42"></a>print PSU off — done
 </code></pre></div>
 <p>Run it:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-64-1" name="__codelineno-64-1" href="#__codelineno-64-1"></a>script run full_test dut_name=widget_rev2 delay=1.0
+<div class="highlight"><pre><span></span><code><a id="__codelineno-67-1" name="__codelineno-67-1" href="#__codelineno-67-1"></a>script run full_test dut_name=widget_rev2 delay=1.0
 </code></pre></div>
 
 

@@ -446,3 +446,110 @@ class TestLimitReset:
         awg_repl._safety_limits = {("awg", None): {"vpp_upper": 5.0}}
         awg_repl._expand_script_lines(["awg amp 1 1.0"], {}, depth=1)
         assert awg_repl._safety_limits == {("awg", None): {"vpp_upper": 5.0}}
+
+
+# ---------------------------------------------------------------------------
+# Interactive REPL handlers — do_upper_limit / do_lower_limit
+# ---------------------------------------------------------------------------
+
+class TestInteractiveLimitCommands:
+    """Verify that upper_limit / lower_limit work at the interactive REPL prompt."""
+
+    # --- PSU ---
+
+    def test_interactive_upper_limit_psu_stores_limit(self, psu_repl):
+        psu_repl.onecmd("upper_limit psu voltage 5.0")
+        assert psu_repl._safety_limits.get(("psu", None), {}).get("voltage_upper") == 5.0
+
+    def test_interactive_lower_limit_psu_stores_limit(self, psu_repl):
+        psu_repl.onecmd("lower_limit psu voltage 0.5")
+        assert psu_repl._safety_limits.get(("psu", None), {}).get("voltage_lower") == 0.5
+
+    def test_interactive_upper_limit_psu_blocks_command(self, psu_repl):
+        psu_repl.onecmd("upper_limit psu voltage 3.0")
+        psu_repl._command_had_error = False
+        psu_repl.onecmd("psu set 5.0")
+        assert psu_repl._command_had_error
+
+    def test_interactive_upper_limit_psu_allows_safe_command(self, psu_repl):
+        psu_repl.onecmd("upper_limit psu voltage 10.0")
+        psu_repl._command_had_error = False
+        psu_repl.onecmd("psu set 5.0")
+        assert not psu_repl._command_had_error
+
+    def test_interactive_upper_limit_psu_chan_stores_correctly(self, psu_repl):
+        psu_repl.onecmd("upper_limit psu chan 1 voltage 2.1")
+        assert psu_repl._safety_limits.get(("psu", 1), {}).get("voltage_upper") == 2.1
+
+    def test_interactive_upper_limit_psu_current(self, psu_repl):
+        psu_repl.onecmd("upper_limit psu current 1.5")
+        assert psu_repl._safety_limits.get(("psu", None), {}).get("current_upper") == 1.5
+
+    def test_interactive_limit_does_not_bleed_error_state(self, psu_repl):
+        # An error in the limit directive itself should NOT permanently set _command_had_error
+        psu_repl._command_had_error = False
+        psu_repl.onecmd("upper_limit psu voltage notanumber")
+        # After the handler returns, the outer error state is restored to False
+        assert not psu_repl._command_had_error
+
+    def test_interactive_limits_persist_across_multiple_commands(self, psu_repl):
+        psu_repl.onecmd("upper_limit psu voltage 5.0")
+        psu_repl.onecmd("upper_limit psu current 1.0")
+        assert psu_repl._safety_limits.get(("psu", None), {}).get("voltage_upper") == 5.0
+        assert psu_repl._safety_limits.get(("psu", None), {}).get("current_upper") == 1.0
+
+    # --- AWG ---
+
+    def test_interactive_upper_limit_awg_vpeak_stores_limit(self, awg_repl):
+        awg_repl.onecmd("upper_limit awg vpeak 5.0")
+        assert awg_repl._safety_limits.get(("awg", None), {}).get("vpeak_upper") == 5.0
+
+    def test_interactive_lower_limit_awg_vtrough_stores_limit(self, awg_repl):
+        awg_repl.onecmd("lower_limit awg vtrough -0.3")
+        assert awg_repl._safety_limits.get(("awg", None), {}).get("vtrough_lower") == -0.3
+
+    def test_interactive_upper_limit_awg_vpp_stores_limit(self, awg_repl):
+        awg_repl.onecmd("upper_limit awg vpp 10.0")
+        assert awg_repl._safety_limits.get(("awg", None), {}).get("vpp_upper") == 10.0
+
+    def test_interactive_upper_limit_awg_freq_stores_limit(self, awg_repl):
+        awg_repl.onecmd("upper_limit awg freq 1e6")
+        assert awg_repl._safety_limits.get(("awg", None), {}).get("freq_upper") == 1_000_000.0
+
+    def test_interactive_upper_limit_awg_blocks_amp_command(self, awg_repl):
+        awg_repl.onecmd("upper_limit awg vpp 4.0")
+        awg_repl._command_had_error = False
+        awg_repl.onecmd("awg amp 1 5.0")
+        assert awg_repl._command_had_error
+
+    def test_interactive_upper_limit_awg_allows_safe_amp(self, awg_repl):
+        awg_repl.onecmd("upper_limit awg vpp 10.0")
+        awg_repl._command_had_error = False
+        awg_repl.onecmd("awg amp 1 5.0")
+        assert not awg_repl._command_had_error
+
+    def test_interactive_lower_limit_awg_blocks_trough(self, awg_repl):
+        # offset=-3, vpp=4 → trough=-5 < -3 → blocked
+        awg_repl.onecmd("lower_limit awg vtrough -3.0")
+        awg_repl._update_awg_state("awg1", 1, vpp=4.0)
+        awg_repl._command_had_error = False
+        awg_repl.onecmd("awg offset 1 -3.0")
+        assert awg_repl._command_had_error
+
+    def test_interactive_upper_limit_awg_chan_stores_correctly(self, awg_repl):
+        awg_repl.onecmd("upper_limit awg chan 1 vpeak 3.3")
+        assert awg_repl._safety_limits.get(("awg", 1), {}).get("vpeak_upper") == 3.3
+
+    def test_interactive_upper_limit_awg_blocks_wave_command(self, awg_repl):
+        awg_repl.onecmd("upper_limit awg freq 1000")
+        awg_repl._command_had_error = False
+        awg_repl.onecmd("awg wave 1 sine freq=5000 amp=1.0")
+        assert awg_repl._command_had_error
+
+    def test_interactive_awg_limits_accumulate(self, awg_repl):
+        awg_repl.onecmd("upper_limit awg vpeak 5.0")
+        awg_repl.onecmd("lower_limit awg vtrough -0.3")
+        awg_repl.onecmd("upper_limit awg freq 1e6")
+        assert awg_repl._safety_limits.get(("awg", None), {}).get("vpeak_upper") == 5.0
+        assert awg_repl._safety_limits.get(("awg", None), {}).get("vtrough_lower") == -0.3
+        assert awg_repl._safety_limits.get(("awg", None), {}).get("freq_upper") == 1_000_000.0
