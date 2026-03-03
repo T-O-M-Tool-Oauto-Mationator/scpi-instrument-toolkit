@@ -1,0 +1,134 @@
+# =============================================================================
+# close-obsolete-issues.yml — Close issues that are no longer relevant
+# =============================================================================
+# Purpose:
+#   Closes GitHub issues that are obsolete because the functionality they
+#   requested has already been implemented or the problem has been resolved.
+#
+# Runs once on push to the feature branch that introduced this file.
+# =============================================================================
+
+name: Close Obsolete Issues
+
+on:
+  push:
+    branches:
+      - "claude/close-obsolete-issues-*"
+
+permissions:
+  issues: write
+
+jobs:
+  close-obsolete-issues:
+    name: Close obsolete issues
+    runs-on: ubuntu-latest
+    steps:
+      - name: Close issue 16 — Setup for School computers
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            await github.rest.issues.createComment({
+              owner, repo,
+              issue_number: 16,
+              body: [
+                "Closing this issue as it is now obsolete.",
+                "",
+                "Both prerequisites mentioned here have been addressed:",
+                "",
+                "1. **Git** — The `setup.ps1` PowerShell script documents and automates the",
+                "   full environment setup. Git must still be installed manually as an OS-level",
+                "   prerequisite (which cannot be automated from within the repo), but the",
+                "   remaining setup is fully scripted.",
+                "",
+                "2. **NumPy** — Added as an explicit required dependency in `requirements.txt`",
+                "   (commit `5f9b1fd`). Running `pip install -r requirements.txt` (or",
+                "   executing `setup.ps1`) installs NumPy automatically alongside all other",
+                "   dependencies.",
+              ].join("\n"),
+            });
+
+            await github.rest.issues.update({
+              owner, repo,
+              issue_number: 16,
+              state: "closed",
+              state_reason: "completed",
+            });
+
+            core.info("Closed issue #16");
+
+      - name: Close issue 18 — Remove 'quit' from help menu
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            await github.rest.issues.createComment({
+              owner, repo,
+              issue_number: 18,
+              body: [
+                "Closing this issue as it is now obsolete.",
+                "",
+                "The main `help` menu (displayed when you type `help` at the REPL prompt)",
+                "already lists only `exit` — `quit` does not appear anywhere in the",
+                "user-facing help output.",
+                "",
+                "The only remaining references to `quit` in the codebase are:",
+                "- The script **debugger** prompt (`q  quit / abort the script`) — this is",
+                "  intentional; `q` is a standard single-key shortcut in debugger UIs.",
+                "- Internal command dispatch (`elif cmd in ('q', 'quit', 'abort')`) — this",
+                "  is implementation detail, not user-visible help text.",
+                "",
+                "No changes are required.",
+              ].join("\n"),
+            });
+
+            await github.rest.issues.update({
+              owner, repo,
+              issue_number: 18,
+              state: "closed",
+              state_reason: "not_planned",
+            });
+
+            core.info("Closed issue #18");
+
+      - name: Close issue 23 — Add 'script view <name>' command
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            await github.rest.issues.createComment({
+              owner, repo,
+              issue_number: 23,
+              body: [
+                "Closing this issue as the requested functionality is already implemented.",
+                "",
+                "The `script show <name>` command does exactly what this issue describes:",
+                "- Prints the full script contents to stdout inside the REPL",
+                "- Displays a header line identifying the script",
+                "- Shows a clear error message when the script is not found",
+                "- Supports tab-completion consistent with other `script` subcommands",
+                "",
+                "Usage:",
+                "```",
+                "script show <name>",
+                "```",
+                "",
+                "This command is listed in the `script` help entry and in the full HTML",
+                "documentation. No additional `script view` alias is needed.",
+              ].join("\n"),
+            });
+
+            await github.rest.issues.update({
+              owner, repo,
+              issue_number: 23,
+              state: "closed",
+              state_reason: "not_planned",
+            });
+
+            core.info("Closed issue #23");
