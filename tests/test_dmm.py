@@ -247,3 +247,25 @@ class TestOwon_SetMode:
         dmm.set_mode("temp")
         # configure_temperature() called with default "KITS90"
         mi.write.assert_called_with("CONFigure:TEMPerature:RTD KITS90")
+
+
+class TestOwon_ContextManager:
+    def test_enter_calls_reset(self, owon_xdm1041):
+        dmm, mi = owon_xdm1041
+        dmm.__enter__()
+        cmds = _writes(mi)
+        assert "*RST" in cmds
+        assert "*CLS" in cmds
+
+    def test_exit_calls_reset(self, owon_xdm1041):
+        dmm, mi = owon_xdm1041
+        dmm.__exit__(None, None, None)
+        cmds = _writes(mi)
+        assert "*RST" in cmds
+
+    def test_exit_called_after_exception(self, owon_xdm1041):
+        dmm, mi = owon_xdm1041
+        with pytest.raises(RuntimeError), dmm:
+            raise RuntimeError("test")
+        cmds = _writes(mi)
+        assert "*RST" in cmds

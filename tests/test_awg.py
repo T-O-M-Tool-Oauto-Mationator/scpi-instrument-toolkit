@@ -421,3 +421,32 @@ class TestJDS6600_SetPhase:
         gen, mi = jds6600_generator
         gen.set_phase(2, 90.0)
         mi.write.assert_called_with(":w32=900.")
+
+
+class TestJDS6600_GetError:
+    def test_returns_stub_string(self, jds6600_generator):
+        gen, mi = jds6600_generator
+        result = gen.get_error()
+        assert "not supported" in result.lower()
+        mi.query.assert_not_called()
+
+
+class TestJDS6600_ContextManager:
+    def test_enter_disables_output(self, jds6600_generator):
+        gen, mi = jds6600_generator
+        gen.__enter__()
+        cmds = _writes(mi)
+        assert ":w20=0,0." in cmds
+
+    def test_exit_disables_output(self, jds6600_generator):
+        gen, mi = jds6600_generator
+        gen.__exit__(None, None, None)
+        cmds = _writes(mi)
+        assert ":w20=0,0." in cmds
+
+    def test_exit_called_after_exception(self, jds6600_generator):
+        gen, mi = jds6600_generator
+        with pytest.raises(RuntimeError), gen:
+            raise RuntimeError("test")
+        cmds = _writes(mi)
+        assert ":w20=0,0." in cmds

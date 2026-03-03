@@ -8,6 +8,8 @@ NOTE: Non-standard SCPI implementation:
 - Run/Stop is hardware-only; no SCPI command exists to control it remotely
 """
 
+import time
+
 import pyvisa
 
 from .device_manager import DeviceManager
@@ -52,15 +54,13 @@ class Owon_XDM1041(DeviceManager):
 
     def __enter__(self):
         """Context manager entry: reset and prepare for measurements."""
-        import time
-
         self.reset()
         time.sleep(0.5)  # Device needs time after reset
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        """Context manager exit: no special cleanup needed for DMM."""
-        pass
+        """Context manager exit: reset DMM to known safe state."""
+        self.reset()
 
     # ========================================================================
     # Configuration Methods
@@ -204,8 +204,6 @@ class Owon_XDM1041(DeviceManager):
         Returns:
             float: Measurement value
         """
-        import time
-
         time.sleep(2.0)  # Device needs time to settle after configuration
         result = self.query("MEAS?")
         return float(result.strip())

@@ -338,6 +338,19 @@ class JDS6600_Generator(DeviceManager):
             return self._ch2_enabled
         return False
 
+    def get_error(self):
+        """Error query stub — the JDS6600 protocol has no error query command."""
+        return "get_error not supported on JDS6600_Generator"
+
+    def __enter__(self):
+        """Context manager entry: disable outputs and zero all setpoints."""
+        self.disable_output()
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        """Context manager exit: disable outputs and zero all setpoints."""
+        self.disable_output()
+
     def disable_output(self):
         """Zeroes SINE memory (0Hz freq, 0V amp/offset), switches to DC 0V, then disables outputs."""
         for ch in (1, 2):

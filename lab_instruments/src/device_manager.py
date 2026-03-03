@@ -29,6 +29,10 @@ class DeviceManager:
             self.instrument = None
             print(f"Disconnected from {self.resource_name}")
 
+    def write(self, command):
+        """Alias for send_command — sends a command without waiting for a response."""
+        self.send_command(command)
+
     def send_command(self, command):
         """Sends a command to the instrument without waiting for a response."""
         if self.instrument:

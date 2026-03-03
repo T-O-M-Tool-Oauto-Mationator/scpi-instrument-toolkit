@@ -85,8 +85,11 @@ def hp_34401a(mock_visa_rm):
 
 
 @pytest.fixture
-def owon_xdm1041(mock_visa_rm):
+def owon_xdm1041(mock_visa_rm, monkeypatch):
     mock_rm, mock_instrument = mock_visa_rm
+    import lab_instruments.src.owon_xdm1041 as _mod
+
+    monkeypatch.setattr(_mod.time, "sleep", lambda _: None)
     from lab_instruments.src.owon_xdm1041 import Owon_XDM1041
 
     dmm = Owon_XDM1041("ASRL5::INSTR")
