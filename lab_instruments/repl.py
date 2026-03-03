@@ -2197,6 +2197,49 @@ class InstrumentRepl(cmd.Cmd):
             
         ColorPrinter.success(f"{key} = {self._script_vars[key]}")
 
+    def do_upper_limit(self, arg):
+        "upper_limit <device> [chan <N>] <param> <value>  —  set an upper safety limit"
+        if not arg:
+            self._print_colored_usage([
+                "upper_limit <device> [chan <N>] <param> <value>",
+                "  device: psu, awg, psu1, awg1, …",
+                "  param (psu):  voltage | current",
+                "  param (awg):  vpeak | vtrough | vpp | freq",
+                "  examples:",
+                "    upper_limit psu voltage 5.0",
+                "    upper_limit psu chan 1 voltage 2.1",
+                "    upper_limit awg vpeak 5.0",
+                "    upper_limit awg chan 1 freq 1e6",
+            ])
+            return
+        before = self._command_had_error
+        self._command_had_error = False
+        self._expand_script_lines([f"upper_limit {arg}"], {}, depth=1)
+        if not self._command_had_error:
+            ColorPrinter.success(f"Limit set: upper_limit {arg}")
+        self._command_had_error = before
+
+    def do_lower_limit(self, arg):
+        "lower_limit <device> [chan <N>] <param> <value>  —  set a lower safety limit"
+        if not arg:
+            self._print_colored_usage([
+                "lower_limit <device> [chan <N>] <param> <value>",
+                "  device: psu, awg, psu1, awg1, …",
+                "  param (psu):  voltage | current",
+                "  param (awg):  vpeak | vtrough | vpp | freq",
+                "  examples:",
+                "    lower_limit psu voltage 0.5",
+                "    lower_limit psu chan 1 voltage 0.1",
+                "    lower_limit awg vtrough -0.3",
+            ])
+            return
+        before = self._command_had_error
+        self._command_had_error = False
+        self._expand_script_lines([f"lower_limit {arg}"], {}, depth=1)
+        if not self._command_had_error:
+            ColorPrinter.success(f"Limit set: lower_limit {arg}")
+        self._command_had_error = before
+
     def do_script(self, arg):
         "script <new|run|debug|edit|list|rm|show|dir|import|load|save> [args]: manage and run scripts"
         args = self._parse_args(arg)
@@ -2245,6 +2288,11 @@ class InstrumentRepl(cmd.Cmd):
                 "export <varname> [varname2 ...]",
                 "  - push a variable back to the parent scope when script finishes",
                 "  - example: export RESULT",
+                "upper_limit <device> [chan <N>] <param> <value>",
+                "lower_limit <device> [chan <N>] <param> <value>",
+                "  - set safety limits; also work at interactive prompt",
+                "  - example: upper_limit psu chan 1 voltage 2.1",
+                "  - example: lower_limit awg vtrough -0.3",
                 "sleep <seconds>",
                 "repeat <N>  ...  end",
                 "for <var> <val1> <val2> ...  end",
