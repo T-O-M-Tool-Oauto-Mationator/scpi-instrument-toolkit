@@ -49,20 +49,15 @@ class HP_E3631A(DeviceManager):
 
     def disable_all_channels(self):
         """
-        Disables output and sets voltages to 0V.
-
-        Note: Sets current limit to 0.1A.
-        (Manual *RST defaults are 5A/1A, but 0.1A is safer for idle).
+        Disables output and sets all channels to 0V, 0A.
         """
         # 1. Disable Output (Priority)
         self.enable_output(False)
 
-        # 2. Reset Values (0V, 0.1A)
-        # Using APPLy command
-        safe_current = 0.1
+        # 2. Zero all setpoints (0V, 0A)
         for _, scpi_name in self.CHANNEL_MAP.items():
             # APPLy {output}, {voltage}, {current}
-            self.send_command(f"APPLY {scpi_name}, 0.0, {safe_current}")
+            self.send_command(f"APPLY {scpi_name}, 0.0, 0.0")
 
     def enable_output(self, enabled: bool = True):
         """Enable or disable the output of the power supply.
@@ -162,6 +157,25 @@ class HP_E3631A(DeviceManager):
         """Set only the current limit for the specified channel."""
         self.select_channel(channel)
         self.send_command(f"CURRENT {current}")
+
+    def get_voltage_setpoint(self, channel=None):
+        """Query the voltage setpoint for the currently selected (or specified) channel."""
+        if channel is not None:
+            self.select_channel(channel)
+        resp = self.query("VOLTAGE?")
+        return float(resp.strip().split()[0])
+
+    def get_current_limit(self, channel=None):
+        """Query the current limit for the currently selected (or specified) channel."""
+        if channel is not None:
+            self.select_channel(channel)
+        resp = self.query("CURRENT?")
+        return float(resp.strip().split()[0])
+
+    def get_output_state(self):
+        """Query whether the output is enabled."""
+        resp = self.query("OUTPUT:STATE?").strip()
+        return resp in ("1", "ON")
 
     def get_error(self):
         """Reads the most recent error from the error queue."""

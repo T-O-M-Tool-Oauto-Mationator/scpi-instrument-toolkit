@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "scpi-instrument-toolkit"
-version = "0.1.127"
+version = "0.1.129"
 description = "Python drivers and interactive REPL for SCPI test and measurement instruments"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -32,6 +32,11 @@ scpi-repl = "lab_instruments.repl:main"
 Homepage = "https://github.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit"
 Repository = "https://github.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit"
 Issues = "https://github.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit/issues"
+
+[tool.pytest.ini_options]
+markers = [
+    "integration: end-to-end tests using mock devices through the full REPL stack",
+]
 
 [tool.setuptools.packages.find]
 include = ["lab_instruments*"]

@@ -1633,6 +1633,8 @@ class InstrumentRepl(cmd.Cmd):
                 elif name.startswith("awg") or name == "dds":
                     if hasattr(dev, 'disable_all_channels'):
                         dev.disable_all_channels()
+                    elif hasattr(dev, 'disable_output'):
+                        dev.disable_output()
                     elif hasattr(dev, 'enable_output'):
                         dev.enable_output(ch1=False, ch2=False)
                 # Oscilloscope (scope, scope1, scope2, ...)
@@ -1647,6 +1649,16 @@ class InstrumentRepl(cmd.Cmd):
                                 dev.disable_channel(ch)
                             except Exception:
                                 pass
+                    # Disable built-in AWG and zero its setpoints if present
+                    if hasattr(dev, 'awg_set_output_enable'):
+                        try:
+                            dev.awg_set_output_enable(False)
+                            if hasattr(dev, 'awg_set_function'):
+                                dev.awg_set_function('DC')
+                            if hasattr(dev, 'awg_set_offset'):
+                                dev.awg_set_offset(0.0)
+                        except Exception:
+                            pass
                 # DMM devices (dmm, dmm1, dmm2, ...)
                 elif name.startswith("dmm"):
                     if hasattr(dev, 'reset'):
@@ -1676,6 +1688,9 @@ class InstrumentRepl(cmd.Cmd):
                     if hasattr(dev, 'disable_all_channels'):
                         dev.disable_all_channels()
                         ColorPrinter.success(f"{name}: channels disabled")
+                    elif hasattr(dev, 'disable_output'):
+                        dev.disable_output()
+                        ColorPrinter.success(f"{name}: outputs disabled")
                     elif hasattr(dev, 'enable_output'):
                         dev.enable_output(ch1=False, ch2=False)
                         ColorPrinter.success(f"{name}: outputs disabled")
@@ -1708,11 +1723,20 @@ class InstrumentRepl(cmd.Cmd):
                 # PSU devices (psu, psu1, psu2, ...)
                 if name.startswith("psu"):
                     if hasattr(dev, 'enable_output'):
+                        if not self._check_psu_output_allowed(name):
+                            continue
                         dev.enable_output(True)
                         ColorPrinter.success(f"{name}: output enabled")
                 # AWG/DDS devices (awg, awg1, awg2, dds)
                 elif name.startswith("awg") or name == "dds":
                     if hasattr(dev, 'enable_output'):
+                        blocked = False
+                        for ch in (1, 2):
+                            if not self._check_awg_output_allowed(name, ch):
+                                blocked = True
+                                break
+                        if blocked:
+                            continue
                         try:
                             dev.enable_output(ch1=True, ch2=True)
                         except TypeError:
@@ -2027,6 +2051,8 @@ class InstrumentRepl(cmd.Cmd):
                         dev.enable_output(False)
                     ColorPrinter.success(f"{name}: output disabled")
                 elif state == "on":
+                    if not self._check_psu_output_allowed(name):
+                        return
                     if hasattr(dev, 'enable_output'):
                         dev.enable_output(True)
                     ColorPrinter.success(f"{name}: output enabled")
@@ -2048,6 +2074,9 @@ class InstrumentRepl(cmd.Cmd):
                             dev.enable_output(False)
                     ColorPrinter.success(f"{name}: outputs disabled")
                 elif state == "on":
+                    for ch in (1, 2):
+                        if not self._check_awg_output_allowed(name, ch):
+                            return
                     if hasattr(dev, 'enable_all_channels'):
                         dev.enable_all_channels()
                     elif hasattr(dev, 'enable_output'):
@@ -4764,6 +4793,8 @@ allTargets.forEach(t => io.observe(t));
                 (not is_single_channel and len(args) >= 3)
             ):
                 state = args[-1].lower() == "on"
+                if state and not self._check_psu_output_allowed(psu_name):
+                    return
                 dev.enable_output(state)
                 ColorPrinter.success(f"Output {'enabled' if state else 'disabled'}")
 
@@ -4929,9 +4960,9 @@ allTargets.forEach(t => io.observe(t));
         limits = self._collect_limits(device_name, device_type, channel)
         if not limits:
             return True
-        state  = self._awg_channel_state.get((device_name, channel), {})
-        vpp    = new_vpp    if new_vpp    is not None else (state.get("vpp")    or 0.0)
-        offset = new_offset if new_offset is not None else (state.get("offset") or 0.0)
+        queried = self._query_awg_state(device_name, channel)
+        vpp    = new_vpp    if new_vpp    is not None else (queried.get("vpp")    or 0.0)
+        offset = new_offset if new_offset is not None else (queried.get("offset") or 0.0)
 
         if "vpp_upper" in limits and vpp > limits["vpp_upper"]:
             self._error(f"Safety limit exceeded: AWG Vpp {vpp}V > {limits['vpp_upper']}V")
@@ -4969,72 +5000,304 @@ allTargets.forEach(t => io.observe(t));
         if vpp    is not None: self._awg_channel_state[key]["vpp"]    = vpp
         if offset is not None: self._awg_channel_state[key]["offset"] = offset
 
+    def _query_awg_state(self, device_name, channel):
+        """Query real instrument state for an AWG channel via duck-typed getters.
+        Returns dict with 'vpp', 'offset', 'freq' keys (values may be None)."""
+        dev = self.devices.get(device_name)
+        if dev is None:
+            return {"vpp": None, "offset": None, "freq": None}
+        vpp = offset = freq = None
+        try:
+            if hasattr(dev, "get_amplitude"):
+                vpp = dev.get_amplitude(channel)
+        except Exception:
+            pass
+        try:
+            if hasattr(dev, "get_offset"):
+                offset = dev.get_offset(channel)
+        except Exception:
+            pass
+        try:
+            if hasattr(dev, "get_frequency"):
+                freq = dev.get_frequency(channel)
+        except Exception:
+            pass
+        # Fall back to tracked state if getters returned None
+        cached = self._awg_channel_state.get((device_name, channel), {})
+        if vpp is None:
+            vpp = cached.get("vpp")
+        if offset is None:
+            offset = cached.get("offset")
+        return {"vpp": vpp, "offset": offset, "freq": freq}
+
+    def _query_psu_state(self, device_name):
+        """Query real instrument state for a PSU via duck-typed getters.
+        Returns dict with 'voltage', 'current' keys (values may be None)."""
+        dev = self.devices.get(device_name)
+        if dev is None:
+            return {"voltage": None, "current": None}
+        voltage = current = None
+        try:
+            if hasattr(dev, "get_voltage_setpoint"):
+                voltage = dev.get_voltage_setpoint()
+        except Exception:
+            pass
+        try:
+            if hasattr(dev, "get_current_limit"):
+                current = dev.get_current_limit()
+        except Exception:
+            pass
+        return {"voltage": voltage, "current": current}
+
+    def _check_awg_output_allowed(self, device_name, channel):
+        """Check if enabling AWG output is safe given current limits.
+        Returns True if allowed, False if blocked (prints error)."""
+        device_type = re.sub(r'\d+$', '', device_name)
+        limits = self._collect_limits(device_name, device_type, channel)
+        if not limits:
+            return True
+        state = self._query_awg_state(device_name, channel)
+        vpp = state.get("vpp")
+        offset = state.get("offset")
+        freq = state.get("freq")
+        # If limits are set but state is completely unknown, refuse
+        if vpp is None and offset is None and freq is None:
+            self._error(
+                f"SAFETY BLOCKED: {device_name} ch{channel} output enable refused — "
+                f"limits are set but instrument state is unknown")
+            return False
+        vpp = vpp if vpp is not None else 0.0
+        offset = offset if offset is not None else 0.0
+        peak = offset + vpp / 2.0
+        trough = offset - vpp / 2.0
+        if "vpp_upper" in limits and vpp > limits["vpp_upper"]:
+            self._error(
+                f"SAFETY BLOCKED: {device_name} ch{channel} Vpp {vpp}V > limit {limits['vpp_upper']}V — "
+                f"reduce amplitude before enabling output")
+            return False
+        if "vpeak_upper" in limits and peak > limits["vpeak_upper"]:
+            self._error(
+                f"SAFETY BLOCKED: {device_name} ch{channel} peak {peak:.4g}V > limit {limits['vpeak_upper']}V — "
+                f"reduce amplitude/offset before enabling output")
+            return False
+        if "vtrough_lower" in limits and trough < limits["vtrough_lower"]:
+            self._error(
+                f"SAFETY BLOCKED: {device_name} ch{channel} trough {trough:.4g}V < limit {limits['vtrough_lower']}V — "
+                f"adjust offset before enabling output")
+            return False
+        if "vpeak_lower" in limits and peak < limits["vpeak_lower"]:
+            self._error(
+                f"SAFETY BLOCKED: {device_name} ch{channel} peak {peak:.4g}V < limit {limits['vpeak_lower']}V")
+            return False
+        if "vtrough_upper" in limits and trough > limits["vtrough_upper"]:
+            self._error(
+                f"SAFETY BLOCKED: {device_name} ch{channel} trough {trough:.4g}V > limit {limits['vtrough_upper']}V")
+            return False
+        if freq is not None:
+            if "freq_upper" in limits and freq > limits["freq_upper"]:
+                self._error(
+                    f"SAFETY BLOCKED: {device_name} ch{channel} freq {freq}Hz > limit {limits['freq_upper']}Hz")
+                return False
+            if "freq_lower" in limits and freq < limits["freq_lower"]:
+                self._error(
+                    f"SAFETY BLOCKED: {device_name} ch{channel} freq {freq}Hz < limit {limits['freq_lower']}Hz")
+                return False
+        return True
+
+    def _check_psu_output_allowed(self, device_name):
+        """Check if enabling PSU output is safe given current limits.
+        Returns True if allowed, False if blocked (prints error)."""
+        device_type = re.sub(r'\d+$', '', device_name)
+        limits = self._collect_limits(device_name, device_type, None)
+        if not limits:
+            return True
+        state = self._query_psu_state(device_name)
+        voltage = state.get("voltage")
+        current = state.get("current")
+        # If limits are set but state is completely unknown, refuse
+        if voltage is None and current is None:
+            self._error(
+                f"SAFETY BLOCKED: {device_name} output enable refused — "
+                f"limits are set but instrument state is unknown")
+            return False
+        if voltage is not None:
+            if "voltage_upper" in limits and voltage > limits["voltage_upper"]:
+                self._error(
+                    f"SAFETY BLOCKED: {device_name} voltage {voltage}V > limit {limits['voltage_upper']}V — "
+                    f"reduce voltage before enabling output")
+                return False
+            if "voltage_lower" in limits and voltage < limits["voltage_lower"]:
+                self._error(
+                    f"SAFETY BLOCKED: {device_name} voltage {voltage}V < limit {limits['voltage_lower']}V")
+                return False
+        if current is not None:
+            if "current_upper" in limits and current > limits["current_upper"]:
+                self._error(
+                    f"SAFETY BLOCKED: {device_name} current {current}A > limit {limits['current_upper']}A — "
+                    f"reduce current limit before enabling output")
+                return False
+            if "current_lower" in limits and current < limits["current_lower"]:
+                self._error(
+                    f"SAFETY BLOCKED: {device_name} current {current}A < limit {limits['current_lower']}A")
+                return False
+        return True
+
     def _retroactive_limit_check_all(self):
-        """Warn (not error) if any current instrument state already violates stored limits.
+        """Check if current instrument state violates stored limits.
+        If output is ON and violation detected → auto-disable output (SAFETY ENFORCED).
+        If output is OFF and violation detected → advisory warning only.
         Called after an interactive upper_limit / lower_limit to catch existing violations."""
         for dev_name, dev in self.devices.items():
             dev_type = re.sub(r'\d+$', '', dev_name)
 
             # --- PSU ---
             if dev_type == "psu":
-                try:
-                    v = dev.get_voltage_setpoint() if hasattr(dev, "get_voltage_setpoint") else None
-                    i = dev.get_current_limit()    if hasattr(dev, "get_current_limit")    else None
-                except Exception:
-                    continue
+                psu_state = self._query_psu_state(dev_name)
+                v = psu_state.get("voltage")
+                i = psu_state.get("current")
                 limits = self._collect_limits(dev_name, dev_type, None)
+                output_on = False
+                try:
+                    if hasattr(dev, "get_output_state"):
+                        output_on = dev.get_output_state()
+                except Exception:
+                    pass
+                violated = False
                 if v is not None:
                     if "voltage_upper" in limits and v > limits["voltage_upper"]:
-                        ColorPrinter.warning(
-                            f"Retroactive: {dev_name} setpoint {v}V already exceeds limit "
-                            f"{limits['voltage_upper']}V — consider reducing output")
+                        violated = True
+                        if output_on:
+                            ColorPrinter.error(
+                                f"SAFETY ENFORCED: {dev_name} setpoint {v}V exceeds limit "
+                                f"{limits['voltage_upper']}V — output auto-disabled")
+                        else:
+                            ColorPrinter.warning(
+                                f"Retroactive: {dev_name} setpoint {v}V already exceeds limit "
+                                f"{limits['voltage_upper']}V — consider reducing output")
                     if "voltage_lower" in limits and v < limits["voltage_lower"]:
-                        ColorPrinter.warning(
-                            f"Retroactive: {dev_name} setpoint {v}V already below limit "
-                            f"{limits['voltage_lower']}V")
+                        violated = True
+                        if output_on:
+                            ColorPrinter.error(
+                                f"SAFETY ENFORCED: {dev_name} setpoint {v}V below limit "
+                                f"{limits['voltage_lower']}V — output auto-disabled")
+                        else:
+                            ColorPrinter.warning(
+                                f"Retroactive: {dev_name} setpoint {v}V already below limit "
+                                f"{limits['voltage_lower']}V")
                 if i is not None:
                     if "current_upper" in limits and i > limits["current_upper"]:
-                        ColorPrinter.warning(
-                            f"Retroactive: {dev_name} current limit {i}A already exceeds limit "
-                            f"{limits['current_upper']}A")
+                        violated = True
+                        if output_on:
+                            ColorPrinter.error(
+                                f"SAFETY ENFORCED: {dev_name} current limit {i}A exceeds limit "
+                                f"{limits['current_upper']}A — output auto-disabled")
+                        else:
+                            ColorPrinter.warning(
+                                f"Retroactive: {dev_name} current limit {i}A already exceeds limit "
+                                f"{limits['current_upper']}A")
                     if "current_lower" in limits and i < limits["current_lower"]:
-                        ColorPrinter.warning(
-                            f"Retroactive: {dev_name} current limit {i}A already below limit "
-                            f"{limits['current_lower']}A")
+                        violated = True
+                        if output_on:
+                            ColorPrinter.error(
+                                f"SAFETY ENFORCED: {dev_name} current limit {i}A below limit "
+                                f"{limits['current_lower']}A — output auto-disabled")
+                        else:
+                            ColorPrinter.warning(
+                                f"Retroactive: {dev_name} current limit {i}A already below limit "
+                                f"{limits['current_lower']}A")
+                if violated and output_on:
+                    try:
+                        dev.enable_output(False)
+                    except Exception:
+                        pass
 
             # --- AWG ---
             elif dev_type == "awg":
-                for (awg_dev, awg_ch), state in self._awg_channel_state.items():
-                    if awg_dev != dev_name:
-                        continue
-                    limits = self._collect_limits(awg_dev, dev_type, awg_ch)
+                for awg_ch in (1, 2):
+                    queried = self._query_awg_state(dev_name, awg_ch)
+                    limits = self._collect_limits(dev_name, dev_type, awg_ch)
                     if not limits:
                         continue
-                    vpp    = state.get("vpp")    or 0.0
-                    offset = state.get("offset") or 0.0
-                    peak   = offset + vpp / 2.0
-                    trough = offset - vpp / 2.0
-                    if "vpp_upper" in limits and vpp > limits["vpp_upper"]:
-                        ColorPrinter.warning(
-                            f"Retroactive: {awg_dev} ch{awg_ch} Vpp {vpp}V already exceeds limit "
-                            f"{limits['vpp_upper']}V")
+                    vpp    = queried.get("vpp")
+                    offset = queried.get("offset")
+                    freq   = queried.get("freq")
+                    if vpp is None and offset is None and freq is None:
+                        continue
+                    vpp_val    = vpp if vpp is not None else 0.0
+                    offset_val = offset if offset is not None else 0.0
+                    peak   = offset_val + vpp_val / 2.0
+                    trough = offset_val - vpp_val / 2.0
+                    ch_on = False
+                    try:
+                        if hasattr(dev, "get_output_state"):
+                            ch_on = dev.get_output_state(awg_ch)
+                    except Exception:
+                        pass
+                    violated = False
+                    if vpp is not None and "vpp_upper" in limits and vpp_val > limits["vpp_upper"]:
+                        violated = True
+                        if ch_on:
+                            ColorPrinter.error(
+                                f"SAFETY ENFORCED: {dev_name} ch{awg_ch} Vpp {vpp_val}V exceeds limit "
+                                f"{limits['vpp_upper']}V — output auto-disabled")
+                        else:
+                            ColorPrinter.warning(
+                                f"Retroactive: {dev_name} ch{awg_ch} Vpp {vpp_val}V already exceeds limit "
+                                f"{limits['vpp_upper']}V")
                     if "vpeak_upper" in limits and peak > limits["vpeak_upper"]:
-                        ColorPrinter.warning(
-                            f"Retroactive: {awg_dev} ch{awg_ch} peak {peak:.4g}V already exceeds limit "
-                            f"{limits['vpeak_upper']}V")
+                        violated = True
+                        if ch_on:
+                            ColorPrinter.error(
+                                f"SAFETY ENFORCED: {dev_name} ch{awg_ch} peak {peak:.4g}V exceeds limit "
+                                f"{limits['vpeak_upper']}V — output auto-disabled")
+                        else:
+                            ColorPrinter.warning(
+                                f"Retroactive: {dev_name} ch{awg_ch} peak {peak:.4g}V already exceeds limit "
+                                f"{limits['vpeak_upper']}V")
                     if "vtrough_lower" in limits and trough < limits["vtrough_lower"]:
+                        violated = True
+                        if ch_on:
+                            ColorPrinter.error(
+                                f"SAFETY ENFORCED: {dev_name} ch{awg_ch} trough {trough:.4g}V below limit "
+                                f"{limits['vtrough_lower']}V — output auto-disabled")
+                        else:
+                            ColorPrinter.warning(
+                                f"Retroactive: {dev_name} ch{awg_ch} trough {trough:.4g}V already below limit "
+                                f"{limits['vtrough_lower']}V")
+                    if vpp is not None and "vpp_lower" in limits and vpp_val < limits["vpp_lower"]:
+                        violated = True
+                        if ch_on:
+                            ColorPrinter.error(
+                                f"SAFETY ENFORCED: {dev_name} ch{awg_ch} Vpp {vpp_val}V below limit "
+                                f"{limits['vpp_lower']}V — output auto-disabled")
+                        else:
+                            ColorPrinter.warning(
+                                f"Retroactive: {dev_name} ch{awg_ch} Vpp {vpp_val}V already below limit "
+                                f"{limits['vpp_lower']}V")
+                    if freq is not None:
+                        if "freq_upper" in limits and freq > limits["freq_upper"]:
+                            violated = True
+                            if ch_on:
+                                ColorPrinter.error(
+                                    f"SAFETY ENFORCED: {dev_name} ch{awg_ch} freq {freq}Hz exceeds limit "
+                                    f"{limits['freq_upper']}Hz — output auto-disabled")
+                            else:
+                                ColorPrinter.warning(
+                                    f"Retroactive: {dev_name} ch{awg_ch} freq {freq}Hz already exceeds limit "
+                                    f"{limits['freq_upper']}Hz")
+                    elif "freq_upper" in limits or "freq_lower" in limits:
                         ColorPrinter.warning(
-                            f"Retroactive: {awg_dev} ch{awg_ch} trough {trough:.4g}V already below limit "
-                            f"{limits['vtrough_lower']}V")
-                    if "vpp_lower" in limits and vpp < limits["vpp_lower"]:
-                        ColorPrinter.warning(
-                            f"Retroactive: {awg_dev} ch{awg_ch} Vpp {vpp}V already below limit "
-                            f"{limits['vpp_lower']}V")
-                    # freq not tracked in _awg_channel_state — cannot retroactively check
-                    if "freq_upper" in limits:
-                        ColorPrinter.warning(
-                            f"Retroactive: {awg_dev} ch{awg_ch} frequency limit set but current freq "
+                            f"Retroactive: {dev_name} ch{awg_ch} frequency limit set but current freq "
                             f"unknown — verify manually")
+                    if violated and ch_on:
+                        try:
+                            dev.enable_output(awg_ch, False)
+                        except TypeError:
+                            try:
+                                kw = {f"ch{awg_ch}": False}
+                                dev.enable_output(**kw)
+                            except Exception:
+                                pass
 
     # --------------------------
     # AWG commands
@@ -5087,6 +5350,8 @@ allTargets.forEach(t => io.observe(t));
                 channels = self._parse_channels(args[1], max_ch=2)
                 state = args[2].lower() == "on"
                 for channel in channels:
+                    if state and not self._check_awg_output_allowed(awg_name, channel):
+                        return
                     if is_jds6600:
                         dev.enable_output(
                             ch1=state if channel == 1 else None,

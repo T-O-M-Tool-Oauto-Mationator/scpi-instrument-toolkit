@@ -71,13 +71,13 @@ class MATRIX_MPS6010H(DeviceManager):
 
     def disable_output(self):
         """
-        Disable output and set to safe state (0V, 0.1A limit).
+        Disable output and set to safe state (0V, 0A limit).
 
         Safety first: Always call this before disconnecting or on error.
         """
         self.enable_output(False)
         self.set_voltage(0.0)
-        self.set_current_limit(0.1)
+        self.set_current_limit(0.0)
 
     def set_voltage(self, voltage: float):
         """

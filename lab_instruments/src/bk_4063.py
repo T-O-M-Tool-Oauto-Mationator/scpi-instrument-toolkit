@@ -47,8 +47,9 @@ class BK_4063(DeviceManager):
     # ==========================================
 
     def disable_all_channels(self):
-        """Disables output for all channels."""
+        """Zeroes setpoints (0V DC) then disables output for all channels."""
         for channel in self.CHANNEL_MAP:
+            self.set_dc_output(channel, 0.0)
             self.enable_output(channel, False)
 
     def enable_output(self, channel, enabled: bool = True):
@@ -92,6 +93,56 @@ class BK_4063(DeviceManager):
         scpi_name = self.CHANNEL_MAP[channel]
         state = "ON" if enabled else "OFF"
         self.send_command(f"{scpi_name}:SYNC {state}")
+
+    # ==========================================
+    # STATE QUERIES
+    # ==========================================
+
+    def _parse_bswv(self, channel, key):
+        """Query BSWV and extract a named parameter value."""
+        if channel not in self.CHANNEL_MAP:
+            raise ValueError(
+                f"Invalid channel. Must be one of: {list(self.CHANNEL_MAP.keys())}"
+            )
+        scpi_name = self.CHANNEL_MAP[channel]
+        resp = self.query(f"{scpi_name}:BSWV?")
+        for part in resp.split(","):
+            part = part.strip()
+            if part.upper().startswith(key.upper()):
+                # Format is KEY,VALUE — the value follows in the next comma-separated field
+                # But BK format is "WVTP,SINE,FRQ,1000,AMP,2.0,..." so split all and pair up
+                pass
+        # Re-parse as key-value pairs
+        tokens = [t.strip() for t in resp.split(",")]
+        for i in range(len(tokens) - 1):
+            if tokens[i].upper() == key.upper():
+                return tokens[i + 1]
+        return None
+
+    def get_amplitude(self, channel):
+        """Query the current amplitude (Vpp) for the specified channel."""
+        val = self._parse_bswv(channel, "AMP")
+        return float(val) if val is not None else None
+
+    def get_offset(self, channel):
+        """Query the current DC offset for the specified channel."""
+        val = self._parse_bswv(channel, "OFST")
+        return float(val) if val is not None else None
+
+    def get_frequency(self, channel):
+        """Query the current frequency (Hz) for the specified channel."""
+        val = self._parse_bswv(channel, "FRQ")
+        return float(val) if val is not None else None
+
+    def get_output_state(self, channel):
+        """Query whether output is enabled for the specified channel."""
+        if channel not in self.CHANNEL_MAP:
+            raise ValueError(
+                f"Invalid channel. Must be one of: {list(self.CHANNEL_MAP.keys())}"
+            )
+        scpi_name = self.CHANNEL_MAP[channel]
+        resp = self.query(f"{scpi_name}:OUTPut?").strip()
+        return resp in ("1", "ON")
 
     # ==========================================
     # WAVEFORM CONFIGURATION

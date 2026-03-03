@@ -52,6 +52,9 @@ class JDS6600_Generator(DeviceManager):
         super().__init__(resource_name)
         self._ch1_enabled = False
         self._ch2_enabled = False
+        self._ch_amplitude = {}
+        self._ch_offset = {}
+        self._ch_frequency = {}
 
     def connect(self):
         """Override to set serial communication parameters."""
@@ -181,6 +184,7 @@ class JDS6600_Generator(DeviceManager):
 
         func_code = 23 if channel == 1 else 24
         response = self._send_command(f":w{func_code}={value},{unit}.")
+        self._ch_frequency[channel] = freq_hz
         print(f"CH{channel} frequency: {display_freq:.4f} {unit_str}")
 
     def set_amplitude(self, channel: int, amplitude_v: float):
@@ -199,6 +203,7 @@ class JDS6600_Generator(DeviceManager):
 
         func_code = 25 if channel == 1 else 26
         response = self._send_command(f":w{func_code}={value}.")
+        self._ch_amplitude[channel] = amplitude_v
         print(f"CH{channel} amplitude: {amplitude_v:.3f} Vpp")
 
     def set_duty_cycle(self, channel: int, duty_percent: float):
@@ -244,6 +249,7 @@ class JDS6600_Generator(DeviceManager):
 
         func_code = 27 if channel == 1 else 28
         response = self._send_command(f":w{func_code}={value}.")
+        self._ch_offset[channel] = offset_v
         print(f"CH{channel} offset: {offset_v:.3f} V")
 
     def set_phase(self, channel: int, phase_deg: float):
@@ -301,8 +307,31 @@ class JDS6600_Generator(DeviceManager):
         else:
             print("Sync disabled (channels independent)")
 
+    def get_amplitude(self, channel):
+        """Return cached amplitude (Vpp) for a channel, or None if never set."""
+        return self._ch_amplitude.get(channel)
+
+    def get_offset(self, channel):
+        """Return cached DC offset for a channel, or None if never set."""
+        return self._ch_offset.get(channel)
+
+    def get_frequency(self, channel):
+        """Return cached frequency (Hz) for a channel, or None if never set."""
+        return self._ch_frequency.get(channel)
+
+    def get_output_state(self, channel):
+        """Return cached output state for a channel."""
+        if channel == 1:
+            return self._ch1_enabled
+        elif channel == 2:
+            return self._ch2_enabled
+        return False
+
     def disable_output(self):
-        """Disable both channel outputs for safety."""
+        """Zero setpoints (DC waveform, 0V offset) then disable both channel outputs."""
+        for ch in (1, 2):
+            self.set_waveform(ch, 'dc')
+            self.set_offset(ch, 0.0)
         self.enable_output(False, False)
 
     def __repr__(self):

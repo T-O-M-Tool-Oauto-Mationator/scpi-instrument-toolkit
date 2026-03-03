@@ -71,8 +71,9 @@ class Keysight_EDU33212A(DeviceManager):
         self.send_command(f"OUTPut{channel} {state}")
 
     def disable_all_channels(self):
-        """Disable output for all channels."""
+        """Zero setpoints (0V DC) then disable output for all channels."""
         for channel in self.CHANNEL_MAP:
+            self.set_dc_output(channel, 0.0)
             self.enable_output(channel, False)
 
     def set_output_load(self, channel, load):
@@ -104,6 +105,27 @@ class Keysight_EDU33212A(DeviceManager):
         """Enable or disable the Sync output signal."""
         state = "ON" if enabled else "OFF"
         self.send_command(f"OUTPut:SYNC {state}")
+
+    def get_amplitude(self, channel):
+        """Query the current amplitude (Vpp) for the specified channel."""
+        self._validate_channel(channel)
+        return float(self.query(f"{self._src(channel)}:VOLTage?"))
+
+    def get_offset(self, channel):
+        """Query the current DC offset for the specified channel."""
+        self._validate_channel(channel)
+        return float(self.query(f"{self._src(channel)}:VOLTage:OFFSet?"))
+
+    def get_frequency(self, channel):
+        """Query the current frequency (Hz) for the specified channel."""
+        self._validate_channel(channel)
+        return float(self.query(f"{self._src(channel)}:FREQuency?"))
+
+    def get_output_state(self, channel):
+        """Query whether the output is enabled for the specified channel."""
+        self._validate_channel(channel)
+        resp = self.query(f"OUTPut{channel}?").strip()
+        return resp in ("1", "ON")
 
     # ==========================================
     # WAVEFORM CONFIGURATION
