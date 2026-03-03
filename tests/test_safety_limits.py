@@ -128,6 +128,7 @@ class TestAwgAmpLimits:
     def test_peak_exceeded_via_amp(self, awg_repl):
         # offset=3, vpp=5 → peak=5.5 > 5.0
         self._set_limits(awg_repl, vpeak_max=5.0)
+        awg_repl.devices["awg1"].set_offset(1, 3.0)
         awg_repl._update_awg_state("awg1", 1, offset=3.0)
         awg_repl._command_had_error = False
         awg_repl.onecmd("awg amp 1 5.0")
@@ -136,6 +137,7 @@ class TestAwgAmpLimits:
     def test_peak_ok_with_pre_tracked_offset(self, awg_repl):
         # offset=1, vpp=4 → peak=3.0 < 5.0
         self._set_limits(awg_repl, vpeak_max=5.0)
+        awg_repl.devices["awg1"].set_offset(1, 1.0)
         awg_repl._update_awg_state("awg1", 1, offset=1.0)
         awg_repl._command_had_error = False
         awg_repl.onecmd("awg amp 1 4.0")
@@ -159,6 +161,7 @@ class TestAwgOffsetLimits:
     def test_offset_pushes_peak_over_limit(self, awg_repl):
         # vpp=4, offset=4 → peak=6.0 > 5.0
         self._set_limits(awg_repl, vpeak_max=5.0)
+        awg_repl.devices["awg1"].set_amplitude(1, 4.0)
         awg_repl._update_awg_state("awg1", 1, vpp=4.0)
         awg_repl._command_had_error = False
         awg_repl.onecmd("awg offset 1 4.0")
@@ -167,6 +170,7 @@ class TestAwgOffsetLimits:
     def test_offset_pushes_trough_below_limit(self, awg_repl):
         # vpp=4, offset=-4 → trough=-6.0 < -5.0
         self._set_limits(awg_repl, vtrough_min=-5.0)
+        awg_repl.devices["awg1"].set_amplitude(1, 4.0)
         awg_repl._update_awg_state("awg1", 1, vpp=4.0)
         awg_repl._command_had_error = False
         awg_repl.onecmd("awg offset 1 -4.0")
@@ -175,6 +179,7 @@ class TestAwgOffsetLimits:
     def test_offset_within_limits(self, awg_repl):
         # vpp=2, offset=2 → peak=3, trough=1 — both fine
         self._set_limits(awg_repl, vpeak_max=5.0, vtrough_min=-5.0)
+        awg_repl.devices["awg1"].set_amplitude(1, 2.0)
         awg_repl._update_awg_state("awg1", 1, vpp=2.0)
         awg_repl._command_had_error = False
         awg_repl.onecmd("awg offset 1 2.0")
@@ -183,6 +188,7 @@ class TestAwgOffsetLimits:
     def test_offset_exactly_at_boundary(self, awg_repl):
         # vpp=4, offset=3 → peak=5.0 == 5.0 (not exceeded)
         self._set_limits(awg_repl, vpeak_max=5.0)
+        awg_repl.devices["awg1"].set_amplitude(1, 4.0)
         awg_repl._update_awg_state("awg1", 1, vpp=4.0)
         awg_repl._command_had_error = False
         awg_repl.onecmd("awg offset 1 3.0")
@@ -531,6 +537,7 @@ class TestInteractiveLimitCommands:
     def test_interactive_lower_limit_awg_blocks_trough(self, awg_repl):
         # offset=-3, vpp=4 → trough=-5 < -3 → blocked
         awg_repl.onecmd("lower_limit awg vtrough -3.0")
+        awg_repl.devices["awg1"].set_amplitude(1, 4.0)
         awg_repl._update_awg_state("awg1", 1, vpp=4.0)
         awg_repl._command_had_error = False
         awg_repl.onecmd("awg offset 1 -3.0")
@@ -571,6 +578,7 @@ class TestVoltageAlias:
     def test_upper_voltage_blocks_over_peak(self, awg_repl):
         # offset=3, amp=5 → peak=5.5 > 4.0 → blocked
         awg_repl._expand_script_lines(["upper_limit awg voltage 4.0"], {})
+        awg_repl.devices["awg1"].set_offset(1, 3.0)
         awg_repl._update_awg_state("awg1", 1, offset=3.0)
         awg_repl._command_had_error = False
         awg_repl.onecmd("awg amp 1 5.0")
@@ -579,6 +587,7 @@ class TestVoltageAlias:
     def test_lower_voltage_blocks_below_trough(self, awg_repl):
         # vpp=4, offset=-4 → trough=-6 < -3 → blocked
         awg_repl._expand_script_lines(["lower_limit awg voltage -3.0"], {})
+        awg_repl.devices["awg1"].set_amplitude(1, 4.0)
         awg_repl._update_awg_state("awg1", 1, vpp=4.0)
         awg_repl._command_had_error = False
         awg_repl.onecmd("awg offset 1 -4.0")
@@ -619,47 +628,57 @@ class TestRetroactiveLimits:
     # AWG retroactive
 
     def test_retroactive_awg_warns_on_peak_violation(self, awg_repl, capsys):
-        awg_repl._awg_channel_state[("awg1", 1)] = {"vpp": 6.0, "offset": 0.0}
+        awg_repl.devices["awg1"].set_amplitude(1, 6.0)
+        awg_repl.devices["awg1"].set_offset(1, 0.0)
         awg_repl.onecmd("upper_limit awg vpeak 2.0")  # peak=3.0 > 2.0 → warning
         out = capsys.readouterr().out
         assert "Retroactive" in out
 
     def test_retroactive_awg_warns_via_voltage_alias(self, awg_repl, capsys):
-        awg_repl._awg_channel_state[("awg1", 1)] = {"vpp": 6.0, "offset": 0.0}
+        awg_repl.devices["awg1"].set_amplitude(1, 6.0)
+        awg_repl.devices["awg1"].set_offset(1, 0.0)
         awg_repl.onecmd("upper_limit awg voltage 2.0")  # alias → vpeak; peak=3.0 > 2.0 → warning
         out = capsys.readouterr().out
         assert "Retroactive" in out
 
     def test_retroactive_awg_no_warning_when_safe(self, awg_repl, capsys):
-        awg_repl._awg_channel_state[("awg1", 1)] = {"vpp": 2.0, "offset": 0.0}
+        awg_repl.devices["awg1"].set_amplitude(1, 2.0)
+        awg_repl.devices["awg1"].set_amplitude(2, 2.0)
+        awg_repl.devices["awg1"].set_offset(1, 0.0)
+        awg_repl.devices["awg1"].set_offset(2, 0.0)
         awg_repl.onecmd("upper_limit awg vpeak 5.0")  # peak=1.0 < 5.0 → no warning
         out = capsys.readouterr().out
         assert "Retroactive" not in out
 
     def test_retroactive_awg_trough_warning(self, awg_repl, capsys):
-        awg_repl._awg_channel_state[("awg1", 1)] = {"vpp": 4.0, "offset": -3.0}
+        awg_repl.devices["awg1"].set_amplitude(1, 4.0)
+        awg_repl.devices["awg1"].set_offset(1, -3.0)
         awg_repl.onecmd("lower_limit awg vtrough -1.0")  # trough=-5 < -1 → warning
         out = capsys.readouterr().out
         assert "Retroactive" in out
 
     def test_retroactive_awg_dc_mode(self, awg_repl, capsys):
-        # DC: vpp=None → 0.0, offset=5.0 → peak=5.0 > 3.0 → warning
-        awg_repl._awg_channel_state[("awg1", 1)] = {"vpp": None, "offset": 5.0}
+        # DC: vpp=0, offset=5.0 → peak=5.0 > 3.0 → warning
+        dev = awg_repl.devices["awg1"]
+        dev.set_amplitude(1, 0.0)
+        dev.set_offset(1, 5.0)
+        awg_repl._awg_channel_state[("awg1", 1)] = {"vpp": 0.0, "offset": 5.0}
         awg_repl.onecmd("upper_limit awg vpeak 3.0")
         out = capsys.readouterr().out
         assert "Retroactive" in out
 
     def test_retroactive_does_not_set_error(self, awg_repl):
-        awg_repl._awg_channel_state[("awg1", 1)] = {"vpp": 10.0, "offset": 0.0}
+        awg_repl.devices["awg1"].set_amplitude(1, 10.0)
         awg_repl._command_had_error = False
         awg_repl.onecmd("upper_limit awg vpeak 2.0")
         assert not awg_repl._command_had_error  # warning only, not error
 
-    def test_retroactive_no_state_no_warning(self, awg_repl, capsys):
-        # No AWG state tracked yet → no retroactive warning possible
+    def test_retroactive_warns_from_instrument_defaults(self, awg_repl, capsys):
+        # No explicit state set, but MockAWG defaults (5.0 Vpp, 0.0 offset → peak=2.5V)
+        # Setting vpeak limit to 2.0 should trigger retroactive warning from instrument query
         awg_repl.onecmd("upper_limit awg vpeak 2.0")
         out = capsys.readouterr().out
-        assert "Retroactive" not in out
+        assert "Retroactive" in out
 
     # PSU retroactive (monkey-patch get_voltage_setpoint)
 
@@ -686,3 +705,148 @@ class TestRetroactiveLimits:
         psu_repl.onecmd("upper_limit psu current 1.0")  # 3.0 > 1.0 → warning
         out = capsys.readouterr().out
         assert "Retroactive" in out
+
+
+# ---------------------------------------------------------------------------
+# Output-enable gating — block output ON when limits are violated
+# ---------------------------------------------------------------------------
+
+class TestOutputEnableGating:
+    """Verify that enabling output is blocked when current state violates limits."""
+
+    # --- AWG chan on ---
+
+    def test_awg_chan_on_blocked_when_vpp_exceeds_limit(self, awg_repl):
+        # MockAWG defaults: 5.0 Vpp, set limit to 3.0 → blocked
+        awg_repl.onecmd("upper_limit awg vpp 3.0")
+        awg_repl._command_had_error = False
+        awg_repl.onecmd("awg chan 1 on")
+        assert awg_repl._command_had_error
+
+    def test_awg_chan_on_allowed_after_reducing_amplitude(self, awg_repl):
+        awg_repl.onecmd("upper_limit awg vpp 3.0")
+        awg_repl.onecmd("awg amp 1 2.0")
+        awg_repl._command_had_error = False
+        awg_repl.onecmd("awg chan 1 on")
+        assert not awg_repl._command_had_error
+
+    def test_awg_chan_on_allowed_when_no_limits(self, awg_repl):
+        awg_repl._command_had_error = False
+        awg_repl.onecmd("awg chan 1 on")
+        assert not awg_repl._command_had_error
+
+    def test_awg_chan_off_always_allowed(self, awg_repl):
+        awg_repl.onecmd("upper_limit awg vpp 3.0")
+        awg_repl._command_had_error = False
+        awg_repl.onecmd("awg chan 1 off")
+        assert not awg_repl._command_had_error
+
+    def test_awg_chan_on_blocked_by_voltage_alias(self, awg_repl):
+        # MockAWG defaults: 5Vpp, 0 offset → peak=2.5V; set voltage limit 2.0 → blocked
+        awg_repl.onecmd("upper_limit awg voltage 2.0")
+        awg_repl._command_had_error = False
+        awg_repl.onecmd("awg chan 1 on")
+        assert awg_repl._command_had_error
+
+    # --- PSU chan on ---
+
+    def test_psu_chan_on_blocked_when_voltage_exceeds_limit(self, psu_repl):
+        # MockPSU defaults: 5.0V, set limit to 3.0 → blocked
+        psu_repl.onecmd("upper_limit psu voltage 3.0")
+        psu_repl._command_had_error = False
+        psu_repl.onecmd("psu chan on")
+        assert psu_repl._command_had_error
+
+    def test_psu_chan_on_allowed_after_reducing_voltage(self, psu_repl):
+        psu_repl.onecmd("upper_limit psu voltage 3.0")
+        psu_repl.onecmd("psu set 2.0")
+        psu_repl._command_had_error = False
+        psu_repl.onecmd("psu chan on")
+        assert not psu_repl._command_had_error
+
+    def test_psu_chan_on_allowed_when_no_limits(self, psu_repl):
+        psu_repl._command_had_error = False
+        psu_repl.onecmd("psu chan on")
+        assert not psu_repl._command_had_error
+
+    def test_psu_chan_off_always_allowed(self, psu_repl):
+        psu_repl.onecmd("upper_limit psu voltage 3.0")
+        psu_repl._command_had_error = False
+        psu_repl.onecmd("psu chan off")
+        assert not psu_repl._command_had_error
+
+    # --- state <device> on ---
+
+    def test_state_awg_on_blocked_when_limits_violated(self, awg_repl):
+        awg_repl.onecmd("upper_limit awg vpp 3.0")
+        awg_repl._command_had_error = False
+        awg_repl.onecmd("state awg1 on")
+        assert awg_repl._command_had_error
+
+    def test_state_psu_on_blocked_when_limits_violated(self, psu_repl):
+        psu_repl.onecmd("upper_limit psu voltage 3.0")
+        psu_repl._command_had_error = False
+        psu_repl.onecmd("state psu1 on")
+        assert psu_repl._command_had_error
+
+    # --- all on (state on / _on_all) ---
+
+    def test_all_on_blocks_violating_awg(self, awg_repl, capsys):
+        awg_repl.onecmd("upper_limit awg vpp 3.0")
+        awg_repl._command_had_error = False
+        awg_repl.onecmd("state on")
+        out = capsys.readouterr().out
+        assert "SAFETY BLOCKED" in out
+
+    def test_all_on_blocks_violating_psu(self, psu_repl, capsys):
+        psu_repl.onecmd("upper_limit psu voltage 3.0")
+        psu_repl._command_had_error = False
+        psu_repl.onecmd("state on")
+        out = capsys.readouterr().out
+        assert "SAFETY BLOCKED" in out
+
+
+# ---------------------------------------------------------------------------
+# Retroactive enforcement — auto-disable output on violation
+# ---------------------------------------------------------------------------
+
+class TestRetroactiveEnforcement:
+    """Verify that retroactive check auto-disables output when violation + output ON."""
+
+    def test_awg_output_on_gets_disabled_on_violation(self, awg_repl, capsys):
+        dev = awg_repl.devices["awg1"]
+        dev.enable_output(1, True)  # output ON
+        awg_repl.onecmd("upper_limit awg voltage 2.0")  # peak=2.5V > 2.0V → enforce
+        assert not dev.get_output_state(1)  # output should be auto-disabled
+        out = capsys.readouterr().out
+        assert "SAFETY ENFORCED" in out
+
+    def test_awg_output_off_gets_warning_only(self, awg_repl, capsys):
+        # output is OFF (default) — should get warning, not enforcement
+        awg_repl.onecmd("upper_limit awg voltage 2.0")
+        out = capsys.readouterr().out
+        assert "Retroactive" in out
+        assert "SAFETY ENFORCED" not in out
+
+    def test_psu_output_on_gets_disabled_on_violation(self, psu_repl, capsys):
+        dev = psu_repl.devices["psu1"]
+        dev.enable_output(True)  # output ON
+        psu_repl.onecmd("upper_limit psu voltage 3.0")  # 5.0V > 3.0V → enforce
+        assert not dev.get_output_state()  # output should be auto-disabled
+        out = capsys.readouterr().out
+        assert "SAFETY ENFORCED" in out
+
+    def test_psu_output_off_gets_warning_only(self, psu_repl, capsys):
+        # output is OFF (default) — warning only
+        psu_repl.onecmd("upper_limit psu voltage 3.0")
+        out = capsys.readouterr().out
+        assert "Retroactive" in out
+        assert "SAFETY ENFORCED" not in out
+
+    def test_retroactive_enforcement_does_not_set_error(self, awg_repl):
+        # Enforcement is a side effect of setting a limit — the limit command itself succeeded
+        dev = awg_repl.devices["awg1"]
+        dev.enable_output(1, True)
+        awg_repl._command_had_error = False
+        awg_repl.onecmd("upper_limit awg voltage 2.0")
+        assert not awg_repl._command_had_error

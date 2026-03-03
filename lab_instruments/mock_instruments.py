@@ -23,20 +23,27 @@ class MockBase:
 
 
 class MockPSU(MockBase):
+    def __init__(self):
+        self._voltage = 5.0
+        self._current = 0.1
+        self._output = False
+
     def enable_output(self, state):
-        pass
+        self._output = bool(state)
 
     def disable_all_channels(self):
-        pass
+        self._output = False
 
     def set_voltage(self, v):
-        pass
+        self._voltage = float(v)
 
     def set_current_limit(self, i):
-        pass
+        self._current = float(i)
 
     def set_output_channel(self, ch, v, i=None):
-        pass
+        self._voltage = float(v)
+        if i is not None:
+            self._current = float(i)
 
     def measure_voltage(self, ch=None):
         return round(random.uniform(4.985, 5.015), 6)
@@ -45,13 +52,13 @@ class MockPSU(MockBase):
         return round(random.uniform(0.0990, 0.1010), 6)
 
     def get_voltage_setpoint(self):
-        return 5.0
+        return self._voltage
 
     def get_current_limit(self):
-        return 0.1
+        return self._current
 
     def get_output_state(self):
-        return True
+        return self._output
 
     def save_state(self, n):
         pass
@@ -64,23 +71,35 @@ class MockPSU(MockBase):
 
 
 class MockAWG(MockBase):
+    def __init__(self):
+        self._ch_amplitude = {1: 5.0, 2: 5.0}
+        self._ch_offset = {1: 0.0, 2: 0.0}
+        self._ch_frequency = {1: 10000.0, 2: 10000.0}
+        self._ch_output = {1: False, 2: False}
+
     def enable_output(self, ch_or_state=None, state=None, ch1=None, ch2=None):
-        pass
+        if ch1 is not None:
+            self._ch_output[1] = bool(ch1)
+        if ch2 is not None:
+            self._ch_output[2] = bool(ch2)
+        if ch_or_state is not None and state is not None:
+            self._ch_output[int(ch_or_state)] = bool(state)
 
     def disable_all_channels(self):
-        pass
+        self._ch_output[1] = False
+        self._ch_output[2] = False
 
     def set_waveform(self, ch, wave, **kwargs):
         pass
 
     def set_frequency(self, ch, freq):
-        pass
+        self._ch_frequency[int(ch)] = float(freq)
 
     def set_amplitude(self, ch, amp):
-        pass
+        self._ch_amplitude[int(ch)] = float(amp)
 
     def set_offset(self, ch, offset):
-        pass
+        self._ch_offset[int(ch)] = float(offset)
 
     def set_duty_cycle(self, ch, duty):
         pass
@@ -90,6 +109,18 @@ class MockAWG(MockBase):
 
     def set_sync_output(self, on):
         pass
+
+    def get_amplitude(self, ch):
+        return self._ch_amplitude.get(int(ch))
+
+    def get_offset(self, ch):
+        return self._ch_offset.get(int(ch))
+
+    def get_frequency(self, ch):
+        return self._ch_frequency.get(int(ch))
+
+    def get_output_state(self, ch):
+        return self._ch_output.get(int(ch), False)
 
 
 class MockDMM(MockBase):
