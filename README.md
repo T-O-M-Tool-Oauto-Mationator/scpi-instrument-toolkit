@@ -126,3 +126,39 @@ To get the latest version:
 ```
 pip install --upgrade git+https://github.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit.git
 ```
+
+---
+
+## Troubleshooting
+
+### `scpi-repl` is not recognized
+
+Pip installs `scpi-repl` to the Python `Scripts` folder, which may not be on your PATH.
+
+**Self-healing fix (standard Windows)**
+
+Run the module form once:
+
+```powershell
+python -m lab_instruments
+```
+
+The toolkit automatically adds the Scripts folder to your user PATH via the Windows registry and prints a message telling you to open a new terminal. After that, `scpi-repl` will work in every new PowerShell window.
+
+**Managed machines (TAMU VOAL and similar)**
+
+On machines where group policy blocks registry edits, the automatic fix above will not work. Use one of these instead:
+
+- **Permanent workaround** — always launch with:
+  ```powershell
+  python -m lab_instruments
+  ```
+  All flags work the same way: `python -m lab_instruments --mock`, etc.
+
+- **Session-only PATH fix** — paste this into PowerShell to enable `scpi-repl` for the current session only:
+  ```powershell
+  $pyPath = python -c "import sys, os; print(os.path.join(sys.prefix, 'Scripts'))"
+  $env:Path += ";$pyPath"
+  scpi-repl
+  ```
+  You'll need to run these two lines again each time you open a new terminal.

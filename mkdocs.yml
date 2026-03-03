@@ -61,3 +61,4 @@ nav:
     - Example Workflows: examples.md
   - Log & Calc: logging.md
   - Supported Instruments: instruments.md
+  - Troubleshooting: troubleshooting.md
