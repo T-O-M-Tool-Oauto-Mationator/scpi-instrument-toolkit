@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "scpi-instrument-toolkit"
-version = "0.1.114"
+version = "0.1.115"
 description = "Python drivers and interactive REPL for SCPI test and measurement instruments"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -17,6 +17,7 @@ authors = [
 keywords = ["scpi", "visa", "instrument", "oscilloscope", "power-supply", "multimeter", "function-generator", "lab", "test-equipment"]
 dependencies = [
     "PyVISA>=1.14.0",
+    "numpy>=1.21.0",
 ]
 
 [project.optional-dependencies]
