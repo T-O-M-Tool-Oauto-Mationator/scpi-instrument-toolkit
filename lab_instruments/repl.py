@@ -35,6 +35,27 @@ except Exception:
 _GITHUB_REPO = "T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit"
 
 
+def _split_on_semicolons(line):
+    """Split *line* on semicolons that are not inside single or double quotes."""
+    chunks = []
+    current = []
+    in_quote = None
+    for ch in line:
+        if ch in ('"', "'"):
+            if in_quote is None:
+                in_quote = ch
+            elif in_quote == ch:
+                in_quote = None
+            current.append(ch)
+        elif ch == ";" and in_quote is None:
+            chunks.append("".join(current))
+            current = []
+        else:
+            current.append(ch)
+    chunks.append("".join(current))
+    return chunks
+
+
 def _check_for_updates(force=False):
     """Check GitHub for updates and tell the user what command to run.
     No automatic install — user must run the command manually.
@@ -1483,7 +1504,7 @@ class InstrumentRepl(cmd.Cmd):
             return False
         if ";" in line:
             should_exit = False
-            for chunk in line.split(";"):
+            for chunk in _split_on_semicolons(line):
                 cmd_line = chunk.strip()
                 if not cmd_line:
                     continue
