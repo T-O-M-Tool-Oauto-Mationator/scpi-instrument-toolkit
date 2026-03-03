@@ -1171,7 +1171,7 @@ class InstrumentRepl(cmd.Cmd):
                 device_str = tokens[1].lower()
                 base_type = re.sub(r'\d+$', '', device_str)
                 VALID_PARAMS = {
-                    "awg": {"vpeak", "vtrough", "vpp", "freq"},
+                    "awg": {"vpeak", "vtrough", "vpp", "freq", "voltage"},
                     "psu": {"voltage", "current"},
                 }
                 if base_type not in VALID_PARAMS:
@@ -1208,6 +1208,9 @@ class InstrumentRepl(cmd.Cmd):
                     self._error(f"{head}: unknown param '{param}' for '{base_type}'")
                     expanded.append(("__NOP__", _loop_ctx + raw_line))
                     continue
+                # "voltage" is a directional alias for AWG: upper→vpeak, lower→vtrough
+                if base_type == "awg" and param == "voltage":
+                    param = "vpeak" if direction == "upper" else "vtrough"
                 key = (device_str, channel_or_none)
                 self._safety_limits.setdefault(key, {})[f"{param}_{direction}"] = value
                 expanded.append(("__NOP__", f"{_loop_ctx}{raw_line}  →  limit set"))
@@ -2204,11 +2207,11 @@ class InstrumentRepl(cmd.Cmd):
                 "upper_limit <device> [chan <N>] <param> <value>",
                 "  device: psu, awg, psu1, awg1, …",
                 "  param (psu):  voltage | current",
-                "  param (awg):  vpeak | vtrough | vpp | freq",
+                "  param (awg):  voltage | vpp | freq   (voltage = vpeak/vtrough alias)",
                 "  examples:",
                 "    upper_limit psu voltage 5.0",
                 "    upper_limit psu chan 1 voltage 2.1",
-                "    upper_limit awg vpeak 5.0",
+                "    upper_limit awg voltage 5.0",
                 "    upper_limit awg chan 1 freq 1e6",
             ])
             return
@@ -2217,6 +2220,7 @@ class InstrumentRepl(cmd.Cmd):
         self._expand_script_lines([f"upper_limit {arg}"], {}, depth=1)
         if not self._command_had_error:
             ColorPrinter.success(f"Limit set: upper_limit {arg}")
+            self._retroactive_limit_check_all()
         self._command_had_error = before
 
     def do_lower_limit(self, arg):
@@ -2226,11 +2230,11 @@ class InstrumentRepl(cmd.Cmd):
                 "lower_limit <device> [chan <N>] <param> <value>",
                 "  device: psu, awg, psu1, awg1, …",
                 "  param (psu):  voltage | current",
-                "  param (awg):  vpeak | vtrough | vpp | freq",
+                "  param (awg):  voltage | vpp | freq   (voltage = vpeak/vtrough alias)",
                 "  examples:",
                 "    lower_limit psu voltage 0.5",
                 "    lower_limit psu chan 1 voltage 0.1",
-                "    lower_limit awg vtrough -0.3",
+                "    lower_limit awg voltage -0.3",
             ])
             return
         before = self._command_had_error
@@ -2238,6 +2242,7 @@ class InstrumentRepl(cmd.Cmd):
         self._expand_script_lines([f"lower_limit {arg}"], {}, depth=1)
         if not self._command_had_error:
             ColorPrinter.success(f"Limit set: lower_limit {arg}")
+            self._retroactive_limit_check_all()
         self._command_had_error = before
 
     def do_script(self, arg):
@@ -4719,6 +4724,73 @@ allTargets.forEach(t => io.observe(t));
         self._awg_channel_state.setdefault(key, {"vpp": None, "offset": None})
         if vpp    is not None: self._awg_channel_state[key]["vpp"]    = vpp
         if offset is not None: self._awg_channel_state[key]["offset"] = offset
+
+    def _retroactive_limit_check_all(self):
+        """Warn (not error) if any current instrument state already violates stored limits.
+        Called after an interactive upper_limit / lower_limit to catch existing violations."""
+        for dev_name, dev in self.devices.items():
+            dev_type = re.sub(r'\d+$', '', dev_name)
+
+            # --- PSU ---
+            if dev_type == "psu":
+                try:
+                    v = dev.get_voltage_setpoint() if hasattr(dev, "get_voltage_setpoint") else None
+                    i = dev.get_current_limit()    if hasattr(dev, "get_current_limit")    else None
+                except Exception:
+                    continue
+                limits = self._collect_limits(dev_name, dev_type, None)
+                if v is not None:
+                    if "voltage_upper" in limits and v > limits["voltage_upper"]:
+                        ColorPrinter.warning(
+                            f"Retroactive: {dev_name} setpoint {v}V already exceeds limit "
+                            f"{limits['voltage_upper']}V — consider reducing output")
+                    if "voltage_lower" in limits and v < limits["voltage_lower"]:
+                        ColorPrinter.warning(
+                            f"Retroactive: {dev_name} setpoint {v}V already below limit "
+                            f"{limits['voltage_lower']}V")
+                if i is not None:
+                    if "current_upper" in limits and i > limits["current_upper"]:
+                        ColorPrinter.warning(
+                            f"Retroactive: {dev_name} current limit {i}A already exceeds limit "
+                            f"{limits['current_upper']}A")
+                    if "current_lower" in limits and i < limits["current_lower"]:
+                        ColorPrinter.warning(
+                            f"Retroactive: {dev_name} current limit {i}A already below limit "
+                            f"{limits['current_lower']}A")
+
+            # --- AWG ---
+            elif dev_type == "awg":
+                for (awg_dev, awg_ch), state in self._awg_channel_state.items():
+                    if awg_dev != dev_name:
+                        continue
+                    limits = self._collect_limits(awg_dev, dev_type, awg_ch)
+                    if not limits:
+                        continue
+                    vpp    = state.get("vpp")    or 0.0
+                    offset = state.get("offset") or 0.0
+                    peak   = offset + vpp / 2.0
+                    trough = offset - vpp / 2.0
+                    if "vpp_upper" in limits and vpp > limits["vpp_upper"]:
+                        ColorPrinter.warning(
+                            f"Retroactive: {awg_dev} ch{awg_ch} Vpp {vpp}V already exceeds limit "
+                            f"{limits['vpp_upper']}V")
+                    if "vpeak_upper" in limits and peak > limits["vpeak_upper"]:
+                        ColorPrinter.warning(
+                            f"Retroactive: {awg_dev} ch{awg_ch} peak {peak:.4g}V already exceeds limit "
+                            f"{limits['vpeak_upper']}V")
+                    if "vtrough_lower" in limits and trough < limits["vtrough_lower"]:
+                        ColorPrinter.warning(
+                            f"Retroactive: {awg_dev} ch{awg_ch} trough {trough:.4g}V already below limit "
+                            f"{limits['vtrough_lower']}V")
+                    if "vpp_lower" in limits and vpp < limits["vpp_lower"]:
+                        ColorPrinter.warning(
+                            f"Retroactive: {awg_dev} ch{awg_ch} Vpp {vpp}V already below limit "
+                            f"{limits['vpp_lower']}V")
+                    # freq not tracked in _awg_channel_state — cannot retroactively check
+                    if "freq_upper" in limits:
+                        ColorPrinter.warning(
+                            f"Retroactive: {awg_dev} ch{awg_ch} frequency limit set but current freq "
+                            f"unknown — verify manually")
 
     # --------------------------
     # AWG commands
