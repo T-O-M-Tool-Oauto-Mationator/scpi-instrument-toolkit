@@ -328,8 +328,13 @@ class JDS6600_Generator(DeviceManager):
         return False
 
     def disable_output(self):
-        """Zero setpoints (DC waveform, 0V offset) then disable both channel outputs."""
+        """Zeroes SINE memory (0V amp/offset), switches to DC 0V, then disables outputs."""
         for ch in (1, 2):
+            # Zero stored SINE parameters so they are safe if the user switches back
+            self.set_waveform(ch, 'sine')
+            self.set_amplitude(ch, 0.0)
+            self.set_offset(ch, 0.0)
+            # Then switch to DC at 0V
             self.set_waveform(ch, 'dc')
             self.set_offset(ch, 0.0)
         self.enable_output(False, False)
