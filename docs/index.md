@@ -21,12 +21,15 @@ scpi-repl           # auto-discovers connected instruments
 scpi-repl --mock    # simulate instruments (no hardware needed)
 ```
 
-!!! tip "Managed machines (school / work computers)"
-    If `scpi-repl` is not recognized, pip installed the script to a directory that isn't on your PATH. Use the module form instead — `python` is always available:
-    ```bash
+!!! tip "scpi-repl not recognized?"
+    Run `python -m lab_instruments` once. On standard Windows the toolkit will automatically add the Scripts folder to your PATH — open a new terminal and `scpi-repl` will work.
+
+    On **managed machines (TAMU VOAL and similar)** where registry edits are blocked, use the module form as your permanent launch method:
+    ```powershell
     python -m lab_instruments
     python -m lab_instruments --mock
     ```
+    See [Troubleshooting](troubleshooting.md) for a session-only PATH fix and other tips.
 
 ### 3. Find your instruments
 
@@ -114,3 +117,4 @@ examples          # list bundled example scripts
 | [Examples](examples.md) | Bundled example workflows with explanations |
 | [Log & Calc](logging.md) | Measurement log, CSV export, derived calculations |
 | [Instruments](instruments.md) | Supported models and connection setup |
+| [Troubleshooting](troubleshooting.md) | PATH issues, NI-VISA errors, managed machine workarounds |
