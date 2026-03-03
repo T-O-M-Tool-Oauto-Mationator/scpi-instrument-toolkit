@@ -1,6 +1,7 @@
 import sys
-import pytest
 from pathlib import Path
+
+import pytest
 
 # Hardware integration test — run manually with real instruments, not in CI
 pytestmark = pytest.mark.skip(reason="hardware integration test — requires physical oscilloscope/AWG")
@@ -10,16 +11,14 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 try:
     from lab_instruments import (
-        Tektronix_MSO2024,
         BK_4063,
         ColorPrinter,
         InstrumentDiscovery,
+        Tektronix_MSO2024,
     )
 except ImportError as e:
     print(f"Import Error: {e}")
-    print(
-        "Ensure you are running this from the project root or have installed the package."
-    )
+    print("Ensure you are running this from the project root or have installed the package.")
     sys.exit(1)
 
 
@@ -36,9 +35,7 @@ def test_channel_control(oscope):
         ColorPrinter.info(f"Enabling Channel {channel}...")
         oscope.enable_channel(channel)
 
-        input(
-            f"Check if Channel {channel} is displayed on the scope, then press Enter..."
-        )
+        input(f"Check if Channel {channel} is displayed on the scope, then press Enter...")
         user_input = input(f"Is Channel {channel} visible? (yes/no): ").strip().lower()
         results[f"Enable_CH{channel}"] = user_input == "yes"
 
@@ -81,10 +78,8 @@ def test_basic_measurements_with_awg(oscope, awg):
     awg.enable_output(True)
 
     for i, config in enumerate(test_configs):
-        ColorPrinter.info(f"\n--- Test {i+1}: {config['waveform']} wave ---")
-        ColorPrinter.info(
-            f"Setting AWG: {config['frequency']}Hz, {config['amplitude']}Vpp"
-        )
+        ColorPrinter.info(f"\n--- Test {i + 1}: {config['waveform']} wave ---")
+        ColorPrinter.info(f"Setting AWG: {config['frequency']}Hz, {config['amplitude']}Vpp")
 
         awg.set_waveform(
             waveform=config["waveform"],
@@ -108,9 +103,7 @@ def test_basic_measurements_with_awg(oscope, awg):
         ColorPrinter.info(f"Expected Amplitude: {config['amplitude']}Vpp")
         ColorPrinter.info(f"Measured Peak-to-Peak: {measured_pk2pk:.3f}Vpp")
 
-        user_input = (
-            input("Do the measurements look correct? (yes/no): ").strip().lower()
-        )
+        user_input = input("Do the measurements look correct? (yes/no): ").strip().lower()
         results[f"{config['waveform']}_{config['frequency']}Hz"] = user_input == "yes"
 
     awg.enable_output(False)
@@ -152,9 +145,7 @@ def test_measurement_types(oscope, awg):
     for name, value in measurements.items():
         ColorPrinter.info(f"{name}: {value:.6f}")
 
-    user_input = (
-        input("\nDo all measurements appear reasonable? (yes/no): ").strip().lower()
-    )
+    user_input = input("\nDo all measurements appear reasonable? (yes/no): ").strip().lower()
     results["All_Measurement_Types"] = user_input == "yes"
 
     awg.enable_output(False)
@@ -185,7 +176,7 @@ def test_vertical_scale(oscope, awg):
         oscope.set_vertical_scale(1, scale)
 
         input(f"Check that vertical scale is {scale}V/div, then press Enter...")
-        user_input = input(f"Is the scale correct? (yes/no): ").strip().lower()
+        user_input = input("Is the scale correct? (yes/no): ").strip().lower()
         results[f"Vertical_Scale_{scale}V_div"] = user_input == "yes"
 
     awg.enable_output(False)
@@ -213,12 +204,12 @@ def test_horizontal_scale(oscope, awg):
     scales = [0.0001, 0.001, 0.01]  # Seconds per division
 
     for scale in scales:
-        ColorPrinter.info(f"\n--- Testing {scale*1000}ms/div ---")
+        ColorPrinter.info(f"\n--- Testing {scale * 1000}ms/div ---")
         oscope.set_horizontal_scale(scale)
 
-        input(f"Check that horizontal scale is {scale*1000}ms/div, then press Enter...")
-        user_input = input(f"Is the scale correct? (yes/no): ").strip().lower()
-        results[f"Horizontal_Scale_{scale*1000}ms_div"] = user_input == "yes"
+        input(f"Check that horizontal scale is {scale * 1000}ms/div, then press Enter...")
+        user_input = input("Is the scale correct? (yes/no): ").strip().lower()
+        results[f"Horizontal_Scale_{scale * 1000}ms_div"] = user_input == "yes"
 
     awg.enable_output(False)
     return results
@@ -271,11 +262,7 @@ def test_math_functions(oscope, awg):
     input("\nPress Enter when ready...")
 
     results = {}
-    test_it = (
-        input("Do you have AWG connected to both CH1 and CH2? (yes/no): ")
-        .strip()
-        .lower()
-    )
+    test_it = input("Do you have AWG connected to both CH1 and CH2? (yes/no): ").strip().lower()
 
     if test_it == "yes":
         # Set AWG to known signal
@@ -299,9 +286,7 @@ def test_math_functions(oscope, awg):
         ColorPrinter.info(f"Mean of (CH1 - CH2): {mean_diff:.6f}V")
         ColorPrinter.info("(Should be close to 0 if same signal)")
 
-        user_input = (
-            input("Is the math measurement reasonable? (yes/no): ").strip().lower()
-        )
+        user_input = input("Is the math measurement reasonable? (yes/no): ").strip().lower()
         results["Math_Measurement"] = user_input == "yes"
 
         awg.enable_output(False)
@@ -343,23 +328,17 @@ def test_waveform_capture(oscope, awg):
     # Get scaled data
     ColorPrinter.info("\nCapturing scaled waveform data...")
     time_vals, volt_vals = oscope.get_waveform_scaled(1)
-    ColorPrinter.info(
-        f"Captured {len(time_vals)} time points and {len(volt_vals)} voltage points"
-    )
+    ColorPrinter.info(f"Captured {len(time_vals)} time points and {len(volt_vals)} voltage points")
 
     if len(time_vals) > 0 and len(volt_vals) > 0:
         ColorPrinter.info(f"Time range: {time_vals[0]:.6f}s to {time_vals[-1]:.6f}s")
-        ColorPrinter.info(
-            f"Voltage range: {min(volt_vals):.3f}V to {max(volt_vals):.3f}V"
-        )
+        ColorPrinter.info(f"Voltage range: {min(volt_vals):.3f}V to {max(volt_vals):.3f}V")
 
     user_input = input("Does the scaled data look correct? (yes/no): ").strip().lower()
     results["Waveform_Scaled_Data"] = user_input == "yes"
 
     # Optional: Save to CSV
-    save_csv = (
-        input("\nDo you want to save waveform to CSV? (yes/no): ").strip().lower()
-    )
+    save_csv = input("\nDo you want to save waveform to CSV? (yes/no): ").strip().lower()
     if save_csv == "yes":
         filename = input("Enter filename (e.g., waveform.csv): ").strip()
         if not filename.endswith(".csv"):
@@ -399,7 +378,7 @@ def test_acquisition_modes(oscope, awg):
         else:
             oscope.set_acquisition_mode(mode)
 
-        input(f"Check the acquisition mode on the scope, then press Enter...")
+        input("Check the acquisition mode on the scope, then press Enter...")
         user_input = input(f"Is {mode} mode active? (yes/no): ").strip().lower()
         results[f"Acquisition_Mode_{mode}"] = user_input == "yes"
 
@@ -442,9 +421,7 @@ def main():
     awg = discovery.get("awg")
 
     if not oscope or not isinstance(oscope, Tektronix_MSO2024):
-        ColorPrinter.error(
-            "Tektronix MSO2024 Oscilloscope not found among connected instruments."
-        )
+        ColorPrinter.error("Tektronix MSO2024 Oscilloscope not found among connected instruments.")
         return
 
     if not awg or not isinstance(awg, BK_4063):

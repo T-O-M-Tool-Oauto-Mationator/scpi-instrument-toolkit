@@ -3,8 +3,8 @@
 Covers: multi-device routing, missing-device graceful error, help commands,
 error flag reset, and device name aliasing.
 """
-import pytest
-from lab_instruments.mock_instruments import MockHP_E3631A, MockMPS6010H, MockEDU33212A
+
+from lab_instruments.mock_instruments import MockEDU33212A, MockHP_E3631A, MockMPS6010H
 
 
 class TestReplMultiDevice:

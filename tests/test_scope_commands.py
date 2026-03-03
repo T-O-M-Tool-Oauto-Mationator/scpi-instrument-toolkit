@@ -1,20 +1,24 @@
 """Automated tests for scope REPL commands using mock instruments."""
-import pytest
+
 import os
 import sys
 import tempfile
 
+import pytest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from lab_instruments.mock_instruments import MockDHO804, MockMSO2024
+from lab_instruments.mock_instruments import MockDHO804
 
 
 def make_repl(devices):
     """Create an InstrumentRepl with mock devices pre-loaded."""
     from lab_instruments.src import discovery as _disc
+
     _disc.InstrumentDiscovery.__init__ = lambda self: None
     _disc.InstrumentDiscovery.scan = lambda self, verbose=True: devices
     from lab_instruments.repl import InstrumentRepl
+
     repl = InstrumentRepl()
     repl._scan_done.set()
     repl.devices = devices
@@ -28,6 +32,7 @@ def repl():
 
 
 # --- Acquisition control ---
+
 
 class TestScopeAcquisition:
     def test_autoset(self, repl):
@@ -44,6 +49,7 @@ class TestScopeAcquisition:
 
 
 # --- Channel control ---
+
 
 class TestScopeChannel:
     def test_chan_on(self, repl):
@@ -82,6 +88,7 @@ class TestScopeChannel:
 
 # --- Horizontal ---
 
+
 class TestScopeHorizontal:
     def test_hscale(self, repl):
         repl.onecmd("scope hscale 0.001")
@@ -91,6 +98,7 @@ class TestScopeHorizontal:
 
 
 # --- Vertical ---
+
 
 class TestScopeVertical:
     def test_vscale(self, repl):
@@ -108,6 +116,7 @@ class TestScopeVertical:
 
 # --- Trigger ---
 
+
 class TestScopeTrigger:
     def test_trigger(self, repl):
         repl.onecmd("scope trigger 1 0.0")
@@ -120,6 +129,7 @@ class TestScopeTrigger:
 
 
 # --- Measurements ---
+
 
 class TestScopeMeasurements:
     def test_meas(self, repl):
@@ -146,6 +156,7 @@ class TestScopeMeasurements:
 
 # --- Waveform save ---
 
+
 class TestScopeSave:
     def test_save(self, repl):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -154,6 +165,7 @@ class TestScopeSave:
 
 
 # --- Screenshot ---
+
 
 class TestScopeScreenshot:
     def test_screenshot_default(self, repl):
@@ -169,6 +181,7 @@ class TestScopeScreenshot:
 
 
 # --- Display ---
+
 
 class TestScopeDisplay:
     def test_display_help(self, repl):
@@ -195,6 +208,7 @@ class TestScopeDisplay:
 
 # --- Acquire ---
 
+
 class TestScopeAcquire:
     def test_acquire_help(self, repl):
         repl.onecmd("scope acquire")
@@ -214,6 +228,7 @@ class TestScopeAcquire:
 
 # --- Cursor ---
 
+
 class TestScopeCursor:
     def test_cursor_help(self, repl):
         repl.onecmd("scope cursor")
@@ -232,6 +247,7 @@ class TestScopeCursor:
 
 
 # --- Math ---
+
 
 class TestScopeMath:
     def test_math_help(self, repl):
@@ -261,6 +277,7 @@ class TestScopeMath:
 
 # --- Record ---
 
+
 class TestScopeRecord:
     def test_record_help(self, repl):
         repl.onecmd("scope record")
@@ -288,6 +305,7 @@ class TestScopeRecord:
 
 
 # --- Mask ---
+
 
 class TestScopeMask:
     def test_mask_help(self, repl):
@@ -323,6 +341,7 @@ class TestScopeMask:
 
 # --- Built-in tools ---
 
+
 class TestScopeTools:
     def test_awg_help(self, repl):
         repl.onecmd("scope awg")
@@ -348,12 +367,14 @@ class TestScopeTools:
 
 # --- Reset ---
 
+
 class TestScopeReset:
     def test_reset(self, repl):
         repl.onecmd("scope reset")
 
 
 # --- Help ---
+
 
 class TestScopeHelp:
     def test_help_no_args(self, repl):

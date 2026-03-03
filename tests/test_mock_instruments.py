@@ -1,19 +1,19 @@
 """tests/test_mock_instruments.py — Verify mock instrument interfaces and return ranges."""
+
 import pytest
+
 from lab_instruments.mock_instruments import (
-    MockBase,
-    MockPSU,
     MockAWG,
-    MockDMM,
-    MockScope,
+    MockBase,
     MockDHO804,
-    MockMSO2024,
-    MockMPS6010H,
+    MockDMM,
+    MockEDU33212A,
     MockHP_E3631A,
     MockJDS6600,
-    MockEDU33212A,
-    MockHP_34401A,
-    MockXDM1041,
+    MockMPS6010H,
+    MockMSO2024,
+    MockPSU,
+    MockScope,
     get_mock_devices,
 )
 
@@ -27,6 +27,7 @@ class TestMockBase:
     def test_idn_includes_class_name(self):
         class MyInstrument(MockBase):
             pass
+
         inst = MyInstrument()
         assert "MyInstrument" in inst.query("*IDN?")
 
@@ -181,7 +182,7 @@ class TestMockDHO804:
         dho = MockDHO804()
         data = dho.get_screenshot()
         assert isinstance(data, bytes)
-        assert data[:4] == b'\x89PNG'
+        assert data[:4] == b"\x89PNG"
 
     def test_get_memory_depth(self):
         assert MockDHO804().get_memory_depth() == "AUTO"

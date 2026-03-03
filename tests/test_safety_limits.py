@@ -1,7 +1,9 @@
 """Tests for the safety limit system (lower_limit/upper_limit directives, AWG/PSU guards)."""
-import pytest
+
 import os
 import sys
+
+import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -10,9 +12,11 @@ from lab_instruments.mock_instruments import MockEDU33212A, MockHP_E3631A, MockM
 
 def make_repl(devices):
     from lab_instruments.src import discovery as _disc
+
     _disc.InstrumentDiscovery.__init__ = lambda self: None
     _disc.InstrumentDiscovery.scan = lambda self, verbose=True: devices
     from lab_instruments.repl import InstrumentRepl
+
     repl = InstrumentRepl()
     repl._scan_done.set()
     repl.devices = devices
@@ -37,6 +41,7 @@ def two_psu_repl():
 # ---------------------------------------------------------------------------
 # Limit parsing — new lower_limit / upper_limit syntax
 # ---------------------------------------------------------------------------
+
 
 class TestLowerUpperParsing:
     def test_upper_limit_awg_vpeak(self, awg_repl):
@@ -96,13 +101,14 @@ class TestLowerUpperParsing:
 # AWG amp limits
 # ---------------------------------------------------------------------------
 
+
 class TestAwgAmpLimits:
     def _set_limits(self, repl, **kw):
         _MAP = {
-            "vpp_max":     "upper_limit awg vpp",
-            "vpeak_max":   "upper_limit awg vpeak",
+            "vpp_max": "upper_limit awg vpp",
+            "vpeak_max": "upper_limit awg vpeak",
             "vtrough_min": "lower_limit awg vtrough",
-            "freq_max":    "upper_limit awg freq",
+            "freq_max": "upper_limit awg freq",
         }
         lines = [f"{_MAP[k]} {v}" for k, v in kw.items()]
         repl._expand_script_lines(lines, {})
@@ -148,13 +154,14 @@ class TestAwgAmpLimits:
 # AWG offset limits
 # ---------------------------------------------------------------------------
 
+
 class TestAwgOffsetLimits:
     def _set_limits(self, repl, **kw):
         _MAP = {
-            "vpp_max":     "upper_limit awg vpp",
-            "vpeak_max":   "upper_limit awg vpeak",
+            "vpp_max": "upper_limit awg vpp",
+            "vpeak_max": "upper_limit awg vpeak",
             "vtrough_min": "lower_limit awg vtrough",
-            "freq_max":    "upper_limit awg freq",
+            "freq_max": "upper_limit awg freq",
         }
         repl._expand_script_lines([f"{_MAP[k]} {v}" for k, v in kw.items()], {})
 
@@ -199,13 +206,14 @@ class TestAwgOffsetLimits:
 # AWG freq limits
 # ---------------------------------------------------------------------------
 
+
 class TestAwgFreqLimits:
     def _set_limits(self, repl, **kw):
         _MAP = {
-            "vpp_max":     "upper_limit awg vpp",
-            "vpeak_max":   "upper_limit awg vpeak",
+            "vpp_max": "upper_limit awg vpp",
+            "vpeak_max": "upper_limit awg vpeak",
             "vtrough_min": "lower_limit awg vtrough",
-            "freq_max":    "upper_limit awg freq",
+            "freq_max": "upper_limit awg freq",
         }
         repl._expand_script_lines([f"{_MAP[k]} {v}" for k, v in kw.items()], {})
 
@@ -232,13 +240,14 @@ class TestAwgFreqLimits:
 # AWG wave limits
 # ---------------------------------------------------------------------------
 
+
 class TestAwgWaveLimits:
     def _set_limits(self, repl, **kw):
         _MAP = {
-            "vpp_max":     "upper_limit awg vpp",
-            "vpeak_max":   "upper_limit awg vpeak",
+            "vpp_max": "upper_limit awg vpp",
+            "vpeak_max": "upper_limit awg vpeak",
             "vtrough_min": "lower_limit awg vtrough",
-            "freq_max":    "upper_limit awg freq",
+            "freq_max": "upper_limit awg freq",
         }
         repl._expand_script_lines([f"{_MAP[k]} {v}" for k, v in kw.items()], {})
 
@@ -278,6 +287,7 @@ class TestAwgWaveLimits:
 # ---------------------------------------------------------------------------
 # PSU limits
 # ---------------------------------------------------------------------------
+
 
 class TestPsuLimits:
     def _set_limits(self, repl, **kw):
@@ -328,6 +338,7 @@ class TestPsuLimits:
 # Per-channel PSU limits
 # ---------------------------------------------------------------------------
 
+
 class TestPerChannelPsuLimits:
     def test_ch1_upper_blocks_ch1(self, psu_repl):
         psu_repl._expand_script_lines(["upper_limit psu chan 1 voltage 2.1"], {})
@@ -342,10 +353,13 @@ class TestPerChannelPsuLimits:
         assert not psu_repl._check_psu_limits("psu1", 1, voltage=0.1)
 
     def test_value_within_window_passes(self, psu_repl):
-        psu_repl._expand_script_lines([
-            "lower_limit psu chan 1 voltage 0.5",
-            "upper_limit psu chan 1 voltage 2.1",
-        ], {})
+        psu_repl._expand_script_lines(
+            [
+                "lower_limit psu chan 1 voltage 0.5",
+                "upper_limit psu chan 1 voltage 2.1",
+            ],
+            {},
+        )
         assert psu_repl._check_psu_limits("psu1", 1, voltage=1.5)
 
     def test_value_at_upper_boundary_passes(self, psu_repl):
@@ -361,35 +375,48 @@ class TestPerChannelPsuLimits:
 # Hierarchical limit lookup — tightest bound wins
 # ---------------------------------------------------------------------------
 
+
 class TestHierarchicalLookup:
     def test_channel_limit_tightens_type_wide(self, psu_repl):
         # type-wide: ≤5V; ch1-specific: ≤2.1V → ch1 sees 2.1V cap
-        psu_repl._expand_script_lines([
-            "upper_limit psu voltage 5.0",
-            "upper_limit psu chan 1 voltage 2.1",
-        ], {})
+        psu_repl._expand_script_lines(
+            [
+                "upper_limit psu voltage 5.0",
+                "upper_limit psu chan 1 voltage 2.1",
+            ],
+            {},
+        )
         assert not psu_repl._check_psu_limits("psu1", 1, voltage=3.0)
 
     def test_ch2_still_passes_type_wide(self, psu_repl):
-        psu_repl._expand_script_lines([
-            "upper_limit psu voltage 5.0",
-            "upper_limit psu chan 1 voltage 2.1",
-        ], {})
+        psu_repl._expand_script_lines(
+            [
+                "upper_limit psu voltage 5.0",
+                "upper_limit psu chan 1 voltage 2.1",
+            ],
+            {},
+        )
         assert psu_repl._check_psu_limits("psu1", 2, voltage=4.0)
 
     def test_ch2_blocked_by_type_wide_limit(self, psu_repl):
-        psu_repl._expand_script_lines([
-            "upper_limit psu voltage 5.0",
-            "upper_limit psu chan 1 voltage 2.1",
-        ], {})
+        psu_repl._expand_script_lines(
+            [
+                "upper_limit psu voltage 5.0",
+                "upper_limit psu chan 1 voltage 2.1",
+            ],
+            {},
+        )
         assert not psu_repl._check_psu_limits("psu1", 2, voltage=6.0)
 
     def test_named_device_limit_tightens_type_limit(self, psu_repl):
         # type-wide: ≤5V; named psu1: ≤3.3V → psu1 sees 3.3V cap
-        psu_repl._expand_script_lines([
-            "upper_limit psu voltage 5.0",
-            "upper_limit psu1 voltage 3.3",
-        ], {})
+        psu_repl._expand_script_lines(
+            [
+                "upper_limit psu voltage 5.0",
+                "upper_limit psu1 voltage 3.3",
+            ],
+            {},
+        )
         assert not psu_repl._check_psu_limits("psu1", None, voltage=4.0)
 
     def test_type_wide_limit_still_applies_via_named(self, psu_repl):
@@ -402,6 +429,7 @@ class TestHierarchicalLookup:
 # ---------------------------------------------------------------------------
 # Named-device limits
 # ---------------------------------------------------------------------------
+
 
 class TestNamedDeviceLimits:
     def test_psu1_limit_applies_to_psu1(self, two_psu_repl):
@@ -428,6 +456,7 @@ class TestNamedDeviceLimits:
 # ---------------------------------------------------------------------------
 # Limit reset between scripts
 # ---------------------------------------------------------------------------
+
 
 class TestLimitReset:
     def test_limits_cleared_between_scripts(self, awg_repl):
@@ -457,6 +486,7 @@ class TestLimitReset:
 # ---------------------------------------------------------------------------
 # Interactive REPL handlers — do_upper_limit / do_lower_limit
 # ---------------------------------------------------------------------------
+
 
 class TestInteractiveLimitCommands:
     """Verify that upper_limit / lower_limit work at the interactive REPL prompt."""
@@ -566,6 +596,7 @@ class TestInteractiveLimitCommands:
 # AWG "voltage" alias
 # ---------------------------------------------------------------------------
 
+
 class TestVoltageAlias:
     def test_upper_voltage_stores_as_vpeak(self, awg_repl):
         awg_repl._expand_script_lines(["upper_limit awg voltage 5.0"], {})
@@ -623,6 +654,7 @@ class TestVoltageAlias:
 # ---------------------------------------------------------------------------
 # Retroactive limit checks
 # ---------------------------------------------------------------------------
+
 
 class TestRetroactiveLimits:
     # AWG retroactive
@@ -710,6 +742,7 @@ class TestRetroactiveLimits:
 # ---------------------------------------------------------------------------
 # Output-enable gating — block output ON when limits are violated
 # ---------------------------------------------------------------------------
+
 
 class TestOutputEnableGating:
     """Verify that enabling output is blocked when current state violates limits."""
@@ -809,6 +842,7 @@ class TestOutputEnableGating:
 # ---------------------------------------------------------------------------
 # Retroactive enforcement — auto-disable output on violation
 # ---------------------------------------------------------------------------
+
 
 class TestRetroactiveEnforcement:
     """Verify that retroactive check auto-disables output when violation + output ON."""

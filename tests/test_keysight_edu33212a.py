@@ -5,12 +5,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 try:
-    from lab_instruments import Keysight_EDU33212A, ColorPrinter, InstrumentDiscovery
+    from lab_instruments import ColorPrinter, InstrumentDiscovery, Keysight_EDU33212A
 except ImportError as e:
     print(f"Import Error: {e}")
-    print(
-        "Ensure you are running this from the project root or have installed the package."
-    )
+    print("Ensure you are running this from the project root or have installed the package.")
     sys.exit(1)
 
 
@@ -28,9 +26,9 @@ def _test_step(label, fn, results):
         ok = False
     results[label] = ok
     if ok:
-        ColorPrinter.success(f"  PASS")
+        ColorPrinter.success("  PASS")
     else:
-        ColorPrinter.error(f"  FAIL")
+        ColorPrinter.error("  FAIL")
 
 
 def main():
@@ -48,10 +46,7 @@ def main():
             break
 
     if not awg:
-        ColorPrinter.error(
-            "Keysight EDU33212A not found. "
-            "Check USB connection and that *IDN? returns 'EDU33212A'."
-        )
+        ColorPrinter.error("Keysight EDU33212A not found. Check USB connection and that *IDN? returns 'EDU33212A'.")
         return
 
     ColorPrinter.success(f"Found EDU33212A at: {awg.resource_name}")
@@ -265,7 +260,9 @@ def main():
         else:
             ColorPrinter.error(f"  FAIL  {label}")
     print()
-    ColorPrinter.success(f"{passed}/{total} tests passed.") if passed == total else ColorPrinter.warning(f"{passed}/{total} tests passed.")
+    ColorPrinter.success(f"{passed}/{total} tests passed.") if passed == total else ColorPrinter.warning(
+        f"{passed}/{total} tests passed."
+    )
 
 
 if __name__ == "__main__":

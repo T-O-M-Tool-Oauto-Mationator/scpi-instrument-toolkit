@@ -2,6 +2,7 @@
 
 Replaces the previous non-pytest manual script.
 """
+
 import pytest
 
 
@@ -13,6 +14,7 @@ def _writes(mock_inst):
 # ===========================================================================
 # Keysight_EDU33212A
 # ===========================================================================
+
 
 class TestKeysight_EnableOutput:
     def test_enable_ch1_on(self, keysight_edu33212a):
@@ -177,6 +179,7 @@ class TestKeysight_GetError:
 # BK_4063
 # ===========================================================================
 
+
 class TestBK4063_EnableOutput:
     def test_enable_ch1_on(self, bk_4063):
         awg, mi = bk_4063
@@ -210,9 +213,7 @@ class TestBK4063_SetWaveform:
     def test_sine_all_params(self, bk_4063):
         awg, mi = bk_4063
         awg.set_waveform(1, "SINE", 1000, 2.0, 0.5, 0, 50, 50)
-        mi.write.assert_called_with(
-            "C1:BSWV WVTP,SINE,FRQ,1000,AMP,2.0,OFST,0.5,PHSE,0,DUTY,50,SYM,50"
-        )
+        mi.write.assert_called_with("C1:BSWV WVTP,SINE,FRQ,1000,AMP,2.0,OFST,0.5,PHSE,0,DUTY,50,SYM,50")
 
     def test_alias_sin_to_sine(self, bk_4063):
         awg, mi = bk_4063
@@ -264,6 +265,7 @@ class TestBK4063_GetError:
 # JDS6600_Generator
 # ===========================================================================
 
+
 class TestJDS6600_EnableOutput:
     def test_both_on(self, jds6600_generator):
         gen, mi = jds6600_generator
@@ -303,13 +305,16 @@ class TestJDS6600_SetWaveform:
             gen.set_waveform(1, "bogus")
 
 
-@pytest.mark.parametrize("freq_hz,expected_write", [
-    (100,         ":w23=10000,0."),
-    (1_000,       ":w23=100000,0."),
-    (19_999_999,  ":w23=1999999900,0."),
-    (20_000_000,  ":w23=2000,2."),
-    (60_000_000,  ":w23=6000,2."),
-])
+@pytest.mark.parametrize(
+    "freq_hz,expected_write",
+    [
+        (100, ":w23=10000,0."),
+        (1_000, ":w23=100000,0."),
+        (19_999_999, ":w23=1999999900,0."),
+        (20_000_000, ":w23=2000,2."),
+        (60_000_000, ":w23=6000,2."),
+    ],
+)
 class TestJDS6600_SetFrequency:
     def test_ch1_encoding(self, jds6600_generator, freq_hz, expected_write):
         gen, mi = jds6600_generator
@@ -340,11 +345,14 @@ class TestJDS6600_SetAmplitude:
 
 
 class TestJDS6600_SetOffset:
-    @pytest.mark.parametrize("offset_v,expected_write", [
-        (-5.0, ":w27=500."),
-        (0.0,  ":w27=1000."),
-        (5.0,  ":w27=1500."),
-    ])
+    @pytest.mark.parametrize(
+        "offset_v,expected_write",
+        [
+            (-5.0, ":w27=500."),
+            (0.0, ":w27=1000."),
+            (5.0, ":w27=1500."),
+        ],
+    )
     def test_ch1_encoding(self, jds6600_generator, offset_v, expected_write):
         gen, mi = jds6600_generator
         gen.set_offset(1, offset_v)

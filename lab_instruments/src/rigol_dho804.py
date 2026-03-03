@@ -6,12 +6,14 @@ Protocol: SCPI over USB-TMC/VISA
 Based on DHO800/DHO900 Programming Guide
 """
 
-from .device_manager import DeviceManager
-import pyvisa
 import time
-import numpy as np
 from dataclasses import dataclass
 from typing import Optional
+
+import numpy as np
+import pyvisa
+
+from .device_manager import DeviceManager
 
 
 @dataclass
@@ -28,6 +30,7 @@ class WaveformData:
         time_per_div: Horizontal scale in seconds per division
         volts_per_div: Vertical scale in volts per division
     """
+
     time: np.ndarray
     voltage: np.ndarray
     channel: int
@@ -52,9 +55,9 @@ class WaveformData:
 
             plt.figure(figsize=(12, 6))
             plt.plot(self.time * 1e3, self.voltage)  # time in ms
-            plt.xlabel('Time (ms)')
-            plt.ylabel('Voltage (V)')
-            plt.title(title or f'Channel {self.channel} Waveform')
+            plt.xlabel("Time (ms)")
+            plt.ylabel("Voltage (V)")
+            plt.title(title or f"Channel {self.channel} Waveform")
             plt.grid(True, alpha=0.3)
             plt.tight_layout()
             plt.show()
@@ -129,7 +132,7 @@ class Rigol_DHO804(DeviceManager):
         if channel not in (1, 2, 3, 4):
             raise ValueError("Channel must be 1-4")
         coupling = coupling.upper()
-        if coupling not in ('DC', 'AC', 'GND'):
+        if coupling not in ("DC", "AC", "GND"):
             raise ValueError("Coupling must be 'DC', 'AC', or 'GND'")
 
         self.instrument.write(f":CHANnel{channel}:COUPling {coupling}")
@@ -157,7 +160,7 @@ class Rigol_DHO804(DeviceManager):
             raise ValueError(f"Channel must be 1-4, got {channel}")
 
         limit = limit.upper()
-        if limit not in ('20M', 'OFF'):
+        if limit not in ("20M", "OFF"):
             raise ValueError(f"Limit must be '20M' or 'OFF', got {limit}")
 
         try:
@@ -188,7 +191,7 @@ class Rigol_DHO804(DeviceManager):
         if channel not in (1, 2, 3, 4):
             raise ValueError(f"Channel must be 1-4, got {channel}")
 
-        value = 'ON' if enable else 'OFF'
+        value = "ON" if enable else "OFF"
 
         try:
             self.instrument.write(f":CHANnel{channel}:INVert {value}")
@@ -227,8 +230,30 @@ class Rigol_DHO804(DeviceManager):
             raise ValueError(f"Channel must be 1-4, got {channel}")
 
         valid_ratios = [
-            0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5,
-            10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000
+            0.001,
+            0.002,
+            0.005,
+            0.01,
+            0.02,
+            0.05,
+            0.1,
+            0.2,
+            0.5,
+            1,
+            2,
+            5,
+            10,
+            20,
+            50,
+            100,
+            200,
+            500,
+            1000,
+            2000,
+            5000,
+            10000,
+            20000,
+            50000,
         ]
         if ratio not in valid_ratios:
             raise ValueError(f"Invalid probe ratio: {ratio}")
@@ -367,7 +392,7 @@ class Rigol_DHO804(DeviceManager):
             self.instrument.write(f':CHANnel{channel}:LABel:CONTent "{label}"')
 
             # Set label visibility
-            show_value = 'ON' if show else 'OFF'
+            show_value = "ON" if show else "OFF"
             self.instrument.write(f":CHANnel{channel}:LABel:SHOW {show_value}")
 
             state = "visible" if show else "hidden"
@@ -398,7 +423,7 @@ class Rigol_DHO804(DeviceManager):
         if channel not in (1, 2, 3, 4):
             raise ValueError(f"Channel must be 1-4, got {channel}")
 
-        value = 'ON' if enable else 'OFF'
+        value = "ON" if enable else "OFF"
 
         try:
             self.instrument.write(f":CHANnel{channel}:VERNier {value}")
@@ -481,7 +506,7 @@ class Rigol_DHO804(DeviceManager):
             pyvisa.VisaIOError: If communication fails
         """
         mode = mode.upper()
-        if mode not in ('MAIN', 'XY', 'ROLL'):
+        if mode not in ("MAIN", "XY", "ROLL"):
             raise ValueError(f"Mode must be 'MAIN', 'XY', or 'ROLL', got {mode}")
 
         try:
@@ -508,7 +533,7 @@ class Rigol_DHO804(DeviceManager):
         Raises:
             pyvisa.VisaIOError: If communication fails
         """
-        value = 'ON' if enable else 'OFF'
+        value = "ON" if enable else "OFF"
 
         try:
             self.instrument.write(f":TIMebase:DELay:ENABle {value}")
@@ -570,8 +595,7 @@ class Rigol_DHO804(DeviceManager):
             print(f"Failed to set delayed scale: {e}")
             raise
 
-    def enable_xy_mode(self, enable: bool = True, x_channel: int = 1,
-                      y_channel: int = 2) -> None:
+    def enable_xy_mode(self, enable: bool = True, x_channel: int = 1, y_channel: int = 2) -> None:
         """
         Enable/disable XY display mode.
 
@@ -599,7 +623,7 @@ class Rigol_DHO804(DeviceManager):
         if x_channel not in (1, 2, 3, 4) or y_channel not in (1, 2, 3, 4):
             raise ValueError("Channels must be 1-4")
 
-        value = 'ON' if enable else 'OFF'
+        value = "ON" if enable else "OFF"
 
         try:
             self.instrument.write(f":TIMebase:XY:ENABle {value}")
@@ -615,7 +639,7 @@ class Rigol_DHO804(DeviceManager):
             raise
 
     # Trigger control
-    def configure_trigger(self, channel: int, level: float, slope: str = 'RISE', mode: str = 'AUTO'):
+    def configure_trigger(self, channel: int, level: float, slope: str = "RISE", mode: str = "AUTO"):
         """
         Configure edge trigger.
 
@@ -630,13 +654,13 @@ class Rigol_DHO804(DeviceManager):
 
         # Map common slope names to Rigol SCPI
         slope_map = {
-            'RISE': 'POSitive',
-            'FALL': 'NEGative',
-            'RFALL': 'RFALl',
-            'POSITIVE': 'POSitive',
-            'NEGATIVE': 'NEGative'
+            "RISE": "POSitive",
+            "FALL": "NEGative",
+            "RFALL": "RFALl",
+            "POSITIVE": "POSitive",
+            "NEGATIVE": "NEGative",
         }
-        slope_cmd = slope_map.get(slope.upper(), 'POSitive')
+        slope_cmd = slope_map.get(slope.upper(), "POSitive")
 
         self.instrument.write(":TRIGger:MODE EDGE")
         self.instrument.write(f":TRIGger:EDGE:SOURce CHAN{channel}")
@@ -671,7 +695,7 @@ class Rigol_DHO804(DeviceManager):
             pyvisa.VisaIOError: If communication fails
         """
         sweep = sweep.upper()
-        if sweep not in ('AUTO', 'NORMAL', 'SINGLE'):
+        if sweep not in ("AUTO", "NORMAL", "SINGLE"):
             raise ValueError(f"Sweep must be 'AUTO', 'NORMAL', or 'SINGLE', got {sweep}")
 
         try:
@@ -705,7 +729,7 @@ class Rigol_DHO804(DeviceManager):
             pyvisa.VisaIOError: If communication fails
         """
         coupling = coupling.upper()
-        if coupling not in ('DC', 'AC', 'LFREJECT', 'HFREJECT'):
+        if coupling not in ("DC", "AC", "LFREJECT", "HFREJECT"):
             raise ValueError(f"Coupling must be 'DC', 'AC', 'LFReject', or 'HFReject', got {coupling}")
 
         try:
@@ -769,10 +793,9 @@ class Rigol_DHO804(DeviceManager):
             print(f"Failed to query trigger status: {e}")
             raise
 
-    def configure_pulse_trigger(self, source: int, polarity: str,
-                               when: str, width_lower: float,
-                               width_upper: float = None,
-                               level: float = 0.0) -> None:
+    def configure_pulse_trigger(
+        self, source: int, polarity: str, when: str, width_lower: float, width_upper: float = None, level: float = 0.0
+    ) -> None:
         """
         Configure pulse width trigger.
 
@@ -808,11 +831,11 @@ class Rigol_DHO804(DeviceManager):
             raise ValueError(f"Source must be 1-4, got {source}")
 
         polarity = polarity.upper()
-        if polarity not in ('POSITIVE', 'NEGATIVE'):
+        if polarity not in ("POSITIVE", "NEGATIVE"):
             raise ValueError(f"Polarity must be 'POSitive' or 'NEGative', got {polarity}")
 
         when = when.upper()
-        if when not in ('GREATER', 'LESS', 'GLESS'):
+        if when not in ("GREATER", "LESS", "GLESS"):
             raise ValueError(f"When must be 'GREater', 'LESS', or 'GLESs', got {when}")
 
         try:
@@ -821,10 +844,10 @@ class Rigol_DHO804(DeviceManager):
             self.instrument.write(f":TRIGger:PULSe:POLarity {polarity}")
             self.instrument.write(f":TRIGger:PULSe:WHEN {when}")
 
-            if when in ('GREATER', 'GLESS'):
+            if when in ("GREATER", "GLESS"):
                 self.instrument.write(f":TRIGger:PULSe:LWIDth {width_lower}")
 
-            if when in ('LESS', 'GLESS'):
+            if when in ("LESS", "GLESS"):
                 if width_upper is None:
                     raise ValueError("width_upper required for LESS/GLESs mode")
                 self.instrument.write(f":TRIGger:PULSe:UWIDth {width_upper}")
@@ -838,8 +861,7 @@ class Rigol_DHO804(DeviceManager):
             print(f"Failed to configure pulse trigger: {e}")
             raise
 
-    def configure_timeout_trigger(self, source: int, slope: str,
-                                  timeout: float, level: float = 0.0) -> None:
+    def configure_timeout_trigger(self, source: int, slope: str, timeout: float, level: float = 0.0) -> None:
         """
         Configure timeout trigger.
 
@@ -872,7 +894,7 @@ class Rigol_DHO804(DeviceManager):
             raise ValueError(f"Source must be 1-4, got {source}")
 
         slope = slope.upper()
-        if slope not in ('POSITIVE', 'NEGATIVE', 'RFALL'):
+        if slope not in ("POSITIVE", "NEGATIVE", "RFALL"):
             raise ValueError(f"Slope must be 'POSitive', 'NEGative', or 'RFALl', got {slope}")
 
         if not (1e-9 <= timeout <= 10.0):
@@ -999,11 +1021,12 @@ class Rigol_DHO804(DeviceManager):
             bool: True if scope stopped (trigger fired), False if timed out
         """
         import time
+
         time.sleep(0.1)  # Let the scope process :SINGle before polling
         deadline = time.time() + timeout
         while time.time() < deadline:
             status = self.get_trigger_status()
-            if status == 'STOP':
+            if status == "STOP":
                 # Scope stopped; give DSP a moment to begin computing measurements
                 time.sleep(0.5)
                 return True
@@ -1064,8 +1087,7 @@ class Rigol_DHO804(DeviceManager):
             pyvisa.VisaIOError: If communication fails
         """
         source = source.upper()
-        valid_sources = ['CHAN1', 'CHAN2', 'CHAN3', 'CHAN4',
-                        'MATH1', 'MATH2', 'MATH3', 'MATH4']
+        valid_sources = ["CHAN1", "CHAN2", "CHAN3", "CHAN4", "MATH1", "MATH2", "MATH3", "MATH4"]
         if source not in valid_sources:
             raise ValueError(f"Source must be one of {valid_sources}, got {source}")
 
@@ -1099,7 +1121,7 @@ class Rigol_DHO804(DeviceManager):
             pyvisa.VisaIOError: If communication fails
         """
         mode = mode.upper()
-        if mode not in ('NORMAL', 'MAXIMUM', 'RAW'):
+        if mode not in ("NORMAL", "MAXIMUM", "RAW"):
             raise ValueError(f"Mode must be 'NORMAL', 'MAXIMUM', or 'RAW', got {mode}")
 
         try:
@@ -1131,7 +1153,7 @@ class Rigol_DHO804(DeviceManager):
             pyvisa.VisaIOError: If communication fails
         """
         format = format.upper()
-        if format not in ('BYTE', 'WORD', 'ASCII'):
+        if format not in ("BYTE", "WORD", "ASCII"):
             raise ValueError(f"Format must be 'BYTE', 'WORD', or 'ASCII', got {format}")
 
         try:
@@ -1169,19 +1191,19 @@ class Rigol_DHO804(DeviceManager):
         """
         try:
             response = self.instrument.query(":WAVeform:PREamble?")
-            values = [float(v) for v in response.strip().split(',')]
+            values = [float(v) for v in response.strip().split(",")]
 
             preamble = {
-                'format': int(values[0]),
-                'type': int(values[1]),
-                'points': int(values[2]),
-                'count': int(values[3]),
-                'xincrement': values[4],
-                'xorigin': values[5],
-                'xreference': values[6],
-                'yincrement': values[7],
-                'yorigin': values[8],
-                'yreference': values[9]
+                "format": int(values[0]),
+                "type": int(values[1]),
+                "points": int(values[2]),
+                "count": int(values[3]),
+                "xincrement": values[4],
+                "xorigin": values[5],
+                "xreference": values[6],
+                "yincrement": values[7],
+                "yorigin": values[8],
+                "yreference": values[9],
             }
             return preamble
         except pyvisa.VisaIOError as e:
@@ -1202,8 +1224,7 @@ class Rigol_DHO804(DeviceManager):
         Formula:
             voltage[i] = (data[i] - yreference) * yincrement + yorigin
         """
-        voltage = (raw_data.astype(float) - preamble['yreference']) * \
-                  preamble['yincrement'] + preamble['yorigin']
+        voltage = (raw_data.astype(float) - preamble["yreference"]) * preamble["yincrement"] + preamble["yorigin"]
         return voltage
 
     def _generate_time_axis(self, num_points: int, preamble: dict) -> np.ndarray:
@@ -1221,12 +1242,10 @@ class Rigol_DHO804(DeviceManager):
             time[i] = xorigin + (i - xreference) * xincrement
         """
         indices = np.arange(num_points)
-        time = preamble['xorigin'] + \
-               (indices - preamble['xreference']) * \
-               preamble['xincrement']
+        time = preamble["xorigin"] + (indices - preamble["xreference"]) * preamble["xincrement"]
         return time
 
-    def acquire_waveform(self, channel: int, mode: str = 'NORMAL') -> WaveformData:
+    def acquire_waveform(self, channel: int, mode: str = "NORMAL") -> WaveformData:
         """
         Acquire complete waveform with proper scaling.
 
@@ -1265,9 +1284,9 @@ class Rigol_DHO804(DeviceManager):
 
         try:
             # Configure waveform acquisition
-            self.set_waveform_source(f'CHAN{channel}')
+            self.set_waveform_source(f"CHAN{channel}")
             self.set_waveform_mode(mode)
-            self.set_waveform_format('BYTE')
+            self.set_waveform_format("BYTE")
 
             # Get preamble (scaling parameters)
             preamble = self.get_waveform_preamble()
@@ -1275,9 +1294,9 @@ class Rigol_DHO804(DeviceManager):
             # Get waveform data
             print(f"Acquiring waveform data ({preamble['points']} points)...")
             raw_data = self.instrument.query_binary_values(
-                ':WAVeform:DATA?',
-                datatype='B',  # Unsigned byte
-                is_big_endian=False
+                ":WAVeform:DATA?",
+                datatype="B",  # Unsigned byte
+                is_big_endian=False,
             )
             raw_data = np.array(raw_data)
 
@@ -1288,15 +1307,11 @@ class Rigol_DHO804(DeviceManager):
             time = self._generate_time_axis(len(raw_data), preamble)
 
             # Calculate sample rate
-            sample_rate = 1.0 / preamble['xincrement'] if preamble['xincrement'] > 0 else 0.0
+            sample_rate = 1.0 / preamble["xincrement"] if preamble["xincrement"] > 0 else 0.0
 
             # Create WaveformData object
             waveform = WaveformData(
-                time=time,
-                voltage=voltage,
-                channel=channel,
-                sample_rate=sample_rate,
-                points=len(raw_data)
+                time=time, voltage=voltage, channel=channel, sample_rate=sample_rate, points=len(raw_data)
             )
 
             print(f"Acquired {len(waveform)} points from CH{channel}")
@@ -1309,8 +1324,9 @@ class Rigol_DHO804(DeviceManager):
             print(f"Failed to acquire waveform: {e}")
             raise
 
-    def save_waveform_csv(self, channel: int, filename: str, max_points: Optional[int] = None,
-                          time_window: Optional[float] = None) -> None:
+    def save_waveform_csv(
+        self, channel: int, filename: str, max_points: Optional[int] = None, time_window: Optional[float] = None
+    ) -> None:
         """
         Save waveform from a single channel to a CSV file.
 
@@ -1332,7 +1348,7 @@ class Rigol_DHO804(DeviceManager):
         import csv
 
         # Acquire waveform data
-        waveform = self.acquire_waveform(channel, mode='NORMAL')
+        waveform = self.acquire_waveform(channel, mode="NORMAL")
 
         times = waveform.time
         volts = waveform.voltage
@@ -1356,16 +1372,17 @@ class Rigol_DHO804(DeviceManager):
             print(f"Saving {max_points} points ({actual_time:.6f} seconds) - most recent data")
 
         # Write CSV file
-        with open(filename, 'w', newline='') as csvfile:
+        with open(filename, "w", newline="") as csvfile:
             writer = csv.writer(csvfile)
-            writer.writerow(['Time (s)', f'CH{channel} Voltage (V)'])
+            writer.writerow(["Time (s)", f"CH{channel} Voltage (V)"])
             for t, v in zip(times, volts):
                 writer.writerow([t, v])
 
         print(f"Waveform from CH{channel} saved to {filename}")
 
-    def save_waveforms_csv(self, channels: list, filename: str, max_points: Optional[int] = None,
-                           time_window: Optional[float] = None) -> None:
+    def save_waveforms_csv(
+        self, channels: list, filename: str, max_points: Optional[int] = None, time_window: Optional[float] = None
+    ) -> None:
         """
         Save waveforms from multiple channels to a single CSV file.
 
@@ -1394,7 +1411,7 @@ class Rigol_DHO804(DeviceManager):
             if channel not in (1, 2, 3, 4):
                 raise ValueError(f"Invalid channel {channel}. Must be 1-4.")
 
-            waveform = self.acquire_waveform(channel, mode='NORMAL')
+            waveform = self.acquire_waveform(channel, mode="NORMAL")
 
             if len(waveform.time) == 0:
                 print(f"No data captured from CH{channel}.")
@@ -1424,13 +1441,13 @@ class Rigol_DHO804(DeviceManager):
             print(f"Saving {max_points} points ({actual_time:.6f} seconds) - most recent data")
 
         # Write CSV file
-        with open(filename, 'w', newline='') as csvfile:
+        with open(filename, "w", newline="") as csvfile:
             writer = csv.writer(csvfile)
 
             # Write header
-            header = ['Time (s)']
+            header = ["Time (s)"]
             for ch in sorted(channel_data.keys()):
-                header.append(f'CH{ch} Voltage (V)')
+                header.append(f"CH{ch} Voltage (V)")
             writer.writerow(header)
 
             # Write data rows
@@ -1440,7 +1457,7 @@ class Rigol_DHO804(DeviceManager):
                     row.append(channel_data[ch][i])
                 writer.writerow(row)
 
-        channels_list = ','.join(str(ch) for ch in sorted(channel_data.keys()))
+        channels_list = ",".join(str(ch) for ch in sorted(channel_data.keys()))
         print(f"Waveforms from CH{channels_list} saved to {filename}")
 
     # Autoset
@@ -1475,8 +1492,7 @@ class Rigol_DHO804(DeviceManager):
             pyvisa.VisaIOError: If communication fails
         """
         source = source.upper()
-        valid_sources = ['CHAN1', 'CHAN2', 'CHAN3', 'CHAN4',
-                        'MATH1', 'MATH2', 'MATH3', 'MATH4']
+        valid_sources = ["CHAN1", "CHAN2", "CHAN3", "CHAN4", "MATH1", "MATH2", "MATH3", "MATH4"]
         if source not in valid_sources:
             raise ValueError(f"Source must be one of {valid_sources}, got {source}")
 
@@ -1588,44 +1604,73 @@ class Rigol_DHO804(DeviceManager):
         """Map a user-facing measurement name to its Rigol SCPI item string."""
         meas_map = {
             # Voltage
-            'vpp': 'VPP', 'pk2pk': 'VPP',
-            'vrms': 'VRMS', 'rms': 'VRMS',
-            'vmax': 'VMAX', 'maximum': 'VMAX',
-            'vmin': 'VMIN', 'minimum': 'VMIN',
-            'vtop': 'VTOP', 'top': 'VTOP',
-            'vbase': 'VBASe', 'base': 'VBASe',
-            'vamp': 'VAMP', 'amplitude': 'VAMP',
-            'vavg': 'VAVG', 'mean': 'VAVG', 'average': 'VAVG',
-            'vmid': 'VMID', 'mid': 'VMID',
-            'vupper': 'VUPPer', 'upper': 'VUPPer',
-            'vlower': 'VLOWer', 'lower': 'VLOWer',
-            'acrms': 'ACRMs',
-            'variance': 'VARiance', 'var': 'VARiance',
-            'pvrms': 'PVRMs',
-            'tvmax': 'TVMAX',
-            'tvmin': 'TVMIN',
+            "vpp": "VPP",
+            "pk2pk": "VPP",
+            "vrms": "VRMS",
+            "rms": "VRMS",
+            "vmax": "VMAX",
+            "maximum": "VMAX",
+            "vmin": "VMIN",
+            "minimum": "VMIN",
+            "vtop": "VTOP",
+            "top": "VTOP",
+            "vbase": "VBASe",
+            "base": "VBASe",
+            "vamp": "VAMP",
+            "amplitude": "VAMP",
+            "vavg": "VAVG",
+            "mean": "VAVG",
+            "average": "VAVG",
+            "vmid": "VMID",
+            "mid": "VMID",
+            "vupper": "VUPPer",
+            "upper": "VUPPer",
+            "vlower": "VLOWer",
+            "lower": "VLOWer",
+            "acrms": "ACRMs",
+            "variance": "VARiance",
+            "var": "VARiance",
+            "pvrms": "PVRMs",
+            "tvmax": "TVMAX",
+            "tvmin": "TVMIN",
             # Time
-            'frequency': 'FREQuency', 'freq': 'FREQuency',
-            'period': 'PERiod',
-            'rise': 'RTIMe', 'risetime': 'RTIMe',
-            'fall': 'FTIMe', 'falltime': 'FTIMe',
-            'pwidth': 'PWIDth', 'ppulsewidth': 'PWIDth',
-            'nwidth': 'NWIDth', 'npulsewidth': 'NWIDth',
+            "frequency": "FREQuency",
+            "freq": "FREQuency",
+            "period": "PERiod",
+            "rise": "RTIMe",
+            "risetime": "RTIMe",
+            "fall": "FTIMe",
+            "falltime": "FTIMe",
+            "pwidth": "PWIDth",
+            "ppulsewidth": "PWIDth",
+            "nwidth": "NWIDth",
+            "npulsewidth": "NWIDth",
             # Duty cycle
-            'pduty': 'PDUTy', 'posduty': 'PDUTy',
-            'nduty': 'NDUTy', 'negduty': 'NDUTy',
+            "pduty": "PDUTy",
+            "posduty": "PDUTy",
+            "nduty": "NDUTy",
+            "negduty": "NDUTy",
             # Shape
-            'overshoot': 'OVERshoot', 'over': 'OVERshoot',
-            'preshoot': 'PREShoot', 'pre': 'PREShoot',
-            'pslewrate': 'PSLewrate', 'posslew': 'PSLewrate',
-            'nslewrate': 'NSLewrate', 'negslew': 'NSLewrate',
+            "overshoot": "OVERshoot",
+            "over": "OVERshoot",
+            "preshoot": "PREShoot",
+            "pre": "PREShoot",
+            "pslewrate": "PSLewrate",
+            "posslew": "PSLewrate",
+            "nslewrate": "NSLewrate",
+            "negslew": "NSLewrate",
             # Area
-            'marea': 'MARea', 'area': 'MARea',
-            'mparea': 'MPARea', 'periodarea': 'MPARea',
+            "marea": "MARea",
+            "area": "MARea",
+            "mparea": "MPARea",
+            "periodarea": "MPARea",
             # Counts
-            'ppulses': 'PPULses', 'posedges': 'PEDGes',
-            'npulses': 'NPULses', 'negedges': 'NEDGes',
-            'pedges': 'PEDGes', 'nedges': 'NEDGes',
+            "ppulses": "PPULses",
+            "posedges": "PEDGes",
+            "npulses": "NPULses",
+            "negedges": "NEDGes",
+            "pedges": "PEDGes",
+            "nedges": "NEDGes",
         }
         return meas_map.get(measurement_type.lower(), measurement_type)
 
@@ -1658,35 +1703,35 @@ class Rigol_DHO804(DeviceManager):
 
     def measure_vpp(self, channel: int) -> float:
         """Measure peak-to-peak voltage."""
-        return self.measure(channel, 'VPP')
+        return self.measure(channel, "VPP")
 
     def measure_vrms(self, channel: int) -> float:
         """Measure RMS voltage."""
-        return self.measure(channel, 'VRMS')
+        return self.measure(channel, "VRMS")
 
     def measure_frequency(self, channel: int) -> float:
         """Measure frequency in Hz."""
-        return self.measure(channel, 'FREQuency')
+        return self.measure(channel, "FREQuency")
 
     def measure_period(self, channel: int) -> float:
         """Measure period in seconds."""
-        return self.measure(channel, 'PERiod')
+        return self.measure(channel, "PERiod")
 
     def measure_rise_time(self, channel: int) -> float:
         """Measure rise time (10% to 90%)."""
-        return self.measure(channel, 'RTIMe')
+        return self.measure(channel, "RTIMe")
 
     def measure_fall_time(self, channel: int) -> float:
         """Measure fall time (90% to 10%)."""
-        return self.measure(channel, 'FTIMe')
+        return self.measure(channel, "FTIMe")
 
     def measure_duty_cycle(self, channel: int) -> float:
         """Measure positive duty cycle percentage."""
-        return self.measure(channel, 'PDUTy')
+        return self.measure(channel, "PDUTy")
 
     def measure_amplitude(self, channel: int) -> float:
         """Measure amplitude (Vtop - Vbase)."""
-        return self.measure(channel, 'VAMP')
+        return self.measure(channel, "VAMP")
 
     # Compatibility aliases
 
@@ -1697,8 +1742,7 @@ class Rigol_DHO804(DeviceManager):
         """
         return self.measure(channel, measurement_type)
 
-    def measure_delay(self, ch1: int, ch2: int, edge1: str = 'RISE',
-                     edge2: str = 'RISE') -> float:
+    def measure_delay(self, ch1: int, ch2: int, edge1: str = "RISE", edge2: str = "RISE") -> float:
         """
         Measure delay between two channels.
 
@@ -1716,15 +1760,15 @@ class Rigol_DHO804(DeviceManager):
         """
         # Determine delay measurement type based on edges
         delay_map = {
-            ('RISE', 'RISE'): 'RRDelay',
-            ('RISE', 'FALL'): 'RFDelay',
-            ('FALL', 'RISE'): 'FRDelay',
-            ('FALL', 'FALL'): 'FFDelay',
+            ("RISE", "RISE"): "RRDelay",
+            ("RISE", "FALL"): "RFDelay",
+            ("FALL", "RISE"): "FRDelay",
+            ("FALL", "FALL"): "FFDelay",
         }
 
         edge1 = edge1.upper()
         edge2 = edge2.upper()
-        delay_type = delay_map.get((edge1, edge2), 'RRDelay')
+        delay_type = delay_map.get((edge1, edge2), "RRDelay")
 
         try:
             response = self.instrument.query(f":MEASure:ITEM? {delay_type},CHAN{ch1},CHAN{ch2}")
@@ -1756,7 +1800,7 @@ class Rigol_DHO804(DeviceManager):
             scope.set_cursor_mode('OFF')
         """
         mode = mode.upper()
-        if mode not in ('OFF', 'MANUAL', 'TRACK', 'XY'):
+        if mode not in ("OFF", "MANUAL", "TRACK", "XY"):
             raise ValueError(f"Mode must be 'OFF', 'MANUAL', 'TRACK', or 'XY', got {mode}")
 
         try:
@@ -1786,7 +1830,7 @@ class Rigol_DHO804(DeviceManager):
             scope.set_manual_cursor_type('AMPLITUDE') # Y cursor for voltage measurements
         """
         cursor_type = cursor_type.upper()
-        if cursor_type not in ('TIME', 'AMPLITUDE'):
+        if cursor_type not in ("TIME", "AMPLITUDE"):
             raise ValueError(f"Cursor type must be 'TIME' or 'AMPLITUDE', got {cursor_type}")
 
         try:
@@ -1815,23 +1859,23 @@ class Rigol_DHO804(DeviceManager):
             scope.set_manual_cursor_source('NONE')  # Disable manual cursors
         """
         source = source.upper()
-        valid_sources = ['CHAN1', 'CHAN2', 'CHAN3', 'CHAN4',
-                        'MATH1', 'MATH2', 'MATH3', 'MATH4', 'NONE']
+        valid_sources = ["CHAN1", "CHAN2", "CHAN3", "CHAN4", "MATH1", "MATH2", "MATH3", "MATH4", "NONE"]
 
         if source not in valid_sources:
             raise ValueError(f"Source must be one of {valid_sources}, got {source}")
 
         try:
             # Convert CHAN to CHANnel for SCPI command
-            scpi_source = source.replace('CHAN', 'CHANnel')
+            scpi_source = source.replace("CHAN", "CHANnel")
             self.instrument.write(f":CURSor:MANual:SOURce {scpi_source}")
             print(f"Manual cursor source set to {source}")
         except pyvisa.VisaIOError as e:
             print(f"Failed to set manual cursor source: {e}")
             raise
 
-    def set_manual_cursor_positions(self, ax: float = None, ay: float = None,
-                                    bx: float = None, by: float = None) -> None:
+    def set_manual_cursor_positions(
+        self, ax: float = None, ay: float = None, bx: float = None, by: float = None
+    ) -> None:
         """
         Set manual cursor positions (horizontal and/or vertical).
 
@@ -1867,10 +1911,14 @@ class Rigol_DHO804(DeviceManager):
                 self.instrument.write(f":CURSor:MANual:CBY {by}")
 
             positions = []
-            if ax is not None: positions.append(f"AX={ax*1e6:.2f}us")
-            if ay is not None: positions.append(f"AY={ay:.3f}V")
-            if bx is not None: positions.append(f"BX={bx*1e6:.2f}us")
-            if by is not None: positions.append(f"BY={by:.3f}V")
+            if ax is not None:
+                positions.append(f"AX={ax * 1e6:.2f}us")
+            if ay is not None:
+                positions.append(f"AY={ay:.3f}V")
+            if bx is not None:
+                positions.append(f"BX={bx * 1e6:.2f}us")
+            if by is not None:
+                positions.append(f"BY={by:.3f}V")
 
             if positions:
                 print(f"Manual cursor positions set: {', '.join(positions)}")
@@ -1910,26 +1958,26 @@ class Rigol_DHO804(DeviceManager):
 
             # Query all cursor values
             ax_resp = self.instrument.query(":CURSor:MANual:AXValue?")
-            values['ax'] = float(ax_resp.strip())
+            values["ax"] = float(ax_resp.strip())
 
             ay_resp = self.instrument.query(":CURSor:MANual:AYValue?")
-            values['ay'] = float(ay_resp.strip())
+            values["ay"] = float(ay_resp.strip())
 
             bx_resp = self.instrument.query(":CURSor:MANual:BXValue?")
-            values['bx'] = float(bx_resp.strip())
+            values["bx"] = float(bx_resp.strip())
 
             by_resp = self.instrument.query(":CURSor:MANual:BYValue?")
-            values['by'] = float(by_resp.strip())
+            values["by"] = float(by_resp.strip())
 
             # Query delta values
             dx_resp = self.instrument.query(":CURSor:MANual:XDELta?")
-            values['delta_x'] = float(dx_resp.strip())
+            values["delta_x"] = float(dx_resp.strip())
 
             dy_resp = self.instrument.query(":CURSor:MANual:YDELta?")
-            values['delta_y'] = float(dy_resp.strip())
+            values["delta_y"] = float(dy_resp.strip())
 
             idx_resp = self.instrument.query(":CURSor:MANual:IXDelta?")
-            values['inv_delta_x'] = float(idx_resp.strip())
+            values["inv_delta_x"] = float(idx_resp.strip())
 
             return values
         except pyvisa.VisaIOError as e:
@@ -1963,8 +2011,7 @@ class Rigol_DHO804(DeviceManager):
         source1 = source1.upper()
         source2 = source2.upper()
 
-        valid_sources = ['CHAN1', 'CHAN2', 'CHAN3', 'CHAN4',
-                        'MATH1', 'MATH2', 'MATH3', 'MATH4', 'NONE']
+        valid_sources = ["CHAN1", "CHAN2", "CHAN3", "CHAN4", "MATH1", "MATH2", "MATH3", "MATH4", "NONE"]
 
         if source1 not in valid_sources:
             raise ValueError(f"Source1 must be one of {valid_sources}, got {source1}")
@@ -1973,8 +2020,8 @@ class Rigol_DHO804(DeviceManager):
 
         try:
             # Convert CHAN to CHANnel for SCPI command
-            scpi_source1 = source1.replace('CHAN', 'CHANnel')
-            scpi_source2 = source2.replace('CHAN', 'CHANnel')
+            scpi_source1 = source1.replace("CHAN", "CHANnel")
+            scpi_source2 = source2.replace("CHAN", "CHANnel")
 
             self.instrument.write(f":CURSor:TRACk:SOURce1 {scpi_source1}")
             self.instrument.write(f":CURSor:TRACk:SOURce2 {scpi_source2}")
@@ -2003,7 +2050,7 @@ class Rigol_DHO804(DeviceManager):
         try:
             self.instrument.write(f":CURSor:TRACk:CAX {ax}")
             self.instrument.write(f":CURSor:TRACk:CBX {bx}")
-            print(f"Track cursor positions: AX={ax*1e6:.2f}us, BX={bx*1e6:.2f}us")
+            print(f"Track cursor positions: AX={ax * 1e6:.2f}us, BX={bx * 1e6:.2f}us")
         except pyvisa.VisaIOError as e:
             print(f"Failed to set track cursor positions: {e}")
             raise
@@ -2026,7 +2073,7 @@ class Rigol_DHO804(DeviceManager):
             scope.set_track_cursor_mode('Y')  # Track along Y-axis
         """
         mode = mode.upper()
-        if mode not in ('X', 'Y'):
+        if mode not in ("X", "Y"):
             raise ValueError(f"Mode must be 'X' or 'Y', got {mode}")
 
         try:
@@ -2068,26 +2115,26 @@ class Rigol_DHO804(DeviceManager):
 
             # Query all cursor values
             ax_resp = self.instrument.query(":CURSor:TRACk:AXValue?")
-            values['ax'] = float(ax_resp.strip())
+            values["ax"] = float(ax_resp.strip())
 
             ay_resp = self.instrument.query(":CURSor:TRACk:AYValue?")
-            values['ay'] = float(ay_resp.strip())
+            values["ay"] = float(ay_resp.strip())
 
             bx_resp = self.instrument.query(":CURSor:TRACk:BXValue?")
-            values['bx'] = float(bx_resp.strip())
+            values["bx"] = float(bx_resp.strip())
 
             by_resp = self.instrument.query(":CURSor:TRACk:BYValue?")
-            values['by'] = float(by_resp.strip())
+            values["by"] = float(by_resp.strip())
 
             # Query delta values
             dx_resp = self.instrument.query(":CURSor:TRACk:XDELta?")
-            values['delta_x'] = float(dx_resp.strip())
+            values["delta_x"] = float(dx_resp.strip())
 
             dy_resp = self.instrument.query(":CURSor:TRACk:YDELta?")
-            values['delta_y'] = float(dy_resp.strip())
+            values["delta_y"] = float(dy_resp.strip())
 
             idx_resp = self.instrument.query(":CURSor:TRACk:IXDelta?")
-            values['inv_delta_x'] = float(idx_resp.strip())
+            values["inv_delta_x"] = float(idx_resp.strip())
 
             return values
         except pyvisa.VisaIOError as e:
@@ -2161,23 +2208,23 @@ class Rigol_DHO804(DeviceManager):
 
             # Query all cursor values
             ax_resp = self.instrument.query(":CURSor:XY:AXValue?")
-            values['ax'] = float(ax_resp.strip())
+            values["ax"] = float(ax_resp.strip())
 
             ay_resp = self.instrument.query(":CURSor:XY:AYValue?")
-            values['ay'] = float(ay_resp.strip())
+            values["ay"] = float(ay_resp.strip())
 
             bx_resp = self.instrument.query(":CURSor:XY:BXValue?")
-            values['bx'] = float(bx_resp.strip())
+            values["bx"] = float(bx_resp.strip())
 
             by_resp = self.instrument.query(":CURSor:XY:BYValue?")
-            values['by'] = float(by_resp.strip())
+            values["by"] = float(by_resp.strip())
 
             # Query delta values
             dx_resp = self.instrument.query(":CURSor:XY:XDELta?")
-            values['delta_x'] = float(dx_resp.strip())
+            values["delta_x"] = float(dx_resp.strip())
 
             dy_resp = self.instrument.query(":CURSor:XY:YDELta?")
-            values['delta_y'] = float(dy_resp.strip())
+            values["delta_y"] = float(dy_resp.strip())
 
             return values
         except pyvisa.VisaIOError as e:
@@ -2210,7 +2257,7 @@ class Rigol_DHO804(DeviceManager):
             raise ValueError(f"Math channel must be 1-4, got {math_ch}")
 
         try:
-            state = 'ON' if enable else 'OFF'
+            state = "ON" if enable else "OFF"
             self.instrument.write(f":MATH{math_ch}:DISPlay {state}")
             print(f"MATH{math_ch} {'enabled' if enable else 'disabled'}")
         except pyvisa.VisaIOError as e:
@@ -2251,8 +2298,7 @@ class Rigol_DHO804(DeviceManager):
             print(f"Failed to set math scale: {e}")
             raise
 
-    def configure_math_operation(self, math_ch: int, operation: str,
-                                 source1: str, source2: str = None) -> None:
+    def configure_math_operation(self, math_ch: int, operation: str, source1: str, source2: str = None) -> None:
         """
         Configure math channel for arithmetic operation.
 
@@ -2284,7 +2330,7 @@ class Rigol_DHO804(DeviceManager):
             raise ValueError(f"Math channel must be 1-4, got {math_ch}")
 
         operation = operation.upper()
-        valid_ops = ['ADD', 'SUBTRACT', 'MULTIPLY', 'DIVISION']
+        valid_ops = ["ADD", "SUBTRACT", "MULTIPLY", "DIVISION"]
         if operation not in valid_ops:
             raise ValueError(f"Operation must be one of {valid_ops}, got {operation}")
 
@@ -2298,16 +2344,16 @@ class Rigol_DHO804(DeviceManager):
 
         try:
             # Set operator
-            op_map = {'SUBTRACT': 'SUBTract', 'MULTIPLY': 'MULTiply'}
+            op_map = {"SUBTRACT": "SUBTract", "MULTIPLY": "MULTiply"}
             scpi_op = op_map.get(operation, operation)
             self.instrument.write(f":MATH{math_ch}:OPERator {scpi_op}")
 
             # Set sources (convert CHAN to CHANnel for SCPI)
-            scpi_source1 = source1.replace('CHAN', 'CHANnel')
+            scpi_source1 = source1.replace("CHAN", "CHANnel")
             self.instrument.write(f":MATH{math_ch}:SOURce1 {scpi_source1}")
 
             if source2:
-                scpi_source2 = source2.replace('CHAN', 'CHANnel')
+                scpi_source2 = source2.replace("CHAN", "CHANnel")
                 self.instrument.write(f":MATH{math_ch}:SOURce2 {scpi_source2}")
 
             print(f"MATH{math_ch} configured: {source1} {operation} {source2 if source2 else ''}")
@@ -2349,7 +2395,7 @@ class Rigol_DHO804(DeviceManager):
             raise ValueError(f"Math channel must be 1-4, got {math_ch}")
 
         function = function.upper()
-        valid_funcs = ['INTG', 'DIFF', 'SQRT', 'LG', 'LN', 'EXP', 'ABS']
+        valid_funcs = ["INTG", "DIFF", "SQRT", "LG", "LN", "EXP", "ABS"]
         if function not in valid_funcs:
             raise ValueError(f"Function must be one of {valid_funcs}, got {function}")
 
@@ -2360,7 +2406,7 @@ class Rigol_DHO804(DeviceManager):
             self.instrument.write(f":MATH{math_ch}:OPERator {function}")
 
             # Set source (convert CHAN to CHANnel for SCPI)
-            scpi_source = source.replace('CHAN', 'CHANnel')
+            scpi_source = source.replace("CHAN", "CHANnel")
             self.instrument.write(f":MATH{math_ch}:SOURce1 {scpi_source}")
 
             print(f"MATH{math_ch} configured: {function}({source})")
@@ -2368,7 +2414,7 @@ class Rigol_DHO804(DeviceManager):
             print(f"Failed to configure math function: {e}")
             raise
 
-    def configure_fft(self, math_ch: int, source: str, window: str = 'RECT') -> None:
+    def configure_fft(self, math_ch: int, source: str, window: str = "RECT") -> None:
         """
         Configure math channel for FFT (Fast Fourier Transform) analysis.
 
@@ -2408,7 +2454,7 @@ class Rigol_DHO804(DeviceManager):
         source = source.upper()
         window = window.upper()
 
-        valid_windows = ['RECT', 'BLACK', 'HANN', 'HAMM', 'FLAT', 'TRI']
+        valid_windows = ["RECT", "BLACK", "HANN", "HAMM", "FLAT", "TRI"]
         if window not in valid_windows:
             raise ValueError(f"Window must be one of {valid_windows}, got {window}")
 
@@ -2417,7 +2463,7 @@ class Rigol_DHO804(DeviceManager):
             self.instrument.write(f":MATH{math_ch}:OPERator FFT")
 
             # Set FFT source (convert CHAN to CHANnel for SCPI)
-            scpi_source = source.replace('CHAN', 'CHANnel')
+            scpi_source = source.replace("CHAN", "CHANnel")
             self.instrument.write(f":MATH{math_ch}:FFT:SOURce {scpi_source}")
 
             # Set FFT window
@@ -2428,8 +2474,9 @@ class Rigol_DHO804(DeviceManager):
             print(f"Failed to configure FFT: {e}")
             raise
 
-    def configure_digital_filter(self, math_ch: int, filter_type: str, source: str,
-                                 cutoff_freq1: float, cutoff_freq2: float = None) -> None:
+    def configure_digital_filter(
+        self, math_ch: int, filter_type: str, source: str, cutoff_freq1: float, cutoff_freq2: float = None
+    ) -> None:
         """
         Configure math channel for digital filtering.
 
@@ -2475,12 +2522,12 @@ class Rigol_DHO804(DeviceManager):
             raise ValueError(f"Math channel must be 1-4, got {math_ch}")
 
         filter_type = filter_type.upper()
-        valid_filters = ['LPASS', 'HPASS', 'BPASS', 'BSTOP']
+        valid_filters = ["LPASS", "HPASS", "BPASS", "BSTOP"]
         if filter_type not in valid_filters:
             raise ValueError(f"Filter type must be one of {valid_filters}, got {filter_type}")
 
         # Band filters require two cutoff frequencies
-        if filter_type in ['BPASS', 'BSTOP']:
+        if filter_type in ["BPASS", "BSTOP"]:
             if cutoff_freq2 is None:
                 raise ValueError(f"{filter_type} requires two cutoff frequencies")
             if cutoff_freq1 >= cutoff_freq2:
@@ -2490,17 +2537,12 @@ class Rigol_DHO804(DeviceManager):
 
         try:
             # Set operator to filter type (map to SCPI names)
-            filter_map = {
-                'LPASS': 'LPASs',
-                'HPASS': 'HPASs',
-                'BPASS': 'BPASs',
-                'BSTOP': 'BSTop'
-            }
+            filter_map = {"LPASS": "LPASs", "HPASS": "HPASs", "BPASS": "BPASs", "BSTOP": "BSTop"}
             scpi_filter = filter_map[filter_type]
             self.instrument.write(f":MATH{math_ch}:OPERator {scpi_filter}")
 
             # Set filter source (uses FFT:SOURce command for filters)
-            scpi_source = source.replace('CHAN', 'CHANnel')
+            scpi_source = source.replace("CHAN", "CHANnel")
             self.instrument.write(f":MATH{math_ch}:FFT:SOURce {scpi_source}")
 
             # Set filter type explicitly
@@ -2512,7 +2554,9 @@ class Rigol_DHO804(DeviceManager):
                 self.instrument.write(f":MATH{math_ch}:FILTer:W2 {cutoff_freq2}")
 
             if cutoff_freq2:
-                print(f"MATH{math_ch} configured: {filter_type} filter on {source}, {cutoff_freq1:.0f}Hz - {cutoff_freq2:.0f}Hz")
+                print(
+                    f"MATH{math_ch} configured: {filter_type} filter on {source}, {cutoff_freq1:.0f}Hz - {cutoff_freq2:.0f}Hz"
+                )
             else:
                 print(f"MATH{math_ch} configured: {filter_type} filter on {source}, cutoff {cutoff_freq1:.0f}Hz")
         except pyvisa.VisaIOError as e:
@@ -2555,7 +2599,7 @@ class Rigol_DHO804(DeviceManager):
             scope.set_acquisition_type('PEAK')
         """
         acq_type = acq_type.upper()
-        valid_types = ['NORMAL', 'PEAK', 'AVERAGE', 'ULTRA']
+        valid_types = ["NORMAL", "PEAK", "AVERAGE", "ULTRA"]
 
         if acq_type not in valid_types:
             raise ValueError(f"Acquisition type must be one of {valid_types}, got {acq_type}")
@@ -2593,6 +2637,7 @@ class Rigol_DHO804(DeviceManager):
         """
         # Check if count is power of 2
         import math
+
         if count < 2 or count > 65536:
             raise ValueError(f"Average count must be between 2 and 65536, got {count}")
 
@@ -2639,7 +2684,7 @@ class Rigol_DHO804(DeviceManager):
             scope.set_memory_depth('10M')
         """
         depth = depth.upper()
-        valid_depths = ['AUTO', '1K', '10K', '100K', '1M', '5M', '10M', '25M', '50M']
+        valid_depths = ["AUTO", "1K", "10K", "100K", "1M", "5M", "10M", "25M", "50M"]
 
         if depth not in valid_depths:
             raise ValueError(f"Memory depth must be one of {valid_depths}, got {depth}")
@@ -2700,7 +2745,7 @@ class Rigol_DHO804(DeviceManager):
         try:
             response = self.instrument.query(":ACQuire:SRATe?")
             sample_rate = float(response.strip())
-            print(f"Sample rate: {sample_rate:.3e} Sa/s ({sample_rate/1e9:.3f} GSa/s)")
+            print(f"Sample rate: {sample_rate:.3e} Sa/s ({sample_rate / 1e9:.3f} GSa/s)")
             return sample_rate
         except pyvisa.VisaIOError as e:
             print(f"Failed to query sample rate: {e}")
@@ -2756,7 +2801,7 @@ class Rigol_DHO804(DeviceManager):
             scope.set_display_type('VECTORS')
         """
         display_type = display_type.upper()
-        valid_types = ['VECTORS', 'VECT']
+        valid_types = ["VECTORS", "VECT"]
 
         if display_type not in valid_types:
             raise ValueError(f"Display type must be 'VECTORS', got {display_type}")
@@ -2800,7 +2845,7 @@ class Rigol_DHO804(DeviceManager):
             scope.set_grid_type('NONE')
         """
         grid = grid.upper()
-        valid_grids = ['FULL', 'HALF', 'NONE']
+        valid_grids = ["FULL", "HALF", "NONE"]
 
         if grid not in valid_grids:
             raise ValueError(f"Grid type must be one of {valid_grids}, got {grid}")
@@ -2845,14 +2890,14 @@ class Rigol_DHO804(DeviceManager):
             scope.set_persistence('INFINITE')
         """
         time = time.upper()
-        valid_times = ['MIN', '0.1', '0.2', '0.5', '1', '2', '5', '10', 'INFINITE', 'INF']
+        valid_times = ["MIN", "0.1", "0.2", "0.5", "1", "2", "5", "10", "INFINITE", "INF"]
 
         if time not in valid_times:
             raise ValueError(f"Persistence time must be one of {valid_times}, got {time}")
 
         # Map INFINITE to INFinite for SCPI
-        if time == 'INFINITE':
-            time = 'INFinite'
+        if time == "INFINITE":
+            time = "INFinite"
 
         try:
             self.instrument.write(f":DISPlay:GRADing:TIME {time}")
@@ -2888,11 +2933,7 @@ class Rigol_DHO804(DeviceManager):
         try:
             print("Capturing screenshot (this may take several seconds)...")
             # Query screenshot data - returns binary data
-            screenshot_data = self.instrument.query_binary_values(
-                ":DISPlay:DATA?",
-                datatype='B',
-                container=bytes
-            )
+            screenshot_data = self.instrument.query_binary_values(":DISPlay:DATA?", datatype="B", container=bytes)
             print(f"Screenshot captured ({len(screenshot_data)} bytes)")
             return screenshot_data
         except pyvisa.VisaIOError as e:
@@ -3018,7 +3059,7 @@ class Rigol_DHO804(DeviceManager):
             raise ValueError("Path cannot be empty")
 
         # Validate file extension
-        valid_extensions = ['.bmp', '.png', '.jpg']
+        valid_extensions = [".bmp", ".png", ".jpg"]
         if not any(path.lower().endswith(ext) for ext in valid_extensions):
             raise ValueError(f"File must have extension: {', '.join(valid_extensions)}")
 
@@ -3062,7 +3103,7 @@ class Rigol_DHO804(DeviceManager):
             raise ValueError("Path cannot be empty")
 
         # Validate file extension
-        if not path.lower().endswith('.stp'):
+        if not path.lower().endswith(".stp"):
             raise ValueError("Setup file must have .stp extension")
 
         try:
@@ -3104,7 +3145,7 @@ class Rigol_DHO804(DeviceManager):
             raise ValueError("Path cannot be empty")
 
         # Validate file extension
-        if not path.lower().endswith('.stp'):
+        if not path.lower().endswith(".stp"):
             raise ValueError("Setup file must have .stp extension")
 
         try:
@@ -3148,7 +3189,7 @@ class Rigol_DHO804(DeviceManager):
             raise ValueError("Path cannot be empty")
 
         # Validate file extension
-        valid_extensions = ['.csv', '.bin']
+        valid_extensions = [".csv", ".bin"]
         if not any(path.lower().endswith(ext) for ext in valid_extensions):
             raise ValueError(f"Waveform file must have extension: {', '.join(valid_extensions)}")
 
@@ -3468,7 +3509,7 @@ class Rigol_DHO804(DeviceManager):
             # Disable autoset to prevent accidental triggering
             scope.set_autoset_enable(False)
         """
-        state = 'ON' if enable else 'OFF'
+        state = "ON" if enable else "OFF"
         try:
             self.instrument.write(f":AUToset:ENAble {state}")
             status = "enabled" if enable else "disabled"
@@ -3498,7 +3539,7 @@ class Rigol_DHO804(DeviceManager):
         """
         try:
             response = self.instrument.query(":AUToset:ENAble?")
-            enabled = response.strip() == '1'
+            enabled = response.strip() == "1"
             status = "enabled" if enabled else "disabled"
             print(f"Autoset function is {status}")
             return enabled
@@ -3530,7 +3571,7 @@ class Rigol_DHO804(DeviceManager):
             scope.set_beeper_enable(False)
         """
         try:
-            state = 'ON' if enable else 'OFF'
+            state = "ON" if enable else "OFF"
             self.instrument.write(f":SYSTem:BEEPer {state}")
             status = "enabled" if enable else "disabled"
             print(f"Beeper {status}")
@@ -3558,7 +3599,7 @@ class Rigol_DHO804(DeviceManager):
         """
         try:
             response = self.instrument.query(":SYSTem:BEEPer?")
-            enabled = response.strip() == '1'
+            enabled = response.strip() == "1"
             status = "enabled" if enabled else "disabled"
             print(f"Beeper is {status}")
             return enabled
@@ -3591,7 +3632,7 @@ class Rigol_DHO804(DeviceManager):
             # Response format: <error_code>,"<error_message>"
             # Example: -113,"Undefined header; command cannot be found"
             # Example: 0,"No error"
-            parts = response.strip().split(',', 1)
+            parts = response.strip().split(",", 1)
             error_code = int(parts[0])
             error_message = parts[1].strip('"') if len(parts) > 1 else ""
 
@@ -3600,10 +3641,7 @@ class Rigol_DHO804(DeviceManager):
             else:
                 print("No errors in queue")
 
-            return {
-                'code': error_code,
-                'message': error_message
-            }
+            return {"code": error_code, "message": error_message}
         except pyvisa.VisaIOError as e:
             print(f"Failed to query error queue: {e}")
             raise
@@ -3631,7 +3669,7 @@ class Rigol_DHO804(DeviceManager):
             scope.set_front_panel_lock(False)
         """
         try:
-            state = 'ON' if locked else 'OFF'
+            state = "ON" if locked else "OFF"
             self.instrument.write(f":SYSTem:LOCKed {state}")
             status = "locked" if locked else "unlocked"
             print(f"Front panel {status}")
@@ -3659,7 +3697,7 @@ class Rigol_DHO804(DeviceManager):
         """
         try:
             response = self.instrument.query(":SYSTem:LOCKed?")
-            locked = response.strip() == '1'
+            locked = response.strip() == "1"
             status = "locked" if locked else "unlocked"
             print(f"Front panel is {status}")
             return locked
@@ -3741,7 +3779,7 @@ class Rigol_DHO804(DeviceManager):
             scope.set_recording_enable(False)
         """
         try:
-            state = 'ON' if enable else 'OFF'
+            state = "ON" if enable else "OFF"
             self.instrument.write(f":RECord:WRECord:ENABle {state}")
             status = "enabled" if enable else "disabled"
             print(f"Waveform recording {status}")
@@ -3769,7 +3807,7 @@ class Rigol_DHO804(DeviceManager):
         """
         try:
             response = self.instrument.query(":RECord:WRECord:ENABle?")
-            enabled = response.strip() == '1'
+            enabled = response.strip() == "1"
             status = "enabled" if enabled else "disabled"
             print(f"Waveform recording is {status}")
             return enabled
@@ -4121,7 +4159,7 @@ class Rigol_DHO804(DeviceManager):
             scope.set_mask_enable(False)
         """
         try:
-            state = 'ON' if enable else 'OFF'
+            state = "ON" if enable else "OFF"
             self.instrument.write(f":MASK:ENABle {state}")
             status = "enabled" if enable else "disabled"
             print(f"Mask testing {status}")
@@ -4149,7 +4187,7 @@ class Rigol_DHO804(DeviceManager):
         """
         try:
             response = self.instrument.query(":MASK:ENABle?")
-            enabled = response.strip() == '1'
+            enabled = response.strip() == "1"
             status = "enabled" if enabled else "disabled"
             print(f"Mask testing is {status}")
             return enabled
@@ -4207,7 +4245,7 @@ class Rigol_DHO804(DeviceManager):
             response = self.instrument.query(":MASK:SOURce?")
             # Response format: CHAN1, CHAN2, etc.
             channel_str = response.strip()
-            channel = int(channel_str.replace('CHAN', ''))
+            channel = int(channel_str.replace("CHAN", ""))
             print(f"Mask test source: CH{channel}")
             return channel
         except pyvisa.VisaIOError as e:
@@ -4543,11 +4581,7 @@ class Rigol_DHO804(DeviceManager):
 
             print(f"Mask statistics: {passed} passed, {failed} failed, {total} total")
 
-            return {
-                'passed': passed,
-                'failed': failed,
-                'total': total
-            }
+            return {"passed": passed, "failed": failed, "total": total}
         except pyvisa.VisaIOError as e:
             print(f"Failed to query mask statistics: {e}")
             raise
@@ -4594,7 +4628,7 @@ class Rigol_DHO804(DeviceManager):
             scope.set_counter_enable(True)  # Enable counter
         """
         try:
-            state = 'ON' if enable else 'OFF'
+            state = "ON" if enable else "OFF"
             self.instrument.write(f":COUNter:ENABle {state}")
             print(f"Counter {'enabled' if enable else 'disabled'}")
         except pyvisa.VisaIOError as e:
@@ -4666,7 +4700,7 @@ class Rigol_DHO804(DeviceManager):
             response = self.instrument.query(":COUNter:SOURce?")
             # Response is like "CHAN1" or "CHAN2"
             source_str = response.strip()
-            if source_str.startswith('CHAN'):
+            if source_str.startswith("CHAN"):
                 source = int(source_str[4:])
             else:
                 source = 1  # Default
@@ -4692,7 +4726,7 @@ class Rigol_DHO804(DeviceManager):
             scope.set_counter_mode('PERiod')     # Measure period
         """
         try:
-            valid_modes = ['FREQuency', 'PERiod', 'TOTalize']
+            valid_modes = ["FREQuency", "PERiod", "TOTalize"]
             if mode not in valid_modes:
                 raise ValueError(f"Mode must be one of {valid_modes}")
 
@@ -4786,7 +4820,7 @@ class Rigol_DHO804(DeviceManager):
             scope.set_counter_totalize_enable(True)  # Enable totalize
         """
         try:
-            state = 'ON' if enable else 'OFF'
+            state = "ON" if enable else "OFF"
             self.instrument.write(f":COUNter:TOTalize:ENABle {state}")
             print(f"Counter totalize {'enabled' if enable else 'disabled'}")
         except pyvisa.VisaIOError as e:
@@ -4872,7 +4906,7 @@ class Rigol_DHO804(DeviceManager):
             scope.set_dvm_enable(True)  # Enable DVM
         """
         try:
-            state = 'ON' if enable else 'OFF'
+            state = "ON" if enable else "OFF"
             self.instrument.write(f":DVM:ENABle {state}")
             print(f"DVM {'enabled' if enable else 'disabled'}")
         except pyvisa.VisaIOError as e:
@@ -4944,7 +4978,7 @@ class Rigol_DHO804(DeviceManager):
             response = self.instrument.query(":DVM:SOURce?")
             # Response is like "CHAN1" or "CHAN2"
             source_str = response.strip()
-            if source_str.startswith('CHAN'):
+            if source_str.startswith("CHAN"):
                 source = int(source_str[4:])
             else:
                 source = 1  # Default
@@ -5018,7 +5052,7 @@ class Rigol_DHO804(DeviceManager):
             scope.set_histogram_enable(True)  # Enable histogram
         """
         try:
-            state = 'ON' if enable else 'OFF'
+            state = "ON" if enable else "OFF"
             self.instrument.write(f":HISTogram:ENABle {state}")
             print(f"Histogram {'enabled' if enable else 'disabled'}")
         except pyvisa.VisaIOError as e:
@@ -5064,7 +5098,7 @@ class Rigol_DHO804(DeviceManager):
             scope.set_histogram_type('HORizontal')  # Horizontal histogram
         """
         try:
-            valid_types = ['HORizontal', 'VERTical']
+            valid_types = ["HORizontal", "VERTical"]
             if hist_type not in valid_types:
                 raise ValueError(f"Type must be one of {valid_types}")
 
@@ -5139,7 +5173,7 @@ class Rigol_DHO804(DeviceManager):
             response = self.instrument.query(":HISTogram:SOURce?")
             # Response is like "CHAN1" or "CHAN2"
             source_str = response.strip()
-            if source_str.startswith('CHAN'):
+            if source_str.startswith("CHAN"):
                 source = int(source_str[4:])
             else:
                 source = 1  # Default
@@ -5402,26 +5436,28 @@ class Rigol_DHO804(DeviceManager):
             response = self.instrument.query(":HISTogram:STATistics:RESult?")
 
             # Parse the response - format is comma-separated values
-            values = response.strip().split(',')
+            values = response.strip().split(",")
 
             # Map values to dictionary
             # Based on the PDF documentation order
             stats = {
-                'sum': float(values[0]) if len(values) > 0 else 0.0,
-                'peaks': float(values[1]) if len(values) > 1 else 0.0,
-                'max': float(values[2]) if len(values) > 2 else 0.0,
-                'min': float(values[3]) if len(values) > 3 else 0.0,
-                'pk_pk': float(values[4]) if len(values) > 4 else 0.0,
-                'mean': float(values[5]) if len(values) > 5 else 0.0,
-                'median': float(values[6]) if len(values) > 6 else 0.0,
-                'mode': float(values[7]) if len(values) > 7 else 0.0,
-                'bin_width': float(values[8]) if len(values) > 8 else 0.0,
-                'sigma': float(values[9]) if len(values) > 9 else 0.0,
-                'xscale': float(values[10]) if len(values) > 10 else 0.0
+                "sum": float(values[0]) if len(values) > 0 else 0.0,
+                "peaks": float(values[1]) if len(values) > 1 else 0.0,
+                "max": float(values[2]) if len(values) > 2 else 0.0,
+                "min": float(values[3]) if len(values) > 3 else 0.0,
+                "pk_pk": float(values[4]) if len(values) > 4 else 0.0,
+                "mean": float(values[5]) if len(values) > 5 else 0.0,
+                "median": float(values[6]) if len(values) > 6 else 0.0,
+                "mode": float(values[7]) if len(values) > 7 else 0.0,
+                "bin_width": float(values[8]) if len(values) > 8 else 0.0,
+                "sigma": float(values[9]) if len(values) > 9 else 0.0,
+                "xscale": float(values[10]) if len(values) > 10 else 0.0,
             }
 
-            print(f"Histogram statistics: Mean={stats['mean']:.6f}, Sigma={stats['sigma']:.6f}, "
-                  f"Pk-Pk={stats['pk_pk']:.6f}")
+            print(
+                f"Histogram statistics: Mean={stats['mean']:.6f}, Sigma={stats['sigma']:.6f}, "
+                f"Pk-Pk={stats['pk_pk']:.6f}"
+            )
 
             return stats
         except pyvisa.VisaIOError as e:
@@ -5451,7 +5487,7 @@ class Rigol_DHO804(DeviceManager):
             scope.awg_set_output_enable(True)  # Enable AWG output
         """
         try:
-            state = 'ON' if enable else 'OFF'
+            state = "ON" if enable else "OFF"
             self.instrument.write(f":SOURce:OUTPut:STATe {state}")
             print(f"AWG output {'enabled' if enable else 'disabled'}")
         except pyvisa.VisaIOError as e:
@@ -5475,7 +5511,7 @@ class Rigol_DHO804(DeviceManager):
         """
         try:
             response = self.instrument.query(":SOURce:OUTPut:STATe?")
-            enabled = response.strip() == '1'
+            enabled = response.strip() == "1"
             print(f"AWG output enable: {enabled}")
             return enabled
         except pyvisa.VisaIOError as e:
@@ -5499,7 +5535,7 @@ class Rigol_DHO804(DeviceManager):
             scope.awg_set_function('SINusoid')  # Sine wave
             scope.awg_set_function('SQUare')    # Square wave
         """
-        valid_functions = ['SINusoid', 'SQUare', 'RAMP', 'DC', 'NOISe', 'ARB']
+        valid_functions = ["SINusoid", "SQUare", "RAMP", "DC", "NOISe", "ARB"]
         if function not in valid_functions:
             raise ValueError(f"Function must be one of {valid_functions}, got '{function}'")
 
@@ -5878,7 +5914,7 @@ class Rigol_DHO804(DeviceManager):
             scope.awg_set_modulation_enable(True)
         """
         try:
-            state = 'ON' if enable else 'OFF'
+            state = "ON" if enable else "OFF"
             self.instrument.write(f":SOURce:MOD:STATe {state}")
             print(f"AWG modulation {'enabled' if enable else 'disabled'}")
         except pyvisa.VisaIOError as e:
@@ -5902,7 +5938,7 @@ class Rigol_DHO804(DeviceManager):
         """
         try:
             response = self.instrument.query(":SOURce:MOD:STATe?")
-            enabled = response.strip() == '1'
+            enabled = response.strip() == "1"
             print(f"AWG modulation enable: {enabled}")
             return enabled
         except pyvisa.VisaIOError as e:
@@ -5930,7 +5966,7 @@ class Rigol_DHO804(DeviceManager):
         Example:
             scope.awg_set_modulation_type('AM')  # Amplitude modulation
         """
-        valid_types = ['AM', 'FM', 'PM']
+        valid_types = ["AM", "FM", "PM"]
         if mod_type not in valid_types:
             raise ValueError(f"Modulation type must be one of {valid_types}, got '{mod_type}'")
 
@@ -6093,7 +6129,7 @@ class Rigol_DHO804(DeviceManager):
         Example:
             scope.awg_set_am_function('SQUare')
         """
-        valid_functions = ['SINusoid', 'SQUare', 'TRIangle', 'UPRamp', 'DNRamp', 'NOISe']
+        valid_functions = ["SINusoid", "SQUare", "TRIangle", "UPRamp", "DNRamp", "NOISe"]
         if function not in valid_functions:
             raise ValueError(f"AM function must be one of {valid_functions}, got '{function}'")
 
@@ -6254,7 +6290,7 @@ class Rigol_DHO804(DeviceManager):
         Example:
             scope.awg_set_fm_function('TRIangle')
         """
-        valid_functions = ['SINusoid', 'SQUare', 'TRIangle', 'UPRamp', 'DNRamp', 'NOISe']
+        valid_functions = ["SINusoid", "SQUare", "TRIangle", "UPRamp", "DNRamp", "NOISe"]
         if function not in valid_functions:
             raise ValueError(f"FM function must be one of {valid_functions}, got '{function}'")
 
@@ -6415,7 +6451,7 @@ class Rigol_DHO804(DeviceManager):
         Example:
             scope.awg_set_pm_function('SQUare')
         """
-        valid_functions = ['SINusoid', 'SQUare', 'TRIangle', 'UPRamp', 'DNRamp', 'NOISe']
+        valid_functions = ["SINusoid", "SQUare", "TRIangle", "UPRamp", "DNRamp", "NOISe"]
         if function not in valid_functions:
             raise ValueError(f"PM function must be one of {valid_functions}, got '{function}'")
 
@@ -6452,9 +6488,9 @@ class Rigol_DHO804(DeviceManager):
 
     # --- High-Level AWG Helper Method ---
 
-    def awg_configure_simple(self, function: str, frequency: float,
-                            amplitude: float, offset: float = 0.0,
-                            enable: bool = True) -> None:
+    def awg_configure_simple(
+        self, function: str, frequency: float, amplitude: float, offset: float = 0.0, enable: bool = True
+    ) -> None:
         """
         High-level method to quickly configure and enable the AWG.
 
@@ -6493,7 +6529,7 @@ class Rigol_DHO804(DeviceManager):
             if enable:
                 self.awg_set_output_enable(True)
 
-            print(f"AWG configured successfully")
+            print("AWG configured successfully")
         except Exception as e:
             print(f"Failed to configure AWG: {e}")
             raise

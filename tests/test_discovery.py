@@ -12,12 +12,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 try:
-    from lab_instruments import find_all, ColorPrinter
+    from lab_instruments import ColorPrinter, find_all
 except ImportError as e:
     print(f"Import Error: {e}")
-    print(
-        "Ensure you are running this from the project root or have installed the package."
-    )
+    print("Ensure you are running this from the project root or have installed the package.")
     sys.exit(1)
 
 

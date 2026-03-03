@@ -1,6 +1,7 @@
 import sys
-import pytest
 from pathlib import Path
+
+import pytest
 
 # Hardware integration test — run manually with real instruments, not in CI
 pytestmark = pytest.mark.skip(reason="hardware integration test — requires physical oscilloscope/AWG")
@@ -10,16 +11,14 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 try:
     from lab_instruments import (
-        Tektronix_MSO2024,
         BK_4063,
         ColorPrinter,
         InstrumentDiscovery,
+        Tektronix_MSO2024,
     )
 except ImportError as e:
     print(f"Import Error: {e}")
-    print(
-        "Ensure you are running this from the project root or have installed the package."
-    )
+    print("Ensure you are running this from the project root or have installed the package.")
     sys.exit(1)
 
 
@@ -31,15 +30,11 @@ def test_channel_control(oscope):
     for channel in [1, 2, 3, 4]:
         ColorPrinter.info(f"Testing Channel {channel} enable/disable")
         oscope.enable_channel(channel)
-        user_input = (
-            input(f"Is CH{channel} visible? (Enter=yes, 'no'=no): ").strip().lower()
-        )
+        user_input = input(f"Is CH{channel} visible? (Enter=yes, 'no'=no): ").strip().lower()
         results[f"Enable_CH{channel}"] = user_input != "no"
 
         oscope.disable_channel(channel)
-        user_input = (
-            input(f"Is CH{channel} hidden? (Enter=yes, 'no'=no): ").strip().lower()
-        )
+        user_input = input(f"Is CH{channel} hidden? (Enter=yes, 'no'=no): ").strip().lower()
         results[f"Disable_CH{channel}"] = user_input != "no"
 
     return results
@@ -63,9 +58,7 @@ def test_basic_measurements(oscope, awg):
     ]
 
     for config in test_configs:
-        ColorPrinter.info(
-            f"Testing {config['wave_type']} at {config['frequency']}Hz, {config['amplitude']}Vpp"
-        )
+        ColorPrinter.info(f"Testing {config['wave_type']} at {config['frequency']}Hz, {config['amplitude']}Vpp")
 
         awg.set_waveform(1, **config)
         awg.enable_output(1, True)
@@ -74,14 +67,10 @@ def test_basic_measurements(oscope, awg):
         measured_freq = oscope.measure_frequency(1)
         measured_pk2pk = oscope.measure_peak_to_peak(1)
 
-        ColorPrinter.info(
-            f"Expected: {config['frequency']}Hz, {config['amplitude']}Vpp"
-        )
+        ColorPrinter.info(f"Expected: {config['frequency']}Hz, {config['amplitude']}Vpp")
         ColorPrinter.info(f"Measured: {measured_freq:.2f}Hz, {measured_pk2pk:.3f}Vpp")
 
-        user_input = (
-            input("Measurements correct? (Enter=yes, 'no'=no): ").strip().lower()
-        )
+        user_input = input("Measurements correct? (Enter=yes, 'no'=no): ").strip().lower()
         results[f"{config['wave_type']}_{config['frequency']}Hz"] = user_input != "no"
 
         awg.enable_output(1, False)
@@ -115,9 +104,7 @@ def test_measurement_types(oscope, awg):
     for name, value in measurements.items():
         ColorPrinter.info(f"{name}: {value:.6f}")
 
-    user_input = (
-        input("All measurements reasonable? (Enter=yes, 'no'=no): ").strip().lower()
-    )
+    user_input = input("All measurements reasonable? (Enter=yes, 'no'=no): ").strip().lower()
     results["All_Measurement_Types"] = user_input != "no"
 
     awg.enable_output(1, False)
@@ -139,15 +126,15 @@ def test_scales(oscope, awg):
     for scale in [0.5, 1.0, 2.0]:
         ColorPrinter.info(f"Testing {scale}V/div")
         oscope.set_vertical_scale(1, scale)
-        user_input = input(f"Scale correct? (Enter=yes, 'no'=no): ").strip().lower()
+        user_input = input("Scale correct? (Enter=yes, 'no'=no): ").strip().lower()
         results[f"Vertical_{scale}V"] = user_input != "no"
 
     # Horizontal scales
     for scale in [0.0001, 0.001, 0.01]:
-        ColorPrinter.info(f"Testing {scale*1000}ms/div")
+        ColorPrinter.info(f"Testing {scale * 1000}ms/div")
         oscope.set_horizontal_scale(scale)
-        user_input = input(f"Scale correct? (Enter=yes, 'no'=no): ").strip().lower()
-        results[f"Horizontal_{scale*1000}ms"] = user_input != "no"
+        user_input = input("Scale correct? (Enter=yes, 'no'=no): ").strip().lower()
+        results[f"Horizontal_{scale * 1000}ms"] = user_input != "no"
 
     awg.enable_output(1, False)
     return results
@@ -197,13 +184,9 @@ def test_waveform_capture(oscope, awg):
     ColorPrinter.info(f"Captured {len(time_vals)} scaled points")
 
     if len(volt_vals) > 0:
-        ColorPrinter.info(
-            f"Voltage range: {min(volt_vals):.3f}V to {max(volt_vals):.3f}V"
-        )
+        ColorPrinter.info(f"Voltage range: {min(volt_vals):.3f}V to {max(volt_vals):.3f}V")
 
-    user_input = (
-        input("Data captured correctly? (Enter=yes, 'no'=no): ").strip().lower()
-    )
+    user_input = input("Data captured correctly? (Enter=yes, 'no'=no): ").strip().lower()
     results["Waveform_Capture"] = user_input != "no"
 
     awg.enable_output(1, False)
@@ -218,18 +201,20 @@ def test_delay_measurement(oscope, awg):
 
     ColorPrinter.info("Setting AWG CH1 to 1kHz sine")
     awg.set_waveform(1, "SINE", frequency=1000, amplitude=2.0, offset=0)
-    
+
     # Note: BK_4063 driver might need update to support phase/delay if we want to automate the source delay.
     # For now, we will ask user to setup a delay or just use two channels if available.
     # Assuming the user connects CH1 to Scope CH1 and Scope CH2.
-    
+
     ColorPrinter.info("Connect AWG CH1 to Scope CH1 AND Scope CH2 (or use two AWG channels with phase shift)")
     ColorPrinter.info("This test assumes a signal is present on both CH1 and CH2")
-    
+
     awg.enable_output(1, True)
     # If possible, enable AWG CH2 as well if connected
     try:
-        awg.set_waveform(2, "SINE", frequency=1000, amplitude=2.0, offset=0, phase=90) # 90 deg phase shift = 0.25ms delay
+        awg.set_waveform(
+            2, "SINE", frequency=1000, amplitude=2.0, offset=0, phase=90
+        )  # 90 deg phase shift = 0.25ms delay
         awg.enable_output(2, True)
         ColorPrinter.info("Attempted to set AWG CH2 with 90 degree phase shift")
     except Exception as e:
@@ -242,10 +227,8 @@ def test_delay_measurement(oscope, awg):
     # Measure Delay
     delay = oscope.measure_delay(1, 2)
     ColorPrinter.info(f"Measured Delay (CH1 -> CH2): {delay:.6e} s")
-    
-    user_input = (
-        input("Delay measurement reasonable? (Enter=yes, 'no'=no): ").strip().lower()
-    )
+
+    user_input = input("Delay measurement reasonable? (Enter=yes, 'no'=no): ").strip().lower()
     results["Delay_Measurement"] = user_input != "no"
 
     awg.enable_output(1, False)
@@ -253,7 +236,7 @@ def test_delay_measurement(oscope, awg):
         awg.enable_output(2, False)
     except:
         pass
-        
+
     return results
 
 

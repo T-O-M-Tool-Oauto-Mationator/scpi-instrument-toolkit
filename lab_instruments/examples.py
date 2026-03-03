@@ -10,10 +10,9 @@ Load all at once with:                    examples load all
 Then run with:                            script run <name> [params]
 """
 
-from typing import Dict, List
+from typing import Dict
 
 EXAMPLES: Dict[str, Dict] = {
-
     # ------------------------------------------------------------------
     "psu_dmm_test": {
         "description": "Set PSU to a voltage, measure with DMM, log result",
@@ -27,8 +26,8 @@ EXAMPLES: Dict[str, Dict] = {
             "set voltage 5.0",
             "set label vtest",
             "",
-            "print \"=== PSU/DMM Voltage Test ===\"",
-            "print \"Target: ${voltage}V\"",
+            'print "=== PSU/DMM Voltage Test ==="',
+            'print "Target: ${voltage}V"',
             "",
             "# Turn on PSU and set voltage",
             "psu1 chan 1 on",
@@ -42,11 +41,10 @@ EXAMPLES: Dict[str, Dict] = {
             "dmm1 config vdc",
             "dmm1 meas_store ${label} unit=V",
             "",
-            "print \"=== Test complete ===\"",
+            'print "=== Test complete ==="',
             "log print",
         ],
     },
-
     # ------------------------------------------------------------------
     "voltage_sweep": {
         "description": "Sweep PSU through a list of voltages, log DMM reading at each step",
@@ -55,25 +53,24 @@ EXAMPLES: Dict[str, Dict] = {
             "# Sweeps PSU through preset voltages and logs DMM measurements",
             "# Edit the 'for' line to change the voltage list",
             "",
-            "print \"=== Voltage Sweep ===\"",
+            'print "=== Voltage Sweep ==="',
             "psu1 chan 1 on",
             "sleep 0.3",
             "dmm1 config vdc",
             "",
             "for v 1.0 2.0 3.3 5.0 9.0 12.0",
-            "  print \"Setting ${v}V...\"",
+            '  print "Setting ${v}V..."',
             "  psu1 set ${v}",
             "  sleep 0.5",
             "  dmm1 meas_store v_${v} unit=V",
             "end",
             "",
             "psu1 chan 1 off",
-            "print \"=== Sweep complete ===\"",
+            'print "=== Sweep complete ==="',
             "log print",
             "log save voltage_sweep.csv",
         ],
     },
-
     # ------------------------------------------------------------------
     "awg_scope_check": {
         "description": "Output sine wave on AWG ch1, measure frequency and PK2PK on scope",
@@ -86,8 +83,8 @@ EXAMPLES: Dict[str, Dict] = {
             "set freq 1000",
             "set amp 2.0",
             "",
-            "print \"=== AWG + Scope Signal Check ===\"",
-            "print \"Frequency: ${freq} Hz   Amplitude: ${amp} Vpp\"",
+            'print "=== AWG + Scope Signal Check ==="',
+            'print "Frequency: ${freq} Hz   Amplitude: ${amp} Vpp"',
             "",
             "# Configure AWG",
             "awg1 chan 1 on",
@@ -102,11 +99,10 @@ EXAMPLES: Dict[str, Dict] = {
             "scope1 meas_store 1 PK2PK     meas_pk2pk unit=V",
             "scope1 meas_store 1 RMS       meas_rms unit=V",
             "",
-            "print \"=== Results ===\"",
+            'print "=== Results ==="',
             "log print",
         ],
     },
-
     # ------------------------------------------------------------------
     "freq_sweep": {
         "description": "Sweep AWG through a list of frequencies, scope measures each",
@@ -115,13 +111,13 @@ EXAMPLES: Dict[str, Dict] = {
             "# Sweeps AWG ch1 through frequencies, measures scope CH1 at each",
             "# Edit the 'for' line to change the frequency list",
             "",
-            "print \"=== Frequency Sweep ===\"",
+            'print "=== Frequency Sweep ==="',
             "awg1 chan 1 on",
             "awg1 wave 1 sine amp=2.0 offset=0",
             "sleep 0.3",
             "",
             "for f 100 500 1000 5000 10000 50000 100000",
-            "  print \"Testing ${f} Hz...\"",
+            '  print "Testing ${f} Hz..."',
             "  awg1 freq 1 ${f}",
             "  sleep 0.4",
             "  scope1 meas_store 1 FREQUENCY freq_${f} unit=Hz",
@@ -129,12 +125,11 @@ EXAMPLES: Dict[str, Dict] = {
             "end",
             "",
             "awg1 chan 1 off",
-            "print \"=== Sweep complete ===\"",
+            'print "=== Sweep complete ==="',
             "log print",
             "log save freq_sweep.csv",
         ],
     },
-
     # ------------------------------------------------------------------
     "psu_ramp": {
         "description": "Ramp PSU voltage from start to end in N equal steps",
@@ -149,21 +144,21 @@ EXAMPLES: Dict[str, Dict] = {
             "set steps 7",
             "set delay 0.5",
             "",
-            "print \"=== PSU Voltage Ramp ===\"",
-            "print \"${v_start}V → ${v_end}V in ${steps} steps\"",
+            'print "=== PSU Voltage Ramp ==="',
+            'print "${v_start}V → ${v_end}V in ${steps} steps"',
             "",
             "psu1 chan 1 on",
             "",
             "# Build step list: pre-calculated values",
             "# (edit this for loop to match v_start, v_end, steps)",
             "for v ${v_start} 2.0 4.0 6.0 8.0 10.0 ${v_end}",
-            "  print \"Ramping to ${v}V\"",
+            '  print "Ramping to ${v}V"',
             "  psu1 set ${v}",
             "  sleep ${delay}",
             "  psu1 meas_store v ramp_${v} unit=V",
             "end",
             "",
-            "print \"=== Ramp complete ===\"",
+            'print "=== Ramp complete ==="',
             "log print",
         ],
     },

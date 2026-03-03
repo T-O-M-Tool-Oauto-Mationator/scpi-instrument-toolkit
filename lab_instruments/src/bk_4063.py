@@ -20,11 +20,11 @@ class BK_4063(DeviceManager):
 
     # Accept SCPI abbreviations and common aliases in addition to full names
     _WAVE_ALIASES = {
-        "SIN":      "SINE",
-        "SQU":      "SQUARE",
-        "PULS":     "PULSE",
-        "NOIS":     "NOISE",
-        "TRI":      "RAMP",
+        "SIN": "SINE",
+        "SQU": "SQUARE",
+        "PULS": "PULSE",
+        "NOIS": "NOISE",
+        "TRI": "RAMP",
         "TRIANGLE": "RAMP",
     }
 
@@ -50,7 +50,7 @@ class BK_4063(DeviceManager):
         """Zeroes SINE memory (0Hz freq, 0V amp/offset), switches to DC 0V, then disables output."""
         for channel in self.CHANNEL_MAP:
             # Zero stored SINE parameters so they are safe if the user switches back
-            self.set_waveform(channel, 'SINE', frequency=0.0, amplitude=0.0, offset=0.0)
+            self.set_waveform(channel, "SINE", frequency=0.0, amplitude=0.0, offset=0.0)
             # Then switch to DC at 0V and disable
             self.set_dc_output(channel, 0.0)
             self.enable_output(channel, False)
@@ -63,9 +63,7 @@ class BK_4063(DeviceManager):
             enabled (bool): True to enable, False to disable.
         """
         if channel not in self.CHANNEL_MAP:
-            raise ValueError(
-                f"Invalid channel. Must be one of: {list(self.CHANNEL_MAP.keys())}"
-            )
+            raise ValueError(f"Invalid channel. Must be one of: {list(self.CHANNEL_MAP.keys())}")
 
         scpi_name = self.CHANNEL_MAP[channel]
         state = "ON" if enabled else "OFF"
@@ -79,9 +77,7 @@ class BK_4063(DeviceManager):
             load (str|int): Load impedance in Ohms (e.g. 50) or 'HZ' for High-Z.
         """
         if channel not in self.CHANNEL_MAP:
-            raise ValueError(
-                f"Invalid channel. Must be one of: {list(self.CHANNEL_MAP.keys())}"
-            )
+            raise ValueError(f"Invalid channel. Must be one of: {list(self.CHANNEL_MAP.keys())}")
 
         scpi_name = self.CHANNEL_MAP[channel]
         self.send_command(f"{scpi_name}:OUTPut LOAD,{load}")
@@ -89,9 +85,7 @@ class BK_4063(DeviceManager):
     def set_sync_output(self, channel, enabled: bool):
         """Enable or disable sync output for the specified channel."""
         if channel not in self.CHANNEL_MAP:
-            raise ValueError(
-                f"Invalid channel. Must be one of: {list(self.CHANNEL_MAP.keys())}"
-            )
+            raise ValueError(f"Invalid channel. Must be one of: {list(self.CHANNEL_MAP.keys())}")
 
         scpi_name = self.CHANNEL_MAP[channel]
         state = "ON" if enabled else "OFF"
@@ -104,9 +98,7 @@ class BK_4063(DeviceManager):
     def _parse_bswv(self, channel, key):
         """Query BSWV and extract a named parameter value."""
         if channel not in self.CHANNEL_MAP:
-            raise ValueError(
-                f"Invalid channel. Must be one of: {list(self.CHANNEL_MAP.keys())}"
-            )
+            raise ValueError(f"Invalid channel. Must be one of: {list(self.CHANNEL_MAP.keys())}")
         scpi_name = self.CHANNEL_MAP[channel]
         resp = self.query(f"{scpi_name}:BSWV?")
         for part in resp.split(","):
@@ -140,9 +132,7 @@ class BK_4063(DeviceManager):
     def get_output_state(self, channel):
         """Query whether output is enabled for the specified channel."""
         if channel not in self.CHANNEL_MAP:
-            raise ValueError(
-                f"Invalid channel. Must be one of: {list(self.CHANNEL_MAP.keys())}"
-            )
+            raise ValueError(f"Invalid channel. Must be one of: {list(self.CHANNEL_MAP.keys())}")
         scpi_name = self.CHANNEL_MAP[channel]
         resp = self.query(f"{scpi_name}:OUTPut?").strip()
         return resp in ("1", "ON")
@@ -176,15 +166,11 @@ class BK_4063(DeviceManager):
             symmetry (float): Symmetry in % (RAMP only).
         """
         if channel not in self.CHANNEL_MAP:
-            raise ValueError(
-                f"Invalid channel. Must be one of: {list(self.CHANNEL_MAP.keys())}"
-            )
+            raise ValueError(f"Invalid channel. Must be one of: {list(self.CHANNEL_MAP.keys())}")
 
         w_type = self._WAVE_ALIASES.get(wave_type.upper(), wave_type.upper())
         if w_type not in self.VALID_WAVEFORMS:
-            raise ValueError(
-                f"Invalid waveform type. Must be one of: {self.VALID_WAVEFORMS}"
-            )
+            raise ValueError(f"Invalid waveform type. Must be one of: {self.VALID_WAVEFORMS}")
 
         scpi_name = self.CHANNEL_MAP[channel]
 
@@ -216,9 +202,7 @@ class BK_4063(DeviceManager):
     # MODULATION, SWEEP & BURST
     # ==========================================
 
-    def set_modulation(
-        self, channel, state: bool, mod_type="AM", source="INT", **kwargs
-    ):
+    def set_modulation(self, channel, state: bool, mod_type="AM", source="INT", **kwargs):
         """
         Configure modulation for the specified channel.
 

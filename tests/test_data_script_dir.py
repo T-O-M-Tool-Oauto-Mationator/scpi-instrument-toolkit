@@ -1,4 +1,5 @@
 """Tests for data output dir, script dir, and path-based script run."""
+
 import os
 import sys
 

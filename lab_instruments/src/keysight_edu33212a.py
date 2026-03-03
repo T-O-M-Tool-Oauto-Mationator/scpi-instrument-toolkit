@@ -47,9 +47,7 @@ class Keysight_EDU33212A(DeviceManager):
 
     def _validate_channel(self, channel):
         if channel not in self.CHANNEL_MAP:
-            raise ValueError(
-                f"Invalid channel {channel}. Must be one of: {list(self.CHANNEL_MAP.keys())}"
-            )
+            raise ValueError(f"Invalid channel {channel}. Must be one of: {list(self.CHANNEL_MAP.keys())}")
 
     def _src(self, channel):
         """Return the SOURce prefix for the given channel number."""
@@ -74,7 +72,7 @@ class Keysight_EDU33212A(DeviceManager):
         """Zeroes SINE memory (0Hz freq, 0V amp/offset), switches to DC 0V, then disables output."""
         for channel in self.CHANNEL_MAP:
             # Zero stored SINE parameters so they are safe if the user switches back
-            self.set_function(channel, 'SIN')
+            self.set_function(channel, "SIN")
             self.set_frequency(channel, 0.0)
             self.set_amplitude(channel, 0.0)
             self.set_offset(channel, 0.0)

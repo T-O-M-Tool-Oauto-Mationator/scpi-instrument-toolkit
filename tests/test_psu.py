@@ -1,4 +1,5 @@
 """tests/test_psu.py — Driver-level unit tests for PSU drivers (no hardware required)."""
+
 import pytest
 
 
@@ -10,6 +11,7 @@ def _writes(mock_inst):
 # ===========================================================================
 # HP_E3631A
 # ===========================================================================
+
 
 class TestHPE3631A_EnableOutput:
     def test_enable_on(self, hp_e3631a):
@@ -172,6 +174,7 @@ class TestHPE3631A_ContextManager:
 # MATRIX_MPS6010H
 # ===========================================================================
 
+
 class TestMATRIX_SetVoltage:
     def test_normal(self, matrix_mps6010h):
         psu, mi = matrix_mps6010h
@@ -282,8 +285,7 @@ class TestMATRIX_ContextManager:
 
     def test_exit_called_after_exception(self, matrix_mps6010h):
         psu, mi = matrix_mps6010h
-        with pytest.raises(RuntimeError):
-            with psu:
-                raise RuntimeError("test")
+        with pytest.raises(RuntimeError), psu:
+            raise RuntimeError("test")
         cmds = _writes(mi)
         assert "REM:OFF" in cmds

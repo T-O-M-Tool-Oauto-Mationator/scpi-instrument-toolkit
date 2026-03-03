@@ -1,4 +1,5 @@
 """tests/test_scope.py — Driver-level unit tests for oscilloscope drivers (no hardware required)."""
+
 import pytest
 
 
@@ -10,6 +11,7 @@ def _writes(mock_inst):
 # ===========================================================================
 # Rigol_DHO804  (uses self.instrument.write() directly — not DeviceManager.send_command)
 # ===========================================================================
+
 
 class TestRigol_ChannelControl:
     def test_enable_ch1(self, rigol_dho804):
@@ -103,6 +105,7 @@ class TestRigol_ProbeRatio:
 # ===========================================================================
 # Tektronix_MSO2024  (uses DeviceManager.send_command → instrument.write)
 # ===========================================================================
+
 
 class TestTektronix_ChannelControl:
     def test_enable_ch1(self, tektronix_mso2024):

@@ -2,8 +2,8 @@
 
 Replaces the previous all-skipped hardware integration test file.
 """
+
 import pytest
-from unittest.mock import patch
 
 
 def _writes(mock_inst):
@@ -14,6 +14,7 @@ def _writes(mock_inst):
 # ===========================================================================
 # HP_34401A
 # ===========================================================================
+
 
 class TestHP34401A_Configure:
     def test_configure_dc_voltage_defaults(self, hp_34401a):
@@ -177,6 +178,7 @@ class TestHP34401A_GetError:
 # Owon_XDM1041
 # ===========================================================================
 
+
 class TestOwon_Configure:
     def test_configure_dc_voltage_auto(self, owon_xdm1041):
         dmm, mi = owon_xdm1041
@@ -210,6 +212,7 @@ class TestOwon_Measure:
         dmm, mi = owon_xdm1041
         # measure() imports time inside the function body — patch the module globally
         import time as _time
+
         monkeypatch.setattr(_time, "sleep", lambda _: None)
         mi.query.return_value = "5.0"
         result = dmm.measure()

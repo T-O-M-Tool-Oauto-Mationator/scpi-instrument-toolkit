@@ -1,9 +1,11 @@
 """Tests for the 'check' pass/fail assertion and 'report' commands."""
+
 import os
 import sys
 import tempfile
+from unittest.mock import patch
+
 import pytest
-from unittest.mock import patch, MagicMock
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -11,9 +13,11 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 def make_repl():
     """Create a bare InstrumentRepl with no real devices."""
     from lab_instruments.src import discovery as _disc
+
     _disc.InstrumentDiscovery.__init__ = lambda self: None
     _disc.InstrumentDiscovery.scan = lambda self, verbose=True: {}
     from lab_instruments.repl import InstrumentRepl
+
     repl = InstrumentRepl()
     repl._scan_done.set()
     repl.devices = {}
@@ -34,6 +38,7 @@ def repl():
 # Initial state
 # ---------------------------------------------------------------------------
 
+
 class TestInitialState:
     def test_test_results_empty(self, repl):
         assert repl.test_results == []
@@ -51,6 +56,7 @@ class TestInitialState:
 # ---------------------------------------------------------------------------
 # check — range mode
 # ---------------------------------------------------------------------------
+
 
 class TestCheckRange:
     def test_pass_value_inside_range(self, repl):
@@ -124,6 +130,7 @@ class TestCheckRange:
 # check — absolute tolerance mode
 # ---------------------------------------------------------------------------
 
+
 class TestCheckAbsoluteTol:
     def test_pass_within_abs_tol(self, repl):
         _store(repl, "vout", 5.05)
@@ -158,6 +165,7 @@ class TestCheckAbsoluteTol:
 # ---------------------------------------------------------------------------
 # check — percent tolerance mode
 # ---------------------------------------------------------------------------
+
 
 class TestCheckPercentTol:
     def test_pass_within_pct_tol(self, repl):
@@ -206,6 +214,7 @@ class TestCheckPercentTol:
 # check — error cases
 # ---------------------------------------------------------------------------
 
+
 class TestCheckErrors:
     def test_no_measurement_sets_error(self, repl):
         repl._command_had_error = False
@@ -245,10 +254,11 @@ class TestCheckErrors:
 # check — label lookup (last match)
 # ---------------------------------------------------------------------------
 
+
 class TestCheckLabelLookup:
     def test_finds_last_matching_label(self, repl):
-        _store(repl, "vout", 3.0)   # first entry — outside range
-        _store(repl, "vout", 5.0)   # second (last) — inside range
+        _store(repl, "vout", 3.0)  # first entry — outside range
+        _store(repl, "vout", 5.0)  # second (last) — inside range
         repl._command_had_error = False
         repl.onecmd("check vout 4.9 5.1")
         assert not repl._command_had_error
@@ -272,6 +282,7 @@ class TestCheckLabelLookup:
 # report — metadata sub-commands
 # ---------------------------------------------------------------------------
 
+
 class TestReportMetadata:
     def test_set_title(self, repl):
         repl.onecmd("report title My Lab Test")
@@ -293,6 +304,7 @@ class TestReportMetadata:
 # ---------------------------------------------------------------------------
 # report — clear sub-command
 # ---------------------------------------------------------------------------
+
 
 class TestReportClear:
     def test_clear_test_results(self, repl):
@@ -319,6 +331,7 @@ class TestReportClear:
 # ---------------------------------------------------------------------------
 # report — print sub-command (smoke + output content)
 # ---------------------------------------------------------------------------
+
 
 class TestReportPrint:
     def test_empty_results_no_crash(self, repl, capsys):
@@ -362,8 +375,8 @@ class TestReportPrint:
     def test_print_counts(self, repl, capsys):
         _store(repl, "vout", 5.0)
         _store(repl, "iout", 0.0, unit="A")
-        repl.onecmd("check vout 4.9 5.1")   # pass
-        repl.onecmd("check iout 0.05 0.15") # fail
+        repl.onecmd("check vout 4.9 5.1")  # pass
+        repl.onecmd("check iout 0.05 0.15")  # fail
         capsys.readouterr()
         repl.onecmd("report print")
         out = capsys.readouterr().out
@@ -373,6 +386,7 @@ class TestReportPrint:
 # ---------------------------------------------------------------------------
 # report — save sub-command (PDF generation)
 # ---------------------------------------------------------------------------
+
 
 class TestReportSave:
     def test_save_missing_path_prints_error(self, repl, capsys):
@@ -401,6 +415,7 @@ class TestReportSave:
 
     def test_save_no_fpdf_prints_error(self, repl, capsys):
         import builtins
+
         real_import = builtins.__import__
 
         def mock_import(name, *args, **kwargs):
@@ -428,6 +443,7 @@ class TestReportSave:
 # ---------------------------------------------------------------------------
 # _generate_pdf_report — direct unit tests
 # ---------------------------------------------------------------------------
+
 
 class TestGeneratePdfReport:
     def _pdf(self, repl, extra=None):
@@ -461,6 +477,7 @@ class TestGeneratePdfReport:
         def setup(r):
             r._report_title = "My Custom Title"
             r._report_operator = "Jane Smith"
+
         # Just verify it generates without error; content checked separately
         self._pdf(repl, setup)
 
@@ -500,9 +517,9 @@ class TestGeneratePdfReport:
         """Mixed results → FAIL verdict (smoke: no crash)."""
         pytest.importorskip("fpdf")
         _store(repl, "vout", 5.0, unit="V")
-        repl.onecmd("check vout 4.9 5.1")   # pass
+        repl.onecmd("check vout 4.9 5.1")  # pass
         _store(repl, "iout", 0.0, unit="A")
-        repl.onecmd("check iout 0.5 1.0")   # fail
+        repl.onecmd("check iout 0.5 1.0")  # fail
         with tempfile.TemporaryDirectory() as tmpdir:
             path = os.path.join(tmpdir, "r.pdf")
             repl._generate_pdf_report(path)
@@ -521,6 +538,7 @@ class TestGeneratePdfReport:
 # Screenshot tracking
 # ---------------------------------------------------------------------------
 
+
 class TestScreenshotTracking:
     def test_screenshots_list_starts_empty(self, repl):
         assert repl._report_screenshots == []
@@ -534,6 +552,7 @@ class TestScreenshotTracking:
 # ---------------------------------------------------------------------------
 # Integration: check + report workflow
 # ---------------------------------------------------------------------------
+
 
 class TestCheckReportIntegration:
     def test_full_range_check_then_print(self, repl, capsys):

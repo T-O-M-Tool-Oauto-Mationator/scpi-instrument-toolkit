@@ -198,7 +198,7 @@ class HP_34401A(DeviceManager):
         """
         Initiates a measurement and returns the result.
         Use after calling a configure_* method.
-        
+
         If multiple samples are configured, returns the average of all samples.
 
         Returns:
@@ -207,10 +207,10 @@ class HP_34401A(DeviceManager):
         result_str = self.query("READ?")
         try:
             # Handle comma-separated multiple readings (when SAMPle:COUNt > 1)
-            if ',' in result_str:
-                values = [float(val.strip()) for val in result_str.split(',')]
+            if "," in result_str:
+                values = [float(val.strip()) for val in result_str.split(",")]
                 return sum(values) / len(values)
-            
+
             # Handle single reading (possibly with units or whitespace)
             value_str = result_str.strip().split()[0]
             return float(value_str)
@@ -220,7 +220,7 @@ class HP_34401A(DeviceManager):
     def fetch(self):
         """
         Returns the last measurement taken without triggering a new one.
-        
+
         If multiple samples were configured, returns the average of all samples.
 
         Returns:
@@ -229,10 +229,10 @@ class HP_34401A(DeviceManager):
         result_str = self.query("FETCh?")
         try:
             # Handle comma-separated multiple readings (when SAMPle:COUNt > 1)
-            if ',' in result_str:
-                values = [float(val.strip()) for val in result_str.split(',')]
+            if "," in result_str:
+                values = [float(val.strip()) for val in result_str.split(",")]
                 return sum(values) / len(values)
-            
+
             # Handle single reading (possibly with units or whitespace)
             value_str = result_str.strip().split()[0]
             return float(value_str)

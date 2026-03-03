@@ -2,22 +2,23 @@
 Instrument Discovery and Initialization Module
 """
 
-import pyvisa
-import time
-import threading
 import concurrent.futures
-from typing import Dict, Optional, Any, Tuple, List
+import threading
+import time
+from typing import Any, Dict, Optional, Tuple
 
-from .terminal import ColorPrinter
+import pyvisa
+
 from .bk_4063 import BK_4063
 from .hp_34401a import HP_34401A
 from .hp_e3631a import HP_E3631A
-from .tektronix_mso2024 import Tektronix_MSO2024
-from .rigol_dho804 import Rigol_DHO804
-from .matrix_mps6010h import MATRIX_MPS6010H
-from .owon_xdm1041 import Owon_XDM1041
 from .jds6600_generator import JDS6600_Generator
 from .keysight_edu33212a import Keysight_EDU33212A
+from .matrix_mps6010h import MATRIX_MPS6010H
+from .owon_xdm1041 import Owon_XDM1041
+from .rigol_dho804 import Rigol_DHO804
+from .tektronix_mso2024 import Tektronix_MSO2024
+from .terminal import ColorPrinter
 
 
 class InstrumentDiscovery:
@@ -45,12 +46,11 @@ class InstrumentDiscovery:
         "DHO804": "scope",
         "E3631A": "psu",
         "34401A": "dmm",
-        "MPS-6010H-1C": "psu",      # Generic name
-        "XDM1041": "dmm",           # Generic name
+        "MPS-6010H-1C": "psu",  # Generic name
+        "XDM1041": "dmm",  # Generic name
         "JDS6600": "awg",
         "EDU33212A": "awg",
     }
-
 
     def __init__(self):
         self.rm = pyvisa.ResourceManager()
@@ -72,11 +72,11 @@ class InstrumentDiscovery:
         # Common serial configurations for lab instruments
         configs = [
             # (baud_rate, read_term, write_term)
-            (9600, '\n', '\r\n'),    # MATRIX MPS-6010H-1C
-            (9600, '\n', '\n'),
-            (19200, '\n', '\r\n'),
-            (115200, '\n', '\n'),
-            (115200, '\r\n', '\r\n'),  # JDS6600
+            (9600, "\n", "\r\n"),  # MATRIX MPS-6010H-1C
+            (9600, "\n", "\n"),
+            (19200, "\n", "\r\n"),
+            (115200, "\n", "\n"),
+            (115200, "\r\n", "\r\n"),  # JDS6600
         ]
 
         for baud, read_term, write_term in configs:
@@ -178,13 +178,13 @@ class InstrumentDiscovery:
             response = inst.read().strip()
 
             # JDS6600 responds with format like ":r20=1,1."
-            if response.startswith(":r20=") and (',' in response):
+            if response.startswith(":r20=") and ("," in response):
                 # Try to get model info
                 try:
                     inst.write(":r00=")
                     model_resp = inst.read().strip()
                     # Response like ":r00=15." indicates model
-                    return f"JDS6600"
+                    return "JDS6600"
                 except:
                     return "JDS6600"
 
@@ -255,13 +255,19 @@ class InstrumentDiscovery:
                         driver = driver_class(resource)
                         driver.connect()
                         if verbose:
-                            self._safe_print(f"Checking {resource}... {ColorPrinter.GREEN}Found: {idn}{ColorPrinter.RESET}")
+                            self._safe_print(
+                                f"Checking {resource}... {ColorPrinter.GREEN}Found: {idn}{ColorPrinter.RESET}"
+                            )
                             self._safe_print(f"  -> Identified as {generic.upper()} ({model_key})")
                         return (generic, driver, model_key, idn)
                     except Exception as e:
                         if verbose:
-                            self._safe_print(f"Checking {resource}... {ColorPrinter.GREEN}Found: {idn}{ColorPrinter.RESET}")
-                            self._safe_print(f"{ColorPrinter.RED}  -> Failed to initialize driver: {e}{ColorPrinter.RESET}")
+                            self._safe_print(
+                                f"Checking {resource}... {ColorPrinter.GREEN}Found: {idn}{ColorPrinter.RESET}"
+                            )
+                            self._safe_print(
+                                f"{ColorPrinter.RED}  -> Failed to initialize driver: {e}{ColorPrinter.RESET}"
+                            )
                         return None
 
             # No match found
@@ -283,7 +289,7 @@ class InstrumentDiscovery:
 
     def scan(self, verbose=True) -> Dict[str, Any]:
         """Scans all available VISA resources and attempts to identify supported instruments.
-        
+
         This scan is performed in parallel for improved performance.
 
         Returns:
@@ -332,7 +338,7 @@ class InstrumentDiscovery:
 
         final_drivers: Dict[str, Any] = {}
         type_counts: Dict[str, int] = {}
-        
+
         # Calculate totals for naming
         type_totals: Dict[str, int] = {}
         for generic, _, _, _ in results:
@@ -341,12 +347,12 @@ class InstrumentDiscovery:
         for generic, driver, model_key, idn in results:
             idx = type_counts.get(generic, 0)
             total = type_totals[generic]
-            
+
             if total == 1:
                 final_name = generic
             else:
                 final_name = f"{generic}{idx + 1}"
-            
+
             type_counts[generic] = idx + 1
             final_drivers[final_name] = driver
 
@@ -359,13 +365,9 @@ class InstrumentDiscovery:
         if verbose:
             print("\n")
             if final_drivers:
-                ColorPrinter.success(
-                    f"Discovery Complete. Found {len(final_drivers)} instruments."
-                )
+                ColorPrinter.success(f"Discovery Complete. Found {len(final_drivers)} instruments.")
             else:
-                ColorPrinter.warning(
-                    "Discovery Complete. No supported instruments found."
-                )
+                ColorPrinter.warning("Discovery Complete. No supported instruments found.")
             print("-" * 60)
 
         return final_drivers
@@ -379,9 +381,7 @@ class InstrumentDiscovery:
         """
         if name not in self.found_devices:
             available = list(self.found_devices.keys()) or ["(none found — run scan() first)"]
-            raise ValueError(
-                f"No instrument named '{name}'. Available: {available}"
-            )
+            raise ValueError(f"No instrument named '{name}'. Available: {available}")
         return self.found_devices[name]
 
     def list_devices(self) -> Dict[str, Any]:
@@ -400,13 +400,9 @@ class InstrumentDiscovery:
         """
         if old_name not in self.found_devices:
             available = list(self.found_devices.keys()) or ["(none — run scan() first)"]
-            raise ValueError(
-                f"No instrument named '{old_name}'. Available: {available}"
-            )
+            raise ValueError(f"No instrument named '{old_name}'. Available: {available}")
         if new_name in self.found_devices:
-            raise ValueError(
-                f"Name '{new_name}' is already in use by another instrument."
-            )
+            raise ValueError(f"Name '{new_name}' is already in use by another instrument.")
         self.found_devices[new_name] = self.found_devices.pop(old_name)
 
 

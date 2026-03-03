@@ -8,8 +8,9 @@ NOTE: Non-standard SCPI implementation:
 - Run/Stop is hardware-only; no SCPI command exists to control it remotely
 """
 
-from .device_manager import DeviceManager
 import pyvisa
+
+from .device_manager import DeviceManager
 
 
 class Owon_XDM1041(DeviceManager):
@@ -42,8 +43,8 @@ class Owon_XDM1041(DeviceManager):
             self.instrument.data_bits = 8
             self.instrument.parity = pyvisa.constants.Parity.none
             self.instrument.stop_bits = pyvisa.constants.StopBits.one
-            self.instrument.read_termination = '\n'
-            self.instrument.write_termination = '\r\n'
+            self.instrument.read_termination = "\n"
+            self.instrument.write_termination = "\r\n"
             print(f"Connected to {self.resource_name}")
         except pyvisa.VisaIOError as e:
             print(f"Failed to connect to {self.resource_name}: {e}")
@@ -52,6 +53,7 @@ class Owon_XDM1041(DeviceManager):
     def __enter__(self):
         """Context manager entry: reset and prepare for measurements."""
         import time
+
         self.reset()
         time.sleep(0.5)  # Device needs time after reset
         return self
@@ -203,6 +205,7 @@ class Owon_XDM1041(DeviceManager):
             float: Measurement value
         """
         import time
+
         time.sleep(2.0)  # Device needs time to settle after configuration
         result = self.query("MEAS?")
         return float(result.strip())

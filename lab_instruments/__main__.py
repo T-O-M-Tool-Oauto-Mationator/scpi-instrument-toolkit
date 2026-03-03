@@ -1,5 +1,5 @@
-import sys
 import os
+import sys
 
 
 def _ensure_scripts_on_path():
@@ -9,13 +9,13 @@ def _ensure_scripts_on_path():
     like scpi-repl are discoverable after a terminal restart.  Safe no-op on
     non-Windows platforms or if the directory is already present.
     """
-    if sys.platform != 'win32':
+    if sys.platform != "win32":
         return
 
-    scripts_dir = os.path.join(sys.prefix, 'Scripts')
+    scripts_dir = os.path.join(sys.prefix, "Scripts")
 
     # Already in the current process PATH — nothing to do.
-    if scripts_dir.lower() in os.environ.get('PATH', '').lower():
+    if scripts_dir.lower() in os.environ.get("PATH", "").lower():
         return
 
     try:
@@ -23,28 +23,29 @@ def _ensure_scripts_on_path():
 
         key = winreg.OpenKey(
             winreg.HKEY_CURRENT_USER,
-            r'Environment',
+            r"Environment",
             0,
             winreg.KEY_READ | winreg.KEY_WRITE,
         )
         try:
-            user_path, reg_type = winreg.QueryValueEx(key, 'PATH')
+            user_path, reg_type = winreg.QueryValueEx(key, "PATH")
         except FileNotFoundError:
-            user_path = ''
+            user_path = ""
             reg_type = winreg.REG_EXPAND_SZ
 
         if scripts_dir.lower() not in user_path.lower():
             new_path = f"{scripts_dir};{user_path}" if user_path else scripts_dir
-            winreg.SetValueEx(key, 'PATH', 0, reg_type, new_path)
+            winreg.SetValueEx(key, "PATH", 0, reg_type, new_path)
 
             # Broadcast WM_SETTINGCHANGE so new terminals inherit the updated PATH.
             import ctypes
+
             ctypes.windll.user32.SendMessageTimeoutW(
-                0xFFFF,   # HWND_BROADCAST
-                0x001A,   # WM_SETTINGCHANGE
+                0xFFFF,  # HWND_BROADCAST
+                0x001A,  # WM_SETTINGCHANGE
                 0,
-                'Environment',
-                0x0002,   # SMTO_ABORTIFHUNG
+                "Environment",
+                0x0002,  # SMTO_ABORTIFHUNG
                 1000,
                 None,
             )

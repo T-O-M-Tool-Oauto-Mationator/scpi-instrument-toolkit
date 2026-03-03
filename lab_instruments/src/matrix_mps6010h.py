@@ -9,8 +9,9 @@ IMPORTANT: This device requires enabling remote mode first with REM:ON
 - Use REM:OFF or press Shift+7 on front panel to return to local mode
 """
 
-from .device_manager import DeviceManager
 import pyvisa
+
+from .device_manager import DeviceManager
 
 
 class MATRIX_MPS6010H(DeviceManager):
@@ -93,9 +94,7 @@ class MATRIX_MPS6010H(DeviceManager):
             ValueError: If voltage is out of range.
         """
         if not (0.0 <= voltage <= self.MAX_VOLTAGE):
-            raise ValueError(
-                f"Voltage must be between 0 and {self.MAX_VOLTAGE}V. Got {voltage}V."
-            )
+            raise ValueError(f"Voltage must be between 0 and {self.MAX_VOLTAGE}V. Got {voltage}V.")
 
         self.send_command(f"VOLT {voltage:.3f}")
         self._voltage_setpoint = voltage
@@ -111,9 +110,7 @@ class MATRIX_MPS6010H(DeviceManager):
             ValueError: If current is out of range.
         """
         if not (0.0 <= current <= self.MAX_CURRENT):
-            raise ValueError(
-                f"Current must be between 0 and {self.MAX_CURRENT}A. Got {current}A."
-            )
+            raise ValueError(f"Current must be between 0 and {self.MAX_CURRENT}A. Got {current}A.")
 
         self.send_command(f"CURR {current:.3f}")
         self._current_limit = current

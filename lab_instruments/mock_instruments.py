@@ -234,7 +234,7 @@ class MockScope(MockBase):
         pass
 
     def get_trigger_status(self):
-        return 'TD'
+        return "TD"
 
     def wait_for_stop(self, timeout=10.0):
         return True
@@ -365,9 +365,9 @@ class MockDHO804(MockScope):
         """Return dummy PNG bytes (a minimal valid PNG)."""
         # Minimal 1x1 white PNG
         import base64
+
         return base64.b64decode(
-            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVQI12NgAAIABQAB"
-            "Nl7BcQAAAABJRU5ErkJggg=="
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVQI12NgAAIABQABNl7BcQAAAABJRU5ErkJggg=="
         )
 
     def set_channel_label(self, channel, label, show=True):
@@ -534,6 +534,7 @@ class MockDHO804(MockScope):
 
 class MockMSO2024(MockScope):
     """Mock Tektronix MSO2024 oscilloscope."""
+
     pass
 
 
@@ -546,34 +547,42 @@ class MockMPS6010H(MockPSU):
 
 class MockHP_E3631A(MockPSU):
     """Mock HP E3631A triple-output power supply."""
+
     pass
 
 
 class MockJDS6600(MockAWG):
     """Mock JDS6600 DDS function generator."""
+
     pass
 
 
 class MockEDU33212A(MockAWG):
     """Mock Keysight EDU33212A function generator."""
+
     pass
 
 
 class MockHP_34401A(MockDMM):
     """Mock HP 34401A digital multimeter."""
+
     pass
 
 
 class MockXDM1041(MockDMM):
     """Mock OWON XDM1041 digital multimeter."""
+
     pass
 
 
 def get_mock_devices(verbose=True):
     from lab_instruments import ColorPrinter
+
     if verbose:
         ColorPrinter.warning("Mock mode — no real instruments connected")
-        ColorPrinter.info("Injecting: psu1 (MockHP_E3631A), psu2 (MockMPS6010H), awg1 (MockEDU33212A), awg2 (MockJDS6600), dmm1 (MockHP_34401A), dmm2 (MockXDM1041), scope1 (MockDHO804), scope2 (MockMSO2024)")
+        ColorPrinter.info(
+            "Injecting: psu1 (MockHP_E3631A), psu2 (MockMPS6010H), awg1 (MockEDU33212A), awg2 (MockJDS6600), dmm1 (MockHP_34401A), dmm2 (MockXDM1041), scope1 (MockDHO804), scope2 (MockMSO2024)"
+        )
     return {
         "psu1": MockHP_E3631A(),
         "psu2": MockMPS6010H(),

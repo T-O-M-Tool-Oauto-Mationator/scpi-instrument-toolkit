@@ -40,9 +40,9 @@ class ColorPrinter:
     @staticmethod
     def header(message):
         """Print a bold header message in magenta."""
-        print(f"\n{ColorPrinter.HEADER}{ColorPrinter.BOLD}{'='*60}")
+        print(f"\n{ColorPrinter.HEADER}{ColorPrinter.BOLD}{'=' * 60}")
         print(f"   {message.upper()}")
-        print(f"{'='*60}{ColorPrinter.RESET}\n")
+        print(f"{'=' * 60}{ColorPrinter.RESET}\n")
 
     @staticmethod
     def cyan(message):

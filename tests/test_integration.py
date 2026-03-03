@@ -3,16 +3,15 @@
 All tests in this module are marked @pytest.mark.integration and require no
 physical instruments. They exercise the full REPL command path using mock classes.
 """
+
 import pytest
+
 from lab_instruments.mock_instruments import (
+    MockDHO804,
+    MockEDU33212A,
+    MockHP_34401A,
     MockHP_E3631A,
     MockMPS6010H,
-    MockEDU33212A,
-    MockJDS6600,
-    MockHP_34401A,
-    MockXDM1041,
-    MockDHO804,
-    MockMSO2024,
     get_mock_devices,
 )
 

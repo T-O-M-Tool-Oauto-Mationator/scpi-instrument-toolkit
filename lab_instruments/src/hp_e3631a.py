@@ -75,9 +75,7 @@ class HP_E3631A(DeviceManager):
             channel (str): The channel to select. Must be one of the keys in CHANNEL_MAP.
         """
         if channel not in self.CHANNEL_MAP:
-            raise ValueError(
-                f"Invalid channel. Must be one of: {list(self.CHANNEL_MAP.keys())}"
-            )
+            raise ValueError(f"Invalid channel. Must be one of: {list(self.CHANNEL_MAP.keys())}")
         command = f"INSTRUMENT:SELECT {self.CHANNEL_MAP[channel]}"
         self.send_command(command)
 
@@ -91,9 +89,7 @@ class HP_E3631A(DeviceManager):
         """
         # Validate channel
         if channel not in self.CHANNEL_MAP:
-            raise ValueError(
-                f"Invalid channel. Must be one of: {list(self.CHANNEL_MAP.keys())}"
-            )
+            raise ValueError(f"Invalid channel. Must be one of: {list(self.CHANNEL_MAP.keys())}")
 
         # Use default current limit if none provided
         if current_limit is None:
@@ -112,9 +108,7 @@ class HP_E3631A(DeviceManager):
             float: The measured voltage.
         """
         if channel not in self.CHANNEL_MAP:
-            raise ValueError(
-                f"Invalid channel. Must be one of: {list(self.CHANNEL_MAP.keys())}"
-            )
+            raise ValueError(f"Invalid channel. Must be one of: {list(self.CHANNEL_MAP.keys())}")
         self.select_channel(channel)
         response = self.query("MEASURE:VOLTAGE?")
         try:
@@ -135,9 +129,7 @@ class HP_E3631A(DeviceManager):
             float: The measured current.
         """
         if channel not in self.CHANNEL_MAP:
-            raise ValueError(
-                f"Invalid channel. Must be one of: {list(self.CHANNEL_MAP.keys())}"
-            )
+            raise ValueError(f"Invalid channel. Must be one of: {list(self.CHANNEL_MAP.keys())}")
         self.select_channel(channel)
         response = self.query("MEASURE:CURRENT?")
         try:

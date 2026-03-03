@@ -7,27 +7,29 @@ Use to discover instruments, send commands, and place devices into known states.
 
 # Use NI-VISA backend for USB device support (pyvisa-py doesn't support USB-TMC)
 # The discovery code has been updated with timeouts to prevent hanging
+import ast
+import atexit
+
+# os.environ['PYVISA_LIBRARY'] = '@py'  # Disabled - need NI-VISA for USB
+import cmd
+import inspect
+import json
 import os
 import pathlib
 import re
-import sys
-# os.environ['PYVISA_LIBRARY'] = '@py'  # Disabled - need NI-VISA for USB
-
-import cmd
-import json
 import shlex
+import signal
 import subprocess
+import sys
 import tempfile
 import threading
 import time
-import ast
-import inspect
 import traceback
-import signal
-import atexit
-from typing import Dict, Any, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
+
 try:
     from importlib.metadata import version as _pkg_version
+
     _REPL_VERSION = _pkg_version("scpi-instrument-toolkit")
 except Exception:
     _REPL_VERSION = "unknown"
@@ -65,8 +67,8 @@ def _check_for_updates(force=False):
             print("Running from source — skipping update check.")
         return False
 
-    import urllib.request
     import json
+    import urllib.request
 
     try:
         url = f"https://api.github.com/repos/{_GITHUB_REPO}/tags"
@@ -78,8 +80,8 @@ def _check_for_updates(force=False):
             return False
 
         # GitHub returns tags newest-first; first entry is the latest
-        latest_tag = tags[0]["name"]        # e.g. "v0.1.70"
-        latest = latest_tag.lstrip("v")     # e.g. "0.1.70"
+        latest_tag = tags[0]["name"]  # e.g. "v0.1.70"
+        latest = latest_tag.lstrip("v")  # e.g. "0.1.70"
 
         def _vtuple(v):
             return tuple(int(x) for x in v.split("."))
@@ -87,11 +89,13 @@ def _check_for_updates(force=False):
         if _vtuple(latest) <= _vtuple(_REPL_VERSION):
             if force:
                 from lab_instruments.src.terminal import ColorPrinter as _CP
+
                 _CP.success(f"Already up to date (v{_REPL_VERSION}).")
             return False
 
         # Update available — show the user the command to run
         from lab_instruments.src.terminal import ColorPrinter as _CP
+
         _CP.info(f"Update available: v{_REPL_VERSION} → v{latest}. To install, run:")
         git_url = f"git+https://github.com/{_GITHUB_REPO}.git@{latest_tag}#egg=scpi-instrument-toolkit"
         print(f'  pip install --upgrade "{git_url}"')
@@ -100,8 +104,8 @@ def _check_for_updates(force=False):
     except Exception:
         return False  # Network error or no internet — ignore silently
 
-from lab_instruments import InstrumentDiscovery, ColorPrinter
 
+from lab_instruments import ColorPrinter, InstrumentDiscovery
 
 DEVICE_NAMES = ("scope", "psu", "awg", "dmm", "dds")
 
@@ -130,20 +134,20 @@ AWG_WAVE_KEYS = {
 
 # Maps user-friendly waveform names → canonical SCPI abbreviations used by SCPI AWGs
 AWG_WAVE_ALIASES = {
-    "sine":     "SIN",
-    "sin":      "SIN",
-    "square":   "SQU",
-    "squ":      "SQU",
-    "ramp":     "RAMP",
+    "sine": "SIN",
+    "sin": "SIN",
+    "square": "SQU",
+    "squ": "SQU",
+    "ramp": "RAMP",
     "triangle": "RAMP",
-    "tri":      "RAMP",
-    "pulse":    "PULS",
-    "puls":     "PULS",
-    "noise":    "NOIS",
-    "nois":     "NOIS",
-    "dc":       "DC",
-    "arb":      "ARB",
-    "prbs":     "PRBS",
+    "tri": "RAMP",
+    "pulse": "PULS",
+    "puls": "PULS",
+    "noise": "NOIS",
+    "nois": "NOIS",
+    "dc": "DC",
+    "arb": "ARB",
+    "prbs": "PRBS",
 }
 
 DMM_MODE_ALIASES = {
@@ -170,7 +174,7 @@ class InstrumentRepl(cmd.Cmd):
         self.devices: Dict[str, Any] = {}
         self.selected: Optional[str] = None
         self._device_override: Optional[str] = None  # set by default() for awg1, scope2, etc.
-        self._data_dir_override: Optional[str] = None    # set by 'data dir <path>'
+        self._data_dir_override: Optional[str] = None  # set by 'data dir <path>'
         self._scripts_dir_override: Optional[str] = None  # set by 'script dir <path>'
         self.scripts: Dict[str, Any] = self._load_scripts()
         self.measurements = []
@@ -182,13 +186,13 @@ class InstrumentRepl(cmd.Cmd):
         self._cleanup_done = False
         self._script_vars: Dict[str, str] = {}  # runtime variables set by 'input' during scripts
         self._jerminator = False
-        
+
         # Multi-line loop support (for/repeat blocks in interactive mode)
         self._in_loop = False  # True when collecting loop body lines
         self._loop_lines = []  # accumulate lines until 'end'
         self._loop_depth = 0  # track nested depth
         self._loop_header = ""  # the "for" or "repeat" line
-        
+
         # Error handling mode (set -e / set +e)
         self._exit_on_error = False  # If True, stop script on command failure
         self._command_had_error = False  # Flag set when a command encounters an error
@@ -197,18 +201,21 @@ class InstrumentRepl(cmd.Cmd):
         self._should_exit = False  # Flag to signal that we should exit the REPL
         self._in_debugger = False  # True while the script debugger is active
         self._record_script = None  # Name of script currently being recorded to
-        self._safety_limits: Dict[Tuple[str, Optional[int]], Dict[str, float]] = {}  # populated by 'lower_limit'/'upper_limit' directives
+        self._safety_limits: Dict[
+            Tuple[str, Optional[int]], Dict[str, float]
+        ] = {}  # populated by 'lower_limit'/'upper_limit' directives
         self._awg_channel_state: Dict[tuple, Dict[str, Optional[float]]] = {}  # (dev, ch) → {vpp, offset}
-        self.test_results = []              # list of check result dicts
+        self.test_results = []  # list of check result dicts
         self._report_title = "Lab Test Report"
         self._report_operator = ""
-        self._report_screenshots = []       # absolute paths of captured screenshots
+        self._report_screenshots = []  # absolute paths of captured screenshots
 
         # Save terminal state so we can restore it on any exit path
         self._term_fd = None
         self._term_settings = None
         try:
             import termios
+
             fd = sys.stdin.fileno()
             self._term_fd = fd
             self._term_settings = termios.tcgetattr(fd)
@@ -219,15 +226,13 @@ class InstrumentRepl(cmd.Cmd):
         # Ctrl+C is handled correctly even while discovery is in progress.
         atexit.register(self._cleanup_on_exit)
         signal.signal(signal.SIGINT, self._cleanup_on_interrupt)
-        if hasattr(signal, 'SIGTERM'):
+        if hasattr(signal, "SIGTERM"):
             signal.signal(signal.SIGTERM, self._cleanup_on_interrupt)
 
         # Kick off discovery in the background so the REPL prompt appears
         # immediately.  Commands that need devices call _wait_for_scan() first.
         self._scan_done = threading.Event()
-        self._scan_thread = threading.Thread(
-            target=self._background_scan, daemon=True, name="scpi-scan"
-        )
+        self._scan_thread = threading.Thread(target=self._background_scan, daemon=True, name="scpi-scan")
         ColorPrinter.info("Scanning for instruments in background — type 'scan' to wait for results.")
         self._scan_thread.start()
 
@@ -238,7 +243,7 @@ class InstrumentRepl(cmd.Cmd):
             if self.devices:
                 ColorPrinter.success(f"\nScan complete: found {len(self.devices)} device(s).")
             else:
-                ColorPrinter.warning(f"\nScan complete: no instruments found.")
+                ColorPrinter.warning("\nScan complete: no instruments found.")
             # Put all discovered instruments into a safe/off state on startup
             if self.devices:
                 try:
@@ -267,6 +272,7 @@ class InstrumentRepl(cmd.Cmd):
         try:
             if self._term_settings is not None:
                 import termios
+
                 termios.tcsetattr(self._term_fd, termios.TCSADRAIN, self._term_settings)
         except Exception:
             pass
@@ -289,14 +295,14 @@ class InstrumentRepl(cmd.Cmd):
                             try:
                                 line = input(self.prompt)
                             except EOFError:
-                                line = 'EOF'
+                                line = "EOF"
                         else:
-                            self.lastcmd = ''
+                            self.lastcmd = ""
                             line = self.stdin.readline()
                             if not len(line):
-                                line = 'EOF'
+                                line = "EOF"
                             else:
-                                line = line.rstrip('\r\n')
+                                line = line.rstrip("\r\n")
                     line = self.precmd(line)
                     stop = self.onecmd(line)
                     line = self.postcmd(stop, line)
@@ -357,7 +363,7 @@ class InstrumentRepl(cmd.Cmd):
     def _cleanup_on_interrupt(self, signum, frame):
         """Called when Ctrl+C or termination signal is received."""
         self._interrupt_requested = True
-        
+
         # Reset loop state if in a multi-line block
         if self._in_loop:
             self._in_loop = False
@@ -365,7 +371,7 @@ class InstrumentRepl(cmd.Cmd):
             self._loop_depth = 0
             self.prompt = "eset> "
             print("\n(cancelled loop block)")
-        
+
         # Don't wait for the scan thread on interrupt — if the user is Ctrl+C-ing
         # during a long scan, just cancel it and exit cleanly.
         self._scan_done.set()  # unblock any _wait_for_scan callers
@@ -376,11 +382,11 @@ class InstrumentRepl(cmd.Cmd):
                 self._safe_all()
             except Exception as exc:
                 ColorPrinter.error(f"Error during cleanup: {exc}")
-        
+
         # If running a script, raise KeyboardInterrupt so the script can stop
         if self._in_script:
             raise KeyboardInterrupt
-        
+
         # If at REPL level, signal that we should exit (without calling sys.exit)
         self._should_exit = True
 
@@ -407,9 +413,7 @@ class InstrumentRepl(cmd.Cmd):
             return self.devices.get(self.selected)
 
         if name not in self.devices:
-            ColorPrinter.warning(
-                f"Unknown instrument '{name}'. Available: {list(self.devices.keys())}"
-            )
+            ColorPrinter.warning(f"Unknown instrument '{name}'. Available: {list(self.devices.keys())}")
             self._command_had_error = True
             return None
         return self.devices.get(name)
@@ -431,12 +435,12 @@ class InstrumentRepl(cmd.Cmd):
             return self._device_override
 
         # Build candidate list dynamically: names matching ^<type>\d*$
-        pattern = re.compile(rf'^{re.escape(device_type)}\d*$')
+        pattern = re.compile(rf"^{re.escape(device_type)}\d*$")
         candidates = [name for name in self.devices if pattern.match(name)]
 
         # Legacy: 'awg' command also matches old 'dds' key (JDS6600)
-        if device_type == 'awg' and 'dds' in self.devices and 'dds' not in candidates:
-            candidates.append('dds')
+        if device_type == "awg" and "dds" in self.devices and "dds" not in candidates:
+            candidates.append("dds")
 
         if not candidates:
             self._error(f"No {device_type.upper()} found. Run 'scan' first.")
@@ -452,8 +456,7 @@ class InstrumentRepl(cmd.Cmd):
 
         # No active selection matches — require explicit naming
         ColorPrinter.warning(
-            f"Multiple {device_type.upper()}s found: {candidates}. "
-            f"Use explicit name, e.g. '{candidates[0]}'."
+            f"Multiple {device_type.upper()}s found: {candidates}. Use explicit name, e.g. '{candidates[0]}'."
         )
         return None
 
@@ -479,10 +482,8 @@ class InstrumentRepl(cmd.Cmd):
         s = raw.strip()
         if strip_word:
             prefix = strip_word.lower()
-            if s.lower().startswith(prefix) and (
-                len(s) == len(prefix) or s[len(prefix)].isspace()
-            ):
-                s = s[len(prefix):].lstrip()
+            if s.lower().startswith(prefix) and (len(s) == len(prefix) or s[len(prefix)].isspace()):
+                s = s[len(prefix) :].lstrip()
         if not s:
             return None
         # Strip balanced surrounding quotes
@@ -492,15 +493,15 @@ class InstrumentRepl(cmd.Cmd):
 
     def _channels_for_device(self, dev, base_type: str):
         """Return the list of channel numbers for a device, or None if not applicable."""
-        if hasattr(dev, 'CHANNEL_MAP'):
+        if hasattr(dev, "CHANNEL_MAP"):
             return sorted(dev.CHANNEL_MAP.keys())
-        if base_type == 'scope':
-            return list(range(1, getattr(dev, 'num_channels', 4) + 1))
-        if base_type == 'psu':
-            if 'E3631A' in type(dev).__name__:
+        if base_type == "scope":
+            return list(range(1, getattr(dev, "num_channels", 4) + 1))
+        if base_type == "psu":
+            if "E3631A" in type(dev).__name__:
                 return [1, 2, 3]
             return [1]
-        if 'JDS6600' in type(dev).__name__:
+        if "JDS6600" in type(dev).__name__:
             return [1, 2]
         return None
 
@@ -531,7 +532,8 @@ class InstrumentRepl(cmd.Cmd):
                     # non-zero if not — simpler and more portable than `if exist`.
                     result = subprocess.run(
                         ["cmd", "/c", "dir", "/b", probe],
-                        capture_output=True, timeout=5,
+                        capture_output=True,
+                        timeout=5,
                     )
                     visible = result.returncode == 0
                 elif cross_process:
@@ -579,8 +581,7 @@ class InstrumentRepl(cmd.Cmd):
                 os.makedirs(override, exist_ok=True)
             except Exception as exc:
                 raise RuntimeError(
-                    f"SCPI_SCRIPTS_DIR is set to '{override}' but that directory "
-                    f"cannot be created: {exc}"
+                    f"SCPI_SCRIPTS_DIR is set to '{override}' but that directory cannot be created: {exc}"
                 ) from exc
             return override
 
@@ -600,14 +601,12 @@ class InstrumentRepl(cmd.Cmd):
             if appdata:
                 candidates.append(("APPDATA", os.path.join(appdata, subpath)))
         else:
-            xdg = os.environ.get("XDG_CONFIG_HOME",
-                                 os.path.join(os.path.expanduser("~"), ".config"))
+            xdg = os.environ.get("XDG_CONFIG_HOME", os.path.join(os.path.expanduser("~"), ".config"))
             candidates.append(("XDG_CONFIG_HOME", os.path.join(xdg, subpath)))
 
         # Common final fallbacks for both platforms
         candidates.append(("~", os.path.join(os.path.expanduser("~"), subpath)))
-        candidates.append(("tempdir",
-                           os.path.join(tempfile.gettempdir(), subpath)))
+        candidates.append(("tempdir", os.path.join(tempfile.gettempdir(), subpath)))
 
         # Pass 1: cross-process probe (detects APPDATA virtualisation)
         attempted = []
@@ -656,8 +655,7 @@ class InstrumentRepl(cmd.Cmd):
                 os.makedirs(override, exist_ok=True)
             except Exception as exc:
                 raise RuntimeError(
-                    f"SCPI_DATA_DIR is set to '{override}' but that directory "
-                    f"cannot be created: {exc}"
+                    f"SCPI_DATA_DIR is set to '{override}' but that directory cannot be created: {exc}"
                 ) from exc
             return override
 
@@ -668,8 +666,7 @@ class InstrumentRepl(cmd.Cmd):
             docs = os.path.join(os.path.expanduser("~"), "Documents")
             candidates.append(os.path.join(docs, subpath))
         else:
-            xdg = os.environ.get("XDG_CONFIG_HOME",
-                                 os.path.join(os.path.expanduser("~"), ".config"))
+            xdg = os.environ.get("XDG_CONFIG_HOME", os.path.join(os.path.expanduser("~"), ".config"))
             candidates.append(os.path.join(xdg, subpath))
 
         candidates.append(os.path.join(os.path.expanduser("~"), subpath))
@@ -695,7 +692,7 @@ class InstrumentRepl(cmd.Cmd):
             for fname in sorted(os.listdir(d)):
                 if fname.endswith(".scpi"):
                     name = fname[:-5]
-                    with open(os.path.join(d, fname), "r", encoding="utf-8") as f:
+                    with open(os.path.join(d, fname), encoding="utf-8") as f:
                         lines = [line.rstrip("\n") for line in f.readlines()]
                     while lines and not lines[-1].strip():
                         lines.pop()
@@ -735,10 +732,9 @@ class InstrumentRepl(cmd.Cmd):
                 scripts_dir = "<unavailable>"
                 dir_exists = False
             ColorPrinter.error(
-                f"Failed to save script '{name}': {exc}\n"
-                f"  Scripts dir: '{scripts_dir}' (exists={dir_exists})"
+                f"Failed to save script '{name}': {exc}\n  Scripts dir: '{scripts_dir}' (exists={dir_exists})"
             )
-    
+
     def _edit_script_in_editor(self, name, current_lines):
         if os.name == "nt":
             # Non-blocking on Windows: save to the real .scpi file and open it.
@@ -782,7 +778,9 @@ class InstrumentRepl(cmd.Cmd):
             ) as handle:
                 tmp_path = handle.name
                 handle.write(f"# Script: {name}\n")
-                handle.write("# Syntax: set <var> <val>  |  ${var}  |  repeat <n> ... end  |  for <var> v1 v2 ... end  |  call <name>\n")
+                handle.write(
+                    "# Syntax: set <var> <val>  |  ${var}  |  repeat <n> ... end  |  for <var> v1 v2 ... end  |  call <name>\n"
+                )
                 handle.write("#\n")
                 for line in current_lines:
                     handle.write(f"{line}\n")
@@ -791,7 +789,7 @@ class InstrumentRepl(cmd.Cmd):
             except FileNotFoundError:
                 ColorPrinter.error(f"Editor '{editor}' not found. Set $EDITOR to a valid editor.")
                 return list(current_lines)
-            with open(tmp_path, "r", encoding="utf-8") as handle:
+            with open(tmp_path, encoding="utf-8") as handle:
                 lines = [line.rstrip("\n") for line in handle.readlines()]
             # Strip comment header lines added by this editor
             result = []
@@ -941,7 +939,7 @@ class InstrumentRepl(cmd.Cmd):
                 if isinstance(node.op, ast.Div):
                     return left / right
                 if isinstance(node.op, ast.Pow):
-                    return left ** right
+                    return left**right
                 if isinstance(node.op, ast.Mod):
                     return left % right
                 raise ValueError("Operator not allowed.")
@@ -1057,11 +1055,16 @@ class InstrumentRepl(cmd.Cmd):
                         k, v = token.split("=", 1)
                         call_params[k] = self._substitute_vars(v, variables)
                 call_exports = {}
-                expanded.extend(self._expand_script_lines(
-                    self.scripts[script_name], call_params, depth + 1,
-                    parent_vars=variables, exports=call_exports,
-                    _loop_ctx=f"[call {script_name}] " + _loop_ctx,
-                ))
+                expanded.extend(
+                    self._expand_script_lines(
+                        self.scripts[script_name],
+                        call_params,
+                        depth + 1,
+                        parent_vars=variables,
+                        exports=call_exports,
+                        _loop_ctx=f"[call {script_name}] " + _loop_ctx,
+                    )
+                )
                 variables.update(call_exports)
                 continue
             if head == "repeat" and len(tokens) >= 2:
@@ -1090,9 +1093,9 @@ class InstrumentRepl(cmd.Cmd):
                 for i in range(count):
                     iter_ctx = f"[repeat {i + 1}/{count}] "
                     expanded.append(("__NOP__", f"{_loop_ctx}{raw_line}  →  iteration {i + 1}/{count}"))
-                    expanded.extend(self._expand_script_lines(
-                        block, dict(variables), depth, _loop_ctx=_loop_ctx + iter_ctx
-                    ))
+                    expanded.extend(
+                        self._expand_script_lines(block, dict(variables), depth, _loop_ctx=_loop_ctx + iter_ctx)
+                    )
                 continue
             if head == "array" and len(tokens) >= 2:
                 varname = tokens[1]
@@ -1152,24 +1155,26 @@ class InstrumentRepl(cmd.Cmd):
                             local_vars[name] = self._substitute_vars(val, variables)
                         iter_ctx = " ".join(f"{k}={v}" for k, v in zip(keys, parts))
                         expanded.append(("__NOP__", f"{_loop_ctx}{raw_line}  →  {iter_ctx}"))
-                        expanded.extend(self._expand_script_lines(
-                            block, local_vars, depth, _loop_ctx=_loop_ctx + f"[{iter_ctx}] "
-                        ))
+                        expanded.extend(
+                            self._expand_script_lines(block, local_vars, depth, _loop_ctx=_loop_ctx + f"[{iter_ctx}] ")
+                        )
                 else:
                     for value in values:
                         local_vars = dict(variables)
                         local_vars[key] = self._substitute_vars(value, variables)
                         expanded.append(("__NOP__", f"{_loop_ctx}{raw_line}  →  {key}={value}"))
-                        expanded.extend(self._expand_script_lines(
-                            block, local_vars, depth, _loop_ctx=_loop_ctx + f"[{key}={value}] "
-                        ))
+                        expanded.extend(
+                            self._expand_script_lines(
+                                block, local_vars, depth, _loop_ctx=_loop_ctx + f"[{key}={value}] "
+                            )
+                        )
                 continue
             if head == "end":
                 continue
             if head in ("lower_limit", "upper_limit") and len(tokens) >= 3:
                 direction = "lower" if head == "lower_limit" else "upper"
                 device_str = tokens[1].lower()
-                base_type = re.sub(r'\d+$', '', device_str)
+                base_type = re.sub(r"\d+$", "", device_str)
                 VALID_PARAMS = {
                     "awg": {"vpeak", "vtrough", "vpp", "freq", "voltage"},
                     "psu": {"voltage", "current"},
@@ -1236,20 +1241,20 @@ class InstrumentRepl(cmd.Cmd):
             bp = "●" if (i + 1) in breakpoints else " "
             src = source_lines[i] if source_lines else lines[i]
             if i == idx:
-                print(f"\033[96m  {bp} {i+1:>4} → {src}\033[0m")
+                print(f"\033[96m  {bp} {i + 1:>4} → {src}\033[0m")
                 # Show the expanded form underneath if it differs from source
                 if lines[i] != src:
                     print(f"\033[90m         ↳ {lines[i]}\033[0m")
             else:
-                print(f"  {bp} {i+1:>4}   {src}")
+                print(f"  {bp} {i + 1:>4}   {src}")
         print("  " + "─" * 60)
-        print(f"  {idx+1}/{total}  │  n=step  c=continue  back  goto N  b N=break  d N=del  l [N|all]=list  q=quit")
+        print(f"  {idx + 1}/{total}  │  n=step  c=continue  back  goto N  b N=break  d N=del  l [N|all]=list  q=quit")
         print()
 
     def _run_expanded(self, expanded, debug=False):
         """Execute a pre-expanded command list, optionally with an interactive debugger."""
         # Build the executable line list, pulling out script-embedded breakpoints
-        lines = []        # expanded commands (sent to instruments)
+        lines = []  # expanded commands (sent to instruments)
         source_lines = []  # original source text (shown in debugger)
         breakpoints = set()
         for item in expanded:
@@ -1260,7 +1265,7 @@ class InstrumentRepl(cmd.Cmd):
             if cmd == "__BREAKPOINT__":
                 breakpoints.add(len(lines) + 1)  # fires before the next real line
                 continue
-            lines.append(cmd)        # __NOP__ stays in the list for display; executor skips it
+            lines.append(cmd)  # __NOP__ stays in the list for display; executor skips it
             source_lines.append(src.strip())
 
         if not lines:
@@ -1305,7 +1310,9 @@ class InstrumentRepl(cmd.Cmd):
                                     return True
                             except KeyboardInterrupt:
                                 print()
-                                ColorPrinter.warning("Command interrupted — staying at line (retry with Enter or skip with goto)")
+                                ColorPrinter.warning(
+                                    "Command interrupted — staying at line (retry with Enter or skip with goto)"
+                                )
                                 break
                             if self._exit_on_error and self._command_had_error:
                                 ColorPrinter.error("Script stopped (set -e)")
@@ -1352,7 +1359,9 @@ class InstrumentRepl(cmd.Cmd):
                                 target = int(parts[1]) - 1
                                 if 0 <= target < len(lines):
                                     idx = target
-                                    ColorPrinter.warning(f"Jumped to line {idx + 1} — skipped lines NOT executed/reversed")
+                                    ColorPrinter.warning(
+                                        f"Jumped to line {idx + 1} — skipped lines NOT executed/reversed"
+                                    )
                                     self._debug_show_context(lines, source_lines, idx, breakpoints)
                                 else:
                                     ColorPrinter.error(f"Line out of range (1–{len(lines)})")
@@ -1447,7 +1456,7 @@ class InstrumentRepl(cmd.Cmd):
     def _onecmd_single(self, line):
         # Apply variable substitution using REPL variables
         line = self._substitute_vars(line, self._script_vars)
-        
+
         tokens = self._parse_args(line)
         if len(tokens) >= 3 and tokens[0].lower() == "repeat":
             try:
@@ -1462,24 +1471,24 @@ class InstrumentRepl(cmd.Cmd):
 
         # Expand 'all' channel token into one call per channel
         # e.g. "awg wave all sine freq=1000" → "awg wave 1 sine ..." + "awg wave 2 sine ..."
-        all_indices = [i for i, t in enumerate(tokens) if t.lower() == 'all']
+        all_indices = [i for i, t in enumerate(tokens) if t.lower() == "all"]
         if all_indices:
-            cmd_token = tokens[0].lower() if tokens else ''
-            base_type = re.sub(r'\d+$', '', cmd_token)
-            if base_type in ('awg', 'scope', 'psu', 'dds'):
+            cmd_token = tokens[0].lower() if tokens else ""
+            base_type = re.sub(r"\d+$", "", cmd_token)
+            if base_type in ("awg", "scope", "psu", "dds"):
                 dev = None
                 if self._device_override and self._device_override in self.devices:
                     dev = self.devices[self._device_override]
                 elif cmd_token in self.devices:
                     dev = self.devices[cmd_token]
                 else:
-                    pattern = re.compile(rf'^{re.escape(base_type)}\d*$')
+                    pattern = re.compile(rf"^{re.escape(base_type)}\d*$")
                     for dname, d in self.devices.items():
                         if pattern.match(dname):
                             dev = d
                             break
-                    if dev is None and base_type == 'awg' and 'dds' in self.devices:
-                        dev = self.devices['dds']
+                    if dev is None and base_type == "awg" and "dds" in self.devices:
+                        dev = self.devices["dds"]
                 if dev is not None:
                     channels = self._channels_for_device(dev, base_type)
                     if channels:
@@ -1487,7 +1496,7 @@ class InstrumentRepl(cmd.Cmd):
                         for ch in channels:
                             new_tokens = list(tokens)
                             new_tokens[all_idx] = str(ch)
-                            if super().onecmd(' '.join(new_tokens)):
+                            if super().onecmd(" ".join(new_tokens)):
                                 return True
                         return False
 
@@ -1510,7 +1519,7 @@ class InstrumentRepl(cmd.Cmd):
                     self._loop_depth += 1
                 self._loop_lines.append(line)
             return False
-        
+
         # Check if this line starts a for/repeat block in interactive mode
         stripped = line.strip()
         tokens = self._parse_args(stripped)
@@ -1523,7 +1532,7 @@ class InstrumentRepl(cmd.Cmd):
             self.prompt = "  > "  # Indent prompt to show we're in a block
             ColorPrinter.info("(entering loop block - type 'end' to exit)")
             return False
-        
+
         scan_line = line.replace(";", " ; ")
         tokens = self._parse_args(scan_line)
         if "repeat" in tokens or "repeatall" in tokens:
@@ -1581,17 +1590,17 @@ class InstrumentRepl(cmd.Cmd):
 
     def _execute_collected_loop(self):
         """Execute the for/repeat block that was collected interactively.
-        
+
         Combines the loop header with the collected body lines and runs
         them through the same expansion logic as script files.
         """
         # Reset prompt before executing
         self.prompt = "eset> "
         self._in_loop = False
-        
+
         # Combine the header with the collected body and 'end'
         all_lines = [self._loop_header] + self._loop_lines + ["end"]
-        
+
         # Use the existing script expansion logic
         try:
             expanded = self._expand_script_lines(all_lines, {})
@@ -1632,45 +1641,45 @@ class InstrumentRepl(cmd.Cmd):
             try:
                 # PSU devices (psu, psu1, psu2, ...)
                 if name.startswith("psu"):
-                    if hasattr(dev, 'disable_all_channels'):
+                    if hasattr(dev, "disable_all_channels"):
                         dev.disable_all_channels()
-                    elif hasattr(dev, 'disable_output'):
+                    elif hasattr(dev, "disable_output"):
                         dev.disable_output()
-                    elif hasattr(dev, 'enable_output'):
+                    elif hasattr(dev, "enable_output"):
                         dev.enable_output(False)
                 # AWG/DDS devices (awg, awg1, awg2, dds)
                 elif name.startswith("awg") or name == "dds":
-                    if hasattr(dev, 'disable_all_channels'):
+                    if hasattr(dev, "disable_all_channels"):
                         dev.disable_all_channels()
-                    elif hasattr(dev, 'disable_output'):
+                    elif hasattr(dev, "disable_output"):
                         dev.disable_output()
-                    elif hasattr(dev, 'enable_output'):
+                    elif hasattr(dev, "enable_output"):
                         dev.enable_output(ch1=False, ch2=False)
                 # Oscilloscope (scope, scope1, scope2, ...)
                 elif name.startswith("scope"):
-                    if hasattr(dev, 'stop'):
+                    if hasattr(dev, "stop"):
                         dev.stop()
-                    if hasattr(dev, 'disable_all_channels'):
+                    if hasattr(dev, "disable_all_channels"):
                         dev.disable_all_channels()
-                    elif hasattr(dev, 'disable_channel'):
+                    elif hasattr(dev, "disable_channel"):
                         for ch in range(1, 5):
                             try:
                                 dev.disable_channel(ch)
                             except Exception:
                                 pass
                     # Disable built-in AWG and zero its setpoints if present
-                    if hasattr(dev, 'awg_set_output_enable'):
+                    if hasattr(dev, "awg_set_output_enable"):
                         try:
                             dev.awg_set_output_enable(False)
-                            if hasattr(dev, 'awg_set_function'):
-                                dev.awg_set_function('DC')
-                            if hasattr(dev, 'awg_set_offset'):
+                            if hasattr(dev, "awg_set_function"):
+                                dev.awg_set_function("DC")
+                            if hasattr(dev, "awg_set_offset"):
                                 dev.awg_set_offset(0.0)
                         except Exception:
                             pass
                 # DMM devices (dmm, dmm1, dmm2, ...)
                 elif name.startswith("dmm"):
-                    if hasattr(dev, 'reset'):
+                    if hasattr(dev, "reset"):
                         dev.reset()
                 ColorPrinter.success(f"{name}: safe state applied")
             except Exception as exc:
@@ -1689,35 +1698,35 @@ class InstrumentRepl(cmd.Cmd):
             try:
                 # PSU devices (psu, psu1, psu2, ...)
                 if name.startswith("psu"):
-                    if hasattr(dev, 'disable_all_channels'):
+                    if hasattr(dev, "disable_all_channels"):
                         dev.disable_all_channels()
                         ColorPrinter.success(f"{name}: channels disabled")
-                    elif hasattr(dev, 'disable_output'):
+                    elif hasattr(dev, "disable_output"):
                         dev.disable_output()
                         ColorPrinter.success(f"{name}: output disabled")
-                    elif hasattr(dev, 'enable_output'):
+                    elif hasattr(dev, "enable_output"):
                         dev.enable_output(False)
                         ColorPrinter.success(f"{name}: output disabled")
                 # AWG/DDS devices (awg, awg1, awg2, dds)
                 elif name.startswith("awg") or name == "dds":
-                    if hasattr(dev, 'disable_all_channels'):
+                    if hasattr(dev, "disable_all_channels"):
                         dev.disable_all_channels()
                         ColorPrinter.success(f"{name}: channels disabled")
-                    elif hasattr(dev, 'disable_output'):
+                    elif hasattr(dev, "disable_output"):
                         dev.disable_output()
                         ColorPrinter.success(f"{name}: outputs disabled")
-                    elif hasattr(dev, 'enable_output'):
+                    elif hasattr(dev, "enable_output"):
                         dev.enable_output(ch1=False, ch2=False)
                         ColorPrinter.success(f"{name}: outputs disabled")
                 # Oscilloscope (scope, scope1, scope2, ...)
                 elif name.startswith("scope"):
-                    if hasattr(dev, 'stop'):
+                    if hasattr(dev, "stop"):
                         dev.stop()
                         ColorPrinter.success(f"{name}: acquisition stopped")
-                    if hasattr(dev, 'disable_all_channels'):
+                    if hasattr(dev, "disable_all_channels"):
                         dev.disable_all_channels()
                         ColorPrinter.success(f"{name}: channels disabled")
-                    elif hasattr(dev, 'disable_channel'):
+                    elif hasattr(dev, "disable_channel"):
                         for ch in range(1, 5):
                             try:
                                 dev.disable_channel(ch)
@@ -1726,7 +1735,7 @@ class InstrumentRepl(cmd.Cmd):
                         ColorPrinter.success(f"{name}: all channels (1-4) disabled")
                 # DMM devices (dmm, dmm1, dmm2, ...)
                 elif name.startswith("dmm"):
-                    if hasattr(dev, 'reset'):
+                    if hasattr(dev, "reset"):
                         dev.reset()
                         ColorPrinter.success(f"{name}: reset")
             except Exception as exc:
@@ -1737,14 +1746,14 @@ class InstrumentRepl(cmd.Cmd):
             try:
                 # PSU devices (psu, psu1, psu2, ...)
                 if name.startswith("psu"):
-                    if hasattr(dev, 'enable_output'):
+                    if hasattr(dev, "enable_output"):
                         if not self._check_psu_output_allowed(name):
                             continue
                         dev.enable_output(True)
                         ColorPrinter.success(f"{name}: output enabled")
                 # AWG/DDS devices (awg, awg1, awg2, dds)
                 elif name.startswith("awg") or name == "dds":
-                    if hasattr(dev, 'enable_output'):
+                    if hasattr(dev, "enable_output"):
                         blocked = False
                         for ch in (1, 2):
                             if not self._check_awg_output_allowed(name, ch):
@@ -1760,7 +1769,7 @@ class InstrumentRepl(cmd.Cmd):
                         ColorPrinter.success(f"{name}: outputs enabled")
                 # Oscilloscope (scope, scope1, scope2, ...)
                 elif name.startswith("scope"):
-                    if hasattr(dev, 'enable_all_channels'):
+                    if hasattr(dev, "enable_all_channels"):
                         dev.enable_all_channels()
                         ColorPrinter.success(f"{name}: channels enabled")
                 # DMM devices - no "on" state, nothing to do
@@ -1774,14 +1783,16 @@ class InstrumentRepl(cmd.Cmd):
         "scan: discover and connect to instruments"
         args = self._parse_args(arg)
         if self._is_help(args):
-            self._print_colored_usage([
-                "# SCAN",
-                "",
-                "scan",
-                "  - discover and connect to all VISA instruments",
-                "  - instruments are assigned names: psu1, awg1, dmm1, scope1, …",
-                "  - re-run at any time to pick up newly connected devices",
-            ])
+            self._print_colored_usage(
+                [
+                    "# SCAN",
+                    "",
+                    "scan",
+                    "  - discover and connect to all VISA instruments",
+                    "  - instruments are assigned names: psu1, awg1, dmm1, scope1, …",
+                    "  - re-run at any time to pick up newly connected devices",
+                ]
+            )
             return
         if not self._scan_done.is_set():
             # Background startup scan still running — just wait for it
@@ -1817,7 +1828,7 @@ class InstrumentRepl(cmd.Cmd):
 
     def do_clear(self, arg):
         "clear: clear the terminal screen"
-        os.system('cls' if os.name == 'nt' else 'clear')
+        os.system("cls" if os.name == "nt" else "clear")
 
     def do_reload(self, arg):
         "reload: restart the REPL process to pick up changes to repl.py and lab_instruments"
@@ -1832,22 +1843,24 @@ class InstrumentRepl(cmd.Cmd):
         # sys.argv[0] may be an installed entry-point wrapper (e.g. Scripts\scpi-repl),
         # not a .py file Python can run directly. Fall back to -m in that case.
         argv0 = sys.argv[0]
-        if os.path.isfile(argv0) and argv0.endswith('.py'):
+        if os.path.isfile(argv0) and argv0.endswith(".py"):
             os.execv(sys.executable, [sys.executable] + sys.argv)
         else:
-            os.execv(sys.executable, [sys.executable, '-m', 'lab_instruments.repl'] + sys.argv[1:])
+            os.execv(sys.executable, [sys.executable, "-m", "lab_instruments.repl"] + sys.argv[1:])
 
     def do_list(self, arg):
         "list: show connected instruments"
         args = self._parse_args(arg)
         if self._is_help(args):
-            self._print_colored_usage([
-                "# LIST",
-                "",
-                "list",
-                "  - show all connected instruments and their assigned names",
-                "  - the active instrument (set via 'use') is highlighted",
-            ])
+            self._print_colored_usage(
+                [
+                    "# LIST",
+                    "",
+                    "list",
+                    "  - show all connected instruments and their assigned names",
+                    "  - the active instrument (set via 'use') is highlighted",
+                ]
+            )
             return
         self._print_devices()
 
@@ -1887,7 +1900,7 @@ class InstrumentRepl(cmd.Cmd):
 
         if cmd_token in self.devices:
             # Strip trailing digits to get the base type ("awg1" → "awg")
-            base_type = re.sub(r'\d+$', '', cmd_token)
+            base_type = re.sub(r"\d+$", "", cmd_token)
             handler = getattr(self, f"do_{base_type}", None)
             if handler:
                 self._device_override = cmd_token
@@ -1901,11 +1914,12 @@ class InstrumentRepl(cmd.Cmd):
         normalized = line.strip().lower().rstrip("?").strip()
 
         if normalized == "who made these drivers":
-            print(f"\033[91mYOU DID KING! 👑\033[0m")
+            print("\033[91mYOU DID KING! 👑\033[0m")
             return
 
         if normalized in ("jeremie", "jhews"):
             self._jerminator = True
+
             def _jerminator_loop():
                 msgs = ["FUCK JEREMIE"]
                 i = 0
@@ -1922,6 +1936,7 @@ class InstrumentRepl(cmd.Cmd):
                             pass
                     i += 1
                     time.sleep(0.5)
+
             t = threading.Thread(target=_jerminator_loop, daemon=True, name="jerminator")
             t.start()
             ColorPrinter.warning("FUCK YOU JEREMIE")
@@ -1934,16 +1949,18 @@ class InstrumentRepl(cmd.Cmd):
         "idn [name]: query *IDN? for selected or named instrument"
         args = self._parse_args(arg)
         if self._is_help(args):
-            self._print_colored_usage([
-                "# IDN",
-                "",
-                "idn",
-                "  - query *IDN? on the active instrument",
-                "idn <name>",
-                "  - query *IDN? on a specific named instrument",
-                "  - example: idn dmm",
-                "  - example: idn psu2",
-            ])
+            self._print_colored_usage(
+                [
+                    "# IDN",
+                    "",
+                    "idn",
+                    "  - query *IDN? on the active instrument",
+                    "idn <name>",
+                    "  - query *IDN? on a specific named instrument",
+                    "  - example: idn dmm",
+                    "  - example: idn psu2",
+                ]
+            )
             return
         name = args[0] if args else None
         dev = self._get_device(name)
@@ -1959,19 +1976,21 @@ class InstrumentRepl(cmd.Cmd):
         args = self._parse_args(arg)
         args, help_flag = self._strip_help(args)
         if not args or help_flag:
-            self._print_colored_usage([
-                "# RAW",
-                "",
-                "raw <scpi>",
-                "  - send a raw SCPI command to the active instrument",
-                "  - commands ending with ? are queries — response is printed",
-                "raw <name> <scpi>",
-                "  - send to a specific named instrument",
-                "  - example: raw *IDN?",
-                "  - example: raw *RST",
-                "  - example: raw scope MEASUrement:IMMed:VALue?",
-                "  - example: raw psu2 MEAS:VOLT?",
-            ])
+            self._print_colored_usage(
+                [
+                    "# RAW",
+                    "",
+                    "raw <scpi>",
+                    "  - send a raw SCPI command to the active instrument",
+                    "  - commands ending with ? are queries — response is printed",
+                    "raw <name> <scpi>",
+                    "  - send to a specific named instrument",
+                    "  - example: raw *IDN?",
+                    "  - example: raw *RST",
+                    "  - example: raw scope MEASUrement:IMMed:VALue?",
+                    "  - example: raw psu2 MEAS:VOLT?",
+                ]
+            )
             return
         name = None
         if args[0] in self.devices:
@@ -1994,44 +2013,48 @@ class InstrumentRepl(cmd.Cmd):
         "state [safe|reset|list] or state <device> <safe|reset|on|off>"
         args = self._parse_args(arg)
         if self._is_help(args):
-            self._print_colored_usage([
-                "# STATE",
-                "",
-                "state on",
-                "  - enable outputs on all instruments",
-                "state off",
-                "  - disable outputs on all instruments",
-                "state safe",
-                "  - apply safe state to all instruments (voltage/current to minimum)",
-                "state reset",
-                "  - send *RST to all instruments",
-                "state <device> on|off|safe|reset",
-                "  - apply a state to one specific instrument",
-                "  - example: state psu1 off",
-                "  - example: state awg safe",
-                "state list",
-                "  - show current output state of all instruments",
-            ])
+            self._print_colored_usage(
+                [
+                    "# STATE",
+                    "",
+                    "state on",
+                    "  - enable outputs on all instruments",
+                    "state off",
+                    "  - disable outputs on all instruments",
+                    "state safe",
+                    "  - apply safe state to all instruments (voltage/current to minimum)",
+                    "state reset",
+                    "  - send *RST to all instruments",
+                    "state <device> on|off|safe|reset",
+                    "  - apply a state to one specific instrument",
+                    "  - example: state psu1 off",
+                    "  - example: state awg safe",
+                    "state list",
+                    "  - show current output state of all instruments",
+                ]
+            )
             return
         if not args or args[0] == "list":
-            self._print_colored_usage([
-                "# STATE",
-                "",
-                "state on",
-                "  - enable outputs on all instruments",
-                "state off",
-                "  - disable outputs on all instruments",
-                "state safe",
-                "  - apply safe state to all instruments (voltage/current to minimum)",
-                "state reset",
-                "  - send *RST to all instruments",
-                "state <device> on|off|safe|reset",
-                "  - apply a state to one specific instrument",
-                "  - example: state psu1 off",
-                "  - example: state awg safe",
-                "state list",
-                "  - show current output state of all instruments",
-            ])
+            self._print_colored_usage(
+                [
+                    "# STATE",
+                    "",
+                    "state on",
+                    "  - enable outputs on all instruments",
+                    "state off",
+                    "  - disable outputs on all instruments",
+                    "state safe",
+                    "  - apply safe state to all instruments (voltage/current to minimum)",
+                    "state reset",
+                    "  - send *RST to all instruments",
+                    "state <device> on|off|safe|reset",
+                    "  - apply a state to one specific instrument",
+                    "  - example: state psu1 off",
+                    "  - example: state awg safe",
+                    "state list",
+                    "  - show current output state of all instruments",
+                ]
+            )
             return
 
         if args[0] in ("safe", "reset", "off", "on"):
@@ -2058,17 +2081,17 @@ class InstrumentRepl(cmd.Cmd):
         try:
             if name.startswith("psu"):
                 if state in ("safe", "off"):
-                    if hasattr(dev, 'disable_all_channels'):
+                    if hasattr(dev, "disable_all_channels"):
                         dev.disable_all_channels()
-                    elif hasattr(dev, 'disable_output'):
+                    elif hasattr(dev, "disable_output"):
                         dev.disable_output()
-                    elif hasattr(dev, 'enable_output'):
+                    elif hasattr(dev, "enable_output"):
                         dev.enable_output(False)
                     ColorPrinter.success(f"{name}: output disabled")
                 elif state == "on":
                     if not self._check_psu_output_allowed(name):
                         return
-                    if hasattr(dev, 'enable_output'):
+                    if hasattr(dev, "enable_output"):
                         dev.enable_output(True)
                     ColorPrinter.success(f"{name}: output enabled")
                 elif state == "reset":
@@ -2078,11 +2101,11 @@ class InstrumentRepl(cmd.Cmd):
                     ColorPrinter.warning("PSU states: on, off, safe, reset")
             elif name.startswith("awg") or name == "dds":
                 if state in ("safe", "off"):
-                    if hasattr(dev, 'disable_all_channels'):
+                    if hasattr(dev, "disable_all_channels"):
                         dev.disable_all_channels()
-                    elif hasattr(dev, 'disable_output'):
+                    elif hasattr(dev, "disable_output"):
                         dev.disable_output()
-                    elif hasattr(dev, 'enable_output'):
+                    elif hasattr(dev, "enable_output"):
                         try:
                             dev.enable_output(ch1=False, ch2=False)
                         except TypeError:
@@ -2092,9 +2115,9 @@ class InstrumentRepl(cmd.Cmd):
                     for ch in (1, 2):
                         if not self._check_awg_output_allowed(name, ch):
                             return
-                    if hasattr(dev, 'enable_all_channels'):
+                    if hasattr(dev, "enable_all_channels"):
                         dev.enable_all_channels()
-                    elif hasattr(dev, 'enable_output'):
+                    elif hasattr(dev, "enable_output"):
                         try:
                             dev.enable_output(ch1=True, ch2=True)
                         except TypeError:
@@ -2107,9 +2130,9 @@ class InstrumentRepl(cmd.Cmd):
                     ColorPrinter.warning("AWG states: on, off, safe, reset")
             elif name.startswith("scope"):
                 if state in ("safe", "off"):
-                    if hasattr(dev, 'disable_all_channels'):
+                    if hasattr(dev, "disable_all_channels"):
                         dev.disable_all_channels()
-                    elif hasattr(dev, 'disable_channel'):
+                    elif hasattr(dev, "disable_channel"):
                         for ch in range(1, 5):
                             try:
                                 dev.disable_channel(ch)
@@ -2117,9 +2140,9 @@ class InstrumentRepl(cmd.Cmd):
                                 pass
                     ColorPrinter.success(f"{name}: channels disabled")
                 elif state == "on":
-                    if hasattr(dev, 'enable_all_channels'):
+                    if hasattr(dev, "enable_all_channels"):
                         dev.enable_all_channels()
-                    elif hasattr(dev, 'enable_channel'):
+                    elif hasattr(dev, "enable_channel"):
                         for ch in range(1, 5):
                             try:
                                 dev.enable_channel(ch)
@@ -2144,13 +2167,15 @@ class InstrumentRepl(cmd.Cmd):
         "close: disconnect all instruments"
         args = self._parse_args(arg)
         if self._is_help(args):
-            self._print_colored_usage([
-                "# CLOSE",
-                "",
-                "close",
-                "  - disconnect all instruments and release VISA resources",
-                "  - use 'scan' to reconnect",
-            ])
+            self._print_colored_usage(
+                [
+                    "# CLOSE",
+                    "",
+                    "close",
+                    "  - disconnect all instruments and release VISA resources",
+                    "  - use 'scan' to reconnect",
+                ]
+            )
             return
         for name, dev in self.devices.items():
             try:
@@ -2165,13 +2190,15 @@ class InstrumentRepl(cmd.Cmd):
         "status: show current selection"
         args = self._parse_args(arg)
         if self._is_help(args):
-            self._print_colored_usage([
-                "# STATUS",
-                "",
-                "status",
-                "  - show all connected instruments and their assigned names",
-                "  - indicates which instrument is currently active (set via 'use')",
-            ])
+            self._print_colored_usage(
+                [
+                    "# STATUS",
+                    "",
+                    "status",
+                    "  - show all connected instruments and their assigned names",
+                    "  - indicates which instrument is currently active (set via 'use')",
+                ]
+            )
             return
         if not self.devices:
             ColorPrinter.warning("No instruments connected.")
@@ -2184,19 +2211,21 @@ class InstrumentRepl(cmd.Cmd):
         args = self._parse_args(arg)
         args, help_flag = self._strip_help(args)
         if not args or help_flag:
-            self._print_colored_usage([
-                "# SLEEP",
-                "",
-                "sleep <duration>[us|ms|s|m]",
-                "  - pause execution for the specified duration",
-                "  - default unit is seconds when no suffix is given",
-                "  - example: sleep 500ms    (500 milliseconds)",
-                "  - example: sleep 1.5      (1.5 seconds)",
-                "  - example: sleep 100us    (100 microseconds)",
-                "  - example: sleep 2m       (2 minutes)",
-                "wait <duration>[us|ms|s|m]",
-                "  - alias for sleep",
-            ])
+            self._print_colored_usage(
+                [
+                    "# SLEEP",
+                    "",
+                    "sleep <duration>[us|ms|s|m]",
+                    "  - pause execution for the specified duration",
+                    "  - default unit is seconds when no suffix is given",
+                    "  - example: sleep 500ms    (500 milliseconds)",
+                    "  - example: sleep 1.5      (1.5 seconds)",
+                    "  - example: sleep 100us    (100 microseconds)",
+                    "  - example: sleep 2m       (2 minutes)",
+                    "wait <duration>[us|ms|s|m]",
+                    "  - alias for sleep",
+                ]
+            )
             return
         raw = args[0].strip()
         _suffix_map = [("us", 1e-6), ("ms", 1e-3), ("min", 60.0), ("m", 60.0), ("s", 1.0)]
@@ -2205,7 +2234,7 @@ class InstrumentRepl(cmd.Cmd):
         for suffix, factor in _suffix_map:
             if raw.lower().endswith(suffix):
                 try:
-                    delay = float(raw[:-len(suffix)]) * factor
+                    delay = float(raw[: -len(suffix)]) * factor
                     label = raw
                     break
                 except ValueError:
@@ -2240,6 +2269,7 @@ class InstrumentRepl(cmd.Cmd):
     def do_print(self, arg):
         "print <message>: display a message (useful in scripts)"
         import builtins
+
         args = self._parse_args(arg)
         msg = " ".join(args) if args else ""
         builtins.print(f"{ColorPrinter.CYAN}{msg}{ColorPrinter.RESET}")
@@ -2247,6 +2277,7 @@ class InstrumentRepl(cmd.Cmd):
     def do_pause(self, arg):
         "pause [message]: wait for Enter (useful in scripts to prompt operator)"
         import builtins
+
         args = self._parse_args(arg)
         prompt = " ".join(args) if args else "Press Enter to continue..."
         builtins.input(f"{ColorPrinter.YELLOW}{prompt}{ColorPrinter.RESET} ")
@@ -2254,6 +2285,7 @@ class InstrumentRepl(cmd.Cmd):
     def do_input(self, arg):
         "input <varname> [prompt]: read a value from the user and store in ${varname} for use in scripts"
         import builtins
+
         args = self._parse_args(arg)
         if not args:
             ColorPrinter.warning("Usage: input <varname> [prompt]")
@@ -2274,14 +2306,14 @@ class InstrumentRepl(cmd.Cmd):
                 for k, v in self._script_vars.items():
                     print(f"  {k} = {v}")
             return
-        
+
         key = args[0]
         # Join the rest of arguments to handle expressions with spaces
         raw_val = " ".join(args[1:])
-        
+
         # Perform substitution on the expression itself (e.g. set v2 ${v1} * 2)
         raw_val = self._substitute_vars(raw_val, self._script_vars)
-        
+
         try:
             # Try to evaluate as math expression
             num_vars = {}
@@ -2295,62 +2327,64 @@ class InstrumentRepl(cmd.Cmd):
         except Exception:
             # Fallback to string literal
             self._script_vars[key] = raw_val
-            
+
         ColorPrinter.success(f"{key} = {self._script_vars[key]}")
 
     def do_upper_limit(self, arg):
         "upper_limit <device> [chan <N>] <param> <value>  —  set an upper safety limit"
         if not arg:
-            self._print_colored_usage([
-                "# UPPER LIMIT",
-                "",
-                "upper_limit <device> [chan <N>] <param> <value>",
-                "",
-                "  device    psu | awg | psu1 | awg1 | …  (type or specific name)",
-                "  chan N     optional — restrict to channel N; omit for all channels",
-                "  value      numeric ceiling (inclusive — equal value is allowed)",
-                "",
-                "# PSU PARAMS",
-                "",
-                "upper_limit psu voltage <V>",
-                "  - cap output voltage on all PSU channels",
-                "upper_limit psu current <A>",
-                "  - cap the current-limit setting",
-                "upper_limit psu chan <N> voltage <V>",
-                "  - restrict a specific channel; other channels are unaffected",
-                "",
-                "# AWG PARAMS",
-                "",
-                "upper_limit awg voltage <V>",
-                "  - alias → vpeak  (peak = offset + vpp/2)  blocks if peak > value",
-                "upper_limit awg vpp <V>",
-                "  - cap peak-to-peak amplitude",
-                "upper_limit awg freq <Hz>",
-                "  - cap output frequency",
-                "upper_limit awg chan <N> voltage <V>",
-                "  - channel-specific peak cap",
-                "",
-                "  Hierarchy: tightest bound wins across named-device, device-type,",
-                "  and channel-specific scopes. Most-specific limit always takes effect.",
-                "",
-                "  Retroactive: after setting a limit the REPL immediately warns if any",
-                "  current instrument state already violates it (advisory only, no block).",
-                "",
-                "# EXAMPLES",
-                "",
-                "upper_limit psu voltage 5.0",
-                "  - PSU output must stay ≤ 5 V on every channel",
-                "upper_limit psu chan 1 voltage 2.1",
-                "  - channel 1 only: ≤ 2.1 V  (ch2+ are unaffected)",
-                "upper_limit psu1 voltage 3.3",
-                "  - named instrument psu1: ≤ 3.3 V",
-                "upper_limit awg voltage 3.3",
-                "  - AWG peak ≤ 3.3 V  (sets vpeak limit via voltage alias)",
-                "upper_limit awg vpp 10.0",
-                "  - AWG amplitude ≤ 10 Vpp",
-                "upper_limit awg chan 1 freq 1e6",
-                "  - channel 1: frequency ≤ 1 MHz",
-            ])
+            self._print_colored_usage(
+                [
+                    "# UPPER LIMIT",
+                    "",
+                    "upper_limit <device> [chan <N>] <param> <value>",
+                    "",
+                    "  device    psu | awg | psu1 | awg1 | …  (type or specific name)",
+                    "  chan N     optional — restrict to channel N; omit for all channels",
+                    "  value      numeric ceiling (inclusive — equal value is allowed)",
+                    "",
+                    "# PSU PARAMS",
+                    "",
+                    "upper_limit psu voltage <V>",
+                    "  - cap output voltage on all PSU channels",
+                    "upper_limit psu current <A>",
+                    "  - cap the current-limit setting",
+                    "upper_limit psu chan <N> voltage <V>",
+                    "  - restrict a specific channel; other channels are unaffected",
+                    "",
+                    "# AWG PARAMS",
+                    "",
+                    "upper_limit awg voltage <V>",
+                    "  - alias → vpeak  (peak = offset + vpp/2)  blocks if peak > value",
+                    "upper_limit awg vpp <V>",
+                    "  - cap peak-to-peak amplitude",
+                    "upper_limit awg freq <Hz>",
+                    "  - cap output frequency",
+                    "upper_limit awg chan <N> voltage <V>",
+                    "  - channel-specific peak cap",
+                    "",
+                    "  Hierarchy: tightest bound wins across named-device, device-type,",
+                    "  and channel-specific scopes. Most-specific limit always takes effect.",
+                    "",
+                    "  Retroactive: after setting a limit the REPL immediately warns if any",
+                    "  current instrument state already violates it (advisory only, no block).",
+                    "",
+                    "# EXAMPLES",
+                    "",
+                    "upper_limit psu voltage 5.0",
+                    "  - PSU output must stay ≤ 5 V on every channel",
+                    "upper_limit psu chan 1 voltage 2.1",
+                    "  - channel 1 only: ≤ 2.1 V  (ch2+ are unaffected)",
+                    "upper_limit psu1 voltage 3.3",
+                    "  - named instrument psu1: ≤ 3.3 V",
+                    "upper_limit awg voltage 3.3",
+                    "  - AWG peak ≤ 3.3 V  (sets vpeak limit via voltage alias)",
+                    "upper_limit awg vpp 10.0",
+                    "  - AWG amplitude ≤ 10 Vpp",
+                    "upper_limit awg chan 1 freq 1e6",
+                    "  - channel 1: frequency ≤ 1 MHz",
+                ]
+            )
             return
         before = self._command_had_error
         self._command_had_error = False
@@ -2363,54 +2397,56 @@ class InstrumentRepl(cmd.Cmd):
     def do_lower_limit(self, arg):
         "lower_limit <device> [chan <N>] <param> <value>  —  set a lower safety limit"
         if not arg:
-            self._print_colored_usage([
-                "# LOWER LIMIT",
-                "",
-                "lower_limit <device> [chan <N>] <param> <value>",
-                "",
-                "  device    psu | awg | psu1 | awg1 | …  (type or specific name)",
-                "  chan N     optional — restrict to channel N; omit for all channels",
-                "  value      numeric floor (inclusive — equal value is allowed)",
-                "",
-                "# PSU PARAMS",
-                "",
-                "lower_limit psu voltage <V>",
-                "  - floor for output voltage on all PSU channels",
-                "lower_limit psu current <A>",
-                "  - floor for the current-limit setting",
-                "lower_limit psu chan <N> voltage <V>",
-                "  - channel-specific voltage floor",
-                "",
-                "# AWG PARAMS",
-                "",
-                "lower_limit awg voltage <V>",
-                "  - alias → vtrough  (trough = offset − vpp/2)  blocks if trough < value",
-                "lower_limit awg vpp <V>",
-                "  - minimum peak-to-peak amplitude",
-                "lower_limit awg freq <Hz>",
-                "  - minimum output frequency",
-                "lower_limit awg chan <N> voltage <V>",
-                "  - channel-specific trough floor",
-                "",
-                "  Hierarchy: tightest bound wins across named-device, device-type,",
-                "  and channel-specific scopes. Most-specific limit always takes effect.",
-                "",
-                "  Retroactive: after setting a limit the REPL immediately warns if any",
-                "  current instrument state already violates it (advisory only, no block).",
-                "",
-                "# EXAMPLES",
-                "",
-                "lower_limit psu voltage 0.5",
-                "  - PSU output must stay ≥ 0.5 V on every channel",
-                "lower_limit psu chan 1 voltage 0.1",
-                "  - channel 1 only: ≥ 0.1 V  (ch2+ are unaffected)",
-                "lower_limit awg voltage -0.3",
-                "  - AWG trough ≥ −0.3 V  (sets vtrough limit via voltage alias)",
-                "lower_limit awg vpp 1.0",
-                "  - AWG amplitude ≥ 1.0 Vpp",
-                "lower_limit awg chan 2 vtrough -5.0",
-                "  - channel 2 trough floor of −5 V",
-            ])
+            self._print_colored_usage(
+                [
+                    "# LOWER LIMIT",
+                    "",
+                    "lower_limit <device> [chan <N>] <param> <value>",
+                    "",
+                    "  device    psu | awg | psu1 | awg1 | …  (type or specific name)",
+                    "  chan N     optional — restrict to channel N; omit for all channels",
+                    "  value      numeric floor (inclusive — equal value is allowed)",
+                    "",
+                    "# PSU PARAMS",
+                    "",
+                    "lower_limit psu voltage <V>",
+                    "  - floor for output voltage on all PSU channels",
+                    "lower_limit psu current <A>",
+                    "  - floor for the current-limit setting",
+                    "lower_limit psu chan <N> voltage <V>",
+                    "  - channel-specific voltage floor",
+                    "",
+                    "# AWG PARAMS",
+                    "",
+                    "lower_limit awg voltage <V>",
+                    "  - alias → vtrough  (trough = offset − vpp/2)  blocks if trough < value",
+                    "lower_limit awg vpp <V>",
+                    "  - minimum peak-to-peak amplitude",
+                    "lower_limit awg freq <Hz>",
+                    "  - minimum output frequency",
+                    "lower_limit awg chan <N> voltage <V>",
+                    "  - channel-specific trough floor",
+                    "",
+                    "  Hierarchy: tightest bound wins across named-device, device-type,",
+                    "  and channel-specific scopes. Most-specific limit always takes effect.",
+                    "",
+                    "  Retroactive: after setting a limit the REPL immediately warns if any",
+                    "  current instrument state already violates it (advisory only, no block).",
+                    "",
+                    "# EXAMPLES",
+                    "",
+                    "lower_limit psu voltage 0.5",
+                    "  - PSU output must stay ≥ 0.5 V on every channel",
+                    "lower_limit psu chan 1 voltage 0.1",
+                    "  - channel 1 only: ≥ 0.1 V  (ch2+ are unaffected)",
+                    "lower_limit awg voltage -0.3",
+                    "  - AWG trough ≥ −0.3 V  (sets vtrough limit via voltage alias)",
+                    "lower_limit awg vpp 1.0",
+                    "  - AWG amplitude ≥ 1.0 Vpp",
+                    "lower_limit awg chan 2 vtrough -5.0",
+                    "  - channel 2 trough floor of −5 V",
+                ]
+            )
             return
         before = self._command_had_error
         self._command_had_error = False
@@ -2426,73 +2462,75 @@ class InstrumentRepl(cmd.Cmd):
         args, help_flag = self._strip_help(args)
 
         if not args or help_flag:
-            self._print_colored_usage([
-                "# SCRIPT",
-                "",
-                "script new <name>",
-                "script run <name> [key=val ...]",
-                "  - example: script run my_test voltage=5.0",
-                "script debug <name> [key=val ...]",
-                "  - run script in step-through debugger",
-                "script edit <name>",
-                "script list",
-                "script rm <name>",
-                "script show <name>",
-                "script import <name> <path>",
-                "  - import any text/.scpi file as a named script",
-                "script load",
-                "  - reload scripts from disk (picks up manual edits)",
-                "script save",
-                "  - show where scripts are stored on disk",
-                "script dir [path|reset]",
-                "  - get or set the scripts directory for this session",
-                "",
-                "# SCRIPT DIRECTIVES",
-                "",
-                "print <message>",
-                "  - display a message to the operator",
-                "pause [message]",
-                "  - wait for operator to press Enter",
-                "input <varname> [prompt]",
-                "  - prompt operator for a value, store in ${varname}",
-                "  - example: input voltage Enter PSU voltage:",
-                "  - use ${varname} in subsequent lines to reference it",
-                "set <varname> <expr>",
-                "  - compute a value at script build time",
-                "  - example: set v2 ${v1} * 2",
-                "array <varname>  ...  end",
-                "  - build a list across multiple lines; comment lines with # to skip",
-                "import <varname> [varname2 ...]",
-                "  - bring a variable from the parent scope (REPL or calling script)",
-                "  - example: import FREQ VREF",
-                "export <varname> [varname2 ...]",
-                "  - push a variable back to the parent scope when script finishes",
-                "  - example: export RESULT",
-                "upper_limit <device> [chan <N>] <param> <value>",
-                "lower_limit <device> [chan <N>] <param> <value>",
-                "  - set safety limits; also work at interactive prompt",
-                "  - example: upper_limit psu chan 1 voltage 2.1",
-                "  - example: lower_limit awg vtrough -0.3",
-                "sleep <seconds>",
-                "repeat <N>  ...  end",
-                "for <var> <val1> <val2> ...  end",
-                "call <name> [key=val ...]",
-                "breakpoint",
-                "  - pause execution and drop into the debugger at this line",
-                "",
-                "# DEBUGGER COMMANDS (at (dbg) prompt)",
-                "",
-                "n / Enter  step: execute current line and advance",
-                "c          continue: run until next breakpoint or end",
-                "back       move pointer back one line (does NOT undo instrument state)",
-                "goto N     jump to line N (skipped lines NOT executed)",
-                "b N        set breakpoint at line N",
-                "d N        delete breakpoint at line N",
-                "l          list: show more context around current line",
-                "info       show current position and all breakpoints",
-                "q          quit / abort the script",
-                "<cmd>      any REPL command runs immediately while paused",
-            ])
+            self._print_colored_usage(
+                [
+                    "# SCRIPT",
+                    "",
+                    "script new <name>",
+                    "script run <name> [key=val ...]",
+                    "  - example: script run my_test voltage=5.0",
+                    "script debug <name> [key=val ...]",
+                    "  - run script in step-through debugger",
+                    "script edit <name>",
+                    "script list",
+                    "script rm <name>",
+                    "script show <name>",
+                    "script import <name> <path>",
+                    "  - import any text/.scpi file as a named script",
+                    "script load",
+                    "  - reload scripts from disk (picks up manual edits)",
+                    "script save",
+                    "  - show where scripts are stored on disk",
+                    "script dir [path|reset]",
+                    "  - get or set the scripts directory for this session",
+                    "",
+                    "# SCRIPT DIRECTIVES",
+                    "",
+                    "print <message>",
+                    "  - display a message to the operator",
+                    "pause [message]",
+                    "  - wait for operator to press Enter",
+                    "input <varname> [prompt]",
+                    "  - prompt operator for a value, store in ${varname}",
+                    "  - example: input voltage Enter PSU voltage:",
+                    "  - use ${varname} in subsequent lines to reference it",
+                    "set <varname> <expr>",
+                    "  - compute a value at script build time",
+                    "  - example: set v2 ${v1} * 2",
+                    "array <varname>  ...  end",
+                    "  - build a list across multiple lines; comment lines with # to skip",
+                    "import <varname> [varname2 ...]",
+                    "  - bring a variable from the parent scope (REPL or calling script)",
+                    "  - example: import FREQ VREF",
+                    "export <varname> [varname2 ...]",
+                    "  - push a variable back to the parent scope when script finishes",
+                    "  - example: export RESULT",
+                    "upper_limit <device> [chan <N>] <param> <value>",
+                    "lower_limit <device> [chan <N>] <param> <value>",
+                    "  - set safety limits; also work at interactive prompt",
+                    "  - example: upper_limit psu chan 1 voltage 2.1",
+                    "  - example: lower_limit awg vtrough -0.3",
+                    "sleep <seconds>",
+                    "repeat <N>  ...  end",
+                    "for <var> <val1> <val2> ...  end",
+                    "call <name> [key=val ...]",
+                    "breakpoint",
+                    "  - pause execution and drop into the debugger at this line",
+                    "",
+                    "# DEBUGGER COMMANDS (at (dbg) prompt)",
+                    "",
+                    "n / Enter  step: execute current line and advance",
+                    "c          continue: run until next breakpoint or end",
+                    "back       move pointer back one line (does NOT undo instrument state)",
+                    "goto N     jump to line N (skipped lines NOT executed)",
+                    "b N        set breakpoint at line N",
+                    "d N        delete breakpoint at line N",
+                    "l          list: show more context around current line",
+                    "info       show current position and all breakpoints",
+                    "q          quit / abort the script",
+                    "<cmd>      any REPL command runs immediately while paused",
+                ]
+            )
             return
 
         subcmd = args[0].lower()
@@ -2509,7 +2547,9 @@ class InstrumentRepl(cmd.Cmd):
                 # the user gets a clean new script instead of a false positive.
                 del self.scripts[name]
             if file_exists:
-                ColorPrinter.warning(f"Script '{name}' already exists — opening for edit. Use 'script rm {name}' first to start fresh.")
+                ColorPrinter.warning(
+                    f"Script '{name}' already exists — opening for edit. Use 'script rm {name}' first to start fresh."
+                )
             lines = self._edit_script_in_editor(name, self.scripts.get(name, []))
             if lines is not None:
                 self.scripts[name] = lines
@@ -2538,14 +2578,15 @@ class InstrumentRepl(cmd.Cmd):
             name = args[1]
 
             # If name looks like a file path, load directly without touching scripts dir
-            is_path = ('/' in name or '\\' in name or name.startswith('.')
-                       or os.path.isabs(name) or name.endswith('.scpi'))
+            is_path = (
+                "/" in name or "\\" in name or name.startswith(".") or os.path.isabs(name) or name.endswith(".scpi")
+            )
             if is_path:
-                file_path = os.path.abspath(name if name.endswith('.scpi') else name + '.scpi')
+                file_path = os.path.abspath(name if name.endswith(".scpi") else name + ".scpi")
                 if not os.path.exists(file_path):
                     file_path = os.path.abspath(name)
                 try:
-                    with open(file_path, "r", encoding="utf-8") as f:
+                    with open(file_path, encoding="utf-8") as f:
                         lines = [line.rstrip("\n") for line in f.readlines()]
                     while lines and not lines[-1].strip():
                         lines.pop()
@@ -2564,16 +2605,14 @@ class InstrumentRepl(cmd.Cmd):
                 if "=" in token:
                     key, value = token.split("=", 1)
                     params[key] = value
-            
+
             # Scripts start with an isolated scope — only explicit params are in scope.
             # Use 'import VAR' inside the script to pull in a REPL variable.
             # Use 'export VAR' inside the script to push a variable back to the REPL.
             run_vars = dict(params)
             run_exports = {}
 
-            expanded = self._expand_script_lines(
-                lines, run_vars, parent_vars=self._script_vars, exports=run_exports
-            )
+            expanded = self._expand_script_lines(lines, run_vars, parent_vars=self._script_vars, exports=run_exports)
 
             # Only explicitly exported variables survive back to the REPL
             self._script_vars.update(run_exports)
@@ -2584,14 +2623,15 @@ class InstrumentRepl(cmd.Cmd):
                 ColorPrinter.warning("Usage: script debug <name|path> [key=val ...]")
                 return
             name = args[1]
-            is_path = ('/' in name or '\\' in name or name.startswith('.')
-                       or os.path.isabs(name) or name.endswith('.scpi'))
+            is_path = (
+                "/" in name or "\\" in name or name.startswith(".") or os.path.isabs(name) or name.endswith(".scpi")
+            )
             if is_path:
-                file_path = os.path.abspath(name if name.endswith('.scpi') else name + '.scpi')
+                file_path = os.path.abspath(name if name.endswith(".scpi") else name + ".scpi")
                 if not os.path.exists(file_path):
                     file_path = os.path.abspath(name)
                 try:
-                    with open(file_path, "r", encoding="utf-8") as f:
+                    with open(file_path, encoding="utf-8") as f:
                         lines = [line.rstrip("\n") for line in f.readlines()]
                     while lines and not lines[-1].strip():
                         lines.pop()
@@ -2603,7 +2643,7 @@ class InstrumentRepl(cmd.Cmd):
                 script_path = self._script_file(name)
                 if os.path.exists(script_path):
                     try:
-                        with open(script_path, "r", encoding="utf-8") as f:
+                        with open(script_path, encoding="utf-8") as f:
                             lines = [line.rstrip("\n") for line in f.readlines()]
                         while lines and not lines[-1].strip():
                             lines.pop()
@@ -2621,11 +2661,11 @@ class InstrumentRepl(cmd.Cmd):
                     params[key] = value
             run_vars = dict(params)
             run_exports = {}
-            expanded = self._expand_script_lines(
-                lines, run_vars, parent_vars=self._script_vars, exports=run_exports
-            )
+            expanded = self._expand_script_lines(lines, run_vars, parent_vars=self._script_vars, exports=run_exports)
             self._script_vars.update(run_exports)
-            ColorPrinter.info(f"Debugger started — {len([cmd for cmd, _ in expanded if cmd.strip() and not cmd.strip().startswith('#') and cmd.strip() != '__BREAKPOINT__'])} commands expanded")
+            ColorPrinter.info(
+                f"Debugger started — {len([cmd for cmd, _ in expanded if cmd.strip() and not cmd.strip().startswith('#') and cmd.strip() != '__BREAKPOINT__'])} commands expanded"
+            )
             self._run_expanded(expanded, debug=True)
 
         elif subcmd == "edit":
@@ -2649,7 +2689,9 @@ class InstrumentRepl(cmd.Cmd):
             for name in sorted(self.scripts.keys()):
                 lines = self.scripts[name]
                 count = f"{len(lines)} lines" if lines else "empty"
-                print(f"  {ColorPrinter.CYAN}{name}{ColorPrinter.RESET}  {ColorPrinter.YELLOW}({count}){ColorPrinter.RESET}")
+                print(
+                    f"  {ColorPrinter.CYAN}{name}{ColorPrinter.RESET}  {ColorPrinter.YELLOW}({count}){ColorPrinter.RESET}"
+                )
 
         elif subcmd == "rm":
             if len(args) < 2:
@@ -2676,7 +2718,11 @@ class InstrumentRepl(cmd.Cmd):
             ColorPrinter.info(f"Script '{name}':")
             for i, line in enumerate(self.scripts[name], 1):
                 num = f"{ColorPrinter.YELLOW}{i:3d}{ColorPrinter.RESET}"
-                text = f"{ColorPrinter.CYAN}{line}{ColorPrinter.RESET}" if line.strip() and not line.strip().startswith("#") else f"{ColorPrinter.GREEN}{line}{ColorPrinter.RESET}"
+                text = (
+                    f"{ColorPrinter.CYAN}{line}{ColorPrinter.RESET}"
+                    if line.strip() and not line.strip().startswith("#")
+                    else f"{ColorPrinter.GREEN}{line}{ColorPrinter.RESET}"
+                )
                 print(f"  {num}  {text}")
 
         elif subcmd == "import":
@@ -2686,7 +2732,7 @@ class InstrumentRepl(cmd.Cmd):
             name = args[1]
             path = args[2]
             try:
-                with open(path, "r", encoding="utf-8") as handle:
+                with open(path, encoding="utf-8") as handle:
                     lines = [line.rstrip("\n") for line in handle.readlines()]
                 while lines and not lines[-1].strip():
                     lines.pop()
@@ -2714,7 +2760,9 @@ class InstrumentRepl(cmd.Cmd):
             if path.lower() == "reset":
                 self._scripts_dir_override = None
                 self.scripts = self._load_scripts()
-                ColorPrinter.success(f"Scripts dir reset to default: {self._get_scripts_dir()} ({len(self.scripts)} scripts loaded)")
+                ColorPrinter.success(
+                    f"Scripts dir reset to default: {self._get_scripts_dir()} ({len(self.scripts)} scripts loaded)"
+                )
             else:
                 resolved = os.path.abspath(path)
                 try:
@@ -2738,18 +2786,20 @@ class InstrumentRepl(cmd.Cmd):
         args, help_flag = self._strip_help(args)
 
         if not args or help_flag:
-            self._print_colored_usage([
-                "# RECORD",
-                "",
-                "record start <name>",
-                "  - begin recording all REPL commands into script <name>",
-                "  - creates the script if it doesn't exist and opens it in your editor",
-                "  - every command you type is appended to the file live",
-                "record stop",
-                "  - stop recording",
-                "record status",
-                "  - show whether recording is active and to which script",
-            ])
+            self._print_colored_usage(
+                [
+                    "# RECORD",
+                    "",
+                    "record start <name>",
+                    "  - begin recording all REPL commands into script <name>",
+                    "  - creates the script if it doesn't exist and opens it in your editor",
+                    "  - every command you type is appended to the file live",
+                    "record stop",
+                    "  - stop recording",
+                    "record status",
+                    "  - show whether recording is active and to which script",
+                ]
+            )
             return
 
         subcmd = args[0].lower()
@@ -2791,10 +2841,7 @@ class InstrumentRepl(cmd.Cmd):
             if self._record_script:
                 n = len(self.scripts.get(self._record_script, []))
                 path = self._script_file(self._record_script)
-                ColorPrinter.info(
-                    f"Recording active: '{self._record_script}' ({n} lines so far)\n"
-                    f"  File: {path}"
-                )
+                ColorPrinter.info(f"Recording active: '{self._record_script}' ({n} lines so far)\n  File: {path}")
             else:
                 ColorPrinter.info("Not recording. Use 'record start <name>' to begin.")
 
@@ -2808,20 +2855,24 @@ class InstrumentRepl(cmd.Cmd):
         args, help_flag = self._strip_help(args)
 
         if not args or help_flag:
-            self._print_colored_usage([
-                "# EXAMPLES",
-                "",
-                "examples",
-                "  - list all bundled example scripts",
-                "examples load <name>",
-                "  - copy a bundled example into your scripts (then: script run <name>)",
-                "examples load all",
-                "  - load every bundled example at once",
-            ])
+            self._print_colored_usage(
+                [
+                    "# EXAMPLES",
+                    "",
+                    "examples",
+                    "  - list all bundled example scripts",
+                    "examples load <name>",
+                    "  - copy a bundled example into your scripts (then: script run <name>)",
+                    "examples load all",
+                    "  - load every bundled example at once",
+                ]
+            )
             print()
             ColorPrinter.header("Available Examples")
             for name, entry in EXAMPLES.items():
-                print(f"  {ColorPrinter.CYAN}{name}{ColorPrinter.RESET}  {ColorPrinter.YELLOW}{entry['description']}{ColorPrinter.RESET}")
+                print(
+                    f"  {ColorPrinter.CYAN}{name}{ColorPrinter.RESET}  {ColorPrinter.YELLOW}{entry['description']}{ColorPrinter.RESET}"
+                )
             return
 
         subcmd = args[0].lower()
@@ -2848,11 +2899,11 @@ class InstrumentRepl(cmd.Cmd):
 
     def do_docs(self, arg):
         "docs: open the full command reference in your browser"
-        import subprocess
-        import webbrowser
-        import threading
         import http.server
         import socket
+        import subprocess
+        import threading
+        import webbrowser
         from pathlib import Path
 
         repl_dir = Path(__file__).resolve().parent
@@ -2885,6 +2936,7 @@ class InstrumentRepl(cmd.Cmd):
                 class _QuietHandler(http.server.SimpleHTTPRequestHandler):
                     def log_message(self, format, *args):
                         pass
+
                     def __init__(self, *args, **kwargs):
                         super().__init__(*args, directory=site_dir, **kwargs)
 
@@ -2899,6 +2951,7 @@ class InstrumentRepl(cmd.Cmd):
 
         # Fallback: single-page HTML (always works, no dependencies)
         import tempfile
+
         html = self._generate_docs_html()
         path = Path(tempfile.gettempdir()) / "scpi_toolkit_docs.html"
         path.write_text(html, encoding="utf-8")
@@ -2918,6 +2971,7 @@ class InstrumentRepl(cmd.Cmd):
 
         try:
             from importlib.metadata import version as _v
+
             ver = _v("scpi-instrument-toolkit")
         except Exception:
             ver = "dev"
@@ -2931,11 +2985,13 @@ class InstrumentRepl(cmd.Cmd):
         # ─────────────────────────────────────────────────────────────────────
         SECTIONS = [
             {
-                "id": "general", "title": "General Commands",
+                "id": "general",
+                "title": "General Commands",
                 "intro": "These commands work regardless of which instrument is active.",
                 "commands": [
                     {
-                        "id": "cmd-scan", "name": "scan",
+                        "id": "cmd-scan",
+                        "name": "scan",
                         "brief": "Discover and connect VISA instruments",
                         "syntax": "scan",
                         "desc": "Scans all VISA resources and auto-identifies instruments by querying <code>*IDN?</code>. Instruments are assigned names like <code>psu1</code>, <code>dmm1</code>, <code>scope1</code>, <code>awg1</code>. When multiple of the same type are found they are numbered: psu1, psu2, etc.",
@@ -2945,7 +3001,8 @@ class InstrumentRepl(cmd.Cmd):
                         "see": [],
                     },
                     {
-                        "id": "cmd-list", "name": "list",
+                        "id": "cmd-list",
+                        "name": "list",
                         "brief": "Show connected instruments",
                         "syntax": "list",
                         "desc": "Displays all currently connected instruments, their assigned names, and which one is currently active (set via <code>use</code>).",
@@ -2955,27 +3012,41 @@ class InstrumentRepl(cmd.Cmd):
                         "see": ["cmd-use"],
                     },
                     {
-                        "id": "cmd-use", "name": "use",
+                        "id": "cmd-use",
+                        "name": "use",
                         "brief": "Set the active instrument",
                         "syntax": "use <name>",
                         "desc": "Sets the active instrument for subsequent generic commands (e.g. <code>psu set 5.0</code> acts on whatever is active). When only one instrument of a type is connected it is selected automatically. With multiple of the same type you must <code>use</code> the desired one, or address it directly by prefixing commands: <code>psu2 set 12.0</code>.",
                         "params": [
-                            {"name": "name", "required": "required", "values": "psu1, dmm2, scope1, …", "desc": "The instrument name as shown by <code>list</code>."},
+                            {
+                                "name": "name",
+                                "required": "required",
+                                "values": "psu1, dmm2, scope1, …",
+                                "desc": "The instrument name as shown by <code>list</code>.",
+                            },
                         ],
                         "examples": [
                             ("use psu1", "Make psu1 the active PSU"),
                             ("use scope2", "Make scope2 the active oscilloscope"),
                         ],
-                        "notes": ["Alternative: prefix any command with the instrument name to address it directly without changing the active selection — e.g. <code>psu2 set 12.0</code>."],
+                        "notes": [
+                            "Alternative: prefix any command with the instrument name to address it directly without changing the active selection — e.g. <code>psu2 set 12.0</code>."
+                        ],
                         "see": ["cmd-list"],
                     },
                     {
-                        "id": "cmd-idn", "name": "idn",
+                        "id": "cmd-idn",
+                        "name": "idn",
                         "brief": "Query instrument identification string",
                         "syntax": "idn [name]",
                         "desc": "Sends <code>*IDN?</code> and prints the response (manufacturer, model, serial, firmware version).",
                         "params": [
-                            {"name": "name", "required": "optional", "values": "e.g. psu1, dmm1", "desc": "Instrument to query. Defaults to the currently active instrument if omitted."},
+                            {
+                                "name": "name",
+                                "required": "optional",
+                                "values": "e.g. psu1, dmm1",
+                                "desc": "Instrument to query. Defaults to the currently active instrument if omitted.",
+                            },
                         ],
                         "examples": [
                             ("idn", "Query IDN of active instrument"),
@@ -2985,12 +3056,18 @@ class InstrumentRepl(cmd.Cmd):
                         "see": ["cmd-raw"],
                     },
                     {
-                        "id": "cmd-raw", "name": "raw",
+                        "id": "cmd-raw",
+                        "name": "raw",
                         "brief": "Send a raw SCPI command or query",
                         "syntax": "raw <command>",
                         "desc": "Sends a raw SCPI string to the active instrument. If the command ends with <code>?</code> the response is printed.",
                         "params": [
-                            {"name": "command", "required": "required", "values": "any SCPI string", "desc": "SCPI command or query. Queries (ending with <code>?</code>) print the instrument response."},
+                            {
+                                "name": "command",
+                                "required": "required",
+                                "values": "any SCPI string",
+                                "desc": "SCPI command or query. Queries (ending with <code>?</code>) print the instrument response.",
+                            },
                         ],
                         "examples": [
                             ("raw *RST", "Reset the instrument"),
@@ -3001,15 +3078,26 @@ class InstrumentRepl(cmd.Cmd):
                         "see": ["cmd-idn"],
                     },
                     {
-                        "id": "cmd-state", "name": "state",
+                        "id": "cmd-state",
+                        "name": "state",
                         "brief": "Set instrument state",
                         "syntax": "state <on|off|safe|reset>",
                         "desc": "Applies a named state to the active instrument. Behavior depends on instrument type.",
                         "params": [
                             {"name": "on", "required": "—", "values": "on", "desc": "Enable output."},
                             {"name": "off", "required": "—", "values": "off", "desc": "Disable output."},
-                            {"name": "safe", "required": "—", "values": "safe", "desc": "Put in safe state: outputs off, returns to safe defaults."},
-                            {"name": "reset", "required": "—", "values": "reset", "desc": "Send <code>*RST</code> to restore factory defaults."},
+                            {
+                                "name": "safe",
+                                "required": "—",
+                                "values": "safe",
+                                "desc": "Put in safe state: outputs off, returns to safe defaults.",
+                            },
+                            {
+                                "name": "reset",
+                                "required": "—",
+                                "values": "reset",
+                                "desc": "Send <code>*RST</code> to restore factory defaults.",
+                            },
                         ],
                         "examples": [
                             ("state safe", "Put active instrument in safe state"),
@@ -3019,12 +3107,18 @@ class InstrumentRepl(cmd.Cmd):
                         "see": ["cmd-all"],
                     },
                     {
-                        "id": "cmd-all", "name": "all",
+                        "id": "cmd-all",
+                        "name": "all",
                         "brief": "Apply state to every connected instrument",
                         "syntax": "all <on|off|safe|reset>",
                         "desc": "Same as <code>state</code> but applies to all connected instruments simultaneously.",
                         "params": [
-                            {"name": "on|off|safe|reset", "required": "required", "values": "on, off, safe, reset", "desc": "State to apply to all instruments. See <code>state</code> for descriptions."},
+                            {
+                                "name": "on|off|safe|reset",
+                                "required": "required",
+                                "values": "on, off, safe, reset",
+                                "desc": "State to apply to all instruments. See <code>state</code> for descriptions.",
+                            },
                         ],
                         "examples": [
                             ("all safe", "Put every instrument in safe state"),
@@ -3034,23 +3128,32 @@ class InstrumentRepl(cmd.Cmd):
                         "see": ["cmd-state"],
                     },
                     {
-                        "id": "cmd-sleep", "name": "sleep / wait",
+                        "id": "cmd-sleep",
+                        "name": "sleep / wait",
                         "brief": "Pause execution",
                         "syntax": "sleep <seconds>",
                         "desc": "Pauses the REPL (or script) for the given duration. <code>wait</code> is an alias. Fractional seconds are supported.",
                         "params": [
-                            {"name": "seconds", "required": "required", "values": "float ≥ 0", "desc": "Duration to sleep. E.g. <code>0.5</code> = 500 ms, <code>1.0</code> = 1 s."},
+                            {
+                                "name": "seconds",
+                                "required": "required",
+                                "values": "float ≥ 0",
+                                "desc": "Duration to sleep. E.g. <code>0.5</code> = 500 ms, <code>1.0</code> = 1 s.",
+                            },
                         ],
                         "examples": [
                             ("sleep 1.0", "Pause for 1 second"),
                             ("sleep 0.5", "Pause for 500 ms"),
                             ("wait 2", "Alias: wait 2 seconds"),
                         ],
-                        "notes": ["Also valid as a script directive: <code>sleep ${delay}</code> uses a variable for the duration."],
+                        "notes": [
+                            "Also valid as a script directive: <code>sleep ${delay}</code> uses a variable for the duration."
+                        ],
                         "see": [],
                     },
                     {
-                        "id": "cmd-reload", "name": "reload / version / clear / exit",
+                        "id": "cmd-reload",
+                        "name": "reload / version / clear / exit",
                         "brief": "Utility commands",
                         "syntax": "reload  |  version  |  clear  |  exit",
                         "desc": "<code>reload</code> restarts the REPL process. <code>version</code> prints the installed toolkit version. <code>clear</code> clears the terminal. <code>exit</code> closes the REPL.",
@@ -3065,17 +3168,29 @@ class InstrumentRepl(cmd.Cmd):
                 ],
             },
             {
-                "id": "psu", "title": "PSU — Power Supply",
+                "id": "psu",
+                "title": "PSU — Power Supply",
                 "intro": "Controls power supply units. Single-channel PSUs (e.g. HP E3631A) always use channel 1. Multi-channel PSUs (e.g. Matrix MPS-6010H) support channels 1, 2, 3, and all. Multiple PSUs are named psu1, psu2, etc. — address them directly: psu2 set 12.0, or use 'use psu2' first.",
                 "commands": [
                     {
-                        "id": "psu-chan", "name": "psu chan",
+                        "id": "psu-chan",
+                        "name": "psu chan",
                         "brief": "Enable or disable an output channel",
                         "syntax": "psu chan <channel> <on|off>",
                         "desc": "Turns a PSU output channel on or off. For single-channel PSUs the channel is always <code>1</code>.",
                         "params": [
-                            {"name": "channel", "required": "required", "values": "1, 2, 3, all", "desc": "Output channel number. Multi-channel PSUs support 1, 2, 3, or <code>all</code>. Single-channel PSUs always use <code>1</code>."},
-                            {"name": "on|off", "required": "required", "values": "on, off", "desc": "<code>on</code> = enable output voltage; <code>off</code> = disable output."},
+                            {
+                                "name": "channel",
+                                "required": "required",
+                                "values": "1, 2, 3, all",
+                                "desc": "Output channel number. Multi-channel PSUs support 1, 2, 3, or <code>all</code>. Single-channel PSUs always use <code>1</code>.",
+                            },
+                            {
+                                "name": "on|off",
+                                "required": "required",
+                                "values": "on, off",
+                                "desc": "<code>on</code> = enable output voltage; <code>off</code> = disable output.",
+                            },
                         ],
                         "examples": [
                             ("psu chan 1 on", "Enable output on a single-channel PSU"),
@@ -3086,14 +3201,30 @@ class InstrumentRepl(cmd.Cmd):
                         "see": ["psu-set", "psu-meas_store"],
                     },
                     {
-                        "id": "psu-set", "name": "psu set",
+                        "id": "psu-set",
+                        "name": "psu set",
                         "brief": "Set output voltage and optional current limit",
                         "syntax": "psu set <voltage> [current]  |  psu set <channel> <voltage> [current]",
                         "desc": "Sets the voltage setpoint and optional current limit. Single-channel PSUs use <code>psu set &lt;V&gt;</code>. Multi-channel PSUs require the channel number first: <code>psu set &lt;ch&gt; &lt;V&gt;</code>.",
                         "params": [
-                            {"name": "channel", "required": "multi-ch only", "values": "1, 2, 3", "desc": "Channel number — required for multi-channel PSUs, not used for single-channel PSUs."},
-                            {"name": "voltage", "required": "required", "values": "float (V)", "desc": "Target output voltage in volts."},
-                            {"name": "current", "required": "optional", "values": "float (A)", "desc": "Current limit in amperes. If omitted, the current limit is unchanged."},
+                            {
+                                "name": "channel",
+                                "required": "multi-ch only",
+                                "values": "1, 2, 3",
+                                "desc": "Channel number — required for multi-channel PSUs, not used for single-channel PSUs.",
+                            },
+                            {
+                                "name": "voltage",
+                                "required": "required",
+                                "values": "float (V)",
+                                "desc": "Target output voltage in volts.",
+                            },
+                            {
+                                "name": "current",
+                                "required": "optional",
+                                "values": "float (A)",
+                                "desc": "Current limit in amperes. If omitted, the current limit is unchanged.",
+                            },
                         ],
                         "examples": [
                             ("psu set 5.0", "Set single-ch output to 5 V"),
@@ -3105,13 +3236,24 @@ class InstrumentRepl(cmd.Cmd):
                         "see": ["psu-chan"],
                     },
                     {
-                        "id": "psu-meas", "name": "psu meas",
+                        "id": "psu-meas",
+                        "name": "psu meas",
                         "brief": "Measure and print PSU output",
                         "syntax": "psu meas <channel> <v|i>",
                         "desc": "Takes a live measurement from the PSU and prints the result. Does not store the value — use <code>psu meas_store</code> to record it.",
                         "params": [
-                            {"name": "channel", "required": "multi-ch only", "values": "1, 2, 3", "desc": "Channel to measure. Required for multi-channel PSUs; omit for single-channel."},
-                            {"name": "v|i", "required": "required", "values": "v, i", "desc": "<code>v</code> = measure output voltage; <code>i</code> = measure output current."},
+                            {
+                                "name": "channel",
+                                "required": "multi-ch only",
+                                "values": "1, 2, 3",
+                                "desc": "Channel to measure. Required for multi-channel PSUs; omit for single-channel.",
+                            },
+                            {
+                                "name": "v|i",
+                                "required": "required",
+                                "values": "v, i",
+                                "desc": "<code>v</code> = measure output voltage; <code>i</code> = measure output current.",
+                            },
                         ],
                         "examples": [
                             ("psu meas v", "Print output voltage (single-channel)"),
@@ -3122,29 +3264,54 @@ class InstrumentRepl(cmd.Cmd):
                         "see": ["psu-meas_store"],
                     },
                     {
-                        "id": "psu-meas_store", "name": "psu meas_store",
+                        "id": "psu-meas_store",
+                        "name": "psu meas_store",
                         "brief": "Measure and record to the measurement log",
                         "syntax": "psu meas_store <channel> <v|i> <label> [unit=<str>]",
                         "desc": "Measures the PSU output and appends the result to the session measurement log. Use <code>log print</code> to view all recorded measurements and <code>calc</code> to compute derived values using stored data.",
                         "params": [
-                            {"name": "v|i", "required": "required", "values": "v, i", "desc": "<code>v</code> = measure voltage; <code>i</code> = measure current."},
-                            {"name": "channel", "required": "multi-ch only", "values": "1, 2, 3", "desc": "Channel to measure. Required for multi-channel PSUs; omit for single-channel."},
-                            {"name": "label", "required": "required", "values": "string, no spaces", "desc": "Name for this measurement entry in the log. Appears as the row identifier in <code>log print</code> output. Also used as the dictionary key in <code>calc</code> expressions — e.g. if label is <code>ch1_v</code> then access it as <code>m[\"ch1_v\"]</code>. Use underscores instead of spaces."},
-                            {"name": "unit=", "required": "optional", "values": "string, e.g. V, A", "desc": "Unit label shown in <code>log print</code> output alongside the value (e.g. <code>V</code>, <code>A</code>). This is purely for display — it does not affect the stored numeric value or any <code>calc</code> computation."},
+                            {
+                                "name": "v|i",
+                                "required": "required",
+                                "values": "v, i",
+                                "desc": "<code>v</code> = measure voltage; <code>i</code> = measure current.",
+                            },
+                            {
+                                "name": "channel",
+                                "required": "multi-ch only",
+                                "values": "1, 2, 3",
+                                "desc": "Channel to measure. Required for multi-channel PSUs; omit for single-channel.",
+                            },
+                            {
+                                "name": "label",
+                                "required": "required",
+                                "values": "string, no spaces",
+                                "desc": 'Name for this measurement entry in the log. Appears as the row identifier in <code>log print</code> output. Also used as the dictionary key in <code>calc</code> expressions — e.g. if label is <code>ch1_v</code> then access it as <code>m["ch1_v"]</code>. Use underscores instead of spaces.',
+                            },
+                            {
+                                "name": "unit=",
+                                "required": "optional",
+                                "values": "string, e.g. V, A",
+                                "desc": "Unit label shown in <code>log print</code> output alongside the value (e.g. <code>V</code>, <code>A</code>). This is purely for display — it does not affect the stored numeric value or any <code>calc</code> computation.",
+                            },
                         ],
                         "examples": [
-                            ("psu meas_store v psu_out unit=V", "Store voltage as 'psu_out'; access later as m[\"psu_out\"]"),
+                            (
+                                "psu meas_store v psu_out unit=V",
+                                "Store voltage as 'psu_out'; access later as m[\"psu_out\"]",
+                            ),
                             ("psu meas_store i psu_i unit=A", "Store current as 'psu_i'"),
                             ("psu meas_store 2 v ch2_v unit=V", "Multi-ch: store channel 2 voltage"),
                         ],
                         "notes": [
-                            "Access stored values in <code>calc</code>: <code>calc power m[\"psu_out\"]*m[\"psu_i\"] unit=W</code>",
+                            'Access stored values in <code>calc</code>: <code>calc power m["psu_out"]*m["psu_i"] unit=W</code>',
                             "View all stored measurements: <code>log print</code> — Export: <code>log save results.csv</code>",
                         ],
                         "see": ["cmd-log", "cmd-calc"],
                     },
                     {
-                        "id": "psu-get", "name": "psu get",
+                        "id": "psu-get",
+                        "name": "psu get",
                         "brief": "Show programmed voltage/current setpoints",
                         "syntax": "psu get",
                         "desc": "Reads and displays the <em>programmed</em> setpoints (voltage and current limit) — not the live output. For live measured values use <code>psu meas</code>.",
@@ -3154,12 +3321,18 @@ class InstrumentRepl(cmd.Cmd):
                         "see": ["psu-meas"],
                     },
                     {
-                        "id": "psu-track", "name": "psu track",
+                        "id": "psu-track",
+                        "name": "psu track",
                         "brief": "Enable/disable channel tracking (multi-channel PSUs)",
                         "syntax": "psu track <on|off>",
                         "desc": "Enables or disables output tracking mode. In tracking mode the two adjustable channels mirror each other (one positive, one negative) for split-supply configurations.",
                         "params": [
-                            {"name": "on|off", "required": "required", "values": "on, off", "desc": "<code>on</code> = link channels in tracking mode; <code>off</code> = independent channel control."},
+                            {
+                                "name": "on|off",
+                                "required": "required",
+                                "values": "on, off",
+                                "desc": "<code>on</code> = link channels in tracking mode; <code>off</code> = independent channel control.",
+                            },
                         ],
                         "examples": [
                             ("psu track on", "Enable tracking (±supply mode)"),
@@ -3169,12 +3342,18 @@ class InstrumentRepl(cmd.Cmd):
                         "see": [],
                     },
                     {
-                        "id": "psu-save", "name": "psu save / recall",
+                        "id": "psu-save",
+                        "name": "psu save / recall",
                         "brief": "Save or restore a state slot",
                         "syntax": "psu save <1-3>  |  psu recall <1-3>",
                         "desc": "Saves the current voltage/current settings to a numbered slot, or restores a previously saved slot. Multi-channel PSUs only.",
                         "params": [
-                            {"name": "1-3", "required": "required", "values": "1, 2, 3", "desc": "Slot number to save to or recall from."},
+                            {
+                                "name": "1-3",
+                                "required": "required",
+                                "values": "1, 2, 3",
+                                "desc": "Slot number to save to or recall from.",
+                            },
                         ],
                         "examples": [
                             ("psu save 1", "Save current settings to slot 1"),
@@ -3186,17 +3365,29 @@ class InstrumentRepl(cmd.Cmd):
                 ],
             },
             {
-                "id": "awg", "title": "AWG — Function Generator",
+                "id": "awg",
+                "title": "AWG — Function Generator",
                 "intro": "Controls arbitrary waveform / function generators. Channels 1, 2, or all. Multiple AWGs are named awg1, awg2, etc.",
                 "commands": [
                     {
-                        "id": "awg-chan", "name": "awg chan",
+                        "id": "awg-chan",
+                        "name": "awg chan",
                         "brief": "Enable or disable an output channel",
                         "syntax": "awg chan <1|2|all> <on|off>",
                         "desc": "Turns an AWG output channel on or off.",
                         "params": [
-                            {"name": "1|2|all", "required": "required", "values": "1, 2, all", "desc": "Channel number, or <code>all</code> to affect both channels simultaneously."},
-                            {"name": "on|off", "required": "required", "values": "on, off", "desc": "<code>on</code> = enable output; <code>off</code> = disable output."},
+                            {
+                                "name": "1|2|all",
+                                "required": "required",
+                                "values": "1, 2, all",
+                                "desc": "Channel number, or <code>all</code> to affect both channels simultaneously.",
+                            },
+                            {
+                                "name": "on|off",
+                                "required": "required",
+                                "values": "on, off",
+                                "desc": "<code>on</code> = enable output; <code>off</code> = disable output.",
+                            },
                         ],
                         "examples": [
                             ("awg chan 1 on", "Enable channel 1"),
@@ -3206,18 +3397,54 @@ class InstrumentRepl(cmd.Cmd):
                         "see": ["awg-wave"],
                     },
                     {
-                        "id": "awg-wave", "name": "awg wave",
+                        "id": "awg-wave",
+                        "name": "awg wave",
                         "brief": "Configure waveform type and parameters",
                         "syntax": "awg wave <1|2|all> <type> [freq=<Hz>] [amp=<Vpp>] [offset=<V>] [duty=<%>] [phase=<deg>]",
                         "desc": "Sets the waveform type and any combination of parameters for one or more channels. Keyword arguments are all optional — omitted parameters retain their current values.",
                         "params": [
-                            {"name": "1|2|all", "required": "required", "values": "1, 2, all", "desc": "Channel to configure."},
-                            {"name": "type", "required": "required", "values": "sine, square, ramp, triangle, pulse, noise, dc, arb", "desc": "Waveform shape."},
-                            {"name": "freq=", "required": "optional", "values": "float (Hz)", "desc": "Output frequency in hertz."},
-                            {"name": "amp=", "required": "optional", "values": "float (Vpp)", "desc": "Peak-to-peak amplitude in volts."},
-                            {"name": "offset=", "required": "optional", "values": "float (V)", "desc": "DC offset voltage in volts."},
-                            {"name": "duty=", "required": "optional", "values": "0.0 – 100.0 (%)", "desc": "Duty cycle percentage. Applies to square and pulse waveforms."},
-                            {"name": "phase=", "required": "optional", "values": "float (degrees)", "desc": "Phase offset in degrees."},
+                            {
+                                "name": "1|2|all",
+                                "required": "required",
+                                "values": "1, 2, all",
+                                "desc": "Channel to configure.",
+                            },
+                            {
+                                "name": "type",
+                                "required": "required",
+                                "values": "sine, square, ramp, triangle, pulse, noise, dc, arb",
+                                "desc": "Waveform shape.",
+                            },
+                            {
+                                "name": "freq=",
+                                "required": "optional",
+                                "values": "float (Hz)",
+                                "desc": "Output frequency in hertz.",
+                            },
+                            {
+                                "name": "amp=",
+                                "required": "optional",
+                                "values": "float (Vpp)",
+                                "desc": "Peak-to-peak amplitude in volts.",
+                            },
+                            {
+                                "name": "offset=",
+                                "required": "optional",
+                                "values": "float (V)",
+                                "desc": "DC offset voltage in volts.",
+                            },
+                            {
+                                "name": "duty=",
+                                "required": "optional",
+                                "values": "0.0 – 100.0 (%)",
+                                "desc": "Duty cycle percentage. Applies to square and pulse waveforms.",
+                            },
+                            {
+                                "name": "phase=",
+                                "required": "optional",
+                                "values": "float (degrees)",
+                                "desc": "Phase offset in degrees.",
+                            },
                         ],
                         "examples": [
                             ("awg wave 1 sine freq=1000 amp=2.0 offset=0", "1 kHz sine, 2 Vpp, no DC offset"),
@@ -3228,13 +3455,24 @@ class InstrumentRepl(cmd.Cmd):
                         "see": ["awg-freq", "awg-amp", "awg-chan"],
                     },
                     {
-                        "id": "awg-freq", "name": "awg freq",
+                        "id": "awg-freq",
+                        "name": "awg freq",
                         "brief": "Set output frequency",
                         "syntax": "awg freq <1|2|all> <Hz>",
                         "desc": "Sets frequency without changing other waveform parameters.",
                         "params": [
-                            {"name": "1|2|all", "required": "required", "values": "1, 2, all", "desc": "Channel to configure."},
-                            {"name": "Hz", "required": "required", "values": "float > 0", "desc": "Frequency in hertz."},
+                            {
+                                "name": "1|2|all",
+                                "required": "required",
+                                "values": "1, 2, all",
+                                "desc": "Channel to configure.",
+                            },
+                            {
+                                "name": "Hz",
+                                "required": "required",
+                                "values": "float > 0",
+                                "desc": "Frequency in hertz.",
+                            },
                         ],
                         "examples": [
                             ("awg freq 1 1000", "Set ch1 to 1 kHz"),
@@ -3244,16 +3482,42 @@ class InstrumentRepl(cmd.Cmd):
                         "see": ["awg-wave"],
                     },
                     {
-                        "id": "awg-amp", "name": "awg amp / offset / duty / phase",
+                        "id": "awg-amp",
+                        "name": "awg amp / offset / duty / phase",
                         "brief": "Set amplitude, DC offset, duty cycle, or phase",
                         "syntax": "awg amp <1|2|all> <Vpp>  |  awg offset <1|2|all> <V>  |  awg duty <1|2|all> <%>  |  awg phase <1|2|all> <deg>",
                         "desc": "Fine-tune individual waveform parameters without changing other settings.",
                         "params": [
-                            {"name": "1|2|all", "required": "required", "values": "1, 2, all", "desc": "Channel to configure."},
-                            {"name": "Vpp", "required": "required (amp)", "values": "float (V)", "desc": "Peak-to-peak amplitude in volts."},
-                            {"name": "V", "required": "required (offset)", "values": "float (V)", "desc": "DC offset. Negative values shift the waveform below ground."},
-                            {"name": "%", "required": "required (duty)", "values": "0.0 – 100.0", "desc": "Duty cycle percentage for square/pulse waveforms."},
-                            {"name": "deg", "required": "required (phase)", "values": "0.0 – 360.0", "desc": "Phase offset in degrees. 180° inverts the waveform."},
+                            {
+                                "name": "1|2|all",
+                                "required": "required",
+                                "values": "1, 2, all",
+                                "desc": "Channel to configure.",
+                            },
+                            {
+                                "name": "Vpp",
+                                "required": "required (amp)",
+                                "values": "float (V)",
+                                "desc": "Peak-to-peak amplitude in volts.",
+                            },
+                            {
+                                "name": "V",
+                                "required": "required (offset)",
+                                "values": "float (V)",
+                                "desc": "DC offset. Negative values shift the waveform below ground.",
+                            },
+                            {
+                                "name": "%",
+                                "required": "required (duty)",
+                                "values": "0.0 – 100.0",
+                                "desc": "Duty cycle percentage for square/pulse waveforms.",
+                            },
+                            {
+                                "name": "deg",
+                                "required": "required (phase)",
+                                "values": "0.0 – 360.0",
+                                "desc": "Phase offset in degrees. 180° inverts the waveform.",
+                            },
                         ],
                         "examples": [
                             ("awg amp 1 3.3", "Set ch1 amplitude to 3.3 Vpp"),
@@ -3265,12 +3529,18 @@ class InstrumentRepl(cmd.Cmd):
                         "see": ["awg-wave"],
                     },
                     {
-                        "id": "awg-sync", "name": "awg sync",
+                        "id": "awg-sync",
+                        "name": "awg sync",
                         "brief": "Enable/disable sync output",
                         "syntax": "awg sync <on|off>",
                         "desc": "Enables or disables the sync/trigger output signal on supported AWGs.",
                         "params": [
-                            {"name": "on|off", "required": "required", "values": "on, off", "desc": "Enable or disable sync output."},
+                            {
+                                "name": "on|off",
+                                "required": "required",
+                                "values": "on, off",
+                                "desc": "Enable or disable sync output.",
+                            },
                         ],
                         "examples": [("awg sync on", "Enable sync output")],
                         "notes": [],
@@ -3279,30 +3549,55 @@ class InstrumentRepl(cmd.Cmd):
                 ],
             },
             {
-                "id": "dmm", "title": "DMM — Multimeter",
+                "id": "dmm",
+                "title": "DMM — Multimeter",
                 "intro": "Controls digital multimeters. Multiple DMMs are named dmm1, dmm2, etc. Typical workflow: configure mode → read. Or use meas for a single one-shot measurement.",
                 "commands": [
                     {
-                        "id": "dmm-config", "name": "dmm config",
+                        "id": "dmm-config",
+                        "name": "dmm config",
                         "brief": "Configure the measurement mode",
                         "syntax": "dmm config <mode> [range] [resolution] [nplc=<n>]",
                         "desc": "Configures the DMM for a specific measurement type. After configuring, use <code>dmm read</code> or <code>dmm meas_store</code>. The mode stays active until changed.",
                         "params": [
-                            {"name": "mode", "required": "required", "values": "vdc, vac, idc, iac, res, fres, freq, per, cont, diode, cap, temp", "desc": "Measurement mode: <code>vdc</code> = DC voltage, <code>vac</code> = AC voltage, <code>idc</code> = DC current, <code>iac</code> = AC current, <code>res</code> = 2-wire resistance, <code>fres</code> = 4-wire resistance, <code>freq</code> = frequency, <code>per</code> = period, <code>cont</code> = continuity, <code>diode</code> = diode voltage, <code>cap</code> = capacitance, <code>temp</code> = temperature."},
-                            {"name": "range", "required": "optional", "values": "float, DEF, MIN, MAX", "desc": "Measurement range (e.g. <code>10</code> for 10 V range). Use <code>DEF</code> for auto-range."},
-                            {"name": "resolution", "required": "optional", "values": "float, DEF, MIN, MAX", "desc": "Resolution (number of significant digits). Use <code>DEF</code> for default."},
-                            {"name": "nplc=", "required": "optional", "values": "0.02, 0.2, 1, 10, 100", "desc": "Integration time in power line cycles. Higher = slower but lower noise. Only supported on HP 34401A and for DC measurement modes."},
+                            {
+                                "name": "mode",
+                                "required": "required",
+                                "values": "vdc, vac, idc, iac, res, fres, freq, per, cont, diode, cap, temp",
+                                "desc": "Measurement mode: <code>vdc</code> = DC voltage, <code>vac</code> = AC voltage, <code>idc</code> = DC current, <code>iac</code> = AC current, <code>res</code> = 2-wire resistance, <code>fres</code> = 4-wire resistance, <code>freq</code> = frequency, <code>per</code> = period, <code>cont</code> = continuity, <code>diode</code> = diode voltage, <code>cap</code> = capacitance, <code>temp</code> = temperature.",
+                            },
+                            {
+                                "name": "range",
+                                "required": "optional",
+                                "values": "float, DEF, MIN, MAX",
+                                "desc": "Measurement range (e.g. <code>10</code> for 10 V range). Use <code>DEF</code> for auto-range.",
+                            },
+                            {
+                                "name": "resolution",
+                                "required": "optional",
+                                "values": "float, DEF, MIN, MAX",
+                                "desc": "Resolution (number of significant digits). Use <code>DEF</code> for default.",
+                            },
+                            {
+                                "name": "nplc=",
+                                "required": "optional",
+                                "values": "0.02, 0.2, 1, 10, 100",
+                                "desc": "Integration time in power line cycles. Higher = slower but lower noise. Only supported on HP 34401A and for DC measurement modes.",
+                            },
                         ],
                         "examples": [
                             ("dmm config vdc", "Configure for DC voltage, auto-range"),
                             ("dmm config vdc 10 DEF nplc=10", "DC voltage, 10 V range, high-accuracy (slow)"),
                             ("dmm config res DEF DEF nplc=1", "2-wire resistance, auto-range, 1 PLC"),
                         ],
-                        "notes": ["For a one-shot measurement without a separate configure step, use <code>dmm meas &lt;mode&gt;</code> instead."],
+                        "notes": [
+                            "For a one-shot measurement without a separate configure step, use <code>dmm meas &lt;mode&gt;</code> instead."
+                        ],
                         "see": ["dmm-read", "dmm-meas"],
                     },
                     {
-                        "id": "dmm-read", "name": "dmm read",
+                        "id": "dmm-read",
+                        "name": "dmm read",
                         "brief": "Take a reading (after dmm config)",
                         "syntax": "dmm read",
                         "desc": "Takes a measurement using the currently configured mode and prints the result. Call <code>dmm config</code> first.",
@@ -3312,14 +3607,30 @@ class InstrumentRepl(cmd.Cmd):
                         "see": ["dmm-config", "dmm-meas_store"],
                     },
                     {
-                        "id": "dmm-meas_store", "name": "dmm meas_store",
+                        "id": "dmm-meas_store",
+                        "name": "dmm meas_store",
                         "brief": "Read and record to the measurement log",
                         "syntax": "dmm meas_store <label> [scale=<factor>] [unit=<str>]",
                         "desc": "Takes a reading using the current configuration and appends it to the session measurement log. Requires <code>dmm config</code> to have been called first.",
                         "params": [
-                            {"name": "label", "required": "required", "values": "string, no spaces", "desc": "Name for this measurement entry in the log. Appears as the row identifier in <code>log print</code> output. Also used as the dictionary key in <code>calc</code> expressions — e.g. if label is <code>vout</code> then access it as <code>m[\"vout\"]</code>. Use underscores instead of spaces (e.g. <code>vout_mv</code>)."},
-                            {"name": "scale=", "required": "optional", "values": "float", "desc": "Multiply the raw reading by this factor before storing. Useful for unit conversion — e.g. <code>scale=1000</code> to convert V → mV, or <code>scale=0.001</code> to convert mA → A. Default: 1.0 (no scaling)."},
-                            {"name": "unit=", "required": "optional", "values": "string, e.g. V, mV, A, Ω", "desc": "Unit label shown in <code>log print</code> output alongside the value. This is purely for display — it does not affect the stored numeric value or any <code>calc</code> computation."},
+                            {
+                                "name": "label",
+                                "required": "required",
+                                "values": "string, no spaces",
+                                "desc": 'Name for this measurement entry in the log. Appears as the row identifier in <code>log print</code> output. Also used as the dictionary key in <code>calc</code> expressions — e.g. if label is <code>vout</code> then access it as <code>m["vout"]</code>. Use underscores instead of spaces (e.g. <code>vout_mv</code>).',
+                            },
+                            {
+                                "name": "scale=",
+                                "required": "optional",
+                                "values": "float",
+                                "desc": "Multiply the raw reading by this factor before storing. Useful for unit conversion — e.g. <code>scale=1000</code> to convert V → mV, or <code>scale=0.001</code> to convert mA → A. Default: 1.0 (no scaling).",
+                            },
+                            {
+                                "name": "unit=",
+                                "required": "optional",
+                                "values": "string, e.g. V, mV, A, Ω",
+                                "desc": "Unit label shown in <code>log print</code> output alongside the value. This is purely for display — it does not affect the stored numeric value or any <code>calc</code> computation.",
+                            },
                         ],
                         "examples": [
                             ("dmm meas_store vout unit=V", "Store reading as 'vout' with unit V"),
@@ -3328,19 +3639,35 @@ class InstrumentRepl(cmd.Cmd):
                         ],
                         "notes": [
                             "You must call <code>dmm config &lt;mode&gt;</code> before using <code>meas_store</code>.",
-                            "Access stored values in <code>calc</code>: <code>calc power m[\"vout\"]*m[\"iout\"] unit=W</code>",
+                            'Access stored values in <code>calc</code>: <code>calc power m["vout"]*m["iout"] unit=W</code>',
                         ],
                         "see": ["dmm-config", "cmd-log", "cmd-calc"],
                     },
                     {
-                        "id": "dmm-meas", "name": "dmm meas",
+                        "id": "dmm-meas",
+                        "name": "dmm meas",
                         "brief": "One-shot measurement (configure + read in one step)",
                         "syntax": "dmm meas <mode> [range] [resolution]",
                         "desc": "Configures the DMM and takes a single reading in one command. Convenient for quick checks; for repeated measurements in the same mode use <code>dmm config</code> + <code>dmm read</code>.",
                         "params": [
-                            {"name": "mode", "required": "required", "values": "vdc, vac, idc, iac, res, fres, freq, per, cont, diode", "desc": "Measurement mode. Same values as <code>dmm config</code>."},
-                            {"name": "range", "required": "optional", "values": "float or DEF", "desc": "Measurement range. Default: auto-range."},
-                            {"name": "resolution", "required": "optional", "values": "float or DEF", "desc": "Resolution. Default: default."},
+                            {
+                                "name": "mode",
+                                "required": "required",
+                                "values": "vdc, vac, idc, iac, res, fres, freq, per, cont, diode",
+                                "desc": "Measurement mode. Same values as <code>dmm config</code>.",
+                            },
+                            {
+                                "name": "range",
+                                "required": "optional",
+                                "values": "float or DEF",
+                                "desc": "Measurement range. Default: auto-range.",
+                            },
+                            {
+                                "name": "resolution",
+                                "required": "optional",
+                                "values": "float or DEF",
+                                "desc": "Resolution. Default: default.",
+                            },
                         ],
                         "examples": [
                             ("dmm meas vdc", "Quick DC voltage reading"),
@@ -3350,7 +3677,8 @@ class InstrumentRepl(cmd.Cmd):
                         "see": ["dmm-config"],
                     },
                     {
-                        "id": "dmm-fetch", "name": "dmm fetch",
+                        "id": "dmm-fetch",
+                        "name": "dmm fetch",
                         "brief": "Fetch the last reading without triggering a new one",
                         "syntax": "dmm fetch",
                         "desc": "Returns the last measurement result without initiating a new measurement. HP 34401A only.",
@@ -3360,16 +3688,42 @@ class InstrumentRepl(cmd.Cmd):
                         "see": ["dmm-read"],
                     },
                     {
-                        "id": "dmm-display", "name": "dmm display / beep / text / ranges",
+                        "id": "dmm-display",
+                        "name": "dmm display / beep / text / ranges",
                         "brief": "Display control, beep, and range info",
                         "syntax": "dmm display <on|off>  |  dmm beep  |  dmm text <msg> [scroll=] [delay=] [loops=]  |  dmm ranges",
                         "desc": "Utility commands. <code>display</code> turns the front panel display on/off. <code>beep</code> triggers an audible beep. <code>text</code> displays a message on the DMM screen with optional scrolling. <code>ranges</code> prints supported measurement ranges for the connected model.",
                         "params": [
-                            {"name": "on|off", "required": "required (display)", "values": "on, off", "desc": "Turn the display on or off."},
-                            {"name": "msg", "required": "required (text)", "values": "string", "desc": "Text to show on the DMM front panel."},
-                            {"name": "scroll=", "required": "optional (text)", "values": "auto, on, off", "desc": "Scroll behavior for long messages."},
-                            {"name": "delay=", "required": "optional (text)", "values": "float (s)", "desc": "Delay between scroll steps."},
-                            {"name": "loops=", "required": "optional (text)", "values": "int", "desc": "Scroll repetitions."},
+                            {
+                                "name": "on|off",
+                                "required": "required (display)",
+                                "values": "on, off",
+                                "desc": "Turn the display on or off.",
+                            },
+                            {
+                                "name": "msg",
+                                "required": "required (text)",
+                                "values": "string",
+                                "desc": "Text to show on the DMM front panel.",
+                            },
+                            {
+                                "name": "scroll=",
+                                "required": "optional (text)",
+                                "values": "auto, on, off",
+                                "desc": "Scroll behavior for long messages.",
+                            },
+                            {
+                                "name": "delay=",
+                                "required": "optional (text)",
+                                "values": "float (s)",
+                                "desc": "Delay between scroll steps.",
+                            },
+                            {
+                                "name": "loops=",
+                                "required": "optional (text)",
+                                "values": "int",
+                                "desc": "Scroll repetitions.",
+                            },
                         ],
                         "examples": [
                             ("dmm beep", "Trigger a beep"),
@@ -3383,11 +3737,13 @@ class InstrumentRepl(cmd.Cmd):
                 ],
             },
             {
-                "id": "scope", "title": "Scope — Oscilloscope",
+                "id": "scope",
+                "title": "Scope — Oscilloscope",
                 "intro": "Controls oscilloscopes. Multiple scopes are named scope1, scope2, etc. Channels 1–4 are supported; use all to affect every channel at once.",
                 "commands": [
                     {
-                        "id": "scope-acq", "name": "scope autoset / run / stop / single",
+                        "id": "scope-acq",
+                        "name": "scope autoset / run / stop / single",
                         "brief": "Acquisition control",
                         "syntax": "scope autoset  |  scope run  |  scope stop  |  scope single",
                         "desc": "<code>autoset</code> auto-configures time/voltage scales and trigger for the current input. <code>run</code> starts continuous acquisition. <code>stop</code> freezes the display. <code>single</code> arms a single-shot trigger.",
@@ -3401,13 +3757,24 @@ class InstrumentRepl(cmd.Cmd):
                         "see": ["scope-trigger"],
                     },
                     {
-                        "id": "scope-chan", "name": "scope chan",
+                        "id": "scope-chan",
+                        "name": "scope chan",
                         "brief": "Enable or disable a channel",
                         "syntax": "scope chan <1-4|all> <on|off>",
                         "desc": "Shows or hides an oscilloscope input channel.",
                         "params": [
-                            {"name": "1-4|all", "required": "required", "values": "1, 2, 3, 4, all", "desc": "Channel number, or <code>all</code> to affect all channels."},
-                            {"name": "on|off", "required": "required", "values": "on, off", "desc": "<code>on</code> = display channel; <code>off</code> = hide channel."},
+                            {
+                                "name": "1-4|all",
+                                "required": "required",
+                                "values": "1, 2, 3, 4, all",
+                                "desc": "Channel number, or <code>all</code> to affect all channels.",
+                            },
+                            {
+                                "name": "on|off",
+                                "required": "required",
+                                "values": "on, off",
+                                "desc": "<code>on</code> = display channel; <code>off</code> = hide channel.",
+                            },
                         ],
                         "examples": [
                             ("scope chan 1 on", "Show channel 1"),
@@ -3418,14 +3785,30 @@ class InstrumentRepl(cmd.Cmd):
                         "see": ["scope-coupling", "scope-vscale"],
                     },
                     {
-                        "id": "scope-coupling", "name": "scope coupling / probe",
+                        "id": "scope-coupling",
+                        "name": "scope coupling / probe",
                         "brief": "Set input coupling and probe attenuation",
                         "syntax": "scope coupling <1-4|all> <DC|AC|GND>  |  scope probe <1-4|all> <attenuation>",
                         "desc": "<code>coupling</code> sets the input coupling. DC passes all frequencies; AC blocks DC; GND disconnects the input. <code>probe</code> sets the probe attenuation ratio so the scope displays correct voltages.",
                         "params": [
-                            {"name": "1-4|all", "required": "required", "values": "1, 2, 3, 4, all", "desc": "Channel number."},
-                            {"name": "DC|AC|GND", "required": "required (coupling)", "values": "DC, AC, GND", "desc": "Input coupling mode."},
-                            {"name": "attenuation", "required": "required (probe)", "values": "1, 10, 100", "desc": "Probe attenuation ratio (1× for direct connection, 10× for 10× probe, 100× for high-voltage probe)."},
+                            {
+                                "name": "1-4|all",
+                                "required": "required",
+                                "values": "1, 2, 3, 4, all",
+                                "desc": "Channel number.",
+                            },
+                            {
+                                "name": "DC|AC|GND",
+                                "required": "required (coupling)",
+                                "values": "DC, AC, GND",
+                                "desc": "Input coupling mode.",
+                            },
+                            {
+                                "name": "attenuation",
+                                "required": "required (probe)",
+                                "values": "1, 10, 100",
+                                "desc": "Probe attenuation ratio (1× for direct connection, 10× for 10× probe, 100× for high-voltage probe).",
+                            },
                         ],
                         "examples": [
                             ("scope coupling 1 AC", "AC-couple channel 1"),
@@ -3436,14 +3819,30 @@ class InstrumentRepl(cmd.Cmd):
                         "see": ["scope-chan"],
                     },
                     {
-                        "id": "scope-hscale", "name": "scope hscale / hpos / hmove",
+                        "id": "scope-hscale",
+                        "name": "scope hscale / hpos / hmove",
                         "brief": "Horizontal (time) axis control",
                         "syntax": "scope hscale <s/div>  |  scope hpos <pct>  |  scope hmove <delta>",
                         "desc": "<code>hscale</code> sets time per division. <code>hpos</code> sets the trigger position as a percentage. <code>hmove</code> adjusts the position relatively.",
                         "params": [
-                            {"name": "s/div", "required": "required (hscale)", "values": "float (s)", "desc": "Time per division (e.g. <code>0.001</code> = 1 ms/div)."},
-                            {"name": "pct", "required": "required (hpos)", "values": "float 0–100", "desc": "Trigger position as percentage of screen width."},
-                            {"name": "delta", "required": "required (hmove)", "values": "float", "desc": "Relative adjustment amount."},
+                            {
+                                "name": "s/div",
+                                "required": "required (hscale)",
+                                "values": "float (s)",
+                                "desc": "Time per division (e.g. <code>0.001</code> = 1 ms/div).",
+                            },
+                            {
+                                "name": "pct",
+                                "required": "required (hpos)",
+                                "values": "float 0–100",
+                                "desc": "Trigger position as percentage of screen width.",
+                            },
+                            {
+                                "name": "delta",
+                                "required": "required (hmove)",
+                                "values": "float",
+                                "desc": "Relative adjustment amount.",
+                            },
                         ],
                         "examples": [
                             ("scope hscale 0.001", "Set 1 ms/div"),
@@ -3453,16 +3852,42 @@ class InstrumentRepl(cmd.Cmd):
                         "see": ["scope-vscale"],
                     },
                     {
-                        "id": "scope-vscale", "name": "scope vscale / vpos / vmove",
+                        "id": "scope-vscale",
+                        "name": "scope vscale / vpos / vmove",
                         "brief": "Vertical (voltage) axis control",
                         "syntax": "scope vscale <1-4|all> <V/div> [pos]  |  scope vpos <1-4|all> <div>  |  scope vmove <1-4|all> <delta>",
                         "desc": "<code>vscale</code> sets voltage per division. Optional <code>pos</code> sets the vertical position. <code>vpos</code> sets absolute position in divisions. <code>vmove</code> adjusts position relatively.",
                         "params": [
-                            {"name": "1-4|all", "required": "required", "values": "1, 2, 3, 4, all", "desc": "Channel number."},
-                            {"name": "V/div", "required": "required (vscale)", "values": "float (V)", "desc": "Voltage per division."},
-                            {"name": "pos", "required": "optional (vscale)", "values": "float (divisions)", "desc": "Vertical position offset in divisions. Default: 0 (centered)."},
-                            {"name": "div", "required": "required (vpos)", "values": "float", "desc": "Absolute vertical position in divisions."},
-                            {"name": "delta", "required": "required (vmove)", "values": "float", "desc": "Relative position change in divisions."},
+                            {
+                                "name": "1-4|all",
+                                "required": "required",
+                                "values": "1, 2, 3, 4, all",
+                                "desc": "Channel number.",
+                            },
+                            {
+                                "name": "V/div",
+                                "required": "required (vscale)",
+                                "values": "float (V)",
+                                "desc": "Voltage per division.",
+                            },
+                            {
+                                "name": "pos",
+                                "required": "optional (vscale)",
+                                "values": "float (divisions)",
+                                "desc": "Vertical position offset in divisions. Default: 0 (centered).",
+                            },
+                            {
+                                "name": "div",
+                                "required": "required (vpos)",
+                                "values": "float",
+                                "desc": "Absolute vertical position in divisions.",
+                            },
+                            {
+                                "name": "delta",
+                                "required": "required (vmove)",
+                                "values": "float",
+                                "desc": "Relative position change in divisions.",
+                            },
                         ],
                         "examples": [
                             ("scope vscale 1 0.5", "Set ch1 to 0.5 V/div"),
@@ -3472,15 +3897,36 @@ class InstrumentRepl(cmd.Cmd):
                         "see": ["scope-hscale"],
                     },
                     {
-                        "id": "scope-trigger", "name": "scope trigger",
+                        "id": "scope-trigger",
+                        "name": "scope trigger",
                         "brief": "Configure the trigger",
                         "syntax": "scope trigger <channel> <level> [slope=<RISE|FALL>] [mode=<AUTO|NORM|SINGLE>]",
                         "desc": "Sets the trigger source, voltage level, edge slope, and acquisition mode.",
                         "params": [
-                            {"name": "channel", "required": "required", "values": "1, 2, 3, 4", "desc": "Trigger source channel."},
-                            {"name": "level", "required": "required", "values": "float (V)", "desc": "Trigger threshold voltage."},
-                            {"name": "slope=", "required": "optional", "values": "RISE, FALL", "desc": "Trigger on rising or falling edge. Default: RISE."},
-                            {"name": "mode=", "required": "optional", "values": "AUTO, NORM, SINGLE", "desc": "Trigger mode. AUTO = free-run if no trigger; NORM = wait for trigger; SINGLE = one shot. Default: AUTO."},
+                            {
+                                "name": "channel",
+                                "required": "required",
+                                "values": "1, 2, 3, 4",
+                                "desc": "Trigger source channel.",
+                            },
+                            {
+                                "name": "level",
+                                "required": "required",
+                                "values": "float (V)",
+                                "desc": "Trigger threshold voltage.",
+                            },
+                            {
+                                "name": "slope=",
+                                "required": "optional",
+                                "values": "RISE, FALL",
+                                "desc": "Trigger on rising or falling edge. Default: RISE.",
+                            },
+                            {
+                                "name": "mode=",
+                                "required": "optional",
+                                "values": "AUTO, NORM, SINGLE",
+                                "desc": "Trigger mode. AUTO = free-run if no trigger; NORM = wait for trigger; SINGLE = one shot. Default: AUTO.",
+                            },
                         ],
                         "examples": [
                             ("scope trigger 1 0.0", "Trigger on ch1, 0 V, rising edge"),
@@ -3490,13 +3936,24 @@ class InstrumentRepl(cmd.Cmd):
                         "see": ["scope-acq"],
                     },
                     {
-                        "id": "scope-meas", "name": "scope meas",
+                        "id": "scope-meas",
+                        "name": "scope meas",
                         "brief": "Take and print a single measurement",
                         "syntax": "scope meas <1-4|all> <type>",
                         "desc": "Queries a measurement from the scope and prints the result. Does not store to the log — use <code>scope meas_store</code> for logging.",
                         "params": [
-                            {"name": "1-4|all", "required": "required", "values": "1, 2, 3, 4, all", "desc": "Channel(s) to measure."},
-                            {"name": "type", "required": "required", "values": "Voltage: VPP/PK2PK, VRMS/RMS, ACRMS, VMAX/MAXIMUM, VMIN/MINIMUM, VTOP/TOP, VBASE/BASE, VAMP/AMPLITUDE, VAVG/MEAN/AVERAGE, VMID/MID, VUPPER/UPPER, VLOWER/LOWER, VARIANCE/VAR, PVRMS, TVMAX, TVMIN — Time: FREQUENCY/FREQ, PERIOD, RISE/RISETIME, FALL/FALLTIME, PWIDTH, NWIDTH — Duty: PDUTY/POSDUTY, NDUTY/NEGDUTY — Shape: OVERSHOOT/OVER, PRESHOOT/PRE, PSLEWRATE/POSSLEW, NSLEWRATE/NEGSLEW — Area: MAREA/AREA, MPAREA/PERIODAREA — Counts: PPULSES, NPULSES, POSEDGES/PEDGES, NEGEDGES/NEDGES", "desc": "Measurement type. Case-insensitive. See grouped list above for all supported aliases."},
+                            {
+                                "name": "1-4|all",
+                                "required": "required",
+                                "values": "1, 2, 3, 4, all",
+                                "desc": "Channel(s) to measure.",
+                            },
+                            {
+                                "name": "type",
+                                "required": "required",
+                                "values": "Voltage: VPP/PK2PK, VRMS/RMS, ACRMS, VMAX/MAXIMUM, VMIN/MINIMUM, VTOP/TOP, VBASE/BASE, VAMP/AMPLITUDE, VAVG/MEAN/AVERAGE, VMID/MID, VUPPER/UPPER, VLOWER/LOWER, VARIANCE/VAR, PVRMS, TVMAX, TVMIN — Time: FREQUENCY/FREQ, PERIOD, RISE/RISETIME, FALL/FALLTIME, PWIDTH, NWIDTH — Duty: PDUTY/POSDUTY, NDUTY/NEGDUTY — Shape: OVERSHOOT/OVER, PRESHOOT/PRE, PSLEWRATE/POSSLEW, NSLEWRATE/NEGSLEW — Area: MAREA/AREA, MPAREA/PERIODAREA — Counts: PPULSES, NPULSES, POSEDGES/PEDGES, NEGEDGES/NEDGES",
+                                "desc": "Measurement type. Case-insensitive. See grouped list above for all supported aliases.",
+                            },
                         ],
                         "examples": [
                             ("scope meas 1 FREQUENCY", "Print channel 1 frequency"),
@@ -3508,15 +3965,36 @@ class InstrumentRepl(cmd.Cmd):
                         "see": ["scope-meas_store"],
                     },
                     {
-                        "id": "scope-meas_store", "name": "scope meas_store",
+                        "id": "scope-meas_store",
+                        "name": "scope meas_store",
                         "brief": "Measure and record to the log",
                         "syntax": "scope meas_store <1-4|all> <type> <label> [unit=<str>]",
                         "desc": "Queries a measurement from the scope and appends it to the session measurement log.",
                         "params": [
-                            {"name": "1-4|all", "required": "required", "values": "1, 2, 3, 4, all", "desc": "Channel to measure."},
-                            {"name": "type", "required": "required", "values": "Voltage: VPP/PK2PK, VRMS/RMS, ACRMS, VMAX/MAXIMUM, VMIN/MINIMUM, VTOP/TOP, VBASE/BASE, VAMP/AMPLITUDE, VAVG/MEAN/AVERAGE, VMID/MID, VUPPER/UPPER, VLOWER/LOWER, VARIANCE/VAR, PVRMS, TVMAX, TVMIN — Time: FREQUENCY/FREQ, PERIOD, RISE/RISETIME, FALL/FALLTIME, PWIDTH, NWIDTH — Duty: PDUTY/POSDUTY, NDUTY/NEGDUTY — Shape: OVERSHOOT/OVER, PRESHOOT/PRE, PSLEWRATE/POSSLEW, NSLEWRATE/NEGSLEW — Area: MAREA/AREA, MPAREA/PERIODAREA — Counts: PPULSES, NPULSES, POSEDGES/PEDGES, NEGEDGES/NEDGES", "desc": "Type of measurement to take. Case-insensitive."},
-                            {"name": "label", "required": "required", "values": "string, no spaces", "desc": "Name for this measurement entry in the log. Appears as the row identifier in <code>log print</code>. Also used as the dictionary key in <code>calc</code> expressions — e.g. if label is <code>ch1_freq</code> then access it as <code>m[\"ch1_freq\"]</code>. Use underscores instead of spaces."},
-                            {"name": "unit=", "required": "optional", "values": "string, e.g. Hz, V", "desc": "Unit label shown in <code>log print</code> output. Display-only — does not affect the stored value or calculations."},
+                            {
+                                "name": "1-4|all",
+                                "required": "required",
+                                "values": "1, 2, 3, 4, all",
+                                "desc": "Channel to measure.",
+                            },
+                            {
+                                "name": "type",
+                                "required": "required",
+                                "values": "Voltage: VPP/PK2PK, VRMS/RMS, ACRMS, VMAX/MAXIMUM, VMIN/MINIMUM, VTOP/TOP, VBASE/BASE, VAMP/AMPLITUDE, VAVG/MEAN/AVERAGE, VMID/MID, VUPPER/UPPER, VLOWER/LOWER, VARIANCE/VAR, PVRMS, TVMAX, TVMIN — Time: FREQUENCY/FREQ, PERIOD, RISE/RISETIME, FALL/FALLTIME, PWIDTH, NWIDTH — Duty: PDUTY/POSDUTY, NDUTY/NEGDUTY — Shape: OVERSHOOT/OVER, PRESHOOT/PRE, PSLEWRATE/POSSLEW, NSLEWRATE/NEGSLEW — Area: MAREA/AREA, MPAREA/PERIODAREA — Counts: PPULSES, NPULSES, POSEDGES/PEDGES, NEGEDGES/NEDGES",
+                                "desc": "Type of measurement to take. Case-insensitive.",
+                            },
+                            {
+                                "name": "label",
+                                "required": "required",
+                                "values": "string, no spaces",
+                                "desc": 'Name for this measurement entry in the log. Appears as the row identifier in <code>log print</code>. Also used as the dictionary key in <code>calc</code> expressions — e.g. if label is <code>ch1_freq</code> then access it as <code>m["ch1_freq"]</code>. Use underscores instead of spaces.',
+                            },
+                            {
+                                "name": "unit=",
+                                "required": "optional",
+                                "values": "string, e.g. Hz, V",
+                                "desc": "Unit label shown in <code>log print</code> output. Display-only — does not affect the stored value or calculations.",
+                            },
                         ],
                         "examples": [
                             ("scope meas_store 1 FREQUENCY meas_freq unit=Hz", "Store ch1 frequency as 'meas_freq'"),
@@ -3524,18 +4002,29 @@ class InstrumentRepl(cmd.Cmd):
                             ("scope meas_store 1 RMS meas_rms unit=V", "Store ch1 RMS"),
                         ],
                         "notes": [
-                            "Access stored values in <code>calc</code>: <code>calc ratio m[\"meas_pk2pk\"]/m[\"meas_rms\"]</code>",
+                            'Access stored values in <code>calc</code>: <code>calc ratio m["meas_pk2pk"]/m["meas_rms"]</code>',
                         ],
                         "see": ["scope-meas", "cmd-log", "cmd-calc"],
                     },
                     {
-                        "id": "scope-meas_setup", "name": "scope meas_setup",
+                        "id": "scope-meas_setup",
+                        "name": "scope meas_setup",
                         "brief": "Configure a measurement slot before capture",
                         "syntax": "scope meas_setup <1-4|all> <type>",
                         "desc": "Registers a measurement item on the scope so the DHO804 computes it when the trigger fires. Call before <code>scope single</code>. Query results with <code>scope meas_store</code> after capture.",
                         "params": [
-                            {"name": "1-4|all", "required": "required", "values": "1, 2, 3, 4, all", "desc": "Channel(s) to configure."},
-                            {"name": "type", "required": "required", "values": "See scope meas for full list", "desc": "Measurement type to compute on next capture."},
+                            {
+                                "name": "1-4|all",
+                                "required": "required",
+                                "values": "1, 2, 3, 4, all",
+                                "desc": "Channel(s) to configure.",
+                            },
+                            {
+                                "name": "type",
+                                "required": "required",
+                                "values": "See scope meas for full list",
+                                "desc": "Measurement type to compute on next capture.",
+                            },
                         ],
                         "examples": [
                             ("scope meas_setup 3 RISE", "Configure CH3 rise time slot"),
@@ -3547,7 +4036,8 @@ class InstrumentRepl(cmd.Cmd):
                         "see": ["scope-meas_force", "scope-meas_store", "scope-meas_clear"],
                     },
                     {
-                        "id": "scope-meas_force", "name": "scope meas_force",
+                        "id": "scope-meas_force",
+                        "name": "scope meas_force",
                         "brief": "Force DSP computation of configured measurements",
                         "syntax": "scope meas_force",
                         "desc": "The DHO804 computes measurements lazily — values are only finalized when the display refreshes. <code>scope meas_force</code> triggers an internal display refresh (no file written) so that <code>scope meas_store</code> returns valid values. Use after <code>scope wait_stop</code> and before <code>scope meas_store</code>.",
@@ -3561,7 +4051,8 @@ class InstrumentRepl(cmd.Cmd):
                         "see": ["scope-meas_setup", "scope-meas_store", "scope-meas_clear"],
                     },
                     {
-                        "id": "scope-meas_clear", "name": "scope meas_clear",
+                        "id": "scope-meas_clear",
+                        "name": "scope meas_clear",
                         "brief": "Close the measurement results panel",
                         "syntax": "scope meas_clear",
                         "desc": "Sends <code>:MEASure:CLEar</code> to remove all configured measurement items from the on-screen results panel. Use before <code>scope screenshot</code> to capture a clean waveform image without the measurement sidebar.",
@@ -3573,16 +4064,42 @@ class InstrumentRepl(cmd.Cmd):
                         "see": ["scope-meas_setup", "scope-meas_force", "scope-screenshot"],
                     },
                     {
-                        "id": "scope-meas_delay", "name": "scope meas_delay / meas_delay_store",
+                        "id": "scope-meas_delay",
+                        "name": "scope meas_delay / meas_delay_store",
                         "brief": "Measure propagation delay between two channels",
                         "syntax": "scope meas_delay <ch1> <ch2> [edge1=RISE] [edge2=RISE]  |  scope meas_delay_store <ch1> <ch2> <label> [edge1=] [edge2=] [direction=] [unit=]",
                         "desc": "Measures the time delay between trigger events on two channels (propagation delay / phase shift).",
                         "params": [
-                            {"name": "ch1 / ch2", "required": "required", "values": "1, 2, 3, 4", "desc": "Source and reference channel numbers."},
-                            {"name": "edge1= / edge2=", "required": "optional", "values": "RISE, FALL", "desc": "Which edge to detect on each channel. Default: RISE."},
-                            {"name": "direction=", "required": "optional", "values": "FORWARDS, BACKWARDS", "desc": "Search direction. Default: FORWARDS."},
-                            {"name": "label", "required": "required (store)", "values": "string, no spaces", "desc": "Log entry name. See <code>scope meas_store</code> for full description of the label parameter."},
-                            {"name": "unit=", "required": "optional", "values": "string, e.g. s, ms, us", "desc": "Unit shown in log output."},
+                            {
+                                "name": "ch1 / ch2",
+                                "required": "required",
+                                "values": "1, 2, 3, 4",
+                                "desc": "Source and reference channel numbers.",
+                            },
+                            {
+                                "name": "edge1= / edge2=",
+                                "required": "optional",
+                                "values": "RISE, FALL",
+                                "desc": "Which edge to detect on each channel. Default: RISE.",
+                            },
+                            {
+                                "name": "direction=",
+                                "required": "optional",
+                                "values": "FORWARDS, BACKWARDS",
+                                "desc": "Search direction. Default: FORWARDS.",
+                            },
+                            {
+                                "name": "label",
+                                "required": "required (store)",
+                                "values": "string, no spaces",
+                                "desc": "Log entry name. See <code>scope meas_store</code> for full description of the label parameter.",
+                            },
+                            {
+                                "name": "unit=",
+                                "required": "optional",
+                                "values": "string, e.g. s, ms, us",
+                                "desc": "Unit shown in log output.",
+                            },
                         ],
                         "examples": [
                             ("scope meas_delay 1 2", "Print delay from ch1 to ch2"),
@@ -3592,15 +4109,36 @@ class InstrumentRepl(cmd.Cmd):
                         "see": ["scope-meas_store"],
                     },
                     {
-                        "id": "scope-save", "name": "scope save",
+                        "id": "scope-save",
+                        "name": "scope save",
                         "brief": "Save waveform data to CSV",
                         "syntax": "scope save <channels> <file.csv> [record=<s>] [time=<s>] [points=<n>]",
                         "desc": "Downloads waveform data from the scope and saves as CSV.",
                         "params": [
-                            {"name": "channels", "required": "required", "values": "1, 2, 3, 4, or e.g. 1,2", "desc": "Channel(s) to save. Comma-separated for multiple."},
-                            {"name": "file.csv", "required": "required", "values": "file path", "desc": "Output file. Created or overwritten."},
-                            {"name": "record= / time=", "required": "optional", "values": "float (s)", "desc": "Record for this many seconds before saving."},
-                            {"name": "points=", "required": "optional", "values": "int", "desc": "Number of waveform points to request."},
+                            {
+                                "name": "channels",
+                                "required": "required",
+                                "values": "1, 2, 3, 4, or e.g. 1,2",
+                                "desc": "Channel(s) to save. Comma-separated for multiple.",
+                            },
+                            {
+                                "name": "file.csv",
+                                "required": "required",
+                                "values": "file path",
+                                "desc": "Output file. Created or overwritten.",
+                            },
+                            {
+                                "name": "record= / time=",
+                                "required": "optional",
+                                "values": "float (s)",
+                                "desc": "Record for this many seconds before saving.",
+                            },
+                            {
+                                "name": "points=",
+                                "required": "optional",
+                                "values": "int",
+                                "desc": "Number of waveform points to request.",
+                            },
                         ],
                         "examples": [
                             ("scope save 1 output.csv", "Save ch1 waveform"),
@@ -3611,7 +4149,8 @@ class InstrumentRepl(cmd.Cmd):
                         "see": [],
                     },
                     {
-                        "id": "scope-tools", "name": "scope awg / counter / dvm",
+                        "id": "scope-tools",
+                        "name": "scope awg / counter / dvm",
                         "brief": "Built-in scope tools",
                         "syntax": "scope awg <subcmd>  |  scope counter <subcmd>  |  scope dvm <subcmd>",
                         "desc": "Access built-in tools. <code>awg</code> controls the built-in waveform generator (DHO914S/DHO924S only). <code>counter</code> controls the built-in frequency counter. <code>dvm</code> controls the built-in digital voltmeter. Run the subcommand alone (e.g. <code>scope awg</code>) for help.",
@@ -3625,12 +4164,18 @@ class InstrumentRepl(cmd.Cmd):
                         "see": [],
                     },
                     {
-                        "id": "scope-screenshot", "name": "scope screenshot",
+                        "id": "scope-screenshot",
+                        "name": "scope screenshot",
                         "brief": "Save a screenshot to PNG",
                         "syntax": "scope screenshot [filename]",
                         "desc": "Captures the scope display and saves as PNG. Default filename includes timestamp. Relative paths are saved to the data directory (<code>~/Documents/scpi-instrument-toolkit/data/</code>).",
                         "params": [
-                            {"name": "filename", "required": "optional", "values": "file path", "desc": "Output PNG file. Defaults to <code>screenshot_HHMMSS.png</code>."},
+                            {
+                                "name": "filename",
+                                "required": "optional",
+                                "values": "file path",
+                                "desc": "Output PNG file. Defaults to <code>screenshot_HHMMSS.png</code>.",
+                            },
                         ],
                         "examples": [
                             ("scope screenshot", "Save with auto-generated filename"),
@@ -3640,15 +4185,31 @@ class InstrumentRepl(cmd.Cmd):
                         "see": ["scope-save"],
                     },
                     {
-                        "id": "scope-label", "name": "scope label / invert / bwlimit",
+                        "id": "scope-label",
+                        "name": "scope label / invert / bwlimit",
                         "brief": "Channel label, inversion, and bandwidth limit",
                         "syntax": "scope label <1-4> <text>  |  scope invert <1-4> <on|off>  |  scope bwlimit <1-4> <20M|OFF>",
                         "desc": "<code>label</code> sets a custom label for a channel. <code>invert</code> flips the waveform vertically. <code>bwlimit</code> enables a 20 MHz bandwidth limit filter to reduce noise.",
                         "params": [
                             {"name": "1-4", "required": "required", "values": "1, 2, 3, 4", "desc": "Channel number."},
-                            {"name": "text", "required": "required (label)", "values": "string", "desc": "Label text to display."},
-                            {"name": "on|off", "required": "required (invert)", "values": "on, off", "desc": "Enable or disable inversion."},
-                            {"name": "20M|OFF", "required": "required (bwlimit)", "values": "20M, OFF", "desc": "Bandwidth limit setting."},
+                            {
+                                "name": "text",
+                                "required": "required (label)",
+                                "values": "string",
+                                "desc": "Label text to display.",
+                            },
+                            {
+                                "name": "on|off",
+                                "required": "required (invert)",
+                                "values": "on, off",
+                                "desc": "Enable or disable inversion.",
+                            },
+                            {
+                                "name": "20M|OFF",
+                                "required": "required (bwlimit)",
+                                "values": "20M, OFF",
+                                "desc": "Bandwidth limit setting.",
+                            },
                         ],
                         "examples": [
                             ("scope label 1 VCC", "Label channel 1 as VCC"),
@@ -3659,7 +4220,8 @@ class InstrumentRepl(cmd.Cmd):
                         "see": ["scope-chan"],
                     },
                     {
-                        "id": "scope-force", "name": "scope force / reset",
+                        "id": "scope-force",
+                        "name": "scope force / reset",
                         "brief": "Force trigger and instrument reset",
                         "syntax": "scope force  |  scope reset",
                         "desc": "<code>force</code> forces a trigger event immediately, useful when the trigger is armed but not triggering. <code>reset</code> sends <code>*RST</code> to restore factory defaults.",
@@ -3671,7 +4233,8 @@ class InstrumentRepl(cmd.Cmd):
                         "see": ["scope-trigger"],
                     },
                     {
-                        "id": "scope-display", "name": "scope display",
+                        "id": "scope-display",
+                        "name": "scope display",
                         "brief": "Display settings (brightness, grid, persistence)",
                         "syntax": "scope display <subcmd>",
                         "desc": "Controls display appearance. Subcommands: <code>clear</code>, <code>brightness</code>, <code>grid</code>, <code>gridbright</code>, <code>persist</code>, <code>type</code>. Type <code>scope display</code> for help.",
@@ -3685,7 +4248,8 @@ class InstrumentRepl(cmd.Cmd):
                         "see": [],
                     },
                     {
-                        "id": "scope-acquire", "name": "scope acquire",
+                        "id": "scope-acquire",
+                        "name": "scope acquire",
                         "brief": "Acquisition settings (type, averages, depth)",
                         "syntax": "scope acquire <subcmd>",
                         "desc": "Controls acquisition parameters. Subcommands: <code>type</code>, <code>averages</code>, <code>depth</code>, <code>rate</code>. Type <code>scope acquire</code> for help.",
@@ -3699,7 +4263,8 @@ class InstrumentRepl(cmd.Cmd):
                         "see": [],
                     },
                     {
-                        "id": "scope-cursor", "name": "scope cursor",
+                        "id": "scope-cursor",
+                        "name": "scope cursor",
                         "brief": "Cursor measurements",
                         "syntax": "scope cursor <subcmd>",
                         "desc": "Controls measurement cursors. Subcommands: <code>off</code>, <code>manual</code>, <code>set</code>, <code>read</code>. Type <code>scope cursor</code> for help.",
@@ -3713,7 +4278,8 @@ class InstrumentRepl(cmd.Cmd):
                         "see": ["scope-meas"],
                     },
                     {
-                        "id": "scope-math", "name": "scope math",
+                        "id": "scope-math",
+                        "name": "scope math",
                         "brief": "Math channels (operations, FFT, filters)",
                         "syntax": "scope math <subcmd>",
                         "desc": "Controls math channels. Subcommands: <code>on</code>/<code>off</code>, <code>op</code>, <code>func</code>, <code>fft</code>, <code>filter</code>, <code>scale</code>. Type <code>scope math</code> for help.",
@@ -3727,7 +4293,8 @@ class InstrumentRepl(cmd.Cmd):
                         "see": [],
                     },
                     {
-                        "id": "scope-record", "name": "scope record",
+                        "id": "scope-record",
+                        "name": "scope record",
                         "brief": "Waveform recording and playback",
                         "syntax": "scope record <subcmd>",
                         "desc": "Controls waveform recording. Subcommands: <code>on</code>/<code>off</code>, <code>frames</code>, <code>start</code>, <code>stop</code>, <code>status</code>, <code>play</code>. Type <code>scope record</code> for help.",
@@ -3741,7 +4308,8 @@ class InstrumentRepl(cmd.Cmd):
                         "see": [],
                     },
                     {
-                        "id": "scope-mask", "name": "scope mask",
+                        "id": "scope-mask",
+                        "name": "scope mask",
                         "brief": "Pass/fail mask testing",
                         "syntax": "scope mask <subcmd>",
                         "desc": "Controls pass/fail mask testing. Subcommands: <code>on</code>/<code>off</code>, <code>source</code>, <code>tolerance</code>, <code>create</code>, <code>start</code>, <code>stop</code>, <code>stats</code>, <code>reset</code>. Type <code>scope mask</code> for help.",
@@ -3758,29 +4326,47 @@ class InstrumentRepl(cmd.Cmd):
                 ],
             },
             {
-                "id": "scripting", "title": "Scripts & Directives",
+                "id": "scripting",
+                "title": "Scripts & Directives",
                 "intro": "Scripts are named sequences of REPL commands stored in the session. They support variables, loops, and calling other scripts. Script directives (set, for, repeat, print, input, pause, call, import, export) are also valid as interactive REPL commands. Variables are isolated to each script scope — use 'import VAR' to bring a REPL variable in, and 'export VAR' to send a variable back out.",
                 "commands": [
                     {
-                        "id": "script-new", "name": "script new",
+                        "id": "script-new",
+                        "name": "script new",
                         "brief": "Create a new script",
                         "syntax": "script new <name>",
                         "desc": "Creates a new empty script and opens it in your configured editor ($EDITOR). Each line you write becomes a REPL command that runs when the script executes.",
                         "params": [
-                            {"name": "name", "required": "required", "values": "string, no spaces", "desc": "Script name. Used to reference the script in <code>script run</code> and <code>call</code>."},
+                            {
+                                "name": "name",
+                                "required": "required",
+                                "values": "string, no spaces",
+                                "desc": "Script name. Used to reference the script in <code>script run</code> and <code>call</code>.",
+                            },
                         ],
                         "examples": [("script new my_test", "Create and edit a script called 'my_test'")],
                         "notes": [],
                         "see": ["script-run", "script-edit"],
                     },
                     {
-                        "id": "script-run", "name": "script run",
+                        "id": "script-run",
+                        "name": "script run",
                         "brief": "Execute a script with optional parameter overrides",
                         "syntax": "script run <name|path> [key=value ...]",
                         "desc": "Runs a named script or a script file at any path. Key=value pairs override variables defined with <code>set</code> inside the script. Pass a file path (containing <code>/</code>, <code>\\</code>, starting with <code>.</code>, or ending in <code>.scpi</code>) to run directly from disk without importing it into the library.",
                         "params": [
-                            {"name": "name|path", "required": "required", "values": "script name or file path", "desc": "Name of a saved script (from <code>script list</code>), or a file path: relative (<code>./lab3.scpi</code>) or absolute (<code>/path/to/test.scpi</code>)."},
-                            {"name": "key=value", "required": "optional", "values": "any key=value pairs", "desc": "Override script variables. These replace the default values from <code>set</code> lines. E.g. <code>voltage=3.3</code> sets <code>${voltage}</code> to 3.3 throughout the script for this run."},
+                            {
+                                "name": "name|path",
+                                "required": "required",
+                                "values": "script name or file path",
+                                "desc": "Name of a saved script (from <code>script list</code>), or a file path: relative (<code>./lab3.scpi</code>) or absolute (<code>/path/to/test.scpi</code>).",
+                            },
+                            {
+                                "name": "key=value",
+                                "required": "optional",
+                                "values": "any key=value pairs",
+                                "desc": "Override script variables. These replace the default values from <code>set</code> lines. E.g. <code>voltage=3.3</code> sets <code>${voltage}</code> to 3.3 throughout the script for this run.",
+                            },
                         ],
                         "examples": [
                             ("script run my_test", "Run named script 'my_test'"),
@@ -3796,13 +4382,24 @@ class InstrumentRepl(cmd.Cmd):
                         "see": ["script-new", "script-debug", "script-dir", "directive-set"],
                     },
                     {
-                        "id": "script-debug", "name": "script debug",
+                        "id": "script-debug",
+                        "name": "script debug",
                         "brief": "Run a script in the interactive step-through debugger",
                         "syntax": "script debug <name|path> [key=value ...]",
                         "desc": "Expands the script fully (resolving all loops, variables, and array blocks), then pauses at the first line and enters an interactive debugger. Accepts the same name-or-path syntax as <code>script run</code>. Line numbers refer to the flat expanded command list — every iteration of a <code>for</code> loop gets its own numbered line, so you can set a breakpoint on exactly the iteration you want. While paused you can also type any REPL command to run it live.",
                         "params": [
-                            {"name": "name|path", "required": "required", "values": "script name or file path", "desc": "Script to debug — named script or file path (same syntax as <code>script run</code>)."},
-                            {"name": "key=value", "required": "optional", "values": "any key=value pairs", "desc": "Override script variables, same as <code>script run</code>."},
+                            {
+                                "name": "name|path",
+                                "required": "required",
+                                "values": "script name or file path",
+                                "desc": "Script to debug — named script or file path (same syntax as <code>script run</code>).",
+                            },
+                            {
+                                "name": "key=value",
+                                "required": "optional",
+                                "values": "any key=value pairs",
+                                "desc": "Override script variables, same as <code>script run</code>.",
+                            },
                         ],
                         "examples": [
                             ("script debug lab3", "Step through lab3 from line 1"),
@@ -3817,12 +4414,18 @@ class InstrumentRepl(cmd.Cmd):
                         "see": ["script-run", "directive-breakpoint"],
                     },
                     {
-                        "id": "script-edit", "name": "script edit / show / list / rm",
+                        "id": "script-edit",
+                        "name": "script edit / show / list / rm",
                         "brief": "Manage the script library",
                         "syntax": "script edit <name>  |  script show <name>  |  script list  |  script rm <name>  |  script import <name> <path>  |  script load  |  script save",
                         "desc": "Library management commands. <code>edit</code> opens a script in your editor. <code>show</code> prints it with syntax highlighting. <code>list</code> shows all scripts. <code>rm</code> deletes a script. <code>import</code> loads lines from a .txt file. <code>load</code> reloads all scripts from disk. <code>save</code> displays the scripts directory path.",
                         "params": [
-                            {"name": "name", "required": "required (edit/show/rm/import)", "values": "script name", "desc": "Script to operate on."},
+                            {
+                                "name": "name",
+                                "required": "required (edit/show/rm/import)",
+                                "values": "script name",
+                                "desc": "Script to operate on.",
+                            },
                         ],
                         "examples": [
                             ("script list", "Show all scripts with line counts"),
@@ -3834,13 +4437,24 @@ class InstrumentRepl(cmd.Cmd):
                         "see": ["script-dir"],
                     },
                     {
-                        "id": "script-dir", "name": "script dir",
+                        "id": "script-dir",
+                        "name": "script dir",
                         "brief": "Get or set the scripts directory for this session",
                         "syntax": "script dir [path|reset]",
                         "desc": "Changes the directory where named scripts are stored and loaded from. Immediately reloads the script library from the new location. Use <code>script dir reset</code> to go back to the default. Use <code>script dir</code> with no argument to print the current location.",
                         "params": [
-                            {"name": "path", "required": "optional", "values": "directory path (absolute or relative to cwd)", "desc": "New scripts directory. Created if it does not exist. Relative paths are resolved against cwd."},
-                            {"name": "reset", "required": "optional", "values": "reset", "desc": "Clear the override and restore the default scripts directory."},
+                            {
+                                "name": "path",
+                                "required": "optional",
+                                "values": "directory path (absolute or relative to cwd)",
+                                "desc": "New scripts directory. Created if it does not exist. Relative paths are resolved against cwd.",
+                            },
+                            {
+                                "name": "reset",
+                                "required": "optional",
+                                "values": "reset",
+                                "desc": "Clear the override and restore the default scripts directory.",
+                            },
                         ],
                         "examples": [
                             ("script dir", "Print current scripts directory"),
@@ -3858,13 +4472,24 @@ class InstrumentRepl(cmd.Cmd):
                         "see": ["script-run", "cmd-data"],
                     },
                     {
-                        "id": "directive-set", "name": "set",
+                        "id": "directive-set",
+                        "name": "set",
                         "brief": "Define a script variable (evaluated at expansion time)",
                         "syntax": "set <varname> <expression>",
                         "desc": "Defines a variable accessible as <code>${varname}</code> in subsequent script lines. Evaluated when the script is expanded (before execution begins), so arithmetic using other variables works: <code>set doubled ${voltage} * 2</code>. Variables set here are overridable from the command line when running the script.",
                         "params": [
-                            {"name": "varname", "required": "required", "values": "string, no spaces", "desc": "Variable name. Reference it as <code>${varname}</code> in script lines."},
-                            {"name": "expression", "required": "required", "values": "number, string, or math expr", "desc": "Value or arithmetic expression. Supports references to other variables: <code>${v_start} + 1.5</code>. String values are stored as-is."},
+                            {
+                                "name": "varname",
+                                "required": "required",
+                                "values": "string, no spaces",
+                                "desc": "Variable name. Reference it as <code>${varname}</code> in script lines.",
+                            },
+                            {
+                                "name": "expression",
+                                "required": "required",
+                                "values": "number, string, or math expr",
+                                "desc": "Value or arithmetic expression. Supports references to other variables: <code>${v_start} + 1.5</code>. String values are stored as-is.",
+                            },
                         ],
                         "examples": [
                             ("set voltage 5.0", "Define ${voltage} = 5.0 (overridable at run time)"),
@@ -3878,12 +4503,18 @@ class InstrumentRepl(cmd.Cmd):
                         "see": ["directive-input", "script-run"],
                     },
                     {
-                        "id": "directive-print", "name": "print",
+                        "id": "directive-print",
+                        "name": "print",
                         "brief": "Display a message to the operator",
                         "syntax": "print <message>",
                         "desc": "Prints a message to the terminal. Variable references like <code>${varname}</code> are expanded before printing.",
                         "params": [
-                            {"name": "message", "required": "required", "values": "any text", "desc": "Text to display. <code>${varname}</code> references are substituted with their current values."},
+                            {
+                                "name": "message",
+                                "required": "required",
+                                "values": "any text",
+                                "desc": "Text to display. <code>${varname}</code> references are substituted with their current values.",
+                            },
                         ],
                         "examples": [
                             ("print === Test Starting ===", "Print a header line"),
@@ -3893,12 +4524,18 @@ class InstrumentRepl(cmd.Cmd):
                         "see": ["directive-pause", "directive-input"],
                     },
                     {
-                        "id": "directive-pause", "name": "pause",
+                        "id": "directive-pause",
+                        "name": "pause",
                         "brief": "Wait for operator to press Enter",
                         "syntax": "pause [message]",
                         "desc": "Stops script execution and waits for the operator to press Enter. Useful for manual steps — connecting probes, changing DUT, verifying wiring — before the script continues.",
                         "params": [
-                            {"name": "message", "required": "optional", "values": "any text", "desc": "Custom prompt shown to the operator. Default: 'Press Enter to continue...'"},
+                            {
+                                "name": "message",
+                                "required": "optional",
+                                "values": "any text",
+                                "desc": "Custom prompt shown to the operator. Default: 'Press Enter to continue...'",
+                            },
                         ],
                         "examples": [
                             ("pause", "Wait with default prompt"),
@@ -3908,13 +4545,24 @@ class InstrumentRepl(cmd.Cmd):
                         "see": ["directive-print", "directive-input"],
                     },
                     {
-                        "id": "directive-input", "name": "input",
+                        "id": "directive-input",
+                        "name": "input",
                         "brief": "Prompt operator for a value and store it as a variable",
                         "syntax": "input <varname> [prompt text]",
                         "desc": "Prompts the operator to type a value at script run time. The entered text is stored as <code>${varname}</code> and substituted into all subsequent script lines. Unlike <code>set</code>, the value is not known until the script runs and cannot be overridden from the command line.",
                         "params": [
-                            {"name": "varname", "required": "required", "values": "string, no spaces", "desc": "Variable name. The operator's input will be available as <code>${varname}</code> in all lines after this directive."},
-                            {"name": "prompt text", "required": "optional", "values": "any text", "desc": "Prompt shown to the operator. Default: the variable name followed by a colon."},
+                            {
+                                "name": "varname",
+                                "required": "required",
+                                "values": "string, no spaces",
+                                "desc": "Variable name. The operator's input will be available as <code>${varname}</code> in all lines after this directive.",
+                            },
+                            {
+                                "name": "prompt text",
+                                "required": "optional",
+                                "values": "any text",
+                                "desc": "Prompt shown to the operator. Default: the variable name followed by a colon.",
+                            },
                         ],
                         "examples": [
                             ("input voltage Enter target voltage (V):", "Prompt for voltage; stored as ${voltage}"),
@@ -3927,13 +4575,24 @@ class InstrumentRepl(cmd.Cmd):
                         "see": ["directive-set", "directive-pause"],
                     },
                     {
-                        "id": "directive-call", "name": "call",
+                        "id": "directive-call",
+                        "name": "call",
                         "brief": "Call another script inline",
                         "syntax": "call <name> [key=value ...]",
                         "desc": "Executes another script as a sub-routine. Variables from the current script can be passed as parameters. The called script runs in its own variable scope.",
                         "params": [
-                            {"name": "name", "required": "required", "values": "script name", "desc": "Name of the script to call."},
-                            {"name": "key=value", "required": "optional", "values": "any key=value", "desc": "Parameters to pass. Variable substitution works in values: <code>voltage=${target_v}</code> passes the current value of <code>${target_v}</code>."},
+                            {
+                                "name": "name",
+                                "required": "required",
+                                "values": "script name",
+                                "desc": "Name of the script to call.",
+                            },
+                            {
+                                "name": "key=value",
+                                "required": "optional",
+                                "values": "any key=value",
+                                "desc": "Parameters to pass. Variable substitution works in values: <code>voltage=${target_v}</code> passes the current value of <code>${target_v}</code>.",
+                            },
                         ],
                         "examples": [
                             ("call set_psu voltage=5.0", "Call 'set_psu' passing voltage=5.0"),
@@ -3943,12 +4602,18 @@ class InstrumentRepl(cmd.Cmd):
                         "see": ["directive-set", "script-run"],
                     },
                     {
-                        "id": "directive-repeat", "name": "repeat ... end",
+                        "id": "directive-repeat",
+                        "name": "repeat ... end",
                         "brief": "Repeat a block N times",
                         "syntax": "repeat <N>\n  <commands>\nend",
                         "desc": "Executes the enclosed commands a fixed number of times.",
                         "params": [
-                            {"name": "N", "required": "required", "values": "int ≥ 1", "desc": "Number of repetitions."},
+                            {
+                                "name": "N",
+                                "required": "required",
+                                "values": "int ≥ 1",
+                                "desc": "Number of repetitions.",
+                            },
                         ],
                         "examples": [
                             ("repeat 3\n  psu meas v\n  sleep 0.2\nend", "Measure voltage 3 times, 200 ms apart"),
@@ -3957,16 +4622,30 @@ class InstrumentRepl(cmd.Cmd):
                         "see": ["directive-for"],
                     },
                     {
-                        "id": "directive-for", "name": "for ... end",
+                        "id": "directive-for",
+                        "name": "for ... end",
                         "brief": "Loop over a list of values",
                         "syntax": "for <var> <val1> <val2> ... <valN>\n  <commands>\nend",
                         "desc": "Iterates over a whitespace-separated list of values, setting <code>${var}</code> to each value in turn and executing the block for each.",
                         "params": [
-                            {"name": "var", "required": "required", "values": "string", "desc": "Loop variable name, referenced as <code>${var}</code> inside the block."},
-                            {"name": "val1 val2 ...", "required": "required", "values": "space-separated", "desc": "Values to iterate over — numbers, strings, or variable references like <code>${start}</code>."},
+                            {
+                                "name": "var",
+                                "required": "required",
+                                "values": "string",
+                                "desc": "Loop variable name, referenced as <code>${var}</code> inside the block.",
+                            },
+                            {
+                                "name": "val1 val2 ...",
+                                "required": "required",
+                                "values": "space-separated",
+                                "desc": "Values to iterate over — numbers, strings, or variable references like <code>${start}</code>.",
+                            },
                         ],
                         "examples": [
-                            ("for v 1.0 2.0 3.3 5.0\n  psu1 set ${v}\n  sleep 0.5\n  dmm1 meas_store vdc v_${v} unit=V\nend", "Sweep PSU through voltages and log each"),
+                            (
+                                "for v 1.0 2.0 3.3 5.0\n  psu1 set ${v}\n  sleep 0.5\n  dmm1 meas_store vdc v_${v} unit=V\nend",
+                                "Sweep PSU through voltages and log each",
+                            ),
                             ("for ch 1 2 3 4\n  scope chan ${ch} on\nend", "Enable all scope channels"),
                         ],
                         "notes": [
@@ -3978,41 +4657,71 @@ class InstrumentRepl(cmd.Cmd):
                         "see": ["directive-repeat", "directive-array"],
                     },
                     {
-                        "id": "directive-array", "name": "array ... end",
+                        "id": "directive-array",
+                        "name": "array ... end",
                         "brief": "Build a multi-line value list for use in for loops",
                         "syntax": "array <varname>\n  <value1>\n  <value2>\n  ...\nend",
                         "desc": "Builds a space-separated list variable from one value per line. Lines starting with <code>#</code> are skipped — comment out a line to exclude it from the list. The resulting variable works directly as the value list in a <code>for</code> loop.",
                         "params": [
-                            {"name": "varname", "required": "required", "values": "string", "desc": "Variable name to store the list in."},
-                            {"name": "each line", "required": "—", "values": "any value", "desc": "One list element per line. Lines beginning with <code>#</code> are excluded."},
+                            {
+                                "name": "varname",
+                                "required": "required",
+                                "values": "string",
+                                "desc": "Variable name to store the list in.",
+                            },
+                            {
+                                "name": "each line",
+                                "required": "—",
+                                "values": "any value",
+                                "desc": "One list element per line. Lines beginning with <code>#</code> are excluded.",
+                            },
                         ],
                         "examples": [
-                            ("array SWEEP\n  5.0,0.001,1.0\n  3.3,0.001,0.5\n  # 2.5,0.001,0.5\nend\nfor VIN,HSCALE,VSCALE ${SWEEP}\n  ...\nend", "Sweep table with one line per point — comment out a line to skip it"),
+                            (
+                                "array SWEEP\n  5.0,0.001,1.0\n  3.3,0.001,0.5\n  # 2.5,0.001,0.5\nend\nfor VIN,HSCALE,VSCALE ${SWEEP}\n  ...\nend",
+                                "Sweep table with one line per point — comment out a line to skip it",
+                            ),
                         ],
-                        "notes": ["Equivalent to a long inline value list on the <code>for</code> line, but much easier to read and edit."],
+                        "notes": [
+                            "Equivalent to a long inline value list on the <code>for</code> line, but much easier to read and edit."
+                        ],
                         "see": ["directive-for"],
                     },
                     {
-                        "id": "directive-import", "name": "import",
+                        "id": "directive-import",
+                        "name": "import",
                         "brief": "Pull a variable from the parent scope into this script",
                         "syntax": "import <varname> [varname2 ...]",
                         "desc": "Copies a variable from the calling scope (REPL or parent script) into the current script's isolated scope. Raises an error if the variable does not exist in the parent.",
                         "params": [
-                            {"name": "varname", "required": "required", "values": "variable name(s)", "desc": "One or more variable names to import."},
+                            {
+                                "name": "varname",
+                                "required": "required",
+                                "values": "variable name(s)",
+                                "desc": "One or more variable names to import.",
+                            },
                         ],
                         "examples": [
                             ("import FREQ VREF", "Pull ${FREQ} and ${VREF} in from the REPL"),
                         ],
-                        "notes": ["Scripts run in isolated scope by default — REPL variables are not visible unless imported."],
+                        "notes": [
+                            "Scripts run in isolated scope by default — REPL variables are not visible unless imported."
+                        ],
                         "see": ["directive-export"],
                     },
                     {
-                        "id": "directive-export", "name": "export",
+                        "id": "directive-export",
+                        "name": "export",
                         "brief": "Push a script variable back to the parent scope",
                         "syntax": "export <varname> [varname2 ...]",
                         "desc": "When the script finishes, copies the named variable back to the calling scope (REPL or parent script). Only explicitly exported variables survive — all others stay local to the script.",
                         "params": [
-                            {"name": "varname", "required": "required", "values": "variable name(s)", "desc": "One or more variables to export."},
+                            {
+                                "name": "varname",
+                                "required": "required",
+                                "values": "variable name(s)",
+                                "desc": "One or more variables to export.",
+                            },
                         ],
                         "examples": [
                             ("export RESULT", "Make ${RESULT} available in the REPL after the script finishes"),
@@ -4021,34 +4730,67 @@ class InstrumentRepl(cmd.Cmd):
                         "see": ["directive-import"],
                     },
                     {
-                        "id": "directive-breakpoint", "name": "breakpoint",
+                        "id": "directive-breakpoint",
+                        "name": "breakpoint",
                         "brief": "Pause execution and drop into the debugger",
                         "syntax": "breakpoint",
                         "desc": "When encountered during <code>script run</code> or <code>script debug</code>, pauses execution and enters the interactive debugger at that line. Useful for inspecting state at a specific point in a script without stepping through from the beginning.",
                         "params": [],
                         "examples": [
-                            ("psu set ${VIN} 0.5\npsu chan on\nbreakpoint\nscope single", "Pause after enabling PSU, before triggering the scope"),
+                            (
+                                "psu set ${VIN} 0.5\npsu chan on\nbreakpoint\nscope single",
+                                "Pause after enabling PSU, before triggering the scope",
+                            ),
                         ],
                         "notes": ["Works even during <code>script run</code> — not just <code>script debug</code>."],
                         "see": ["script-debug"],
                     },
                     {
-                        "id": "directive-upper-limit", "name": "upper_limit",
+                        "id": "directive-upper-limit",
+                        "name": "upper_limit",
                         "brief": "Set an upper safety bound on an instrument parameter",
                         "syntax": "upper_limit &lt;device&gt; [chan &lt;N&gt;] &lt;param&gt; &lt;value&gt;",
                         "desc": "Declares a maximum allowed value for a PSU or AWG parameter. Any subsequent command that would exceed this bound is rejected with an error. Limits apply to the specified device and channel; omitting <code>chan N</code> applies the limit to all channels. Use a device type (<code>psu</code>, <code>awg</code>) to constrain every instrument of that type, or a specific name (<code>psu1</code>, <code>awg2</code>) to target one instrument only. Multiple levels of limits are evaluated together — the tightest bound always wins. After setting a limit interactively, the REPL immediately warns if the current instrument state already violates it (retroactive check — advisory only, no command is blocked).",
                         "params": [
-                            {"name": "device", "required": "required", "values": "psu, awg, psu1, awg1, …", "desc": "Device type or specific name."},
-                            {"name": "chan N", "required": "optional", "values": "integer", "desc": "If given, limit applies to channel N only; otherwise to all channels."},
-                            {"name": "param (psu)", "required": "required", "values": "voltage, current", "desc": "Output voltage or current-limit setting."},
-                            {"name": "param (awg)", "required": "required", "values": "voltage, vpp, freq, vpeak, vtrough", "desc": "<code>voltage</code> is a smart alias: <code>upper_limit awg voltage N</code> sets a <em>vpeak</em> cap (peak = offset + vpp/2). Use <code>vpeak</code>/<code>vtrough</code> directly for explicit control."},
-                            {"name": "value", "required": "required", "values": "float", "desc": "Maximum permitted value (inclusive — equal value is allowed)."},
+                            {
+                                "name": "device",
+                                "required": "required",
+                                "values": "psu, awg, psu1, awg1, …",
+                                "desc": "Device type or specific name.",
+                            },
+                            {
+                                "name": "chan N",
+                                "required": "optional",
+                                "values": "integer",
+                                "desc": "If given, limit applies to channel N only; otherwise to all channels.",
+                            },
+                            {
+                                "name": "param (psu)",
+                                "required": "required",
+                                "values": "voltage, current",
+                                "desc": "Output voltage or current-limit setting.",
+                            },
+                            {
+                                "name": "param (awg)",
+                                "required": "required",
+                                "values": "voltage, vpp, freq, vpeak, vtrough",
+                                "desc": "<code>voltage</code> is a smart alias: <code>upper_limit awg voltage N</code> sets a <em>vpeak</em> cap (peak = offset + vpp/2). Use <code>vpeak</code>/<code>vtrough</code> directly for explicit control.",
+                            },
+                            {
+                                "name": "value",
+                                "required": "required",
+                                "values": "float",
+                                "desc": "Maximum permitted value (inclusive — equal value is allowed).",
+                            },
                         ],
                         "examples": [
                             ("upper_limit psu voltage 5.0", "Cap PSU output to 5 V on all channels"),
                             ("upper_limit psu chan 1 voltage 2.1", "Cap channel 1 only to 2.1 V"),
                             ("upper_limit psu1 voltage 3.3", "Cap the named instrument psu1 to 3.3 V"),
-                            ("upper_limit awg voltage 3.3", "Prevent AWG peak from exceeding 3.3 V (voltage alias → vpeak)"),
+                            (
+                                "upper_limit awg voltage 3.3",
+                                "Prevent AWG peak from exceeding 3.3 V (voltage alias → vpeak)",
+                            ),
                             ("upper_limit awg vpeak 5.0", "Prevent AWG peak from exceeding 5 V (explicit)"),
                             ("upper_limit awg vpp 10.0", "Limit peak-to-peak swing to 10 Vpp"),
                             ("upper_limit awg freq 1e6", "Limit frequency to 1 MHz"),
@@ -4063,21 +4805,50 @@ class InstrumentRepl(cmd.Cmd):
                         "see": ["directive-lower-limit"],
                     },
                     {
-                        "id": "directive-lower-limit", "name": "lower_limit",
+                        "id": "directive-lower-limit",
+                        "name": "lower_limit",
                         "brief": "Set a lower safety bound on an instrument parameter",
                         "syntax": "lower_limit &lt;device&gt; [chan &lt;N&gt;] &lt;param&gt; &lt;value&gt;",
                         "desc": "Declares a minimum allowed value for a PSU or AWG parameter. Any subsequent command that would go below this bound is rejected with an error. Follows the same device, channel, and hierarchy rules as <code>upper_limit</code>. After setting a limit interactively, the REPL immediately warns if the current instrument state already violates it (retroactive check — advisory only).",
                         "params": [
-                            {"name": "device", "required": "required", "values": "psu, awg, psu1, awg1, …", "desc": "Device type or specific name."},
-                            {"name": "chan N", "required": "optional", "values": "integer", "desc": "If given, limit applies to channel N only; otherwise to all channels."},
-                            {"name": "param (psu)", "required": "required", "values": "voltage, current", "desc": "Output voltage or current-limit setting."},
-                            {"name": "param (awg)", "required": "required", "values": "voltage, vpp, freq, vpeak, vtrough", "desc": "<code>voltage</code> is a smart alias: <code>lower_limit awg voltage N</code> sets a <em>vtrough</em> floor (trough = offset − vpp/2). Use <code>vtrough</code>/<code>vpeak</code> directly for explicit control."},
-                            {"name": "value", "required": "required", "values": "float", "desc": "Minimum permitted value (inclusive — equal value is allowed)."},
+                            {
+                                "name": "device",
+                                "required": "required",
+                                "values": "psu, awg, psu1, awg1, …",
+                                "desc": "Device type or specific name.",
+                            },
+                            {
+                                "name": "chan N",
+                                "required": "optional",
+                                "values": "integer",
+                                "desc": "If given, limit applies to channel N only; otherwise to all channels.",
+                            },
+                            {
+                                "name": "param (psu)",
+                                "required": "required",
+                                "values": "voltage, current",
+                                "desc": "Output voltage or current-limit setting.",
+                            },
+                            {
+                                "name": "param (awg)",
+                                "required": "required",
+                                "values": "voltage, vpp, freq, vpeak, vtrough",
+                                "desc": "<code>voltage</code> is a smart alias: <code>lower_limit awg voltage N</code> sets a <em>vtrough</em> floor (trough = offset − vpp/2). Use <code>vtrough</code>/<code>vpeak</code> directly for explicit control.",
+                            },
+                            {
+                                "name": "value",
+                                "required": "required",
+                                "values": "float",
+                                "desc": "Minimum permitted value (inclusive — equal value is allowed).",
+                            },
                         ],
                         "examples": [
                             ("lower_limit psu voltage 0.5", "Require PSU output to stay at or above 0.5 V"),
                             ("lower_limit psu chan 1 voltage 0.1", "Channel 1 minimum 0.1 V"),
-                            ("lower_limit awg voltage -0.3", "Prevent AWG trough from going below −0.3 V (voltage alias → vtrough)"),
+                            (
+                                "lower_limit awg voltage -0.3",
+                                "Prevent AWG trough from going below −0.3 V (voltage alias → vtrough)",
+                            ),
                             ("lower_limit awg vtrough -0.3", "Same as above but explicit"),
                             ("lower_limit awg chan 2 vtrough -5.0", "Channel 2 trough floor of −5 V"),
                         ],
@@ -4091,17 +4862,29 @@ class InstrumentRepl(cmd.Cmd):
                 ],
             },
             {
-                "id": "log", "title": "Log & Calc",
+                "id": "log",
+                "title": "Log & Calc",
                 "intro": "All meas_store commands write to a shared in-session measurement log. Use log to view or export the results, and calc to derive new values from stored measurements.",
                 "commands": [
                     {
-                        "id": "cmd-data", "name": "data dir",
+                        "id": "cmd-data",
+                        "name": "data dir",
                         "brief": "Get or set the data output directory for this session",
                         "syntax": "data dir [path|reset]",
                         "desc": "Changes where all data files are saved — screenshots (<code>scope screenshot</code>), waveform CSVs (<code>scope save</code>), and measurement exports (<code>log save</code>). Relative paths within those commands are resolved against this directory. Use <code>data dir reset</code> to restore the default.",
                         "params": [
-                            {"name": "path", "required": "optional", "values": "directory path (absolute or relative to cwd)", "desc": "New output directory. Created automatically if it does not exist."},
-                            {"name": "reset", "required": "optional", "values": "reset", "desc": "Clear the override and restore the default output directory."},
+                            {
+                                "name": "path",
+                                "required": "optional",
+                                "values": "directory path (absolute or relative to cwd)",
+                                "desc": "New output directory. Created automatically if it does not exist.",
+                            },
+                            {
+                                "name": "reset",
+                                "required": "optional",
+                                "values": "reset",
+                                "desc": "Clear the override and restore the default output directory.",
+                            },
                         ],
                         "examples": [
                             ("data dir", "Print current output directory"),
@@ -4121,13 +4904,24 @@ class InstrumentRepl(cmd.Cmd):
                         "see": ["script-dir", "cmd-log", "scope-screenshot"],
                     },
                     {
-                        "id": "cmd-log", "name": "log print / save / clear",
+                        "id": "cmd-log",
+                        "name": "log print / save / clear",
                         "brief": "View, export, or clear the measurement log",
                         "syntax": "log print  |  log save <file> [csv|txt]  |  log clear",
                         "desc": "<code>log print</code> displays all measurements in a table (Label | Value | Unit | Source). <code>log save</code> exports to a file. <code>log clear</code> erases all stored measurements.",
                         "params": [
-                            {"name": "file", "required": "required (save)", "values": "file path", "desc": "Output file path (e.g. <code>results.csv</code>)."},
-                            {"name": "csv|txt", "required": "optional (save)", "values": "csv, txt", "desc": "File format. Defaults based on file extension."},
+                            {
+                                "name": "file",
+                                "required": "required (save)",
+                                "values": "file path",
+                                "desc": "Output file path (e.g. <code>results.csv</code>).",
+                            },
+                            {
+                                "name": "csv|txt",
+                                "required": "optional (save)",
+                                "values": "csv, txt",
+                                "desc": "File format. Defaults based on file extension.",
+                            },
                         ],
                         "examples": [
                             ("log print", "Print all stored measurements"),
@@ -4138,23 +4932,42 @@ class InstrumentRepl(cmd.Cmd):
                         "see": ["cmd-calc"],
                     },
                     {
-                        "id": "cmd-calc", "name": "calc",
+                        "id": "cmd-calc",
+                        "name": "calc",
                         "brief": "Compute a derived value from stored measurements",
                         "syntax": "calc <label> <expression> [unit=<str>]",
                         "desc": "Evaluates a Python arithmetic expression using stored measurements as inputs. The result is printed and also stored in the log under the given <code>label</code> so it can be used in further <code>calc</code> expressions.",
                         "params": [
-                            {"name": "label", "required": "required", "values": "string, no spaces", "desc": "Name for the computed result in the log. Appears in <code>log print</code> and can be referenced in subsequent <code>calc</code> expressions."},
-                            {"name": "expression", "required": "required", "values": "Python arithmetic expression", "desc": "Math expression. Access stored measurements by label using <code>m[\"label\"]</code>. Use <code>last</code> for the most recently stored value. Available: <code>abs</code>, <code>min</code>, <code>max</code>, <code>round</code>, <code>pi</code> and other math constants."},
-                            {"name": "unit=", "required": "optional", "values": "string", "desc": "Unit label for the result shown in <code>log print</code>. Display-only."},
+                            {
+                                "name": "label",
+                                "required": "required",
+                                "values": "string, no spaces",
+                                "desc": "Name for the computed result in the log. Appears in <code>log print</code> and can be referenced in subsequent <code>calc</code> expressions.",
+                            },
+                            {
+                                "name": "expression",
+                                "required": "required",
+                                "values": "Python arithmetic expression",
+                                "desc": 'Math expression. Access stored measurements by label using <code>m["label"]</code>. Use <code>last</code> for the most recently stored value. Available: <code>abs</code>, <code>min</code>, <code>max</code>, <code>round</code>, <code>pi</code> and other math constants.',
+                            },
+                            {
+                                "name": "unit=",
+                                "required": "optional",
+                                "values": "string",
+                                "desc": "Unit label for the result shown in <code>log print</code>. Display-only.",
+                            },
                         ],
                         "examples": [
-                            ("calc power m[\"psu_v\"]*m[\"psu_i\"] unit=W", "Compute power from stored voltage and current"),
-                            ("calc ratio m[\"output\"]/m[\"input\"]", "Compute ratio between two measurements"),
-                            ("calc err_pct (m[\"meas\"]-m[\"ref\"])/m[\"ref\"]*100 unit=%", "Compute percentage error"),
+                            (
+                                'calc power m["psu_v"]*m["psu_i"] unit=W',
+                                "Compute power from stored voltage and current",
+                            ),
+                            ('calc ratio m["output"]/m["input"]', "Compute ratio between two measurements"),
+                            ('calc err_pct (m["meas"]-m["ref"])/m["ref"]*100 unit=%', "Compute percentage error"),
                         ],
                         "notes": [
                             "Labels used in expressions must have been stored earlier in the session by a <code>meas_store</code> or previous <code>calc</code>.",
-                            "The computed result is stored in the log, so chained calculations work: <code>calc efficiency m[\"power_out\"]/m[\"power_in\"]*100 unit=%</code>",
+                            'The computed result is stored in the log, so chained calculations work: <code>calc efficiency m["power_out"]/m["power_in"]*100 unit=%</code>',
                         ],
                         "see": ["cmd-log"],
                     },
@@ -4179,16 +4992,16 @@ class InstrumentRepl(cmd.Cmd):
             rows = ""
             for p in params:
                 rows += (
-                    f'<tr><td><code>{e(p["name"])}</code></td>'
-                    f'<td>{req_badge(p["required"])}</td>'
+                    f"<tr><td><code>{e(p['name'])}</code></td>"
+                    f"<td>{req_badge(p['required'])}</td>"
                     f'<td class="values-cell">{e(p["values"])}</td>'
                     f'<td class="desc-cell">{p["desc"]}</td></tr>'
                 )
             return (
                 '<table class="param-table">'
-                '<thead><tr><th>Parameter</th><th>Required</th>'
-                '<th>Values / Type</th><th>Description</th></tr></thead>'
-                f'<tbody>{rows}</tbody></table>'
+                "<thead><tr><th>Parameter</th><th>Required</th>"
+                "<th>Values / Type</th><th>Description</th></tr></thead>"
+                f"<tbody>{rows}</tbody></table>"
             )
 
         def render_examples(examples):
@@ -4200,7 +5013,7 @@ class InstrumentRepl(cmd.Cmd):
                     f'<div class="ex-row">'
                     f'<code class="ex-cmd">{e(ex_cmd)}</code>'
                     f'<span class="ex-desc"># {e(ex_desc)}</span>'
-                    f'</div>\n'
+                    f"</div>\n"
                 )
             return f'<div class="examples-block"><div class="ex-label">Examples</div>{items}</div>'
 
@@ -4213,10 +5026,7 @@ class InstrumentRepl(cmd.Cmd):
         def render_see(see_ids):
             if not see_ids:
                 return ""
-            links = ", ".join(
-                f'<a href="#{sid}">{e(sid.replace("-", " "))}</a>'
-                for sid in see_ids
-            )
+            links = ", ".join(f'<a href="#{sid}">{e(sid.replace("-", " "))}</a>' for sid in see_ids)
             return f'<div class="cmd-see">See also: {links}</div>'
 
         def render_cmd(cmd):
@@ -4227,24 +5037,24 @@ class InstrumentRepl(cmd.Cmd):
                 f'<div class="cmd-header">'
                 f'<span class="cmd-name">{e(cmd["name"])}</span>'
                 f'<span class="cmd-brief"> &mdash; {e(cmd["brief"])}</span>'
-                f'</div>'
+                f"</div>"
                 f'<div class="cmd-syntax"><code>{syntax_esc}</code></div>'
                 f'<p class="cmd-desc">{cmd["desc"]}</p>'
-                f'{render_param_table(cmd["params"])}'
-                f'{render_examples(cmd["examples"])}'
-                f'{render_notes(cmd["notes"])}'
-                f'{render_see(cmd["see"])}'
-                f'</div>'
+                f"{render_param_table(cmd['params'])}"
+                f"{render_examples(cmd['examples'])}"
+                f"{render_notes(cmd['notes'])}"
+                f"{render_see(cmd['see'])}"
+                f"</div>"
             )
 
         def render_section(sec):
             cmds_html = "\n".join(render_cmd(c) for c in sec["commands"])
             return (
                 f'<section id="{e(sec["id"])}">'
-                f'<h2>{e(sec["title"])}</h2>'
+                f"<h2>{e(sec['title'])}</h2>"
                 f'<p class="section-intro">{e(sec["intro"])}</p>'
-                f'{cmds_html}'
-                f'</section>'
+                f"{cmds_html}"
+                f"</section>"
             )
 
         # ── Sidebar ──────────────────────────────────────────────────────────
@@ -4252,10 +5062,7 @@ class InstrumentRepl(cmd.Cmd):
         for sec in SECTIONS:
             sidebar_links += f'<a href="#{e(sec["id"])}">{e(sec["title"])}</a>\n'
             for cmd in sec["commands"]:
-                sidebar_links += (
-                    f'<a class="sub-link" href="#{e(cmd["id"])}">'
-                    f'{e(cmd["name"])}</a>\n'
-                )
+                sidebar_links += f'<a class="sub-link" href="#{e(cmd["id"])}">{e(cmd["name"])}</a>\n'
         sidebar_links += '<a href="#examples">Examples</a>\n'
         sidebar_links += '<a href="#instruments">Instruments</a>\n'
 
@@ -4269,29 +5076,27 @@ class InstrumentRepl(cmd.Cmd):
                 f'<div class="example-block" id="ex-{e(name)}">'
                 f'<div class="example-title">{e(name)}</div>'
                 f'<div class="example-desc">{e(entry["description"])}</div>'
-                f'<pre><code>{lines_html}</code></pre>'
+                f"<pre><code>{lines_html}</code></pre>"
                 f'<div class="example-usage">'
-                f'Load: <code>examples load {e(name)}</code>'
-                f' &nbsp;|&nbsp; '
-                f'Run: <code>script run {e(name)}</code>'
-                f'</div>'
-                f'</div>'
+                f"Load: <code>examples load {e(name)}</code>"
+                f" &nbsp;|&nbsp; "
+                f"Run: <code>script run {e(name)}</code>"
+                f"</div>"
+                f"</div>"
             )
 
-        examples_html = "\n".join(
-            example_block(n, ex) for n, ex in _EXAMPLES.items()
-        )
+        examples_html = "\n".join(example_block(n, ex) for n, ex in _EXAMPLES.items())
 
         # ── Supported instruments ─────────────────────────────────────────────
         instruments = [
-            ("Tektronix MSO2024",    "Oscilloscope",       "USB/GPIB"),
-            ("Rigol DHO804",         "Oscilloscope",       "USB"),
-            ("HP E3631A",            "Power Supply",       "GPIB"),
-            ("Matrix MPS-6010H-1C",  "Power Supply",       "Serial"),
-            ("HP 34401A",            "Multimeter",         "GPIB"),
-            ("OWON XDM1041",         "Multimeter",         "USB/Serial"),
-            ("BK Precision 4063",    "Function Generator", "USB"),
-            ("Keysight EDU33212A",   "Function Generator", "USB"),
+            ("Tektronix MSO2024", "Oscilloscope", "USB/GPIB"),
+            ("Rigol DHO804", "Oscilloscope", "USB"),
+            ("HP E3631A", "Power Supply", "GPIB"),
+            ("Matrix MPS-6010H-1C", "Power Supply", "Serial"),
+            ("HP 34401A", "Multimeter", "GPIB"),
+            ("OWON XDM1041", "Multimeter", "USB/Serial"),
+            ("BK Precision 4063", "Function Generator", "USB"),
+            ("Keysight EDU33212A", "Function Generator", "USB"),
             ("JDS6600 (Seesii DDS)", "Function Generator", "Serial"),
         ]
 
@@ -4474,18 +5279,20 @@ allTargets.forEach(t => io.observe(t));
         args = self._parse_args(arg)
         args, help_flag = self._strip_help(args)
         if not args or help_flag:
-            self._print_colored_usage([
-                "# ALL",
-                "",
-                "all on",
-                "  - enable outputs on every connected instrument",
-                "all off",
-                "  - disable outputs on every connected instrument",
-                "all safe",
-                "  - apply safe state to every instrument (voltages/currents to minimum)",
-                "all reset",
-                "  - send *RST to every connected instrument",
-            ])
+            self._print_colored_usage(
+                [
+                    "# ALL",
+                    "",
+                    "all on",
+                    "  - enable outputs on every connected instrument",
+                    "all off",
+                    "  - disable outputs on every connected instrument",
+                    "all safe",
+                    "  - apply safe state to every instrument (voltages/currents to minimum)",
+                    "all reset",
+                    "  - send *RST to every connected instrument",
+                ]
+            )
             return
         state = args[0].lower()
         if state == "on":
@@ -4513,10 +5320,22 @@ allTargets.forEach(t => io.observe(t));
             # "help all" — dump full rich help for every documented command
             if arg.strip().lower() == "all":
                 for cmd_name in [
-                    "scan", "list", "use", "status", "state", "idn", "raw",
-                    "sleep", "close", "all",
-                    "upper_limit", "lower_limit",
-                    "log", "calc", "data", "script",
+                    "scan",
+                    "list",
+                    "use",
+                    "status",
+                    "state",
+                    "idn",
+                    "raw",
+                    "sleep",
+                    "close",
+                    "all",
+                    "upper_limit",
+                    "lower_limit",
+                    "log",
+                    "calc",
+                    "data",
+                    "script",
                 ]:
                     fn = getattr(self, f"help_{cmd_name}", None)
                     if fn:
@@ -4527,9 +5346,9 @@ allTargets.forEach(t => io.observe(t));
                 R = ColorPrinter.RESET
                 print(f"\n{Y}{B}INSTRUMENT COMMANDS{R}  (type the command with no args for full help)")
                 for name, desc in [
-                    ("psu",   "power supply  — chan, set, meas, meas_store, track, save, recall, state"),
-                    ("awg",   "function gen  — chan, wave, freq, amp, offset, duty, phase, sync, state"),
-                    ("dmm",   "multimeter    — config, read, fetch, meas, meas_store, beep, display"),
+                    ("psu", "power supply  — chan, set, meas, meas_store, track, save, recall, state"),
+                    ("awg", "function gen  — chan, wave, freq, amp, offset, duty, phase, sync, state"),
+                    ("dmm", "multimeter    — config, read, fetch, meas, meas_store, beep, display"),
                     ("scope", "oscilloscope  — chan, meas, save, screenshot, trigger, awg, dvm, counter"),
                 ]:
                     print(f"  {C}{name:<8}{R} {desc}")
@@ -4574,39 +5393,39 @@ allTargets.forEach(t => io.observe(t));
         print(f"{B}ESET Instrument REPL{R} {Y}v{_REPL_VERSION}{R}  —  type {C}help <command>{R} for full details\n")
 
         section("GENERAL")
-        cmd_line("scan",        "discover and connect to instruments")
-        cmd_line("reload",      "restart the REPL process")
-        cmd_line("list",        "show connected instruments")
-        cmd_line("use",         "set active instrument  (use <name>)")
-        cmd_line("status",      "show current selection")
-        cmd_line("state",       "set instrument state  (safe/reset/on/off)")
-        cmd_line("all",         "apply state to all instruments")
-        cmd_line("idn",         "query *IDN?")
-        cmd_line("raw",         "send raw SCPI command or query")
-        cmd_line("sleep",       "pause between actions  (sleep <seconds>)")
-        cmd_line("wait",        "alias for sleep")
-        cmd_line("version",     "show toolkit version")
-        cmd_line("close",       "disconnect all instruments")
-        cmd_line("exit",        "quit the REPL")
+        cmd_line("scan", "discover and connect to instruments")
+        cmd_line("reload", "restart the REPL process")
+        cmd_line("list", "show connected instruments")
+        cmd_line("use", "set active instrument  (use <name>)")
+        cmd_line("status", "show current selection")
+        cmd_line("state", "set instrument state  (safe/reset/on/off)")
+        cmd_line("all", "apply state to all instruments")
+        cmd_line("idn", "query *IDN?")
+        cmd_line("raw", "send raw SCPI command or query")
+        cmd_line("sleep", "pause between actions  (sleep <seconds>)")
+        cmd_line("wait", "alias for sleep")
+        cmd_line("version", "show toolkit version")
+        cmd_line("close", "disconnect all instruments")
+        cmd_line("exit", "quit the REPL")
 
         section("INSTRUMENTS  (run with no args for full sub-command help)")
-        cmd_line("psu",         "power supply  — chan, set, meas, track, save, recall")
-        cmd_line("awg",         "function generator  — chan, wave, freq, amp, offset, duty, phase")
-        cmd_line("dmm",         "multimeter  — config, read, fetch, meas, beep, display")
-        cmd_line("scope",       "oscilloscope  — chan, meas, save, trigger, awg, dvm, counter")
+        cmd_line("psu", "power supply  — chan, set, meas, track, save, recall")
+        cmd_line("awg", "function generator  — chan, wave, freq, amp, offset, duty, phase")
+        cmd_line("dmm", "multimeter  — config, read, fetch, meas, beep, display")
+        cmd_line("scope", "oscilloscope  — chan, meas, save, trigger, awg, dvm, counter")
 
         section("SCRIPTING")
-        cmd_line("script",      "manage and run named scripts  — new, run, debug, edit, list, rm, show, dir")
-        cmd_line("examples",    "list or load bundled example workflows  (load <name> | load all)")
-        cmd_line("python",      "execute an external Python script with REPL context")
-        cmd_line("docs",        "open full HTML documentation in your browser")
+        cmd_line("script", "manage and run named scripts  — new, run, debug, edit, list, rm, show, dir")
+        cmd_line("examples", "list or load bundled example workflows  (load <name> | load all)")
+        cmd_line("python", "execute an external Python script with REPL context")
+        cmd_line("docs", "open full HTML documentation in your browser")
         cmd_line("upper_limit", "set an upper safety bound  — psu/awg, optional chan, param, value")
         cmd_line("lower_limit", "set a lower safety bound  — psu/awg, optional chan, param, value")
 
         section("LOGGING & MATH")
-        cmd_line("log",         "show or save recorded measurements  — print, save, clear")
-        cmd_line("calc",        "compute a value from logged measurements")
-        cmd_line("data dir",    "get or set the data output directory  (data dir [path|reset])")
+        cmd_line("log", "show or save recorded measurements  — print, save, clear")
+        cmd_line("calc", "compute a value from logged measurements")
+        cmd_line("data dir", "get or set the data output directory  (data dir [path|reset])")
 
         print(f"\n  {Y}help <command>{R}  for full documentation   {Y}help all{R}  for everything at once\n")
 
@@ -4641,53 +5460,63 @@ allTargets.forEach(t => io.observe(t));
         self.do_data("")
 
     def help_scan(self):
-        self._print_colored_usage([
-            "# SCAN",
-            "",
-            "scan",
-            "  - discover and connect to all VISA instruments",
-            "  - instruments are assigned names: psu1, awg1, dmm1, scope1, …",
-            "  - re-run at any time to pick up newly connected devices",
-        ])
+        self._print_colored_usage(
+            [
+                "# SCAN",
+                "",
+                "scan",
+                "  - discover and connect to all VISA instruments",
+                "  - instruments are assigned names: psu1, awg1, dmm1, scope1, …",
+                "  - re-run at any time to pick up newly connected devices",
+            ]
+        )
 
     def help_list(self):
-        self._print_colored_usage([
-            "# LIST",
-            "",
-            "list",
-            "  - show all connected instruments and their assigned names",
-            "  - the active instrument (set via 'use') is highlighted",
-        ])
+        self._print_colored_usage(
+            [
+                "# LIST",
+                "",
+                "list",
+                "  - show all connected instruments and their assigned names",
+                "  - the active instrument (set via 'use') is highlighted",
+            ]
+        )
 
     def help_idn(self):
-        self._print_colored_usage([
-            "# IDN",
-            "",
-            "idn",
-            "  - query *IDN? on the active instrument",
-            "idn <name>",
-            "  - query *IDN? on a specific named instrument",
-            "  - example: idn dmm",
-            "  - example: idn psu2",
-        ])
+        self._print_colored_usage(
+            [
+                "# IDN",
+                "",
+                "idn",
+                "  - query *IDN? on the active instrument",
+                "idn <name>",
+                "  - query *IDN? on a specific named instrument",
+                "  - example: idn dmm",
+                "  - example: idn psu2",
+            ]
+        )
 
     def help_close(self):
-        self._print_colored_usage([
-            "# CLOSE",
-            "",
-            "close",
-            "  - disconnect all instruments and release VISA resources",
-            "  - use 'scan' to reconnect",
-        ])
+        self._print_colored_usage(
+            [
+                "# CLOSE",
+                "",
+                "close",
+                "  - disconnect all instruments and release VISA resources",
+                "  - use 'scan' to reconnect",
+            ]
+        )
 
     def help_status(self):
-        self._print_colored_usage([
-            "# STATUS",
-            "",
-            "status",
-            "  - show all connected instruments and their assigned names",
-            "  - indicates which instrument is currently active (set via 'use')",
-        ])
+        self._print_colored_usage(
+            [
+                "# STATUS",
+                "",
+                "status",
+                "  - show all connected instruments and their assigned names",
+                "  - indicates which instrument is currently active (set via 'use')",
+            ]
+        )
 
     # --------------------------
     # PSU commands
@@ -4714,10 +5543,10 @@ allTargets.forEach(t => io.observe(t));
     def _collect_limits(self, device_name: str, device_type: str, channel: Optional[int]) -> Dict[str, float]:
         """Return merged limits dict with the tightest bound per param for this device/channel."""
         lookup_keys = [
-            (device_name, channel),   # most specific: named device, this channel
-            (device_name, None),      # named device, any channel
-            (device_type, channel),   # device type, this channel
-            (device_type, None),      # device type, any channel
+            (device_name, channel),  # most specific: named device, this channel
+            (device_name, None),  # named device, any channel
+            (device_type, channel),  # device type, this channel
+            (device_type, None),  # device type, any channel
         ]
         seen: set = set()
         merged: Dict[str, float] = {}
@@ -4734,26 +5563,33 @@ allTargets.forEach(t => io.observe(t));
                         merged[param_key] = val
         return merged
 
-    def _check_psu_limits(self, device_name: str, channel: Optional[int],
-                          voltage=None, current=None) -> bool:
-        device_type = re.sub(r'\d+$', '', device_name)
+    def _check_psu_limits(self, device_name: str, channel: Optional[int], voltage=None, current=None) -> bool:
+        device_type = re.sub(r"\d+$", "", device_name)
         limits = self._collect_limits(device_name, device_type, channel)
         if not limits:
             return True
         ch_str = f" ch{channel}" if channel is not None else ""
         if voltage is not None:
             if "voltage_upper" in limits and voltage > limits["voltage_upper"]:
-                self._error(f"Safety limit exceeded: {device_name}{ch_str} voltage {voltage}V > {limits['voltage_upper']}V")
+                self._error(
+                    f"Safety limit exceeded: {device_name}{ch_str} voltage {voltage}V > {limits['voltage_upper']}V"
+                )
                 return False
             if "voltage_lower" in limits and voltage < limits["voltage_lower"]:
-                self._error(f"Safety limit exceeded: {device_name}{ch_str} voltage {voltage}V < {limits['voltage_lower']}V")
+                self._error(
+                    f"Safety limit exceeded: {device_name}{ch_str} voltage {voltage}V < {limits['voltage_lower']}V"
+                )
                 return False
         if current is not None:
             if "current_upper" in limits and current > limits["current_upper"]:
-                self._error(f"Safety limit exceeded: {device_name}{ch_str} current {current}A > {limits['current_upper']}A")
+                self._error(
+                    f"Safety limit exceeded: {device_name}{ch_str} current {current}A > {limits['current_upper']}A"
+                )
                 return False
             if "current_lower" in limits and current < limits["current_lower"]:
-                self._error(f"Safety limit exceeded: {device_name}{ch_str} current {current}A < {limits['current_lower']}A")
+                self._error(
+                    f"Safety limit exceeded: {device_name}{ch_str} current {current}A < {limits['current_lower']}A"
+                )
                 return False
         return True
 
@@ -4805,8 +5641,7 @@ allTargets.forEach(t => io.observe(t));
         try:
             # CHAN COMMAND — psu chan on|off (single) or psu chan <1|2|3|all> on|off (multi)
             if cmd_name == "chan" and (
-                (is_single_channel and len(args) >= 2) or
-                (not is_single_channel and len(args) >= 3)
+                (is_single_channel and len(args) >= 2) or (not is_single_channel and len(args) >= 3)
             ):
                 state = args[-1].lower() == "on"
                 if state and not self._check_psu_output_allowed(psu_name):
@@ -4828,9 +5663,7 @@ allTargets.forEach(t => io.observe(t));
                     dev.set_voltage(voltage)
                     if current is not None:
                         dev.set_current_limit(current)
-                    ColorPrinter.success(
-                        f"Set: {voltage}V @ {current if current else dev.get_current_limit()}A"
-                    )
+                    ColorPrinter.success(f"Set: {voltage}V @ {current if current else dev.get_current_limit()}A")
                 else:
                     # Multi-channel: psu set <channel> <voltage> [current]
                     if len(args) < 3:
@@ -4851,7 +5684,7 @@ allTargets.forEach(t => io.observe(t));
 
             # MEAS COMMAND - unified for both single and multi-channel
             elif cmd_name == "meas":
-                no_readback = getattr(dev, 'SUPPORTS_READBACK', True) is False
+                no_readback = getattr(dev, "SUPPORTS_READBACK", True) is False
                 if no_readback:
                     ColorPrinter.warning(
                         f"{psu_name}: this device has no readback support — "
@@ -4892,7 +5725,7 @@ allTargets.forEach(t => io.observe(t));
 
             # MEAS_STORE COMMAND - unified for both single and multi-channel
             elif cmd_name == "meas_store":
-                if getattr(dev, 'SUPPORTS_READBACK', True) is False:
+                if getattr(dev, "SUPPORTS_READBACK", True) is False:
                     ColorPrinter.warning(
                         f"{psu_name}: this device has no readback support — "
                         "cannot store measurements. Use an external DMM."
@@ -4992,23 +5825,20 @@ allTargets.forEach(t => io.observe(t));
         except Exception as exc:
             ColorPrinter.error(str(exc))
 
-    def _check_awg_limits(self, device_name, channel,
-                           new_vpp=None, new_offset=None, new_freq=None) -> bool:
-        device_type = re.sub(r'\d+$', '', device_name)
+    def _check_awg_limits(self, device_name, channel, new_vpp=None, new_offset=None, new_freq=None) -> bool:
+        device_type = re.sub(r"\d+$", "", device_name)
         limits = self._collect_limits(device_name, device_type, channel)
         if not limits:
             return True
         queried = self._query_awg_state(device_name, channel)
-        vpp    = new_vpp    if new_vpp    is not None else queried.get("vpp")
+        vpp = new_vpp if new_vpp is not None else queried.get("vpp")
         offset = new_offset if new_offset is not None else (queried.get("offset") or 0.0)
 
         # If amplitude is unknown and vpp-dependent limits are active, block and require explicit amp=
         if vpp is None:
             vpp_limit_keys = {"vpp_upper", "vpeak_upper", "vtrough_lower", "vpeak_lower", "vtrough_upper"}
             if any(k in limits for k in vpp_limit_keys):
-                self._error(
-                    f"Safety: AWG CH{channel} amplitude unknown — specify amp= to confirm it is within limits"
-                )
+                self._error(f"Safety: AWG CH{channel} amplitude unknown — specify amp= to confirm it is within limits")
                 return False
             vpp = 0.0
 
@@ -5024,7 +5854,7 @@ allTargets.forEach(t => io.observe(t));
                 self._error(f"Safety limit exceeded: AWG freq {new_freq}Hz < {limits['freq_lower']}Hz")
                 return False
 
-        peak   = offset + vpp / 2.0
+        peak = offset + vpp / 2.0
         trough = offset - vpp / 2.0
 
         if "vpeak_upper" in limits and peak > limits["vpeak_upper"]:
@@ -5045,8 +5875,10 @@ allTargets.forEach(t => io.observe(t));
     def _update_awg_state(self, device_name, channel, vpp=None, offset=None):
         key = (device_name, channel)
         self._awg_channel_state.setdefault(key, {"vpp": None, "offset": None})
-        if vpp    is not None: self._awg_channel_state[key]["vpp"]    = vpp
-        if offset is not None: self._awg_channel_state[key]["offset"] = offset
+        if vpp is not None:
+            self._awg_channel_state[key]["vpp"] = vpp
+        if offset is not None:
+            self._awg_channel_state[key]["offset"] = offset
 
     def _query_awg_state(self, device_name, channel):
         """Query real instrument state for an AWG channel via duck-typed getters.
@@ -5100,7 +5932,7 @@ allTargets.forEach(t => io.observe(t));
     def _check_awg_output_allowed(self, device_name, channel):
         """Check if enabling AWG output is safe given current limits.
         Returns True if allowed, False if blocked (prints error)."""
-        device_type = re.sub(r'\d+$', '', device_name)
+        device_type = re.sub(r"\d+$", "", device_name)
         limits = self._collect_limits(device_name, device_type, channel)
         if not limits:
             return True
@@ -5112,7 +5944,8 @@ allTargets.forEach(t => io.observe(t));
         if vpp is None and offset is None and freq is None:
             self._error(
                 f"SAFETY BLOCKED: {device_name} ch{channel} output enable refused — "
-                f"limits are set but instrument state is unknown")
+                f"limits are set but instrument state is unknown"
+            )
             return False
         vpp = vpp if vpp is not None else 0.0
         offset = offset if offset is not None else 0.0
@@ -5121,41 +5954,42 @@ allTargets.forEach(t => io.observe(t));
         if "vpp_upper" in limits and vpp > limits["vpp_upper"]:
             self._error(
                 f"SAFETY BLOCKED: {device_name} ch{channel} Vpp {vpp}V > limit {limits['vpp_upper']}V — "
-                f"reduce amplitude before enabling output")
+                f"reduce amplitude before enabling output"
+            )
             return False
         if "vpeak_upper" in limits and peak > limits["vpeak_upper"]:
             self._error(
                 f"SAFETY BLOCKED: {device_name} ch{channel} peak {peak:.4g}V > limit {limits['vpeak_upper']}V — "
-                f"reduce amplitude/offset before enabling output")
+                f"reduce amplitude/offset before enabling output"
+            )
             return False
         if "vtrough_lower" in limits and trough < limits["vtrough_lower"]:
             self._error(
                 f"SAFETY BLOCKED: {device_name} ch{channel} trough {trough:.4g}V < limit {limits['vtrough_lower']}V — "
-                f"adjust offset before enabling output")
+                f"adjust offset before enabling output"
+            )
             return False
         if "vpeak_lower" in limits and peak < limits["vpeak_lower"]:
-            self._error(
-                f"SAFETY BLOCKED: {device_name} ch{channel} peak {peak:.4g}V < limit {limits['vpeak_lower']}V")
+            self._error(f"SAFETY BLOCKED: {device_name} ch{channel} peak {peak:.4g}V < limit {limits['vpeak_lower']}V")
             return False
         if "vtrough_upper" in limits and trough > limits["vtrough_upper"]:
             self._error(
-                f"SAFETY BLOCKED: {device_name} ch{channel} trough {trough:.4g}V > limit {limits['vtrough_upper']}V")
+                f"SAFETY BLOCKED: {device_name} ch{channel} trough {trough:.4g}V > limit {limits['vtrough_upper']}V"
+            )
             return False
         if freq is not None:
             if "freq_upper" in limits and freq > limits["freq_upper"]:
-                self._error(
-                    f"SAFETY BLOCKED: {device_name} ch{channel} freq {freq}Hz > limit {limits['freq_upper']}Hz")
+                self._error(f"SAFETY BLOCKED: {device_name} ch{channel} freq {freq}Hz > limit {limits['freq_upper']}Hz")
                 return False
             if "freq_lower" in limits and freq < limits["freq_lower"]:
-                self._error(
-                    f"SAFETY BLOCKED: {device_name} ch{channel} freq {freq}Hz < limit {limits['freq_lower']}Hz")
+                self._error(f"SAFETY BLOCKED: {device_name} ch{channel} freq {freq}Hz < limit {limits['freq_lower']}Hz")
                 return False
         return True
 
     def _check_psu_output_allowed(self, device_name):
         """Check if enabling PSU output is safe given current limits.
         Returns True if allowed, False if blocked (prints error)."""
-        device_type = re.sub(r'\d+$', '', device_name)
+        device_type = re.sub(r"\d+$", "", device_name)
         limits = self._collect_limits(device_name, device_type, None)
         if not limits:
             return True
@@ -5165,28 +5999,28 @@ allTargets.forEach(t => io.observe(t));
         # If limits are set but state is completely unknown, refuse
         if voltage is None and current is None:
             self._error(
-                f"SAFETY BLOCKED: {device_name} output enable refused — "
-                f"limits are set but instrument state is unknown")
+                f"SAFETY BLOCKED: {device_name} output enable refused — limits are set but instrument state is unknown"
+            )
             return False
         if voltage is not None:
             if "voltage_upper" in limits and voltage > limits["voltage_upper"]:
                 self._error(
                     f"SAFETY BLOCKED: {device_name} voltage {voltage}V > limit {limits['voltage_upper']}V — "
-                    f"reduce voltage before enabling output")
+                    f"reduce voltage before enabling output"
+                )
                 return False
             if "voltage_lower" in limits and voltage < limits["voltage_lower"]:
-                self._error(
-                    f"SAFETY BLOCKED: {device_name} voltage {voltage}V < limit {limits['voltage_lower']}V")
+                self._error(f"SAFETY BLOCKED: {device_name} voltage {voltage}V < limit {limits['voltage_lower']}V")
                 return False
         if current is not None:
             if "current_upper" in limits and current > limits["current_upper"]:
                 self._error(
                     f"SAFETY BLOCKED: {device_name} current {current}A > limit {limits['current_upper']}A — "
-                    f"reduce current limit before enabling output")
+                    f"reduce current limit before enabling output"
+                )
                 return False
             if "current_lower" in limits and current < limits["current_lower"]:
-                self._error(
-                    f"SAFETY BLOCKED: {device_name} current {current}A < limit {limits['current_lower']}A")
+                self._error(f"SAFETY BLOCKED: {device_name} current {current}A < limit {limits['current_lower']}A")
                 return False
         return True
 
@@ -5196,7 +6030,7 @@ allTargets.forEach(t => io.observe(t));
         If output is OFF and violation detected → advisory warning only.
         Called after an interactive upper_limit / lower_limit to catch existing violations."""
         for dev_name, dev in self.devices.items():
-            dev_type = re.sub(r'\d+$', '', dev_name)
+            dev_type = re.sub(r"\d+$", "", dev_name)
 
             # --- PSU ---
             if dev_type == "psu":
@@ -5217,42 +6051,49 @@ allTargets.forEach(t => io.observe(t));
                         if output_on:
                             ColorPrinter.error(
                                 f"SAFETY ENFORCED: {dev_name} setpoint {v}V exceeds limit "
-                                f"{limits['voltage_upper']}V — output auto-disabled")
+                                f"{limits['voltage_upper']}V — output auto-disabled"
+                            )
                         else:
                             ColorPrinter.warning(
                                 f"Retroactive: {dev_name} setpoint {v}V already exceeds limit "
-                                f"{limits['voltage_upper']}V — consider reducing output")
+                                f"{limits['voltage_upper']}V — consider reducing output"
+                            )
                     if "voltage_lower" in limits and v < limits["voltage_lower"]:
                         violated = True
                         if output_on:
                             ColorPrinter.error(
                                 f"SAFETY ENFORCED: {dev_name} setpoint {v}V below limit "
-                                f"{limits['voltage_lower']}V — output auto-disabled")
+                                f"{limits['voltage_lower']}V — output auto-disabled"
+                            )
                         else:
                             ColorPrinter.warning(
-                                f"Retroactive: {dev_name} setpoint {v}V already below limit "
-                                f"{limits['voltage_lower']}V")
+                                f"Retroactive: {dev_name} setpoint {v}V already below limit {limits['voltage_lower']}V"
+                            )
                 if i is not None:
                     if "current_upper" in limits and i > limits["current_upper"]:
                         violated = True
                         if output_on:
                             ColorPrinter.error(
                                 f"SAFETY ENFORCED: {dev_name} current limit {i}A exceeds limit "
-                                f"{limits['current_upper']}A — output auto-disabled")
+                                f"{limits['current_upper']}A — output auto-disabled"
+                            )
                         else:
                             ColorPrinter.warning(
                                 f"Retroactive: {dev_name} current limit {i}A already exceeds limit "
-                                f"{limits['current_upper']}A")
+                                f"{limits['current_upper']}A"
+                            )
                     if "current_lower" in limits and i < limits["current_lower"]:
                         violated = True
                         if output_on:
                             ColorPrinter.error(
                                 f"SAFETY ENFORCED: {dev_name} current limit {i}A below limit "
-                                f"{limits['current_lower']}A — output auto-disabled")
+                                f"{limits['current_lower']}A — output auto-disabled"
+                            )
                         else:
                             ColorPrinter.warning(
                                 f"Retroactive: {dev_name} current limit {i}A already below limit "
-                                f"{limits['current_lower']}A")
+                                f"{limits['current_lower']}A"
+                            )
                 if violated and output_on:
                     try:
                         dev.enable_output(False)
@@ -5266,14 +6107,14 @@ allTargets.forEach(t => io.observe(t));
                     limits = self._collect_limits(dev_name, dev_type, awg_ch)
                     if not limits:
                         continue
-                    vpp    = queried.get("vpp")
+                    vpp = queried.get("vpp")
                     offset = queried.get("offset")
-                    freq   = queried.get("freq")
+                    freq = queried.get("freq")
                     if vpp is None and offset is None and freq is None:
                         continue
-                    vpp_val    = vpp if vpp is not None else 0.0
+                    vpp_val = vpp if vpp is not None else 0.0
                     offset_val = offset if offset is not None else 0.0
-                    peak   = offset_val + vpp_val / 2.0
+                    peak = offset_val + vpp_val / 2.0
                     trough = offset_val - vpp_val / 2.0
                     ch_on = False
                     try:
@@ -5287,56 +6128,67 @@ allTargets.forEach(t => io.observe(t));
                         if ch_on:
                             ColorPrinter.error(
                                 f"SAFETY ENFORCED: {dev_name} ch{awg_ch} Vpp {vpp_val}V exceeds limit "
-                                f"{limits['vpp_upper']}V — output auto-disabled")
+                                f"{limits['vpp_upper']}V — output auto-disabled"
+                            )
                         else:
                             ColorPrinter.warning(
                                 f"Retroactive: {dev_name} ch{awg_ch} Vpp {vpp_val}V already exceeds limit "
-                                f"{limits['vpp_upper']}V")
+                                f"{limits['vpp_upper']}V"
+                            )
                     if "vpeak_upper" in limits and peak > limits["vpeak_upper"]:
                         violated = True
                         if ch_on:
                             ColorPrinter.error(
                                 f"SAFETY ENFORCED: {dev_name} ch{awg_ch} peak {peak:.4g}V exceeds limit "
-                                f"{limits['vpeak_upper']}V — output auto-disabled")
+                                f"{limits['vpeak_upper']}V — output auto-disabled"
+                            )
                         else:
                             ColorPrinter.warning(
                                 f"Retroactive: {dev_name} ch{awg_ch} peak {peak:.4g}V already exceeds limit "
-                                f"{limits['vpeak_upper']}V")
+                                f"{limits['vpeak_upper']}V"
+                            )
                     if "vtrough_lower" in limits and trough < limits["vtrough_lower"]:
                         violated = True
                         if ch_on:
                             ColorPrinter.error(
                                 f"SAFETY ENFORCED: {dev_name} ch{awg_ch} trough {trough:.4g}V below limit "
-                                f"{limits['vtrough_lower']}V — output auto-disabled")
+                                f"{limits['vtrough_lower']}V — output auto-disabled"
+                            )
                         else:
                             ColorPrinter.warning(
                                 f"Retroactive: {dev_name} ch{awg_ch} trough {trough:.4g}V already below limit "
-                                f"{limits['vtrough_lower']}V")
+                                f"{limits['vtrough_lower']}V"
+                            )
                     if vpp is not None and "vpp_lower" in limits and vpp_val < limits["vpp_lower"]:
                         violated = True
                         if ch_on:
                             ColorPrinter.error(
                                 f"SAFETY ENFORCED: {dev_name} ch{awg_ch} Vpp {vpp_val}V below limit "
-                                f"{limits['vpp_lower']}V — output auto-disabled")
+                                f"{limits['vpp_lower']}V — output auto-disabled"
+                            )
                         else:
                             ColorPrinter.warning(
                                 f"Retroactive: {dev_name} ch{awg_ch} Vpp {vpp_val}V already below limit "
-                                f"{limits['vpp_lower']}V")
+                                f"{limits['vpp_lower']}V"
+                            )
                     if freq is not None:
                         if "freq_upper" in limits and freq > limits["freq_upper"]:
                             violated = True
                             if ch_on:
                                 ColorPrinter.error(
                                     f"SAFETY ENFORCED: {dev_name} ch{awg_ch} freq {freq}Hz exceeds limit "
-                                    f"{limits['freq_upper']}Hz — output auto-disabled")
+                                    f"{limits['freq_upper']}Hz — output auto-disabled"
+                                )
                             else:
                                 ColorPrinter.warning(
                                     f"Retroactive: {dev_name} ch{awg_ch} freq {freq}Hz already exceeds limit "
-                                    f"{limits['freq_upper']}Hz")
+                                    f"{limits['freq_upper']}Hz"
+                                )
                     elif "freq_upper" in limits or "freq_lower" in limits:
                         ColorPrinter.warning(
                             f"Retroactive: {dev_name} ch{awg_ch} frequency limit set but current freq "
-                            f"unknown — verify manually")
+                            f"unknown — verify manually"
+                        )
                     if violated and ch_on:
                         try:
                             dev.enable_output(awg_ch, False)
@@ -5362,7 +6214,7 @@ allTargets.forEach(t => io.observe(t));
             return
 
         # Detect device type to route commands appropriately
-        is_jds6600 = awg_name == 'dds' or 'JDS6600' in str(type(dev).__name__)
+        is_jds6600 = awg_name == "dds" or "JDS6600" in str(type(dev).__name__)
 
         args = self._parse_args(arg)
         args, help_flag = self._strip_help(args)
@@ -5422,12 +6274,13 @@ allTargets.forEach(t => io.observe(t));
                         params[key.lower()] = float(value)
 
                 param_str = "  " + "  ".join(f"{k}={v}" for k, v in params.items()) if params else ""
-                wave_vpp    = params.get("amp", params.get("amplitude"))
+                wave_vpp = params.get("amp", params.get("amplitude"))
                 wave_offset = params.get("offset")
-                wave_freq   = params.get("freq", params.get("frequency"))
+                wave_freq = params.get("freq", params.get("frequency"))
                 for channel in channels:
-                    if not self._check_awg_limits(awg_name, channel,
-                                                  new_vpp=wave_vpp, new_offset=wave_offset, new_freq=wave_freq):
+                    if not self._check_awg_limits(
+                        awg_name, channel, new_vpp=wave_vpp, new_offset=wave_offset, new_freq=wave_freq
+                    ):
                         return
                     if is_jds6600:
                         dev.set_waveform(channel, waveform)
@@ -5457,7 +6310,7 @@ allTargets.forEach(t => io.observe(t));
             elif cmd_name == "freq" and len(args) >= 3:
                 channels = self._parse_channels(args[1], max_ch=2)
                 frequency = float(args[2])
-                if not is_jds6600 and not hasattr(dev, 'set_frequency'):
+                if not is_jds6600 and not hasattr(dev, "set_frequency"):
                     ColorPrinter.warning("Frequency not supported independently. Use 'awg wave' with freq=")
                     return
                 for channel in channels:
@@ -5470,7 +6323,7 @@ allTargets.forEach(t => io.observe(t));
             elif cmd_name == "amp" and len(args) >= 3:
                 channels = self._parse_channels(args[1], max_ch=2)
                 amplitude = float(args[2])
-                if not is_jds6600 and not hasattr(dev, 'set_amplitude'):
+                if not is_jds6600 and not hasattr(dev, "set_amplitude"):
                     ColorPrinter.warning("Amplitude not supported independently. Use 'awg wave' with amp=")
                     return
                 for channel in channels:
@@ -5484,7 +6337,7 @@ allTargets.forEach(t => io.observe(t));
             elif cmd_name == "offset" and len(args) >= 3:
                 channels = self._parse_channels(args[1], max_ch=2)
                 offset = float(args[2])
-                if not is_jds6600 and not hasattr(dev, 'set_offset'):
+                if not is_jds6600 and not hasattr(dev, "set_offset"):
                     ColorPrinter.warning("Offset not supported independently. Use 'awg wave' with offset=")
                     return
                 for channel in channels:
@@ -5498,7 +6351,7 @@ allTargets.forEach(t => io.observe(t));
             elif cmd_name == "duty" and len(args) >= 3:
                 channels = self._parse_channels(args[1], max_ch=2)
                 duty = float(args[2])
-                if not is_jds6600 and not hasattr(dev, 'set_duty_cycle'):
+                if not is_jds6600 and not hasattr(dev, "set_duty_cycle"):
                     ColorPrinter.warning("Duty cycle not supported independently. Use 'awg wave' with duty=")
                     return
                 for channel in channels:
@@ -5509,7 +6362,7 @@ allTargets.forEach(t => io.observe(t));
             elif cmd_name == "phase" and len(args) >= 3:
                 channels = self._parse_channels(args[1], max_ch=2)
                 phase = float(args[2])
-                if not is_jds6600 and not hasattr(dev, 'set_phase'):
+                if not is_jds6600 and not hasattr(dev, "set_phase"):
                     ColorPrinter.warning("Phase not supported independently. Use 'awg wave' with phase=")
                     return
                 for channel in channels:
@@ -5519,7 +6372,7 @@ allTargets.forEach(t => io.observe(t));
             # SYNC COMMAND
             elif cmd_name == "sync" and len(args) >= 2:
                 state = args[1].lower() == "on"
-                if hasattr(dev, 'set_sync_output'):
+                if hasattr(dev, "set_sync_output"):
                     dev.set_sync_output(state)
                     ColorPrinter.success(f"Sync: {'on' if state else 'off'}")
                 else:
@@ -5611,17 +6464,17 @@ allTargets.forEach(t => io.observe(t));
                 B = ColorPrinter.BOLD
                 print(f"\n{B}Valid DMM ranges / res / nplc  (HP 34401A){R}\n")
                 rows = [
-                    ("vdc",      "0.1 | 1 | 10 | 100 | 1000",          "numeric",  "0.02 | 0.2 | 1 | 10 | 100"),
-                    ("vac",      "0.1 | 1 | 10 | 100 | 750",           "numeric",  "—"),
-                    ("idc",      "0.01 | 0.1 | 1 | 3",                 "numeric",  "0.02 | 0.2 | 1 | 10 | 100"),
-                    ("iac",      "0.01 | 0.1 | 1 | 3",                 "numeric",  "—"),
+                    ("vdc", "0.1 | 1 | 10 | 100 | 1000", "numeric", "0.02 | 0.2 | 1 | 10 | 100"),
+                    ("vac", "0.1 | 1 | 10 | 100 | 750", "numeric", "—"),
+                    ("idc", "0.01 | 0.1 | 1 | 3", "numeric", "0.02 | 0.2 | 1 | 10 | 100"),
+                    ("iac", "0.01 | 0.1 | 1 | 3", "numeric", "—"),
                     ("res/fres", "100 | 1k | 10k | 100k | 1M | 10M | 100M", "numeric", "—"),
-                    ("freq/per", "0.1 | 1 | 10 | 100 | 750",           "numeric",  "—"),
-                    ("cont/diode","fixed (no args)",                    "—",        "—"),
+                    ("freq/per", "0.1 | 1 | 10 | 100 | 750", "numeric", "—"),
+                    ("cont/diode", "fixed (no args)", "—", "—"),
                 ]
                 hdr = f"  {Y}{'Mode':<10}{R} {G}{'Range':<42}{R} {'Res':<10} {'nplc'}"
                 print(hdr)
-                print(f"  {Y}{'-'*10}{R} {G}{'-'*42}{R} {'-'*10} {'-'*26}")
+                print(f"  {Y}{'-' * 10}{R} {G}{'-' * 42}{R} {'-' * 10} {'-' * 26}")
                 for mode, rng, res, nplc in rows:
                     print(f"  {C}{mode:<10}{R} {rng:<42} {res:<10} {nplc}")
                 print(f"\n  All range/res args also accept: {Y}MIN | MAX | DEF | AUTO{R}\n")
@@ -5707,7 +6560,7 @@ allTargets.forEach(t => io.observe(t));
 
             # FETCH COMMAND (HP only)
             elif cmd_name == "fetch":
-                if hasattr(dev, 'fetch'):
+                if hasattr(dev, "fetch"):
                     ColorPrinter.cyan(str(dev.fetch()))
                 else:
                     ColorPrinter.warning("'fetch' command not available on this DMM")
@@ -5742,21 +6595,21 @@ allTargets.forEach(t => io.observe(t));
 
             # BEEP COMMAND
             elif cmd_name == "beep":
-                if hasattr(dev, 'beep'):
+                if hasattr(dev, "beep"):
                     dev.beep()
                 else:
                     ColorPrinter.warning("'beep' command not available on this DMM")
 
             # DISPLAY COMMAND
             elif cmd_name == "display" and len(args) >= 2:
-                if hasattr(dev, 'set_display'):
+                if hasattr(dev, "set_display"):
                     dev.set_display(args[1].lower() == "on")
                 else:
                     ColorPrinter.warning("'display' command not available on this DMM")
 
             # TEXT COMMAND (HP only)
             elif cmd_name == "text":
-                if not is_owon and hasattr(dev, 'display_text'):
+                if not is_owon and hasattr(dev, "display_text"):
                     if len(args) < 2:
                         ColorPrinter.warning("Usage: dmm text <message> [scroll=] [delay=] [loops=] [pad=] [width=]")
                         return
@@ -5791,7 +6644,7 @@ allTargets.forEach(t => io.observe(t));
                 if not is_owon:
                     if len(args) >= 2 and args[1].lower() == "off":
                         self._dmm_text_loop_active = False
-                        if hasattr(dev, 'clear_display'):
+                        if hasattr(dev, "clear_display"):
                             dev.clear_display()
                         ColorPrinter.info("Text loop stopped")
                     elif len(args) >= 2:
@@ -5809,7 +6662,7 @@ allTargets.forEach(t => io.observe(t));
                         width = int(options.get("width", 12))
                         # Generate scroll frames
                         padded = (" " * pad) + message + (" " * pad)
-                        frames = [padded[i:i+width] for i in range(len(padded) - width + 1)]
+                        frames = [padded[i : i + width] for i in range(len(padded) - width + 1)]
                         self._dmm_text_frames = frames
                         self._dmm_text_index = 0
                         self._dmm_text_delay = delay
@@ -5823,7 +6676,7 @@ allTargets.forEach(t => io.observe(t));
 
             # CLEARTEXT COMMAND (HP only)
             elif cmd_name == "cleartext":
-                if not is_owon and hasattr(dev, 'clear_display'):
+                if not is_owon and hasattr(dev, "clear_display"):
                     dev.clear_display()
                 else:
                     ColorPrinter.warning("'cleartext' command not available on this DMM")
@@ -5955,7 +6808,9 @@ allTargets.forEach(t => io.observe(t));
                     if triggered:
                         ColorPrinter.success("Scope stopped - trigger fired, waveform captured")
                     else:
-                        ColorPrinter.warning(f"Scope still armed after {timeout}s — trigger did not fire. Measurements may return 9.9e+37.")
+                        ColorPrinter.warning(
+                            f"Scope still armed after {timeout}s — trigger did not fire. Measurements may return 9.9e+37."
+                        )
                 else:
                     ColorPrinter.warning("wait_stop not supported by this device")
             elif cmd_name == "chan" and len(args) >= 3:
@@ -6032,29 +6887,31 @@ allTargets.forEach(t => io.observe(t));
                 if len(args) < 3:
                     # Show available measurement types
                     ColorPrinter.warning("Missing arguments. Usage: scope meas <1-4> <type>")
-                    self._print_colored_usage([
-                        "",
-                        "# AVAILABLE MEASUREMENT TYPES",
-                        "",
-                        "  - FREQUENCY   - signal frequency (Hz)",
-                        "  - PK2PK       - peak-to-peak voltage",
-                        "  - RMS         - RMS voltage",
-                        "  - CRMS        - cyclic RMS voltage",
-                        "  - MEAN        - average voltage",
-                        "  - PERIOD      - signal period",
-                        "  - AMPLITUDE   - signal amplitude",
-                        "  - MINIMUM     - minimum voltage",
-                        "  - MAXIMUM     - maximum voltage",
-                        "  - HIGH        - high state level",
-                        "  - LOW         - low state level",
-                        "  - RISE        - rise time",
-                        "  - FALL        - fall time",
-                        "  - PWIDTH      - positive pulse width",
-                        "  - NWIDTH      - negative pulse width",
-                        "",
-                        "  - example: scope meas 1 FREQUENCY",
-                        "  - example: scope meas 2 PK2PK",
-                    ])
+                    self._print_colored_usage(
+                        [
+                            "",
+                            "# AVAILABLE MEASUREMENT TYPES",
+                            "",
+                            "  - FREQUENCY   - signal frequency (Hz)",
+                            "  - PK2PK       - peak-to-peak voltage",
+                            "  - RMS         - RMS voltage",
+                            "  - CRMS        - cyclic RMS voltage",
+                            "  - MEAN        - average voltage",
+                            "  - PERIOD      - signal period",
+                            "  - AMPLITUDE   - signal amplitude",
+                            "  - MINIMUM     - minimum voltage",
+                            "  - MAXIMUM     - maximum voltage",
+                            "  - HIGH        - high state level",
+                            "  - LOW         - low state level",
+                            "  - RISE        - rise time",
+                            "  - FALL        - fall time",
+                            "  - PWIDTH      - positive pulse width",
+                            "  - NWIDTH      - negative pulse width",
+                            "",
+                            "  - example: scope meas 1 FREQUENCY",
+                            "  - example: scope meas 2 PK2PK",
+                        ]
+                    )
                 else:
                     channels = self._parse_channels(args[1], max_ch=4)
                     measure_type = args[2]
@@ -6094,15 +6951,18 @@ allTargets.forEach(t => io.observe(t));
                 if hasattr(dev, "get_trigger_status"):
                     trig_status = dev.get_trigger_status()
                     if trig_status == "WAIT":
-                        ColorPrinter.warning(f"Scope trigger status is WAIT — scope has not fired yet. Use 'scope wait_stop' before meas_store. Measurement may return 9.9e+37.")
+                        ColorPrinter.warning(
+                            "Scope trigger status is WAIT — scope has not fired yet. Use 'scope wait_stop' before meas_store. Measurement may return 9.9e+37."
+                        )
                 for channel in channels:
                     stored_label = f"{label}_ch{channel}" if len(channels) > 1 else label
                     # Retry up to 6x (3s total) while scope DSP finishes computing the measurement
                     import time as _time
-                    val = 9.9e+37
+
+                    val = 9.9e37
                     for _attempt in range(7):
                         val = dev.measure_bnf(channel, measure_type)
-                        if val < 9.9e+36 or _attempt == 6:
+                        if val < 9.9e36 or _attempt == 6:
                             break
                         _time.sleep(0.5)
                     self._record_measurement(stored_label, val, unit, f"scope.meas.{measure_type}")
@@ -6130,9 +6990,12 @@ allTargets.forEach(t => io.observe(t));
                 if unit_args:
                     unit = unit_args[0].split("=", 1)[1]
 
-                if len(optional_args) >= 1: edge1 = optional_args[0].upper()
-                if len(optional_args) >= 2: edge2 = optional_args[1].upper()
-                if len(optional_args) >= 3: direction = optional_args[2].upper()
+                if len(optional_args) >= 1:
+                    edge1 = optional_args[0].upper()
+                if len(optional_args) >= 2:
+                    edge2 = optional_args[1].upper()
+                if len(optional_args) >= 3:
+                    direction = optional_args[2].upper()
 
                 val = dev.measure_delay(ch1, ch2, edge1, edge2, direction)
                 self._record_measurement(label, val, unit, "scope.meas.delay")
@@ -6163,7 +7026,7 @@ allTargets.forEach(t => io.observe(t));
                     ColorPrinter.info(f"Recording for {record_duration} seconds...")
                     dev.run()  # Ensure scope is running
                     time.sleep(record_duration)  # Wait for the specified duration
-                    ColorPrinter.success(f"Recording complete")
+                    ColorPrinter.success("Recording complete")
 
                 # Parse channel list (supports single channel or comma-separated)
                 if "," in channels_str:
@@ -6381,7 +7244,9 @@ allTargets.forEach(t => io.observe(t));
                 ColorPrinter.success(f"Counter mode: {mode}")
 
             else:
-                ColorPrinter.warning(f"Unknown counter command: scope counter {' '.join(args)}. Type 'scope counter' for help.")
+                ColorPrinter.warning(
+                    f"Unknown counter command: scope counter {' '.join(args)}. Type 'scope counter' for help."
+                )
 
         except AttributeError:
             ColorPrinter.warning("Counter not supported on this oscilloscope")
@@ -6476,7 +7341,9 @@ allTargets.forEach(t => io.observe(t));
                 ColorPrinter.success(f"Display type: {display_type}")
 
             else:
-                ColorPrinter.warning(f"Unknown display command: scope display {' '.join(args)}. Type 'scope display' for help.")
+                ColorPrinter.warning(
+                    f"Unknown display command: scope display {' '.join(args)}. Type 'scope display' for help."
+                )
 
         except AttributeError:
             ColorPrinter.warning("Display control not supported on this oscilloscope model")
@@ -6521,7 +7388,9 @@ allTargets.forEach(t => io.observe(t));
                 ColorPrinter.cyan(f"Sample rate: {rate} Sa/s")
 
             else:
-                ColorPrinter.warning(f"Unknown acquire command: scope acquire {' '.join(args)}. Type 'scope acquire' for help.")
+                ColorPrinter.warning(
+                    f"Unknown acquire command: scope acquire {' '.join(args)}. Type 'scope acquire' for help."
+                )
 
         except AttributeError:
             ColorPrinter.warning("Acquisition setup not supported on this oscilloscope model")
@@ -6571,7 +7440,7 @@ allTargets.forEach(t => io.observe(t));
                 if len(args) >= 5:
                     kwargs["by"] = float(args[4])
                 dev.set_manual_cursor_positions(**kwargs)
-                ColorPrinter.success(f"Cursor positions set")
+                ColorPrinter.success("Cursor positions set")
 
             elif cmd == "read":
                 values = dev.get_manual_cursor_values()
@@ -6579,7 +7448,9 @@ allTargets.forEach(t => io.observe(t));
                     ColorPrinter.cyan(f"  {key}: {val}")
 
             else:
-                ColorPrinter.warning(f"Unknown cursor command: scope cursor {' '.join(args)}. Type 'scope cursor' for help.")
+                ColorPrinter.warning(
+                    f"Unknown cursor command: scope cursor {' '.join(args)}. Type 'scope cursor' for help."
+                )
 
         except AttributeError:
             ColorPrinter.warning("Cursor control not supported on this oscilloscope model")
@@ -6710,7 +7581,9 @@ allTargets.forEach(t => io.observe(t));
                 ColorPrinter.success("Playback started")
 
             else:
-                ColorPrinter.warning(f"Unknown record command: scope record {' '.join(args)}. Type 'scope record' for help.")
+                ColorPrinter.warning(
+                    f"Unknown record command: scope record {' '.join(args)}. Type 'scope record' for help."
+                )
 
         except AttributeError:
             ColorPrinter.warning("Recording not supported on this oscilloscope model")
@@ -6800,23 +7673,25 @@ allTargets.forEach(t => io.observe(t));
 
         if help_flag or not args:
             ColorPrinter.cyan(f"Current data dir: {os.path.abspath(self._get_data_dir())}")
-            self._print_colored_usage([
-                "# DATA DIR",
-                "",
-                "data dir",
-                "  - show the current output directory",
-                "data dir <path>",
-                "  - set the output directory (absolute or relative to cwd)",
-                "  - example: data dir .",
-                "  - example: data dir ./lab3_out",
-                "  - example: data dir C:/Users/lab/results",
-                "data dir reset",
-                "  - restore the default output directory",
-                "",
-                "  Affects: scope screenshot, scope save, log save",
-                "  Forward slashes work on all platforms.",
-                "  Paths with spaces do not need quotes.",
-            ])
+            self._print_colored_usage(
+                [
+                    "# DATA DIR",
+                    "",
+                    "data dir",
+                    "  - show the current output directory",
+                    "data dir <path>",
+                    "  - set the output directory (absolute or relative to cwd)",
+                    "  - example: data dir .",
+                    "  - example: data dir ./lab3_out",
+                    "  - example: data dir C:/Users/lab/results",
+                    "data dir reset",
+                    "  - restore the default output directory",
+                    "",
+                    "  Affects: scope screenshot, scope save, log save",
+                    "  Forward slashes work on all platforms.",
+                    "  Paths with spaces do not need quotes.",
+                ]
+            )
             return
 
         # Use the raw arg string so backslashes and spaces are preserved as-is.
@@ -6843,20 +7718,22 @@ allTargets.forEach(t => io.observe(t));
         args = self._parse_args(arg)
         args, help_flag = self._strip_help(args)
         if help_flag or not args:
-            self._print_colored_usage([
-                "# LOG",
-                "",
-                "log print",
-                "  - display all stored measurements in a formatted table",
-                "  - columns: Label | Value | Unit | Source",
-                "log save <path> [csv|txt]",
-                "  - export measurements to a file",
-                "  - format inferred from extension; override with csv or txt",
-                "  - example: log save results.csv",
-                "  - example: log save /tmp/out.txt txt",
-                "log clear",
-                "  - erase all stored measurements from this session",
-            ])
+            self._print_colored_usage(
+                [
+                    "# LOG",
+                    "",
+                    "log print",
+                    "  - display all stored measurements in a formatted table",
+                    "  - columns: Label | Value | Unit | Source",
+                    "log save <path> [csv|txt]",
+                    "  - export measurements to a file",
+                    "  - format inferred from extension; override with csv or txt",
+                    "  - example: log save results.csv",
+                    "  - example: log save /tmp/out.txt txt",
+                    "log clear",
+                    "  - erase all stored measurements from this session",
+                ]
+            )
             return
         cmd_name = args[0].lower()
         if cmd_name == "clear":
@@ -6903,7 +7780,7 @@ allTargets.forEach(t => io.observe(t));
                         handle.write("label,value,unit,source\n")
                         for entry in self.measurements:
                             handle.write(
-                                f"{entry.get('label','')},{entry.get('value','')},{entry.get('unit','')},{entry.get('source','')}\n"
+                                f"{entry.get('label', '')},{entry.get('value', '')},{entry.get('unit', '')},{entry.get('source', '')}\n"
                             )
                     else:
                         header = f"{'Label':<24} {'Value':>14} {'Unit':<8} {'Source':<12}"
@@ -6931,9 +7808,9 @@ allTargets.forEach(t => io.observe(t));
                     "# CALC (short for calculator)",
                     "",
                     "calc <label> <expr> [unit=]",
-                    "  - expr can use m[\"label\"], last, and variables like pi",
+                    '  - expr can use m["label"], last, and variables like pi',
                     "  - functions: abs, min, max, round",
-                    "  - example: calc ron_ohm m[\"vout_5_mV\"]/1000/m[\"psu_i_5_A\"] unit=ohm",
+                    '  - example: calc ron_ohm m["vout_5_mV"]/1000/m["psu_i_5_A"] unit=ohm',
                 ]
             )
             return
@@ -6945,9 +7822,10 @@ allTargets.forEach(t => io.observe(t));
         # Extract the expression from the raw arg string to preserve quotes
         # (shlex.split strips quotes, which breaks m["label.with.dots"])
         import re as _re
+
         raw = arg.strip()
-        raw_after_label = _re.sub(r'^\S+\s*', '', raw, count=1)
-        expr = _re.sub(r'(?<!\S)unit=\S+', '', raw_after_label).strip()
+        raw_after_label = _re.sub(r"^\S+\s*", "", raw, count=1)
+        expr = _re.sub(r"(?<!\S)unit=\S+", "", raw_after_label).strip()
         if not expr:
             ColorPrinter.warning("calc expects an expression.")
             return
@@ -7003,7 +7881,6 @@ allTargets.forEach(t => io.observe(t));
         value = float(entry["value"])
         unit = entry.get("unit", "")
         # Parse limits
-        import re as _re
         tol_arg = None
         for a in args[2:]:
             if a.lower().startswith("tol="):
@@ -7154,6 +8031,7 @@ allTargets.forEach(t => io.observe(t));
         if self._report_operator:
             pdf.cell(0, 7, f"Operator: {self._report_operator}", new_x="LMARGIN", new_y="NEXT", align="C")
         import datetime
+
         ts = datetime.datetime.now().strftime("%Y-%m-%d  %H:%M:%S")
         pdf.cell(0, 7, f"Generated: {ts}", new_x="LMARGIN", new_y="NEXT", align="C")
         pdf.ln(4)
@@ -7164,10 +8042,10 @@ allTargets.forEach(t => io.observe(t));
         n_fail = total - n_pass
         verdict = "PASS" if (total > 0 and n_fail == 0) else ("FAIL" if total > 0 else "N/A")
         if verdict == "PASS":
-            pdf.set_fill_color(34, 139, 34)   # green
+            pdf.set_fill_color(34, 139, 34)  # green
             pdf.set_text_color(255, 255, 255)
         elif verdict == "FAIL":
-            pdf.set_fill_color(180, 30, 30)   # red
+            pdf.set_fill_color(180, 30, 30)  # red
             pdf.set_text_color(255, 255, 255)
         else:
             pdf.set_fill_color(180, 180, 180)
@@ -7176,7 +8054,9 @@ allTargets.forEach(t => io.observe(t));
         pdf.cell(0, 18, verdict, new_x="LMARGIN", new_y="NEXT", align="C", fill=True)
         pdf.set_text_color(0, 0, 0)
         pdf.set_font("Helvetica", "", 10)
-        pdf.cell(0, 7, f"{n_pass} passed  /  {n_fail} failed  /  {total} total", new_x="LMARGIN", new_y="NEXT", align="C")
+        pdf.cell(
+            0, 7, f"{n_pass} passed  /  {n_fail} failed  /  {total} total", new_x="LMARGIN", new_y="NEXT", align="C"
+        )
         pdf.ln(6)
 
         # ── Check Results ─────────────────────────────────────────────────────
@@ -7294,7 +8174,7 @@ allTargets.forEach(t => io.observe(t));
 
         # Read the file
         try:
-            with open(filename, 'r') as f:
+            with open(filename) as f:
                 script_code = f.read()
         except Exception as exc:
             ColorPrinter.error(f"Failed to read file: {exc}")
@@ -7303,16 +8183,16 @@ allTargets.forEach(t => io.observe(t));
         # Prepare execution context
         # Provide access to REPL, devices, measurements, and utilities
         exec_globals = {
-            '__name__': '__main__',
-            '__file__': filename,
-            'repl': self,
-            'devices': self.devices,
-            'measurements': self.measurements,
-            'ColorPrinter': ColorPrinter,
+            "__name__": "__main__",
+            "__file__": filename,
+            "repl": self,
+            "devices": self.devices,
+            "measurements": self.measurements,
+            "ColorPrinter": ColorPrinter,
             # Common libraries that might be useful
-            'os': os,
-            'json': json,
-            'time': time,
+            "os": os,
+            "json": json,
+            "time": time,
         }
 
         # Execute the script
@@ -7368,13 +8248,16 @@ def main():
     # Check for updates on startup; block if one is available unless --ignore-update
     update_available = _check_for_updates(force=False)
     if update_available and not ignore_update:
-        ColorPrinter.error("Please update before using the REPL. Run the command above, or use --ignore-update to skip this check.")
+        ColorPrinter.error(
+            "Please update before using the REPL. Run the command above, or use --ignore-update to skip this check."
+        )
         sys.exit(1)
 
     if "--mock" in args:
         args = [a for a in args if a != "--mock"]
         from lab_instruments import mock_instruments
         from lab_instruments.src import discovery as _disc
+
         _disc.InstrumentDiscovery.__init__ = lambda self: None
         _disc.InstrumentDiscovery.scan = lambda self, verbose=True: mock_instruments.get_mock_devices(verbose)
 

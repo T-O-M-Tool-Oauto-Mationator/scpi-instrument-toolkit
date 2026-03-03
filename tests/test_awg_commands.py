@@ -1,19 +1,23 @@
 """Automated tests for AWG REPL commands using mock instruments."""
-import pytest
+
 import os
 import sys
 
+import pytest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from lab_instruments.mock_instruments import MockEDU33212A, MockJDS6600
+from lab_instruments.mock_instruments import MockEDU33212A
 
 
 def make_repl(devices):
     """Create an InstrumentRepl with mock devices pre-loaded."""
     from lab_instruments.src import discovery as _disc
+
     _disc.InstrumentDiscovery.__init__ = lambda self: None
     _disc.InstrumentDiscovery.scan = lambda self, verbose=True: devices
     from lab_instruments.repl import InstrumentRepl
+
     repl = InstrumentRepl()
     repl._scan_done.set()
     repl.devices = devices

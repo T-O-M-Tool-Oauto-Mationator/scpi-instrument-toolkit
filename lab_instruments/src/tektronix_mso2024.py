@@ -81,9 +81,7 @@ class Tektronix_MSO2024(DeviceManager):
     def change_channel_status(self, channel, status: bool):
         """Enable or disable the specified channel."""
         if channel not in self.CHANNEL_MAP:
-            raise ValueError(
-                f"Invalid channel. Must be one of: {list(self.CHANNEL_MAP.keys())}"
-            )
+            raise ValueError(f"Invalid channel. Must be one of: {list(self.CHANNEL_MAP.keys())}")
 
         scpi_name = self.CHANNEL_MAP[channel]
         state = "ON" if status else "OFF"
@@ -98,9 +96,7 @@ class Tektronix_MSO2024(DeviceManager):
     def set_channel_label(self, channel, label: str):
         """Sets the label for a specific channel (Max 30 chars)."""
         if channel not in self.CHANNEL_MAP:
-            raise ValueError(
-                f"Invalid channel. Must be one of: {list(self.CHANNEL_MAP.keys())}"
-            )
+            raise ValueError(f"Invalid channel. Must be one of: {list(self.CHANNEL_MAP.keys())}")
 
         scpi_name = self.CHANNEL_MAP[channel]
         self.send_command(f'{scpi_name}:LABel:NAMe "{label}"')
@@ -108,9 +104,7 @@ class Tektronix_MSO2024(DeviceManager):
     def set_probe_attenuation(self, channel, attenuation: float):
         """Sets the probe attenuation (Legacy MSO2000 uses PRObe:GAIN)."""
         if channel not in self.CHANNEL_MAP:
-            raise ValueError(
-                f"Invalid channel. Must be one of: {list(self.CHANNEL_MAP.keys())}"
-            )
+            raise ValueError(f"Invalid channel. Must be one of: {list(self.CHANNEL_MAP.keys())}")
 
         if attenuation <= 0:
             raise ValueError("Attenuation must be positive.")
@@ -129,9 +123,7 @@ class Tektronix_MSO2024(DeviceManager):
             coupling (str): 'DC', 'AC', or 'GND'
         """
         if channel not in self.CHANNEL_MAP:
-            raise ValueError(
-                f"Invalid channel. Must be one of: {list(self.CHANNEL_MAP.keys())}"
-            )
+            raise ValueError(f"Invalid channel. Must be one of: {list(self.CHANNEL_MAP.keys())}")
 
         coupling = coupling.upper()
         if coupling not in ("DC", "AC", "GND"):
@@ -267,9 +259,7 @@ class Tektronix_MSO2024(DeviceManager):
     def set_vertical_scale(self, channel, scale, position=0.0):
         """Set the vertical scale (Volts/div) and position (divs)."""
         if channel not in self.CHANNEL_MAP:
-            raise ValueError(
-                f"Invalid channel. Must be one of: {list(self.CHANNEL_MAP.keys())}"
-            )
+            raise ValueError(f"Invalid channel. Must be one of: {list(self.CHANNEL_MAP.keys())}")
 
         scpi_name = self.CHANNEL_MAP[channel]
         self.send_command(f"{scpi_name}:SCAle {scale}")
@@ -284,9 +274,7 @@ class Tektronix_MSO2024(DeviceManager):
             position (float): Position in divisions (positive = up, negative = down)
         """
         if channel not in self.CHANNEL_MAP:
-            raise ValueError(
-                f"Invalid channel. Must be one of: {list(self.CHANNEL_MAP.keys())}"
-            )
+            raise ValueError(f"Invalid channel. Must be one of: {list(self.CHANNEL_MAP.keys())}")
 
         scpi_name = self.CHANNEL_MAP[channel]
         self.send_command(f"{scpi_name}:POSition {position}")
@@ -302,9 +290,7 @@ class Tektronix_MSO2024(DeviceManager):
             float: Position in divisions
         """
         if channel not in self.CHANNEL_MAP:
-            raise ValueError(
-                f"Invalid channel. Must be one of: {list(self.CHANNEL_MAP.keys())}"
-            )
+            raise ValueError(f"Invalid channel. Must be one of: {list(self.CHANNEL_MAP.keys())}")
 
         scpi_name = self.CHANNEL_MAP[channel]
         return float(self.query(f"{scpi_name}:POSition?"))
@@ -329,9 +315,7 @@ class Tektronix_MSO2024(DeviceManager):
     def configure_trigger(self, source_channel, level, slope="RISE", mode="AUTO"):
         """Configure the Edge Trigger parameters."""
         if source_channel not in self.CHANNEL_MAP:
-            raise ValueError(
-                f"Invalid channel. Must be one of: {list(self.CHANNEL_MAP.keys())}"
-            )
+            raise ValueError(f"Invalid channel. Must be one of: {list(self.CHANNEL_MAP.keys())}")
 
         scpi_source = self.CHANNEL_MAP[source_channel]
 
@@ -345,9 +329,7 @@ class Tektronix_MSO2024(DeviceManager):
     # MATH SUBSYSTEM
     # ==========================================
 
-    def configure_math(
-        self, expression: str, scale: float = None, position: float = None
-    ):
+    def configure_math(self, expression: str, scale: float = None, position: float = None):
         """Configures the Math waveform."""
         # Legacy MSO2000 uses MATH:DEFine
         self.send_command(f'MATH:DEFine "{expression}"')
@@ -367,9 +349,7 @@ class Tektronix_MSO2024(DeviceManager):
         """
         m_type = measure_type.upper()
         if m_type not in self.VALID_BNF_MEASURE_TYPES:
-            raise ValueError(
-                f"Invalid BNF Type: {m_type}. Valid: {self.VALID_BNF_MEASURE_TYPES}"
-            )
+            raise ValueError(f"Invalid BNF Type: {m_type}. Valid: {self.VALID_BNF_MEASURE_TYPES}")
 
         # 1. Set Source to MATH
         self.send_command("MEASUrement:IMMed:SOUrce1 MATH")
@@ -394,15 +374,11 @@ class Tektronix_MSO2024(DeviceManager):
         measurement is ready to query with measure_bnf() after a trigger.
         """
         if channel not in self.CHANNEL_MAP:
-            raise ValueError(
-                f"Invalid channel. Must be one of: {list(self.CHANNEL_MAP.keys())}"
-            )
+            raise ValueError(f"Invalid channel. Must be one of: {list(self.CHANNEL_MAP.keys())}")
 
         m_type = measurement_type.upper()
         if m_type not in self.VALID_BNF_MEASURE_TYPES:
-            raise ValueError(
-                f"Invalid BNF Type: {m_type}. Valid: {self.VALID_BNF_MEASURE_TYPES}"
-            )
+            raise ValueError(f"Invalid BNF Type: {m_type}. Valid: {self.VALID_BNF_MEASURE_TYPES}")
 
         scpi_source = self.CHANNEL_MAP[channel]
         self.send_command(f"MEASUrement:IMMed:SOUrce1 {scpi_source}")
@@ -414,15 +390,11 @@ class Tektronix_MSO2024(DeviceManager):
         Uses Legacy IMMed command (no badges).
         """
         if channel not in self.CHANNEL_MAP:
-            raise ValueError(
-                f"Invalid Channel: {channel}. Must be: {list(self.CHANNEL_MAP.keys())}"
-            )
+            raise ValueError(f"Invalid Channel: {channel}. Must be: {list(self.CHANNEL_MAP.keys())}")
 
         m_type = measure_type.upper()
         if m_type not in self.VALID_BNF_MEASURE_TYPES:
-            raise ValueError(
-                f"Invalid BNF Type: {m_type}. Valid: {self.VALID_BNF_MEASURE_TYPES}"
-            )
+            raise ValueError(f"Invalid BNF Type: {m_type}. Valid: {self.VALID_BNF_MEASURE_TYPES}")
 
         scpi_source = self.CHANNEL_MAP[channel]
 
@@ -472,9 +444,7 @@ class Tektronix_MSO2024(DeviceManager):
             tuple: (time_values, voltage_values)
         """
         if channel not in self.CHANNEL_MAP:
-            raise ValueError(
-                f"Invalid channel. Must be one of: {list(self.CHANNEL_MAP.keys())}"
-            )
+            raise ValueError(f"Invalid channel. Must be one of: {list(self.CHANNEL_MAP.keys())}")
 
         scpi_source = self.CHANNEL_MAP[channel]
 
@@ -563,9 +533,7 @@ class Tektronix_MSO2024(DeviceManager):
         times = None
         for channel in channels:
             if channel not in self.CHANNEL_MAP:
-                raise ValueError(
-                    f"Invalid channel {channel}. Must be one of: {list(self.CHANNEL_MAP.keys())}"
-                )
+                raise ValueError(f"Invalid channel {channel}. Must be one of: {list(self.CHANNEL_MAP.keys())}")
 
             t, v = self.get_waveform_scaled(channel)
             if not t:

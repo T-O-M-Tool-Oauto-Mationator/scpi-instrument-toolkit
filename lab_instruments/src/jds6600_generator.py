@@ -6,9 +6,11 @@ Protocol: ASCII commands over USB serial at 115200 baud
 Based on JDS6600 communication protocol
 """
 
-from .device_manager import DeviceManager
-import pyvisa
 import time
+
+import pyvisa
+
+from .device_manager import DeviceManager
 
 
 class JDS6600_Generator(DeviceManager):
@@ -21,30 +23,30 @@ class JDS6600_Generator(DeviceManager):
 
     # Waveform types — codes per Joy-IT JDS6600 communication protocol
     WAVEFORMS = {
-        'sine': 0,
-        'square': 1,
-        'pulse': 2,
-        'triangle': 3,
-        'partial_sine': 4,
-        'cmos': 5,
-        'dc': 6,
-        'half_wave': 7,
-        'full_wave': 8,
-        'pos_ladder': 9,
-        'neg_ladder': 10,
-        'noise': 11,
-        'exp_rise': 12,
-        'exp_decay': 13,
-        'multitone': 14,
-        'sinc': 15,
-        'lorenz': 16,
+        "sine": 0,
+        "square": 1,
+        "pulse": 2,
+        "triangle": 3,
+        "partial_sine": 4,
+        "cmos": 5,
+        "dc": 6,
+        "half_wave": 7,
+        "full_wave": 8,
+        "pos_ladder": 9,
+        "neg_ladder": 10,
+        "noise": 11,
+        "exp_rise": 12,
+        "exp_decay": 13,
+        "multitone": 14,
+        "sinc": 15,
+        "lorenz": 16,
     }
 
     # Frequency units
     FREQ_UNITS = {
-        'hz': 0,
-        'khz': 1,
-        'mhz': 2,
+        "hz": 0,
+        "khz": 1,
+        "mhz": 2,
     }
 
     def __init__(self, resource_name):
@@ -86,7 +88,7 @@ class JDS6600_Generator(DeviceManager):
 
         # Only try to read response for read commands (:r)
         # Write commands (:w) typically just return :ok or nothing
-        if cmd.startswith(':r'):
+        if cmd.startswith(":r"):
             time.sleep(0.05)  # Small delay for device to process
             try:
                 response = self.instrument.read()
@@ -273,8 +275,14 @@ class JDS6600_Generator(DeviceManager):
         response = self._send_command(f":w{func_code}={value}.")
         print(f"CH{channel} phase: {phase_deg:.1f} degrees")
 
-    def set_sync(self, freq: bool = False, waveform: bool = False,
-                 amplitude: bool = False, offset: bool = False, duty: bool = False):
+    def set_sync(
+        self,
+        freq: bool = False,
+        waveform: bool = False,
+        amplitude: bool = False,
+        offset: bool = False,
+        duty: bool = False,
+    ):
         """
         Set channel synchronization (CH2 follows CH1).
 
@@ -291,16 +299,19 @@ class JDS6600_Generator(DeviceManager):
         val_offset = 1 if offset else 0
         val_duty = 1 if duty else 0
 
-        response = self._send_command(
-            f":w54={val_freq},{val_wave},{val_amp},{val_offset},{val_duty}."
-        )
+        response = self._send_command(f":w54={val_freq},{val_wave},{val_amp},{val_offset},{val_duty}.")
 
         sync_list = []
-        if freq: sync_list.append("frequency")
-        if waveform: sync_list.append("waveform")
-        if amplitude: sync_list.append("amplitude")
-        if offset: sync_list.append("offset")
-        if duty: sync_list.append("duty")
+        if freq:
+            sync_list.append("frequency")
+        if waveform:
+            sync_list.append("waveform")
+        if amplitude:
+            sync_list.append("amplitude")
+        if offset:
+            sync_list.append("offset")
+        if duty:
+            sync_list.append("duty")
 
         if sync_list:
             print(f"Sync enabled: {', '.join(sync_list)}")
@@ -331,12 +342,12 @@ class JDS6600_Generator(DeviceManager):
         """Zeroes SINE memory (0Hz freq, 0V amp/offset), switches to DC 0V, then disables outputs."""
         for ch in (1, 2):
             # Zero stored SINE parameters so they are safe if the user switches back
-            self.set_waveform(ch, 'sine')
+            self.set_waveform(ch, "sine")
             self.set_frequency(ch, 0.0)
             self.set_amplitude(ch, 0.0)
             self.set_offset(ch, 0.0)
             # Then switch to DC at 0V
-            self.set_waveform(ch, 'dc')
+            self.set_waveform(ch, "dc")
             self.set_offset(ch, 0.0)
         self.enable_output(False, False)
 
