@@ -77,7 +77,15 @@ script dir reset     # go back to the default
 | `script dir .` | Load named scripts from the current working directory |
 | `script dir ./scripts` | Load from a `scripts/` subfolder of cwd |
 | `script dir /path/to/scripts` | Load from an absolute path |
+| `script dir C:/Users/lab/scripts` | Windows path with forward slashes |
 | `script dir reset` | Restore default (`~/Documents/scpi-instrument-toolkit/scripts/`) |
+
+!!! tip "Windows paths"
+    Forward slashes work on all platforms. Backslashes and spaces in paths are also supported without quoting:
+    ```
+    script dir C:\Users\lab\scripts
+    script dir C:/My Documents/scripts
+    ```
 
 Changing the scripts dir immediately reloads all named scripts from the new location. This is useful when your project keeps its `.scpi` files alongside its source code:
 

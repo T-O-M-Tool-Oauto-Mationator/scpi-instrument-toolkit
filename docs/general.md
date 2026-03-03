@@ -201,11 +201,10 @@ version
 
 ---
 
-## exit / quit
+## exit
 
 Close the REPL and disconnect all instruments safely.
 
 ```
 exit
-quit
 ```
