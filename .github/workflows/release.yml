@@ -3,26 +3,14 @@
 # =============================================================================
 # Purpose:
 #   Validates the release tag matches pyproject.toml, runs the full test
-#   suite, builds sdist + wheel, publishes to PyPI via OIDC Trusted Publisher,
-#   and creates a GitHub Release with the dist assets attached.
+#   suite, builds sdist + wheel, and creates a GitHub Release with the
+#   dist assets attached.
 #
 # Triggers:
 #   - Push of a tag matching v<major>.<minor>.<patch>  (e.g. v0.1.136)
 #
-# Required GitHub configuration (one-time setup — see Setup Checklist):
-#   1. GitHub Environment named "pypi" (Settings → Environments)
-#      - Optionally add required reviewers or a wait timer.
-#   2. PyPI Trusted Publisher configured on pypi.org:
-#        Owner:     T-O-M-Tool-Oauto-Mationator
-#        Repo:      scpi-instrument-toolkit
-#        Workflow:  release.yml
-#        Env:       pypi
-#      This allows OIDC token exchange — no PYPI_API_TOKEN secret is needed.
-#
 # Job graph:
-#   validate-version ──> test ──> build ──┬──> publish-pypi
-#                                         └──> github-release
-#                                               (waits for publish-pypi too)
+#   validate-version ──> test ──> build ──> github-release
 # =============================================================================
 
 name: Release
@@ -34,10 +22,8 @@ on:
 
 # Top-level least-privilege defaults.
 # contents: write  — github-release job creates a GitHub Release.
-# id-token: write  — publish-pypi job exchanges OIDC token with PyPI.
 permissions:
   contents: write
-  id-token: write
 
 jobs:
   # ---------------------------------------------------------------------------
@@ -159,39 +145,13 @@ jobs:
           retention-days: 90
 
   # ---------------------------------------------------------------------------
-  # publish-pypi — publishes to PyPI using OIDC Trusted Publisher (no tokens).
-  # Runs inside the "pypi" GitHub Environment for deployment protection rules.
-  # skip-existing: true makes retries safe if the version already landed.
-  # ---------------------------------------------------------------------------
-  publish-pypi:
-    name: Publish to PyPI (OIDC)
-    runs-on: ubuntu-latest
-    needs: build
-    environment: pypi
-    permissions:
-      id-token: write
-    steps:
-      - name: Download distribution artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: dist
-          path: dist/
-
-      - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          packages-dir: dist/
-          skip-existing: true
-
-  # ---------------------------------------------------------------------------
   # github-release — creates a GitHub Release with the dist assets attached.
-  # Waits for publish-pypi so the release is only created after PyPI succeeds.
   # Marks the release as pre-release if the tag contains rc, alpha, or beta.
   # ---------------------------------------------------------------------------
   github-release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
-    needs: [build, publish-pypi]
+    needs: build
     permissions:
       contents: write
     steps:
