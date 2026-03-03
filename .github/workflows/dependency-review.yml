@@ -1,0 +1,43 @@
+# =============================================================================
+# dependency-review.yml — Dependency Vulnerability Scanning
+# =============================================================================
+# Purpose:
+#   Scans dependency changes introduced in a pull request against GitHub's
+#   Advisory Database. Fails the PR if any added or updated dependency has a
+#   known HIGH or CRITICAL severity vulnerability (CVSS ≥ 7.0).
+#
+# Triggers:
+#   - Every pull request targeting main
+#
+# Required secrets / environments:
+#   None — uses the built-in GITHUB_TOKEN with read-only contents access.
+#   Note: The repository must be public OR have a GitHub Advanced Security
+#   license for the dependency-review-action to access the advisory database.
+#
+# Allow-list:
+#   None (strict mode) — all HIGH and CRITICAL advisories block the PR.
+#   To add exceptions in the future, use the `allow-ghsas` or
+#   `allow-licenses` inputs on the action.
+# =============================================================================
+
+name: Dependency Review
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  dependency-review:
+    name: Dependency review
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Scan dependencies for vulnerabilities
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
