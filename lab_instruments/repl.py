@@ -175,6 +175,7 @@ class InstrumentRepl(cmd.Cmd):
         self._interrupt_requested = False  # Flag set when Ctrl+C is pressed
         self._should_exit = False  # Flag to signal that we should exit the REPL
         self._in_debugger = False  # True while the script debugger is active
+        self._record_script = None  # Name of script currently being recorded to
 
         # Save terminal state so we can restore it on any exit path
         self._term_fd = None
@@ -285,6 +286,34 @@ class InstrumentRepl(cmd.Cmd):
                 print("\nGoodbye!")
                 self._restore_terminal()
             self.postloop()
+
+    def precmd(self, line):
+        """Reset the per-command error flag before each interactive command."""
+        if not self._in_script:
+            self._command_had_error = False
+        return line
+
+    def postcmd(self, stop, line):
+        """Append every valid interactive command to the active recording script."""
+        stripped = line.strip()
+        if (
+            self._record_script
+            and stripped
+            and not self._in_script
+            and not self._in_debugger
+            and not self._command_had_error
+            and not stripped.lower().startswith("record")
+        ):
+            name = self._record_script
+            if name not in self.scripts:
+                self.scripts[name] = []
+            self.scripts[name].append(stripped)
+            try:
+                with open(self._script_file(name), "a", encoding="utf-8") as fh:
+                    fh.write(stripped + "\n")
+            except Exception:
+                pass
+        return stop
 
     def _cleanup_on_exit(self):
         """Called automatically on normal program exit (via atexit)."""
@@ -2367,6 +2396,72 @@ class InstrumentRepl(cmd.Cmd):
 
         else:
             ColorPrinter.warning(f"Unknown subcommand '{subcmd}'. Type 'script' for help.")
+
+    def do_record(self, arg):
+        "record [start <name> | stop | status]: mirror every REPL command into a script in real time"
+        args = self._parse_args(arg)
+        args, help_flag = self._strip_help(args)
+
+        if not args or help_flag:
+            self._print_colored_usage([
+                "# RECORD",
+                "",
+                "record start <name>",
+                "  - begin recording all REPL commands into script <name>",
+                "  - creates the script if it doesn't exist and opens it in your editor",
+                "  - every command you type is appended to the file live",
+                "record stop",
+                "  - stop recording",
+                "record status",
+                "  - show whether recording is active and to which script",
+            ])
+            return
+
+        subcmd = args[0].lower()
+
+        if subcmd == "start":
+            if len(args) < 2:
+                ColorPrinter.warning("Usage: record start <name>")
+                return
+            name = args[1]
+            if name not in self.scripts:
+                self.scripts[name] = []
+            path = pathlib.Path(self._script_file(name))
+            try:
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.touch(exist_ok=True)
+            except Exception as exc:
+                ColorPrinter.error(f"Cannot create script '{name}': {exc}")
+                return
+            self._save_script(name)
+            self._record_script = name
+            self.prompt = f"[REC:{name}]> "
+            self._open_file_nonblocking(str(path))
+            ColorPrinter.success(
+                f"Recording to '{name}' — every command you type will be appended to the script.\n"
+                f"  File: {path}\n"
+                f"  Type 'record stop' to finish."
+            )
+
+        elif subcmd == "stop":
+            if self._record_script:
+                n = len(self.scripts.get(self._record_script, []))
+                ColorPrinter.success(f"Stopped recording '{self._record_script}' ({n} lines).")
+                self._record_script = None
+                self.prompt = "eset> "
+            else:
+                ColorPrinter.warning("Not currently recording.")
+
+        else:  # status or bare 'record'
+            if self._record_script:
+                n = len(self.scripts.get(self._record_script, []))
+                path = self._script_file(self._record_script)
+                ColorPrinter.info(
+                    f"Recording active: '{self._record_script}' ({n} lines so far)\n"
+                    f"  File: {path}"
+                )
+            else:
+                ColorPrinter.info("Not recording. Use 'record start <name>' to begin.")
 
     def do_examples(self, arg):
         "examples [load <name>|load all]: list or load bundled example scripts"
