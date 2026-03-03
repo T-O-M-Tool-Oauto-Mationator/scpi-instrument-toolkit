@@ -1166,7 +1166,7 @@ class InstrumentRepl(cmd.Cmd):
                 continue
             if head == "end":
                 continue
-            if head in ("lower_limit", "upper_limit") and len(tokens) >= 4:
+            if head in ("lower_limit", "upper_limit") and len(tokens) >= 3:
                 direction = "lower" if head == "lower_limit" else "upper"
                 device_str = tokens[1].lower()
                 base_type = re.sub(r'\d+$', '', device_str)
@@ -1193,8 +1193,15 @@ class InstrumentRepl(cmd.Cmd):
                         expanded.append(("__NOP__", _loop_ctx + raw_line))
                         continue
                     rest = rest[2:]
+                # Shorthand: upper_limit awg 2  →  upper_limit awg voltage 2
+                if len(rest) == 1:
+                    try:
+                        float(rest[0])
+                        rest = ["voltage", rest[0]]
+                    except ValueError:
+                        pass
                 if len(rest) < 2:
-                    self._error(f"{head}: requires <param> <value>")
+                    self._error(f"{head}: requires <param> <value>  (e.g. {head} {device_str} voltage 5.0)")
                     expanded.append(("__NOP__", _loop_ctx + raw_line))
                     continue
                 param = rest[0].lower()
@@ -4961,8 +4968,18 @@ allTargets.forEach(t => io.observe(t));
         if not limits:
             return True
         queried = self._query_awg_state(device_name, channel)
-        vpp    = new_vpp    if new_vpp    is not None else (queried.get("vpp")    or 0.0)
+        vpp    = new_vpp    if new_vpp    is not None else queried.get("vpp")
         offset = new_offset if new_offset is not None else (queried.get("offset") or 0.0)
+
+        # If amplitude is unknown and vpp-dependent limits are active, block and require explicit amp=
+        if vpp is None:
+            vpp_limit_keys = {"vpp_upper", "vpeak_upper", "vtrough_lower", "vpeak_lower", "vtrough_upper"}
+            if any(k in limits for k in vpp_limit_keys):
+                self._error(
+                    f"Safety: AWG CH{channel} amplitude unknown — specify amp= to confirm it is within limits"
+                )
+                return False
+            vpp = 0.0
 
         if "vpp_upper" in limits and vpp > limits["vpp_upper"]:
             self._error(f"Safety limit exceeded: AWG Vpp {vpp}V > {limits['vpp_upper']}V")
@@ -5324,6 +5341,7 @@ allTargets.forEach(t => io.observe(t));
                 [
                     "# AWG",
                     "",
+                    "awg on|off                         (all channels)",
                     "awg chan <1|2|all> on|off",
                     "awg wave <1|2|all> <type> [freq=] [amp=] [offset=] [duty=] [phase=]",
                     "  - type: sine|square|ramp|triangle|pulse|noise|dc|arb",
@@ -5479,6 +5497,21 @@ allTargets.forEach(t => io.observe(t));
             # STATE COMMAND
             elif cmd_name == "state" and len(args) >= 2:
                 self.do_state(f"{awg_name} {args[1]}")
+
+            # ON/OFF SHORTHAND — "awg on" / "awg off" → all channels
+            elif cmd_name in ("on", "off") and len(args) == 1:
+                state = cmd_name == "on"
+                for channel in [1, 2]:
+                    if state and not self._check_awg_output_allowed(awg_name, channel):
+                        return
+                    if is_jds6600:
+                        dev.enable_output(
+                            ch1=state if channel == 1 else None,
+                            ch2=state if channel == 2 else None,
+                        )
+                    else:
+                        dev.enable_output(channel, state)
+                    ColorPrinter.success(f"CH{channel}: {'on' if state else 'off'}")
 
             else:
                 ColorPrinter.warning(f"Unknown AWG command: awg {arg}. Type 'awg' for help.")
