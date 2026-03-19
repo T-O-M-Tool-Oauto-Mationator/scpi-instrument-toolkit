@@ -2,6 +2,31 @@
 
 A tool for controlling lab instruments (oscilloscopes, power supplies, multimeters, and function generators) from your computer.
 
+---
+
+## 🎓 TAMU Students — Managed / Lab Machines
+
+> **On a TAMU lab or personal managed machine with no admin rights?**
+> Run the one-liner below in PowerShell — it installs everything for you (GitHub Desktop, git, Python, and this toolkit) with **zero admin required**.
+
+```powershell
+iwr -Uri "https://raw.githubusercontent.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit/main/setup-tamu.ps1" -OutFile setup-tamu.ps1; .\setup-tamu.ps1
+```
+
+Already cloned the repo? Just run:
+
+```powershell
+.\setup-tamu.ps1
+```
+
+**What it installs:** GitHub Desktop (includes git) · Python 3.12 · scpi-instrument-toolkit
+
+> **NI-VISA** (needed for real hardware) requires admin rights and must be installed separately by IT or via the [NI download page](https://www.ni.com/en/support/downloads/drivers/download.ni-visa.html). Use `--mock` mode until then.
+
+See [docs/troubleshooting.md](docs/troubleshooting.md) if you run into issues.
+
+---
+
 ## Supported Instruments
 
 | Instrument | Type |
@@ -162,3 +187,31 @@ On machines where group policy blocks registry edits, the automatic fix above wi
   scpi-repl
   ```
   You'll need to run these two lines again each time you open a new terminal.
+
+### `git` is not recognized on managed machines
+
+On many managed lab/work machines, you can install GitHub Desktop but still not have `git` on your PATH.
+
+Use the repo helper script (no admin required):
+
+```powershell
+.\setup-git.ps1
+```
+
+What it does:
+
+- Finds GitHub Desktop's bundled `git.exe` dynamically (works across app version updates)
+- Adds only the `...\git\cmd` folder to your **user** PATH
+- Avoids duplicate PATH entries
+
+Then open a **new terminal** and verify:
+
+```powershell
+git --version
+```
+
+Quick one-liner option:
+
+```powershell
+$g=(Get-ChildItem "$env:LOCALAPPDATA\GitHubDesktop\app-*\resources\app\git\cmd\git.exe" -EA 0|Sort-Object LastWriteTime -Desc|Select-Object -First 1); if(-not $g){$g=(Get-ChildItem "$env:LOCALAPPDATA\GitHubDesktop" -Filter git.exe -Recurse -EA 0|?{$_.DirectoryName -like "*\git\cmd"}|Sort-Object LastWriteTime -Desc|Select-Object -First 1)}; if(-not $g){Write-Host "GitHub Desktop Git not found" -FG Red}else{$p=$g.DirectoryName;$u=[Environment]::GetEnvironmentVariable('Path','User'); if(($u -split ';'|%{$_.TrimEnd('\\').ToLowerInvariant()}) -notcontains $p.TrimEnd('\\').ToLowerInvariant()){[Environment]::SetEnvironmentVariable('Path',($(if([string]::IsNullOrWhiteSpace($u)){$p}else{"$u;$p"})),'User')}; Write-Host "Done. Open a new terminal and run: git --version" -FG Green}
+```

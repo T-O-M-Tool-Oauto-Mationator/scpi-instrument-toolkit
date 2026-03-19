@@ -55,3 +55,47 @@ If you just want to explore the tool without any hardware, use mock mode — no 
 ```powershell
 python -m lab_instruments --mock
 ```
+
+---
+
+## First-time setup on TAMU / managed Windows machines
+
+If you are starting from scratch on a managed machine, use the all-in-one setup script — it installs GitHub Desktop (including git), Python, and the toolkit in one step with no admin rights:
+
+```powershell
+iwr -Uri "https://raw.githubusercontent.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit/main/setup-tamu.ps1" -OutFile setup-tamu.ps1; .\setup-tamu.ps1
+```
+
+Or if you have already cloned the repo:
+
+```powershell
+.\setup-tamu.ps1
+```
+
+---
+
+## `git` is not recognized on managed Windows machines
+
+If you only need to fix git (Python and the toolkit are already installed), use the smaller helper script (no admin needed):
+
+```powershell
+.\setup-git.ps1
+```
+
+What the script does:
+
+- Locates GitHub Desktop's bundled `git.exe` dynamically (supports changing `app-x.y.z` folders)
+- Adds only the `...\git\cmd` directory to your **user** PATH
+- Skips duplicate PATH entries safely
+
+After running it, open a **new** terminal and verify:
+
+```powershell
+git --version
+```
+
+If you cannot run scripts, use this one-liner in PowerShell:
+
+```powershell
+$g=(Get-ChildItem "$env:LOCALAPPDATA\GitHubDesktop\app-*\resources\app\git\cmd\git.exe" -EA 0|Sort-Object LastWriteTime -Desc|Select-Object -First 1); if(-not $g){$g=(Get-ChildItem "$env:LOCALAPPDATA\GitHubDesktop" -Filter git.exe -Recurse -EA 0|?{$_.DirectoryName -like "*\git\cmd"}|Sort-Object LastWriteTime -Desc|Select-Object -First 1)}; if(-not $g){Write-Host "GitHub Desktop Git not found" -FG Red}else{$p=$g.DirectoryName;$u=[Environment]::GetEnvironmentVariable('Path','User'); if(($u -split ';'|%{$_.TrimEnd('\\').ToLowerInvariant()}) -notcontains $p.TrimEnd('\\').ToLowerInvariant()){[Environment]::SetEnvironmentVariable('Path',($(if([string]::IsNullOrWhiteSpace($u)){$p}else{"$u;$p"})),'User')}; Write-Host "Done. Open a new terminal and run: git --version" -FG Green}
+```
