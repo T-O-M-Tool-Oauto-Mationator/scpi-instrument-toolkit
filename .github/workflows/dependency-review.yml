@@ -34,10 +34,32 @@ jobs:
     name: Dependency review
     runs-on: ubuntu-latest
     steps:
+      - name: Check dependency graph support
+        id: depgraph
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const { data } = await github.rest.repos.get({ owner, repo });
+            const depGraph = data.security_and_analysis?.dependency_graph?.status;
+            const supported = depGraph === 'enabled';
+            core.setOutput('supported', String(supported));
+
+            if (supported) {
+              core.notice('Dependency Graph is enabled. Running dependency review.');
+            } else {
+              core.notice(
+                'Dependency review skipped: Dependency Graph is not enabled for this repository. ' +
+                'Enable it in Settings > Security & analysis.'
+              );
+            }
+
       - name: Checkout repository
+        if: steps.depgraph.outputs.supported == 'true'
         uses: actions/checkout@v4
 
       - name: Scan dependencies for vulnerabilities
+        if: steps.depgraph.outputs.supported == 'true'
         uses: actions/dependency-review-action@v4
         with:
           fail-on-severity: high
