@@ -10,7 +10,7 @@ A tool for controlling lab instruments (oscilloscopes, power supplies, multimete
 > Run the one-liner below in PowerShell — it installs everything for you (GitHub Desktop, git, Python, and this toolkit) with **zero admin required**.
 
 ```powershell
-iwr -Uri "https://raw.githubusercontent.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit/main/setup-tamu.ps1" -OutFile setup-tamu.ps1; .\setup-tamu.ps1
+irm "https://raw.githubusercontent.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit/main/setup-tamu.ps1" | iex
 ```
 
 Already cloned the repo? Just run:
