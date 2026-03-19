@@ -2,6 +2,31 @@
 
 A tool for controlling lab instruments (oscilloscopes, power supplies, multimeters, and function generators) from your computer.
 
+---
+
+## 🎓 TAMU Students — Managed / Lab Machines
+
+> **On a TAMU lab or personal managed machine with no admin rights?**
+> Run the one-liner below in PowerShell — it installs everything for you (GitHub Desktop, git, Python, and this toolkit) with **zero admin required**.
+
+```powershell
+iwr -Uri "https://raw.githubusercontent.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit/main/setup-tamu.ps1" -OutFile setup-tamu.ps1; .\setup-tamu.ps1
+```
+
+Already cloned the repo? Just run:
+
+```powershell
+.\setup-tamu.ps1
+```
+
+**What it installs:** GitHub Desktop (includes git) · Python 3.12 · scpi-instrument-toolkit
+
+> **NI-VISA** (needed for real hardware) requires admin rights and must be installed separately by IT or via the [NI download page](https://www.ni.com/en/support/downloads/drivers/download.ni-visa.html). Use `--mock` mode until then.
+
+See [docs/troubleshooting.md](docs/troubleshooting.md) if you run into issues.
+
+---
+
 ## Supported Instruments
 
 | Instrument | Type |

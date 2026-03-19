@@ -58,11 +58,25 @@ python -m lab_instruments --mock
 
 ---
 
+## First-time setup on TAMU / managed Windows machines
+
+If you are starting from scratch on a managed machine, use the all-in-one setup script — it installs GitHub Desktop (including git), Python, and the toolkit in one step with no admin rights:
+
+```powershell
+iwr -Uri "https://raw.githubusercontent.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit/main/setup-tamu.ps1" -OutFile setup-tamu.ps1; .\setup-tamu.ps1
+```
+
+Or if you have already cloned the repo:
+
+```powershell
+.\setup-tamu.ps1
+```
+
+---
+
 ## `git` is not recognized on managed Windows machines
 
-Some managed machines allow GitHub Desktop installs but do not expose `git` in PATH by default.
-
-Use the repository helper script (no admin needed):
+If you only need to fix git (Python and the toolkit are already installed), use the smaller helper script (no admin needed):
 
 ```powershell
 .\setup-git.ps1
