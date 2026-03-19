@@ -207,6 +207,7 @@ class InstrumentRepl(cmd.Cmd):
         ] = {}  # populated by 'lower_limit'/'upper_limit' directives
         self._awg_channel_state: Dict[tuple, Dict[str, Optional[float]]] = {}  # (dev, ch) → {vpp, offset}
         self.test_results = []  # list of check result dicts
+        self.test_params = {}   # dict[label, {min, max, unit}] from test_param commands
         self._report_title = "Lab Test Report"
         self._report_operator = ""
         self._report_screenshots = []  # absolute paths of captured screenshots
@@ -7693,10 +7694,12 @@ allTargets.forEach(t => io.observe(t));
         cmd_name = args[0].lower()
         if cmd_name == "clear":
             self.measurements = []
-            ColorPrinter.success("Cleared measurements.")
+            self.test_params = {}
+            self.test_results = []
+            ColorPrinter.success("[LOG] Measurements, results, and test parameters cleared.")
             return
         if cmd_name == "print":
-            if not self.measurements:
+            if not self.measurements and not self.test_params:
                 ColorPrinter.warning("No measurements recorded.")
                 return
             C = ColorPrinter.CYAN
@@ -7712,6 +7715,77 @@ allTargets.forEach(t => io.observe(t));
                 unit = entry.get("unit", "")
                 source = entry.get("source", "")
                 print(f"{C}{label:<24}{R} {G}{value:>14}{R} {Y}{unit:<8}{R} {source:<12}")
+            # ── Auto-evaluate test_params and print PASS/FAIL table ──
+            if self.test_params:
+                self._evaluate_test_params()
+                print()
+                print("===== TEST PARAMETER RESULTS =====")
+                col_label = 28
+                col_value = 14
+                col_min = 9
+                col_max = 9
+                col_result = 6
+                hdr = (
+                    f"{'Label':<{col_label}} {'Value':>{col_value}} "
+                    f"{'Min':>{col_min}} {'Max':>{col_max}} {'Result':<{col_result}}"
+                )
+                sep = (
+                    f"{'-'*col_label} {'-'*col_value} "
+                    f"{'-'*col_min} {'-'*col_max} {'-'*col_result}"
+                )
+                print(hdr)
+                print(sep)
+                label_set = list(self.test_params.keys())
+                seen_in_table = set()
+                rows = []
+                for r in self.test_results:
+                    if r["label"] in label_set and r["label"] not in seen_in_table:
+                        rows.append(r)
+                        seen_in_table.add(r["label"])
+                for lbl in label_set:
+                    if lbl not in seen_in_table:
+                        rows.append(
+                            {
+                                "label": lbl,
+                                "value": None,
+                                "unit": self.test_params[lbl]["unit"],
+                                "min": self.test_params[lbl]["min"],
+                                "max": self.test_params[lbl]["max"],
+                                "passed": False,
+                            }
+                        )
+                GN = ColorPrinter.GREEN
+                RD = ColorPrinter.RED
+                RST = ColorPrinter.RESET
+                passed_count = 0
+                for r in rows:
+                    lbl = r["label"]
+                    val = r["value"]
+                    unit_r = r.get("unit", "")
+                    mn = r["min"]
+                    mx = r["max"]
+                    ok = r["passed"]
+                    if val is None:
+                        val_str = "MISSING"
+                        result_str = f"{RD}FAIL{RST}"
+                    else:
+                        val_str = f"{val} {unit_r}".strip()
+                        result_str = f"{GN}PASS{RST}" if ok else f"{RD}FAIL{RST}"
+                        if ok:
+                            passed_count += 1
+                    print(
+                        f"{lbl:<{col_label}} {val_str:>{col_value}} "
+                        f"{mn:>{col_min}} {mx:>{col_max}} {result_str}"
+                    )
+                print(sep)
+                print(f"Overall: {passed_count} / {len(rows)} passed")
+                print()
+                total = len(rows)
+                if passed_count == total:
+                    print(f"{GN}ALL TEST PARAMETERS PASSED{RST}")
+                else:
+                    failed = total - passed_count
+                    print(f"{RD}{failed} TEST PARAMETER(S) FAILED{RST} - review table above")
             return
         if cmd_name == "save" and len(args) >= 2:
             path = args[1]
@@ -7732,11 +7806,33 @@ allTargets.forEach(t => io.observe(t));
                 os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
                 with open(path, "w", encoding="utf-8", newline="") as handle:
                     if fmt == "csv":
-                        handle.write("label,value,unit,source\n")
+                        self._evaluate_test_params()
+                        handle.write("label,value,unit,expected_min,expected_max,pass_fail\n")
+                        all_pass = True
                         for entry in self.measurements:
-                            handle.write(
-                                f"{entry.get('label', '')},{entry.get('value', '')},{entry.get('unit', '')},{entry.get('source', '')}\n"
-                            )
+                            lbl = entry.get("label", "")
+                            val = entry.get("value", "")
+                            unit_e = entry.get("unit", "")
+                            param = self.test_params.get(lbl)
+                            if param is None:
+                                exp_min = exp_max = pf = ""
+                            else:
+                                exp_min = param["min"]
+                                exp_max = param["max"]
+                                pf = ""
+                                for r in self.test_results:
+                                    if r["label"] == lbl:
+                                        pf = "PASS" if r["passed"] else "FAIL"
+                                        if not r["passed"]:
+                                            all_pass = False
+                                        break
+                                if pf == "":
+                                    pf = "MISSING"
+                                    all_pass = False
+                            handle.write(f"{lbl},{val},{unit_e},{exp_min},{exp_max},{pf}\n")
+                        handle.write("\n")
+                        overall = "PASS" if all_pass else "FAIL"
+                        handle.write(f"OVERALL,,,,,{overall}\n")
                     else:
                         header = f"{'Label':<24} {'Value':>14} {'Unit':<8} {'Source':<12}"
                         handle.write(header + "\n")
@@ -7752,6 +7848,99 @@ allTargets.forEach(t => io.observe(t));
                 ColorPrinter.error(f"Failed to save measurements: {exc}")
             return
         ColorPrinter.warning(f"Unknown log command: log {arg}. Use: log print|save|clear")
+
+    def do_test_param(self, arg):
+        """test_param <label> <min> <max> [unit=<unit>]
+
+        Declare a pass/fail range for a measurement BEFORE you run the test.
+        When you call `log print` or `log save`, every test_param is checked
+        automatically and printed in a PASS/FAIL table.
+
+        Example:
+          test_param vout_5v_mV  4750  5250  unit=mV
+          ...run your measurements...
+          log print    <- will show PASS or FAIL for vout_5v_mV
+
+        Think of it as: "I EXPECT this measurement to be between X and Y."
+        """
+        args = self._parse_args(arg)
+        args, help_flag = self._strip_help(args)
+        if help_flag or len(args) < 3:
+            self._print_colored_usage([
+                "test_param <label> <min> <max> [unit=<unit>]",
+                "",
+                "Declare a pass/fail range for a measurement BEFORE running the test.",
+                "Auto-evaluated when 'log print' or 'log save' is called.",
+                "",
+                "Example:",
+                "  test_param vout_5v_mV  4750  5250  unit=mV",
+            ])
+            return
+        label = args[0]
+        try:
+            min_val = float(args[1])
+            max_val = float(args[2])
+        except ValueError:
+            self._error(f"test_param: min and max must be numbers, got '{args[1]}' '{args[2]}'")
+            return
+        if min_val >= max_val:
+            self._error(f"test_param min ({min_val}) must be less than max ({max_val})")
+            return
+        unit = ""
+        for token in args[3:]:
+            if token.lower().startswith("unit="):
+                unit = token.split("=", 1)[1]
+        self.test_params[label] = {"min": min_val, "max": max_val, "unit": unit}
+        unit_str = f" {unit}" if unit else ""
+        print(f"[TEST PARAM] {label}: expected {min_val} ... {max_val}{unit_str}")
+
+    def _evaluate_test_params(self):
+        """Evaluate all test_param specs against stored measurements.
+
+        Appends new entries to self.test_results, skipping labels that already
+        have an entry (placed there by a prior `check` command).  Returns the
+        list of result dicts that were newly added during this call.
+        """
+        seen = set(r["label"] for r in self.test_results)
+        added = []
+        for label, param in self.test_params.items():
+            if label in seen:
+                continue
+            min_val = param["min"]
+            max_val = param["max"]
+            unit = param["unit"]
+            entry = None
+            for e in reversed(self.measurements):
+                if e.get("label") == label:
+                    entry = e
+                    break
+            if entry is None:
+                result = {
+                    "label": label,
+                    "value": None,
+                    "unit": unit,
+                    "min": min_val,
+                    "max": max_val,
+                    "passed": False,
+                    "limits_str": f"[{min_val}, {max_val}]",
+                    "note": "MISSING - measurement was never collected",
+                }
+            else:
+                value = float(entry["value"])
+                passed = min_val <= value <= max_val
+                result = {
+                    "label": label,
+                    "value": value,
+                    "unit": unit,
+                    "min": min_val,
+                    "max": max_val,
+                    "passed": passed,
+                    "limits_str": f"[{min_val}, {max_val}]",
+                }
+            self.test_results.append(result)
+            seen.add(label)
+            added.append(result)
+        return added
 
     def do_calc(self, arg):
         "calc is short for calculator: compute a value from logged measurements"

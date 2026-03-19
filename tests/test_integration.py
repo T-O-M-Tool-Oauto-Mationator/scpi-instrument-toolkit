@@ -4,6 +4,8 @@ All tests in this module are marked @pytest.mark.integration and require no
 physical instruments. They exercise the full REPL command path using mock classes.
 """
 
+import csv
+
 import pytest
 
 from lab_instruments.mock_instruments import (
@@ -120,3 +122,103 @@ class TestFullWorkflow_AllMocks:
         repl.onecmd("dmm1 meas_store reading unit=V")
         repl.onecmd("scope1 meas_store 1 FREQUENCY f_out unit=Hz")
         assert len(repl.measurements) >= 2
+
+
+class TestTestParamCommand:
+    """Tests for the test_param / log integration feature."""
+
+    def test_param_registers_without_evaluating(self, make_repl):
+        repl = make_repl({})
+        repl.onecmd("test_param v_out 4500 5500 unit=mV")
+        assert "v_out" in repl.test_params
+        assert repl.test_params["v_out"]["min"] == 4500.0
+        assert repl.test_params["v_out"]["max"] == 5500.0
+        assert repl.test_results == []
+
+    def test_param_pass_on_log_print(self, make_repl):
+        repl = make_repl({})
+        repl.measurements.append({"label": "vout", "value": 5000.0, "unit": "mV", "source": "test"})
+        repl.onecmd("test_param vout 4500 5500 unit=mV")
+        repl.onecmd("log print")
+        assert repl.test_results[-1]["passed"] is True
+        assert repl.test_results[-1]["label"] == "vout"
+
+    def test_param_fail_on_log_print(self, make_repl):
+        repl = make_repl({})
+        repl.measurements.append({"label": "vout", "value": 3000.0, "unit": "mV", "source": "test"})
+        repl.onecmd("test_param vout 4500 5500 unit=mV")
+        repl.onecmd("log print")
+        assert repl.test_results[-1]["passed"] is False
+
+    def test_param_missing_measurement_is_fail(self, make_repl):
+        repl = make_repl({})
+        repl.onecmd("test_param ron_t1 0 50 unit=mOhm")
+        repl.onecmd("log print")
+        result = next(r for r in repl.test_results if r["label"] == "ron_t1")
+        assert result["passed"] is False
+        assert result["value"] is None
+
+    def test_param_no_double_count_with_check(self, make_repl):
+        repl = make_repl({})
+        repl.measurements.append({"label": "vout", "value": 5.0, "unit": "V", "source": "test"})
+        repl.onecmd("check vout 4.9 5.1")
+        repl.onecmd("test_param vout 4.9 5.1 unit=V")
+        repl.onecmd("log print")
+        matching = [r for r in repl.test_results if r["label"] == "vout"]
+        assert len(matching) == 1
+
+    def test_log_clear_clears_test_params(self, make_repl):
+        repl = make_repl({})
+        repl.onecmd("test_param vout 4500 5500 unit=mV")
+        assert repl.test_params != {}
+        repl.onecmd("log clear")
+        assert repl.test_params == {}
+
+    def test_log_save_includes_passfail_columns(self, make_repl, tmp_path):
+        repl = make_repl({})
+        repl.measurements.append({"label": "vout", "value": 5000.0, "unit": "mV", "source": "test"})
+        repl.onecmd("test_param vout 4500 5500 unit=mV")
+        csv_path = str(tmp_path / "results.csv")
+        repl._data_dir_override = str(tmp_path)
+        repl.onecmd(f"log save {csv_path} csv")
+        with open(csv_path, encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            rows = [row for row in reader if row.get("label") == "vout"]
+        assert rows, "No vout row in CSV"
+        assert rows[0]["pass_fail"] in ("PASS", "FAIL")
+        assert "expected_min" in rows[0]
+        assert "expected_max" in rows[0]
+
+    def test_param_min_gte_max_sets_error_flag(self, make_repl):
+        repl = make_repl({})
+        repl._command_had_error = False
+        repl.onecmd("test_param label 5.0 3.0")
+        assert repl._command_had_error is True
+
+    def test_param_overwrites_on_duplicate_label(self, make_repl):
+        repl = make_repl({})
+        repl.onecmd("test_param vout 0 10 unit=V")
+        repl.onecmd("test_param vout 0 20 unit=V")
+        assert repl.test_params["vout"]["max"] == 20.0
+
+    def test_overall_verdict_all_pass(self, make_repl, capsys):
+        repl = make_repl({})
+        repl.measurements.append({"label": "v1", "value": 5.0, "unit": "V", "source": "test"})
+        repl.measurements.append({"label": "v2", "value": 3.3, "unit": "V", "source": "test"})
+        repl.onecmd("test_param v1 4.9 5.1 unit=V")
+        repl.onecmd("test_param v2 3.2 3.4 unit=V")
+        capsys.readouterr()
+        repl.onecmd("log print")
+        out = capsys.readouterr().out
+        assert "ALL TEST PARAMETERS PASSED" in out
+
+    def test_overall_verdict_some_fail(self, make_repl, capsys):
+        repl = make_repl({})
+        repl.measurements.append({"label": "v1", "value": 5.0, "unit": "V", "source": "test"})
+        repl.measurements.append({"label": "v2", "value": 9.9, "unit": "V", "source": "test"})
+        repl.onecmd("test_param v1 4.9 5.1 unit=V")
+        repl.onecmd("test_param v2 3.2 3.4 unit=V")
+        capsys.readouterr()
+        repl.onecmd("log print")
+        out = capsys.readouterr().out
+        assert "TEST PARAMETER(S) FAILED" in out
