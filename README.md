@@ -162,3 +162,31 @@ On machines where group policy blocks registry edits, the automatic fix above wi
   scpi-repl
   ```
   You'll need to run these two lines again each time you open a new terminal.
+
+### `git` is not recognized on managed machines
+
+On many managed lab/work machines, you can install GitHub Desktop but still not have `git` on your PATH.
+
+Use the repo helper script (no admin required):
+
+```powershell
+.\setup-git.ps1
+```
+
+What it does:
+
+- Finds GitHub Desktop's bundled `git.exe` dynamically (works across app version updates)
+- Adds only the `...\git\cmd` folder to your **user** PATH
+- Avoids duplicate PATH entries
+
+Then open a **new terminal** and verify:
+
+```powershell
+git --version
+```
+
+Quick one-liner option:
+
+```powershell
+$g=(Get-ChildItem "$env:LOCALAPPDATA\GitHubDesktop\app-*\resources\app\git\cmd\git.exe" -EA 0|Sort-Object LastWriteTime -Desc|Select-Object -First 1); if(-not $g){$g=(Get-ChildItem "$env:LOCALAPPDATA\GitHubDesktop" -Filter git.exe -Recurse -EA 0|?{$_.DirectoryName -like "*\git\cmd"}|Sort-Object LastWriteTime -Desc|Select-Object -First 1)}; if(-not $g){Write-Host "GitHub Desktop Git not found" -FG Red}else{$p=$g.DirectoryName;$u=[Environment]::GetEnvironmentVariable('Path','User'); if(($u -split ';'|%{$_.TrimEnd('\\').ToLowerInvariant()}) -notcontains $p.TrimEnd('\\').ToLowerInvariant()){[Environment]::SetEnvironmentVariable('Path',($(if([string]::IsNullOrWhiteSpace($u)){$p}else{"$u;$p"})),'User')}; Write-Host "Done. Open a new terminal and run: git --version" -FG Green}
+```
