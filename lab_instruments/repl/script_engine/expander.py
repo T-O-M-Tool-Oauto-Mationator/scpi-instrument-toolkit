@@ -1,0 +1,287 @@
+"""Script line expansion: for, repeat, array, call, import, export, limits."""
+
+import contextlib
+import re
+import shlex
+from typing import Any, Dict, List, Optional, Tuple
+
+from lab_instruments.src.terminal import ColorPrinter
+
+from ..syntax import safe_eval, substitute_legacy
+
+
+def expand_script_lines(
+    lines: List[str],
+    variables: Dict[str, str],
+    ctx: Any,
+    depth: int = 0,
+    parent_vars: Optional[Dict[str, str]] = None,
+    exports: Optional[Dict[str, str]] = None,
+    _loop_ctx: str = "",
+) -> List[Tuple[str, str]]:
+    """Expand script lines into (command, source_display) tuples.
+
+    Handles: import, export, breakpoint, set, call, repeat, array, for,
+    lower_limit, upper_limit. Returns list of (cmd, source) where cmd may
+    be '__NOP__' (metadata) or '__BREAKPOINT__'.
+    """
+    if depth > 10:
+        ColorPrinter.error("Maximum script call depth (10) exceeded.")
+        return []
+    if depth == 0:
+        ctx.safety_limits = {}
+        ctx.awg_channel_state = {}
+    expanded: List[Tuple[str, str]] = []
+    idx = 0
+    while idx < len(lines):
+        raw_line = lines[idx].strip()
+        idx += 1
+        if not raw_line or raw_line.startswith("#"):
+            continue
+        try:
+            tokens = shlex.split(raw_line)
+        except ValueError:
+            tokens = raw_line.split()
+        if not tokens:
+            continue
+        head = tokens[0].lower()
+
+        if head == "import" and len(tokens) >= 2:
+            for varname in tokens[1:]:
+                if parent_vars is not None and varname in parent_vars:
+                    variables[varname] = parent_vars[varname]
+                else:
+                    ctx.error(f"import: '{varname}' not found in parent scope")
+            expanded.append(("__NOP__", _loop_ctx + raw_line))
+            continue
+
+        if head == "export" and len(tokens) >= 2:
+            for varname in tokens[1:]:
+                if varname in variables:
+                    if exports is not None:
+                        exports[varname] = variables[varname]
+                else:
+                    ctx.error(f"export: '{varname}' not set in this scope")
+            expanded.append(("__NOP__", _loop_ctx + raw_line))
+            continue
+
+        if head == "breakpoint":
+            expanded.append(("__BREAKPOINT__", "breakpoint"))
+            continue
+
+        if head == "set" and len(tokens) >= 2:
+            if len(tokens) == 2 and tokens[1] in ("-e", "+e"):
+                if tokens[1] == "-e":
+                    ctx.exit_on_error = True
+                    ColorPrinter.info("Exit on error enabled")
+                else:
+                    ctx.exit_on_error = False
+                    ColorPrinter.info("Exit on error disabled")
+                expanded.append(("__NOP__", _loop_ctx + raw_line))
+                continue
+            if len(tokens) >= 3:
+                key = tokens[1]
+                raw_val = substitute_legacy(" ".join(tokens[2:]), variables)
+                try:
+                    num_vars = {}
+                    for k, v in variables.items():
+                        with contextlib.suppress(TypeError, ValueError):
+                            num_vars[k] = float(v)
+                    result = safe_eval(raw_val, num_vars)
+                    variables[key] = str(result)
+                except Exception:
+                    variables[key] = raw_val
+                expanded.append(("__NOP__", f"{_loop_ctx}{raw_line}  →  {key} = {variables[key]}"))
+                continue
+
+        if head == "call" and len(tokens) >= 2:
+            script_name = tokens[1]
+            if script_name not in ctx.scripts:
+                ColorPrinter.error(f"call: script '{script_name}' not found.")
+                continue
+            call_params = {}
+            for token in tokens[2:]:
+                if "=" in token:
+                    k, v = token.split("=", 1)
+                    call_params[k] = substitute_legacy(v, variables)
+            call_exports: Dict[str, str] = {}
+            expanded.extend(
+                expand_script_lines(
+                    ctx.scripts[script_name],
+                    call_params,
+                    ctx,
+                    depth + 1,
+                    parent_vars=variables,
+                    exports=call_exports,
+                    _loop_ctx=f"[call {script_name}] " + _loop_ctx,
+                )
+            )
+            variables.update(call_exports)
+            continue
+
+        if head == "repeat" and len(tokens) >= 2:
+            try:
+                count = int(tokens[1])
+            except ValueError:
+                ColorPrinter.error(f"repeat: expected integer count, got '{tokens[1]}'")
+                continue
+            block, idx = _collect_block(lines, idx)
+            for i in range(count):
+                iter_ctx = f"[repeat {i + 1}/{count}] "
+                expanded.append(("__NOP__", f"{_loop_ctx}{raw_line}  →  iteration {i + 1}/{count}"))
+                expanded.extend(
+                    expand_script_lines(block, dict(variables), ctx, depth, _loop_ctx=_loop_ctx + iter_ctx)
+                )
+            continue
+
+        if head == "array" and len(tokens) >= 2:
+            varname = tokens[1]
+            elements: List[str] = []
+            while idx < len(lines):
+                line = lines[idx].strip()
+                idx += 1
+                if not line or line.startswith("#"):
+                    continue
+                inner_tokens = shlex.split(line)
+                if not inner_tokens:
+                    continue
+                if inner_tokens[0].lower() == "end":
+                    break
+                elements.extend(shlex.split(substitute_legacy(line, variables)))
+            variables[varname] = " ".join(elements)
+            expanded.append(("__NOP__", f"{_loop_ctx}{raw_line}  →  {varname} = [{variables[varname]}]"))
+            continue
+
+        if head == "for" and len(tokens) >= 3:
+            key = tokens[1]
+            values: List[str] = []
+            for _rv in tokens[2:]:
+                _subst = substitute_legacy(_rv, variables)
+                try:
+                    values.extend(shlex.split(_subst))
+                except ValueError:
+                    values.append(_subst)
+            block, idx = _collect_block(lines, idx)
+            if "," in key:
+                keys = [name for name in key.split(",") if name]
+                for value in values:
+                    parts = value.split(",")
+                    if len(parts) != len(keys):
+                        ColorPrinter.error("for: var list and value list length mismatch.")
+                        break
+                    local_vars = dict(variables)
+                    for name, val in zip(keys, parts):
+                        local_vars[name] = substitute_legacy(val, variables)
+                    iter_ctx = " ".join(f"{k}={v}" for k, v in zip(keys, parts))
+                    expanded.append(("__NOP__", f"{_loop_ctx}{raw_line}  →  {iter_ctx}"))
+                    expanded.extend(
+                        expand_script_lines(block, local_vars, ctx, depth, _loop_ctx=_loop_ctx + f"[{iter_ctx}] ")
+                    )
+            else:
+                for value in values:
+                    local_vars = dict(variables)
+                    local_vars[key] = substitute_legacy(value, variables)
+                    expanded.append(("__NOP__", f"{_loop_ctx}{raw_line}  →  {key}={value}"))
+                    expanded.extend(
+                        expand_script_lines(
+                            block, local_vars, ctx, depth, _loop_ctx=_loop_ctx + f"[{key}={value}] "
+                        )
+                    )
+            continue
+
+        if head == "end":
+            continue
+
+        if head in ("lower_limit", "upper_limit") and len(tokens) >= 3:
+            _parse_limit(head, tokens, ctx, expanded, _loop_ctx, raw_line)
+            continue
+
+        expanded.append((substitute_legacy(raw_line, variables), _loop_ctx + raw_line))
+    return expanded
+
+
+def _collect_block(lines: List[str], idx: int) -> Tuple[List[str], int]:
+    """Collect lines until a matching 'end', tracking nested depth."""
+    block: List[str] = []
+    depth_inner = 1
+    while idx < len(lines):
+        line = lines[idx].strip()
+        idx += 1
+        if not line or line.startswith("#"):
+            continue
+        try:
+            line_tokens = shlex.split(line)
+        except ValueError:
+            line_tokens = line.split()
+        if not line_tokens:
+            continue
+        if line_tokens[0].lower() in ("repeat", "for", "array"):
+            depth_inner += 1
+        elif line_tokens[0].lower() == "end":
+            depth_inner -= 1
+            if depth_inner == 0:
+                break
+        block.append(line)
+    return block, idx
+
+
+def _parse_limit(
+    head: str,
+    tokens: List[str],
+    ctx: Any,
+    expanded: List[Tuple[str, str]],
+    _loop_ctx: str,
+    raw_line: str,
+) -> None:
+    """Parse and store a lower_limit/upper_limit directive."""
+    direction = "lower" if head == "lower_limit" else "upper"
+    device_str = tokens[1].lower()
+    base_type = re.sub(r"\d+$", "", device_str)
+    VALID_PARAMS = {
+        "awg": {"vpeak", "vtrough", "vpp", "freq", "voltage"},
+        "psu": {"voltage", "current"},
+    }
+    if base_type not in VALID_PARAMS:
+        ctx.error(f"{head}: unknown device type '{device_str}'")
+        expanded.append(("__NOP__", _loop_ctx + raw_line))
+        return
+    channel_or_none = None
+    rest = tokens[2:]
+    if rest and rest[0].lower() == "chan":
+        if len(rest) < 4:
+            ctx.error(f"{head}: 'chan' requires a channel number, param, and value")
+            expanded.append(("__NOP__", _loop_ctx + raw_line))
+            return
+        try:
+            channel_or_none = int(rest[1])
+        except ValueError:
+            ctx.error(f"{head}: invalid channel number '{rest[1]}'")
+            expanded.append(("__NOP__", _loop_ctx + raw_line))
+            return
+        rest = rest[2:]
+    if len(rest) == 1:
+        try:
+            float(rest[0])
+            rest = ["voltage", rest[0]]
+        except ValueError:
+            pass
+    if len(rest) < 2:
+        ctx.error(f"{head}: requires <param> <value>  (e.g. {head} {device_str} voltage 5.0)")
+        expanded.append(("__NOP__", _loop_ctx + raw_line))
+        return
+    param = rest[0].lower()
+    try:
+        value = float(rest[1])
+    except ValueError:
+        ctx.error(f"{head}: '{rest[1]}' is not a number")
+        expanded.append(("__NOP__", _loop_ctx + raw_line))
+        return
+    if param not in VALID_PARAMS[base_type]:
+        ctx.error(f"{head}: unknown param '{param}' for '{base_type}'")
+        expanded.append(("__NOP__", _loop_ctx + raw_line))
+        return
+    if base_type == "awg" and param == "voltage":
+        param = "vpeak" if direction == "upper" else "vtrough"
+    key = (device_str, channel_or_none)
+    ctx.safety_limits.setdefault(key, {})[f"{param}_{direction}"] = value
+    expanded.append(("__NOP__", f"{_loop_ctx}{raw_line}  →  limit set"))
