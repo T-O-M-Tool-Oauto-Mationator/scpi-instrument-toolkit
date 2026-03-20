@@ -52,39 +52,22 @@ class Capability(Flag):
 DRIVER_CAPABILITIES = {
     # PSUs
     "HP_E3631A": (
-        Capability.PSU_MULTI_CHANNEL
-        | Capability.PSU_READBACK
-        | Capability.PSU_TRACKING
-        | Capability.PSU_SAVE_RECALL
+        Capability.PSU_MULTI_CHANNEL | Capability.PSU_READBACK | Capability.PSU_TRACKING | Capability.PSU_SAVE_RECALL
     ),
     "MockHP_E3631A": (
-        Capability.PSU_MULTI_CHANNEL
-        | Capability.PSU_READBACK
-        | Capability.PSU_TRACKING
-        | Capability.PSU_SAVE_RECALL
+        Capability.PSU_MULTI_CHANNEL | Capability.PSU_READBACK | Capability.PSU_TRACKING | Capability.PSU_SAVE_RECALL
     ),
     "MATRIX_MPS6010H": Capability.NONE,  # single channel, no readback
     "MockMPS6010H": Capability.NONE,
     "Keysight_EDU36311A": (
-        Capability.PSU_MULTI_CHANNEL
-        | Capability.PSU_READBACK
-        | Capability.PSU_TRACKING
-        | Capability.PSU_SAVE_RECALL
+        Capability.PSU_MULTI_CHANNEL | Capability.PSU_READBACK | Capability.PSU_TRACKING | Capability.PSU_SAVE_RECALL
     ),
-
     # AWGs
-    "Keysight_EDU33212A": (
-        Capability.AWG_SYNC
-        | Capability.AWG_INDEPENDENT_PARAMS
-    ),
-    "MockEDU33212A": (
-        Capability.AWG_SYNC
-        | Capability.AWG_INDEPENDENT_PARAMS
-    ),
+    "Keysight_EDU33212A": (Capability.AWG_SYNC | Capability.AWG_INDEPENDENT_PARAMS),
+    "MockEDU33212A": (Capability.AWG_SYNC | Capability.AWG_INDEPENDENT_PARAMS),
     "BK_4063": Capability.AWG_INDEPENDENT_PARAMS,
     "JDS6600_Generator": Capability.AWG_JDS6600_PROTOCOL,
     "MockJDS6600": Capability.AWG_JDS6600_PROTOCOL,
-
     # DMMs
     "HP_34401A": (
         Capability.DMM_NPLC
@@ -104,7 +87,6 @@ DRIVER_CAPABILITIES = {
     ),
     "Owon_XDM1041": Capability.NONE,
     "MockXDM1041": Capability.NONE,
-
     # Scopes
     "Rigol_DHO804": (
         Capability.SCOPE_SCREENSHOT

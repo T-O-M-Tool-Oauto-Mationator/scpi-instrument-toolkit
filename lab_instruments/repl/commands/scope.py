@@ -609,9 +609,7 @@ class ScopeCommand(BaseCommand):
                 ColorPrinter.success(f"AWG modulation type: {mod_type}")
 
             else:
-                ColorPrinter.warning(
-                    f"Unknown AWG command: scope awg {' '.join(args)}. Type 'scope awg' for help."
-                )
+                ColorPrinter.warning(f"Unknown AWG command: scope awg {' '.join(args)}. Type 'scope awg' for help.")
 
         except AttributeError:
             ColorPrinter.warning("AWG not supported on this oscilloscope model (requires DHO914S/DHO924S)")
@@ -703,9 +701,7 @@ class ScopeCommand(BaseCommand):
                 ColorPrinter.success(f"DVM source: CH{channel}")
 
             else:
-                ColorPrinter.warning(
-                    f"Unknown DVM command: scope dvm {' '.join(args)}. Type 'scope dvm' for help."
-                )
+                ColorPrinter.warning(f"Unknown DVM command: scope dvm {' '.join(args)}. Type 'scope dvm' for help.")
 
         except AttributeError:
             ColorPrinter.warning("DVM not supported on this oscilloscope")
@@ -965,9 +961,7 @@ class ScopeCommand(BaseCommand):
                 ColorPrinter.success(f"Math{math_ch} scale: {scale}")
 
             else:
-                ColorPrinter.warning(
-                    f"Unknown math command: scope math {' '.join(args)}. Type 'scope math' for help."
-                )
+                ColorPrinter.warning(f"Unknown math command: scope math {' '.join(args)}. Type 'scope math' for help.")
 
         except AttributeError:
             ColorPrinter.warning("Math channels not supported on this oscilloscope model")
@@ -1098,9 +1092,7 @@ class ScopeCommand(BaseCommand):
                 ColorPrinter.success("Mask statistics reset")
 
             else:
-                ColorPrinter.warning(
-                    f"Unknown mask command: scope mask {' '.join(args)}. Type 'scope mask' for help."
-                )
+                ColorPrinter.warning(f"Unknown mask command: scope mask {' '.join(args)}. Type 'scope mask' for help.")
 
         except AttributeError:
             ColorPrinter.warning("Mask testing not supported on this oscilloscope model")

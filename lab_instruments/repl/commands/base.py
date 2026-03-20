@@ -76,7 +76,7 @@ class BaseCommand:
         if strip_word:
             prefix = strip_word.lower()
             if s.lower().startswith(prefix) and (len(s) == len(prefix) or s[len(prefix)].isspace()):
-                s = s[len(prefix):].lstrip()
+                s = s[len(prefix) :].lstrip()
         if not s:
             return None
         if len(s) >= 2 and s[0] in ('"', "'") and s[-1] == s[0]:

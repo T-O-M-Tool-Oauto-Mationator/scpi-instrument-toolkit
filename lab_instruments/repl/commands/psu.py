@@ -52,8 +52,7 @@ class PsuCommand(BaseCommand):
         try:
             # CHAN COMMAND -- psu chan on|off (single) or psu chan <1|2|3|all> on|off (multi)
             if cmd_name == "chan" and (
-                (is_single_channel and len(args) >= 2)
-                or (not is_single_channel and len(args) >= 3)
+                (is_single_channel and len(args) >= 2) or (not is_single_channel and len(args) >= 3)
             ):
                 state = args[-1].lower() == "on"
                 if state and not self.safety.check_psu_output_allowed(psu_name):
@@ -244,8 +243,7 @@ class PsuCommand(BaseCommand):
     def _handle_meas_store(self, args, dev, psu_name, is_single_channel) -> None:
         if getattr(dev, "SUPPORTS_READBACK", True) is False:
             ColorPrinter.warning(
-                f"{psu_name}: this device has no readback support — "
-                "cannot store measurements. Use an external DMM."
+                f"{psu_name}: this device has no readback support — cannot store measurements. Use an external DMM."
             )
             return
         unit = ""

@@ -129,9 +129,7 @@ def expand_script_lines(
             for i in range(count):
                 iter_ctx = f"[repeat {i + 1}/{count}] "
                 expanded.append(("__NOP__", f"{_loop_ctx}{raw_line}  →  iteration {i + 1}/{count}"))
-                expanded.extend(
-                    expand_script_lines(block, dict(variables), ctx, depth, _loop_ctx=_loop_ctx + iter_ctx)
-                )
+                expanded.extend(expand_script_lines(block, dict(variables), ctx, depth, _loop_ctx=_loop_ctx + iter_ctx))
             continue
 
         if head == "array" and len(tokens) >= 2:
@@ -183,9 +181,7 @@ def expand_script_lines(
                     local_vars[key] = substitute_legacy(value, variables)
                     expanded.append(("__NOP__", f"{_loop_ctx}{raw_line}  →  {key}={value}"))
                     expanded.extend(
-                        expand_script_lines(
-                            block, local_vars, ctx, depth, _loop_ctx=_loop_ctx + f"[{key}={value}] "
-                        )
+                        expand_script_lines(block, local_vars, ctx, depth, _loop_ctx=_loop_ctx + f"[{key}={value}] ")
                     )
             continue
 

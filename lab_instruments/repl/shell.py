@@ -98,6 +98,7 @@ class InstrumentRepl(cmd.Cmd):
         self._term_settings = None
         try:
             import termios
+
             fd = sys.stdin.fileno()
             self._term_fd = fd
             self._term_settings = termios.tcgetattr(fd)
@@ -112,12 +113,8 @@ class InstrumentRepl(cmd.Cmd):
 
         # Background scan
         self._scan_done = threading.Event()
-        self._scan_thread = threading.Thread(
-            target=self._background_scan, daemon=True, name="scpi-scan"
-        )
-        ColorPrinter.info(
-            "Scanning for instruments in background — type 'scan' to wait for results."
-        )
+        self._scan_thread = threading.Thread(target=self._background_scan, daemon=True, name="scpi-scan")
+        ColorPrinter.info("Scanning for instruments in background — type 'scan' to wait for results.")
         self._scan_thread.start()
 
     # ------------------------------------------------------------------
@@ -268,9 +265,7 @@ class InstrumentRepl(cmd.Cmd):
             if self.ctx.registry.selected not in self.ctx.registry.devices:
                 self.ctx.registry.selected = None
             if self.ctx.registry.devices:
-                ColorPrinter.success(
-                    f"\nScan complete: found {len(self.ctx.registry.devices)} device(s)."
-                )
+                ColorPrinter.success(f"\nScan complete: found {len(self.ctx.registry.devices)} device(s).")
                 try:
                     ColorPrinter.info("Setting all instruments to safe state...")
                     self._general.safe_all()
@@ -292,6 +287,7 @@ class InstrumentRepl(cmd.Cmd):
         try:
             if self._term_settings is not None:
                 import termios
+
                 termios.tcsetattr(self._term_fd, termios.TCSADRAIN, self._term_settings)
         except Exception:
             pass
@@ -441,7 +437,10 @@ class InstrumentRepl(cmd.Cmd):
             base_type = re.sub(r"\d+$", "", cmd_token)
             if base_type in ("awg", "scope", "psu"):
                 dev = None
-                if self.ctx.registry._device_override and self.ctx.registry._device_override in self.ctx.registry.devices:
+                if (
+                    self.ctx.registry._device_override
+                    and self.ctx.registry._device_override in self.ctx.registry.devices
+                ):
                     dev = self.ctx.registry.devices[self.ctx.registry._device_override]
                 elif cmd_token in self.ctx.registry.devices:
                     dev = self.ctx.registry.devices[cmd_token]
@@ -533,13 +532,20 @@ class InstrumentRepl(cmd.Cmd):
     # ------------------------------------------------------------------
     def _expand_script_lines(self, lines, variables, depth=0, parent_vars=None, exports=None, _loop_ctx=""):
         from .script_engine.expander import expand_script_lines
+
         return expand_script_lines(
-            lines, variables, self.ctx, depth=depth,
-            parent_vars=parent_vars, exports=exports, _loop_ctx=_loop_ctx,
+            lines,
+            variables,
+            self.ctx,
+            depth=depth,
+            parent_vars=parent_vars,
+            exports=exports,
+            _loop_ctx=_loop_ctx,
         )
 
     def _run_expanded(self, expanded, debug=False):
         from .script_engine.runner import run_expanded
+
         return run_expanded(expanded, self, self.ctx, debug=debug)
 
     def _run_script_lines(self, lines):
@@ -556,7 +562,9 @@ class InstrumentRepl(cmd.Cmd):
         return self._safety.check_psu_limits(device_name, channel, voltage=voltage, current=current)
 
     def _check_awg_limits(self, device_name, channel, new_vpp=None, new_offset=None, new_freq=None):
-        return self._safety.check_awg_limits(device_name, channel, new_vpp=new_vpp, new_offset=new_offset, new_freq=new_freq)
+        return self._safety.check_awg_limits(
+            device_name, channel, new_vpp=new_vpp, new_offset=new_offset, new_freq=new_freq
+        )
 
     def _check_psu_output_allowed(self, device_name):
         return self._safety.check_psu_output_allowed(device_name)
@@ -811,9 +819,22 @@ class InstrumentRepl(cmd.Cmd):
         if arg:
             if arg.strip().lower() == "all":
                 for cmd_name in [
-                    "scan", "list", "use", "status", "state", "idn", "raw",
-                    "sleep", "close", "all", "upper_limit", "lower_limit",
-                    "log", "calc", "data", "script",
+                    "scan",
+                    "list",
+                    "use",
+                    "status",
+                    "state",
+                    "idn",
+                    "raw",
+                    "sleep",
+                    "close",
+                    "all",
+                    "upper_limit",
+                    "lower_limit",
+                    "log",
+                    "calc",
+                    "data",
+                    "script",
                 ]:
                     fn = getattr(self, f"help_{cmd_name}", None)
                     if fn:
@@ -935,40 +956,61 @@ class InstrumentRepl(cmd.Cmd):
         self.do_data("")
 
     def help_scan(self):
-        self._general.print_colored_usage([
-            "# SCAN", "",
-            "scan", "  - discover and connect to all VISA instruments",
-            "  - instruments are assigned names: psu1, awg1, dmm1, scope1, …",
-            "  - re-run at any time to pick up newly connected devices",
-        ])
+        self._general.print_colored_usage(
+            [
+                "# SCAN",
+                "",
+                "scan",
+                "  - discover and connect to all VISA instruments",
+                "  - instruments are assigned names: psu1, awg1, dmm1, scope1, …",
+                "  - re-run at any time to pick up newly connected devices",
+            ]
+        )
 
     def help_list(self):
-        self._general.print_colored_usage([
-            "# LIST", "",
-            "list", "  - show all connected instruments and their assigned names",
-            "  - the active instrument (set via 'use') is highlighted",
-        ])
+        self._general.print_colored_usage(
+            [
+                "# LIST",
+                "",
+                "list",
+                "  - show all connected instruments and their assigned names",
+                "  - the active instrument (set via 'use') is highlighted",
+            ]
+        )
 
     def help_idn(self):
-        self._general.print_colored_usage([
-            "# IDN", "",
-            "idn", "  - query *IDN? on the active instrument",
-            "idn <name>", "  - query *IDN? on a specific named instrument",
-        ])
+        self._general.print_colored_usage(
+            [
+                "# IDN",
+                "",
+                "idn",
+                "  - query *IDN? on the active instrument",
+                "idn <name>",
+                "  - query *IDN? on a specific named instrument",
+            ]
+        )
 
     def help_close(self):
-        self._general.print_colored_usage([
-            "# CLOSE", "",
-            "close", "  - disconnect all instruments and release VISA resources",
-            "  - use 'scan' to reconnect",
-        ])
+        self._general.print_colored_usage(
+            [
+                "# CLOSE",
+                "",
+                "close",
+                "  - disconnect all instruments and release VISA resources",
+                "  - use 'scan' to reconnect",
+            ]
+        )
 
     def help_status(self):
-        self._general.print_colored_usage([
-            "# STATUS", "",
-            "status", "  - show all connected instruments and their assigned names",
-            "  - indicates which instrument is currently active (set via 'use')",
-        ])
+        self._general.print_colored_usage(
+            [
+                "# STATUS",
+                "",
+                "status",
+                "  - show all connected instruments and their assigned names",
+                "  - indicates which instrument is currently active (set via 'use')",
+            ]
+        )
 
     def help_check(self):
         self.do_check("")

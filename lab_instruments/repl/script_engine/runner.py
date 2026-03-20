@@ -112,9 +112,7 @@ def run_expanded(expanded: List[Tuple[str, str]], shell: Any, ctx: Any, debug: b
                             target = int(parts[1]) - 1
                             if 0 <= target < len(lines):
                                 idx = target
-                                ColorPrinter.warning(
-                                    f"Jumped to line {idx + 1} — skipped lines NOT executed/reversed"
-                                )
+                                ColorPrinter.warning(f"Jumped to line {idx + 1} — skipped lines NOT executed/reversed")
                                 _debug_show_context(lines, source_lines, idx, breakpoints)
                             else:
                                 ColorPrinter.error(f"Line out of range (1–{len(lines)})")

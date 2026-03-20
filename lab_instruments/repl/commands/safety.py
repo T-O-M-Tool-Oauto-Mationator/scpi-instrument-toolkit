@@ -44,17 +44,25 @@ class SafetySystem:
         ch_str = f" ch{channel}" if channel is not None else ""
         if voltage is not None:
             if "voltage_upper" in limits and voltage > limits["voltage_upper"]:
-                self.ctx.error(f"Safety limit exceeded: {device_name}{ch_str} voltage {voltage}V > {limits['voltage_upper']}V")
+                self.ctx.error(
+                    f"Safety limit exceeded: {device_name}{ch_str} voltage {voltage}V > {limits['voltage_upper']}V"
+                )
                 return False
             if "voltage_lower" in limits and voltage < limits["voltage_lower"]:
-                self.ctx.error(f"Safety limit exceeded: {device_name}{ch_str} voltage {voltage}V < {limits['voltage_lower']}V")
+                self.ctx.error(
+                    f"Safety limit exceeded: {device_name}{ch_str} voltage {voltage}V < {limits['voltage_lower']}V"
+                )
                 return False
         if current is not None:
             if "current_upper" in limits and current > limits["current_upper"]:
-                self.ctx.error(f"Safety limit exceeded: {device_name}{ch_str} current {current}A > {limits['current_upper']}A")
+                self.ctx.error(
+                    f"Safety limit exceeded: {device_name}{ch_str} current {current}A > {limits['current_upper']}A"
+                )
                 return False
             if "current_lower" in limits and current < limits["current_lower"]:
-                self.ctx.error(f"Safety limit exceeded: {device_name}{ch_str} current {current}A < {limits['current_lower']}A")
+                self.ctx.error(
+                    f"Safety limit exceeded: {device_name}{ch_str} current {current}A < {limits['current_lower']}A"
+                )
                 return False
         return True
 
@@ -122,7 +130,9 @@ class SafetySystem:
         if vpp is None:
             vpp_limit_keys = {"vpp_upper", "vpeak_upper", "vtrough_lower", "vpeak_lower", "vtrough_upper"}
             if any(k in limits for k in vpp_limit_keys):
-                self.ctx.error(f"Safety: AWG CH{channel} amplitude unknown — specify amp= to confirm it is within limits")
+                self.ctx.error(
+                    f"Safety: AWG CH{channel} amplitude unknown — specify amp= to confirm it is within limits"
+                )
                 return False
             vpp = 0.0
 
@@ -165,18 +175,24 @@ class SafetySystem:
         voltage = state.get("voltage")
         current = state.get("current")
         if voltage is None and current is None:
-            self.ctx.error(f"SAFETY BLOCKED: {device_name} output enable refused — limits are set but instrument state is unknown")
+            self.ctx.error(
+                f"SAFETY BLOCKED: {device_name} output enable refused — limits are set but instrument state is unknown"
+            )
             return False
         if voltage is not None:
             if "voltage_upper" in limits and voltage > limits["voltage_upper"]:
-                self.ctx.error(f"SAFETY BLOCKED: {device_name} voltage {voltage}V > limit {limits['voltage_upper']}V — reduce voltage before enabling output")
+                self.ctx.error(
+                    f"SAFETY BLOCKED: {device_name} voltage {voltage}V > limit {limits['voltage_upper']}V — reduce voltage before enabling output"
+                )
                 return False
             if "voltage_lower" in limits and voltage < limits["voltage_lower"]:
                 self.ctx.error(f"SAFETY BLOCKED: {device_name} voltage {voltage}V < limit {limits['voltage_lower']}V")
                 return False
         if current is not None:
             if "current_upper" in limits and current > limits["current_upper"]:
-                self.ctx.error(f"SAFETY BLOCKED: {device_name} current {current}A > limit {limits['current_upper']}A — reduce current limit before enabling output")
+                self.ctx.error(
+                    f"SAFETY BLOCKED: {device_name} current {current}A > limit {limits['current_upper']}A — reduce current limit before enabling output"
+                )
                 return False
             if "current_lower" in limits and current < limits["current_lower"]:
                 self.ctx.error(f"SAFETY BLOCKED: {device_name} current {current}A < limit {limits['current_lower']}A")
@@ -193,33 +209,49 @@ class SafetySystem:
         offset = state.get("offset")
         freq = state.get("freq")
         if vpp is None and offset is None and freq is None:
-            self.ctx.error(f"SAFETY BLOCKED: {device_name} ch{channel} output enable refused — limits are set but instrument state is unknown")
+            self.ctx.error(
+                f"SAFETY BLOCKED: {device_name} ch{channel} output enable refused — limits are set but instrument state is unknown"
+            )
             return False
         vpp = vpp if vpp is not None else 0.0
         offset = offset if offset is not None else 0.0
         peak = offset + vpp / 2.0
         trough = offset - vpp / 2.0
         if "vpp_upper" in limits and vpp > limits["vpp_upper"]:
-            self.ctx.error(f"SAFETY BLOCKED: {device_name} ch{channel} Vpp {vpp}V > limit {limits['vpp_upper']}V — reduce amplitude before enabling output")
+            self.ctx.error(
+                f"SAFETY BLOCKED: {device_name} ch{channel} Vpp {vpp}V > limit {limits['vpp_upper']}V — reduce amplitude before enabling output"
+            )
             return False
         if "vpeak_upper" in limits and peak > limits["vpeak_upper"]:
-            self.ctx.error(f"SAFETY BLOCKED: {device_name} ch{channel} peak {peak:.4g}V > limit {limits['vpeak_upper']}V — reduce amplitude/offset before enabling output")
+            self.ctx.error(
+                f"SAFETY BLOCKED: {device_name} ch{channel} peak {peak:.4g}V > limit {limits['vpeak_upper']}V — reduce amplitude/offset before enabling output"
+            )
             return False
         if "vtrough_lower" in limits and trough < limits["vtrough_lower"]:
-            self.ctx.error(f"SAFETY BLOCKED: {device_name} ch{channel} trough {trough:.4g}V < limit {limits['vtrough_lower']}V — adjust offset before enabling output")
+            self.ctx.error(
+                f"SAFETY BLOCKED: {device_name} ch{channel} trough {trough:.4g}V < limit {limits['vtrough_lower']}V — adjust offset before enabling output"
+            )
             return False
         if "vpeak_lower" in limits and peak < limits["vpeak_lower"]:
-            self.ctx.error(f"SAFETY BLOCKED: {device_name} ch{channel} peak {peak:.4g}V < limit {limits['vpeak_lower']}V")
+            self.ctx.error(
+                f"SAFETY BLOCKED: {device_name} ch{channel} peak {peak:.4g}V < limit {limits['vpeak_lower']}V"
+            )
             return False
         if "vtrough_upper" in limits and trough > limits["vtrough_upper"]:
-            self.ctx.error(f"SAFETY BLOCKED: {device_name} ch{channel} trough {trough:.4g}V > limit {limits['vtrough_upper']}V")
+            self.ctx.error(
+                f"SAFETY BLOCKED: {device_name} ch{channel} trough {trough:.4g}V > limit {limits['vtrough_upper']}V"
+            )
             return False
         if freq is not None:
             if "freq_upper" in limits and freq > limits["freq_upper"]:
-                self.ctx.error(f"SAFETY BLOCKED: {device_name} ch{channel} freq {freq}Hz > limit {limits['freq_upper']}Hz")
+                self.ctx.error(
+                    f"SAFETY BLOCKED: {device_name} ch{channel} freq {freq}Hz > limit {limits['freq_upper']}Hz"
+                )
                 return False
             if "freq_lower" in limits and freq < limits["freq_lower"]:
-                self.ctx.error(f"SAFETY BLOCKED: {device_name} ch{channel} freq {freq}Hz < limit {limits['freq_lower']}Hz")
+                self.ctx.error(
+                    f"SAFETY BLOCKED: {device_name} ch{channel} freq {freq}Hz < limit {limits['freq_lower']}Hz"
+                )
                 return False
         return True
 
@@ -248,28 +280,44 @@ class SafetySystem:
             if "voltage_upper" in limits and v > limits["voltage_upper"]:
                 violated = True
                 if output_on:
-                    ColorPrinter.error(f"SAFETY ENFORCED: {dev_name} setpoint {v}V exceeds limit {limits['voltage_upper']}V — output auto-disabled")
+                    ColorPrinter.error(
+                        f"SAFETY ENFORCED: {dev_name} setpoint {v}V exceeds limit {limits['voltage_upper']}V — output auto-disabled"
+                    )
                 else:
-                    ColorPrinter.warning(f"Retroactive: {dev_name} setpoint {v}V already exceeds limit {limits['voltage_upper']}V — consider reducing output")
+                    ColorPrinter.warning(
+                        f"Retroactive: {dev_name} setpoint {v}V already exceeds limit {limits['voltage_upper']}V — consider reducing output"
+                    )
             if "voltage_lower" in limits and v < limits["voltage_lower"]:
                 violated = True
                 if output_on:
-                    ColorPrinter.error(f"SAFETY ENFORCED: {dev_name} setpoint {v}V below limit {limits['voltage_lower']}V — output auto-disabled")
+                    ColorPrinter.error(
+                        f"SAFETY ENFORCED: {dev_name} setpoint {v}V below limit {limits['voltage_lower']}V — output auto-disabled"
+                    )
                 else:
-                    ColorPrinter.warning(f"Retroactive: {dev_name} setpoint {v}V already below limit {limits['voltage_lower']}V")
+                    ColorPrinter.warning(
+                        f"Retroactive: {dev_name} setpoint {v}V already below limit {limits['voltage_lower']}V"
+                    )
         if i is not None:
             if "current_upper" in limits and i > limits["current_upper"]:
                 violated = True
                 if output_on:
-                    ColorPrinter.error(f"SAFETY ENFORCED: {dev_name} current limit {i}A exceeds limit {limits['current_upper']}A — output auto-disabled")
+                    ColorPrinter.error(
+                        f"SAFETY ENFORCED: {dev_name} current limit {i}A exceeds limit {limits['current_upper']}A — output auto-disabled"
+                    )
                 else:
-                    ColorPrinter.warning(f"Retroactive: {dev_name} current limit {i}A already exceeds limit {limits['current_upper']}A")
+                    ColorPrinter.warning(
+                        f"Retroactive: {dev_name} current limit {i}A already exceeds limit {limits['current_upper']}A"
+                    )
             if "current_lower" in limits and i < limits["current_lower"]:
                 violated = True
                 if output_on:
-                    ColorPrinter.error(f"SAFETY ENFORCED: {dev_name} current limit {i}A below limit {limits['current_lower']}A — output auto-disabled")
+                    ColorPrinter.error(
+                        f"SAFETY ENFORCED: {dev_name} current limit {i}A below limit {limits['current_lower']}A — output auto-disabled"
+                    )
                 else:
-                    ColorPrinter.warning(f"Retroactive: {dev_name} current limit {i}A already below limit {limits['current_lower']}A")
+                    ColorPrinter.warning(
+                        f"Retroactive: {dev_name} current limit {i}A already below limit {limits['current_lower']}A"
+                    )
         if violated and output_on:
             with contextlib.suppress(Exception):
                 dev.enable_output(False)
@@ -300,36 +348,58 @@ class SafetySystem:
             if vpp is not None and "vpp_upper" in limits and vpp_val > limits["vpp_upper"]:
                 violated = True
                 if ch_on:
-                    ColorPrinter.error(f"SAFETY ENFORCED: {dev_name} ch{awg_ch} Vpp {vpp_val}V exceeds limit {limits['vpp_upper']}V — output auto-disabled")
+                    ColorPrinter.error(
+                        f"SAFETY ENFORCED: {dev_name} ch{awg_ch} Vpp {vpp_val}V exceeds limit {limits['vpp_upper']}V — output auto-disabled"
+                    )
                 else:
-                    ColorPrinter.warning(f"Retroactive: {dev_name} ch{awg_ch} Vpp {vpp_val}V already exceeds limit {limits['vpp_upper']}V")
+                    ColorPrinter.warning(
+                        f"Retroactive: {dev_name} ch{awg_ch} Vpp {vpp_val}V already exceeds limit {limits['vpp_upper']}V"
+                    )
             if "vpeak_upper" in limits and peak > limits["vpeak_upper"]:
                 violated = True
                 if ch_on:
-                    ColorPrinter.error(f"SAFETY ENFORCED: {dev_name} ch{awg_ch} peak {peak:.4g}V exceeds limit {limits['vpeak_upper']}V — output auto-disabled")
+                    ColorPrinter.error(
+                        f"SAFETY ENFORCED: {dev_name} ch{awg_ch} peak {peak:.4g}V exceeds limit {limits['vpeak_upper']}V — output auto-disabled"
+                    )
                 else:
-                    ColorPrinter.warning(f"Retroactive: {dev_name} ch{awg_ch} peak {peak:.4g}V already exceeds limit {limits['vpeak_upper']}V")
+                    ColorPrinter.warning(
+                        f"Retroactive: {dev_name} ch{awg_ch} peak {peak:.4g}V already exceeds limit {limits['vpeak_upper']}V"
+                    )
             if "vtrough_lower" in limits and trough < limits["vtrough_lower"]:
                 violated = True
                 if ch_on:
-                    ColorPrinter.error(f"SAFETY ENFORCED: {dev_name} ch{awg_ch} trough {trough:.4g}V below limit {limits['vtrough_lower']}V — output auto-disabled")
+                    ColorPrinter.error(
+                        f"SAFETY ENFORCED: {dev_name} ch{awg_ch} trough {trough:.4g}V below limit {limits['vtrough_lower']}V — output auto-disabled"
+                    )
                 else:
-                    ColorPrinter.warning(f"Retroactive: {dev_name} ch{awg_ch} trough {trough:.4g}V already below limit {limits['vtrough_lower']}V")
+                    ColorPrinter.warning(
+                        f"Retroactive: {dev_name} ch{awg_ch} trough {trough:.4g}V already below limit {limits['vtrough_lower']}V"
+                    )
             if vpp is not None and "vpp_lower" in limits and vpp_val < limits["vpp_lower"]:
                 violated = True
                 if ch_on:
-                    ColorPrinter.error(f"SAFETY ENFORCED: {dev_name} ch{awg_ch} Vpp {vpp_val}V below limit {limits['vpp_lower']}V — output auto-disabled")
+                    ColorPrinter.error(
+                        f"SAFETY ENFORCED: {dev_name} ch{awg_ch} Vpp {vpp_val}V below limit {limits['vpp_lower']}V — output auto-disabled"
+                    )
                 else:
-                    ColorPrinter.warning(f"Retroactive: {dev_name} ch{awg_ch} Vpp {vpp_val}V already below limit {limits['vpp_lower']}V")
+                    ColorPrinter.warning(
+                        f"Retroactive: {dev_name} ch{awg_ch} Vpp {vpp_val}V already below limit {limits['vpp_lower']}V"
+                    )
             if freq is not None:
                 if "freq_upper" in limits and freq > limits["freq_upper"]:
                     violated = True
                     if ch_on:
-                        ColorPrinter.error(f"SAFETY ENFORCED: {dev_name} ch{awg_ch} freq {freq}Hz exceeds limit {limits['freq_upper']}Hz — output auto-disabled")
+                        ColorPrinter.error(
+                            f"SAFETY ENFORCED: {dev_name} ch{awg_ch} freq {freq}Hz exceeds limit {limits['freq_upper']}Hz — output auto-disabled"
+                        )
                     else:
-                        ColorPrinter.warning(f"Retroactive: {dev_name} ch{awg_ch} freq {freq}Hz already exceeds limit {limits['freq_upper']}Hz")
+                        ColorPrinter.warning(
+                            f"Retroactive: {dev_name} ch{awg_ch} freq {freq}Hz already exceeds limit {limits['freq_upper']}Hz"
+                        )
             elif "freq_upper" in limits or "freq_lower" in limits:
-                ColorPrinter.warning(f"Retroactive: {dev_name} ch{awg_ch} frequency limit set but current freq unknown — verify manually")
+                ColorPrinter.warning(
+                    f"Retroactive: {dev_name} ch{awg_ch} frequency limit set but current freq unknown — verify manually"
+                )
             if violated and ch_on:
                 try:
                     dev.enable_output(awg_ch, False)

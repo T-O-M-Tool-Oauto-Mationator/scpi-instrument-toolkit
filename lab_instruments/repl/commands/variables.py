@@ -60,15 +60,21 @@ class VariableCommands(BaseCommand):
     def do_sleep(self, arg: str) -> None:
         args = self.parse_args(arg)
         if self.is_help(args) or not args:
-            self.print_colored_usage([
-                "# SLEEP", "",
-                "sleep <duration>[us|ms|s|m]",
-                "  - pause for a specified time",
-                "  - suffix: us (microseconds), ms (milliseconds), s (seconds), m (minutes)",
-                "  - default unit is seconds", "",
-                "  - example: sleep 0.5", "  - example: sleep 500ms",
-                "  - example: sleep 100us", "  - example: sleep 2m",
-            ])
+            self.print_colored_usage(
+                [
+                    "# SLEEP",
+                    "",
+                    "sleep <duration>[us|ms|s|m]",
+                    "  - pause for a specified time",
+                    "  - suffix: us (microseconds), ms (milliseconds), s (seconds), m (minutes)",
+                    "  - default unit is seconds",
+                    "",
+                    "  - example: sleep 0.5",
+                    "  - example: sleep 500ms",
+                    "  - example: sleep 100us",
+                    "  - example: sleep 2m",
+                ]
+            )
             return
         raw = " ".join(args)
         delay = None

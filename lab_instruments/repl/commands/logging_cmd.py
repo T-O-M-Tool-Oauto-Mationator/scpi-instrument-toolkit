@@ -20,13 +20,20 @@ class LoggingCommands(BaseCommand):
             args = args[1:]
         if help_flag or not args:
             ColorPrinter.cyan(f"Current data dir: {os.path.abspath(self.ctx.get_data_dir())}")
-            self.print_colored_usage([
-                "# DATA DIR", "",
-                "data dir", "  - show the current output directory",
-                "data dir <path>", "  - set the output directory",
-                "data dir reset", "  - restore the default output directory",
-                "", "  Affects: scope screenshot, scope save, log save",
-            ])
+            self.print_colored_usage(
+                [
+                    "# DATA DIR",
+                    "",
+                    "data dir",
+                    "  - show the current output directory",
+                    "data dir <path>",
+                    "  - set the output directory",
+                    "data dir reset",
+                    "  - restore the default output directory",
+                    "",
+                    "  Affects: scope screenshot, scope save, log save",
+                ]
+            )
             return
         path = self.raw_path_arg(arg, strip_word="dir" if has_dir_prefix else None)
         if not path:
@@ -48,12 +55,18 @@ class LoggingCommands(BaseCommand):
         args = self.parse_args(arg)
         args, help_flag = self.strip_help(args)
         if help_flag or not args:
-            self.print_colored_usage([
-                "# LOG", "",
-                "log print", "  - display all stored measurements in a formatted table",
-                "log save <path> [csv|txt]", "  - export measurements to a file",
-                "log clear", "  - erase all stored measurements from this session",
-            ])
+            self.print_colored_usage(
+                [
+                    "# LOG",
+                    "",
+                    "log print",
+                    "  - display all stored measurements in a formatted table",
+                    "log save <path> [csv|txt]",
+                    "  - export measurements to a file",
+                    "log clear",
+                    "  - erase all stored measurements from this session",
+                ]
+            )
             return
         cmd_name = args[0].lower()
         if cmd_name == "clear":
@@ -95,13 +108,17 @@ class LoggingCommands(BaseCommand):
                     if fmt == "csv":
                         handle.write("label,value,unit,source\n")
                         for entry in self.measurements.entries:
-                            handle.write(f"{entry.get('label','')},{entry.get('value','')},{entry.get('unit','')},{entry.get('source','')}\n")
+                            handle.write(
+                                f"{entry.get('label', '')},{entry.get('value', '')},{entry.get('unit', '')},{entry.get('source', '')}\n"
+                            )
                     else:
                         header = f"{'Label':<24} {'Value':>14} {'Unit':<8} {'Source':<12}"
                         handle.write(header + "\n")
                         handle.write("-" * len(header) + "\n")
                         for entry in self.measurements.entries:
-                            handle.write(f"{entry.get('label',''):<24} {entry.get('value',''):>14} {entry.get('unit',''):<8} {entry.get('source',''):<12}\n")
+                            handle.write(
+                                f"{entry.get('label', ''):<24} {entry.get('value', ''):>14} {entry.get('unit', ''):<8} {entry.get('source', ''):<12}\n"
+                            )
                 ColorPrinter.success(f"Saved measurements to {os.path.abspath(path)}.")
             except Exception as exc:
                 ColorPrinter.error(f"Failed to save measurements: {exc}")
@@ -112,12 +129,15 @@ class LoggingCommands(BaseCommand):
         args = self.parse_args(arg)
         args, help_flag = self.strip_help(args)
         if help_flag or len(args) < 2:
-            self.print_colored_usage([
-                "# CALC (short for calculator)", "",
-                "calc <label> = <expr> [unit=]",
-                "  - expr can use $label, $last, and functions abs, min, max, round",
-                "  - example: calc power = $psu_v * $psu_i unit=W",
-            ])
+            self.print_colored_usage(
+                [
+                    "# CALC (short for calculator)",
+                    "",
+                    "calc <label> = <expr> [unit=]",
+                    "  - expr can use $label, $last, and functions abs, min, max, round",
+                    "  - example: calc power = $psu_v * $psu_i unit=W",
+                ]
+            )
             return
         label = args[0]
         # Handle optional = sign
@@ -160,12 +180,15 @@ class LoggingCommands(BaseCommand):
         args = self.parse_args(arg)
         args, help_flag = self.strip_help(args)
         if help_flag or len(args) < 3:
-            self.print_colored_usage([
-                "# CHECK — pass/fail assertion on a stored measurement", "",
-                "check <label> <min> <max>          # pass if min ≤ value ≤ max",
-                "check <label> <expected> tol=<N>   # pass if |value - expected| ≤ N",
-                "check <label> <expected> tol=<N>%  # pass if |value - expected| ≤ N/100 * expected",
-            ])
+            self.print_colored_usage(
+                [
+                    "# CHECK — pass/fail assertion on a stored measurement",
+                    "",
+                    "check <label> <min> <max>          # pass if min ≤ value ≤ max",
+                    "check <label> <expected> tol=<N>   # pass if |value - expected| ≤ N",
+                    "check <label> <expected> tol=<N>%  # pass if |value - expected| ≤ N/100 * expected",
+                ]
+            )
             return
         label = args[0]
         entry = self.measurements.get_by_label(label)
@@ -215,10 +238,17 @@ class LoggingCommands(BaseCommand):
         unit_str = f" {unit}" if unit else ""
         status_str = f"{G}[PASS]{RST}" if passed else f"{R_COL}[FAIL]{RST}"
         print(f"{status_str} {C}{label}{RST} = {value}{unit_str}  limits: {Y}{limits_str}{RST}")
-        self.ctx.test_results.append({
-            "label": label, "value": value, "unit": unit,
-            "min": min_val, "max": max_val, "passed": passed, "limits_str": limits_str,
-        })
+        self.ctx.test_results.append(
+            {
+                "label": label,
+                "value": value,
+                "unit": unit,
+                "min": min_val,
+                "max": max_val,
+                "passed": passed,
+                "limits_str": limits_str,
+            }
+        )
         if not passed:
             self.ctx.command_had_error = True
 
@@ -226,14 +256,17 @@ class LoggingCommands(BaseCommand):
         args = self.parse_args(arg)
         args, help_flag = self.strip_help(args)
         if help_flag or not args:
-            self.print_colored_usage([
-                "# REPORT — view or export a lab test report", "",
-                "report print                  # print check results table to terminal",
-                "report save <path>            # generate PDF report",
-                "report clear                  # clear test results and screenshot list",
-                "report title <text>           # set report title",
-                "report operator <name>        # set operator name shown in report header",
-            ])
+            self.print_colored_usage(
+                [
+                    "# REPORT — view or export a lab test report",
+                    "",
+                    "report print                  # print check results table to terminal",
+                    "report save <path>            # generate PDF report",
+                    "report clear                  # clear test results and screenshot list",
+                    "report title <text>           # set report title",
+                    "report operator <name>        # set operator name shown in report header",
+                ]
+            )
             return
         sub = args[0].lower()
         if sub == "print":
@@ -276,7 +309,13 @@ class LoggingCommands(BaseCommand):
         if not self.ctx.test_results:
             ColorPrinter.warning("No check results recorded.")
             return
-        C, G, R, Y, RST = ColorPrinter.CYAN, ColorPrinter.GREEN, ColorPrinter.RED, ColorPrinter.YELLOW, ColorPrinter.RESET
+        C, G, R, Y, RST = (
+            ColorPrinter.CYAN,
+            ColorPrinter.GREEN,
+            ColorPrinter.RED,
+            ColorPrinter.YELLOW,
+            ColorPrinter.RESET,
+        )
         header = f"{'Label':<20} {'Value':>14} {'Unit':<8} {'Limits':<22} {'Status'}"
         print(f"{Y}{header}{RST}")
         print("-" * len(header))
@@ -325,7 +364,9 @@ class LoggingCommands(BaseCommand):
         pdf.cell(0, 18, verdict, new_x="LMARGIN", new_y="NEXT", align="C", fill=True)
         pdf.set_text_color(0, 0, 0)
         pdf.set_font("Helvetica", "", 10)
-        pdf.cell(0, 7, f"{n_pass} passed  /  {n_fail} failed  /  {total} total", new_x="LMARGIN", new_y="NEXT", align="C")
+        pdf.cell(
+            0, 7, f"{n_pass} passed  /  {n_fail} failed  /  {total} total", new_x="LMARGIN", new_y="NEXT", align="C"
+        )
         pdf.ln(6)
 
         pdf.set_font("Helvetica", "B", 13)

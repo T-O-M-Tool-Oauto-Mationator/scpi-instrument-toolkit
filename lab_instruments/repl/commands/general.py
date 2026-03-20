@@ -21,13 +21,16 @@ class GeneralCommands(BaseCommand):
     def do_scan(self, arg: str, discovery: Any, scan_done: Any) -> None:
         args = self.parse_args(arg)
         if self.is_help(args):
-            self.print_colored_usage([
-                "# SCAN", "",
-                "scan",
-                "  - discover and connect to all VISA instruments",
-                "  - instruments are assigned names: psu1, awg1, dmm1, scope1, …",
-                "  - re-run at any time to pick up newly connected devices",
-            ])
+            self.print_colored_usage(
+                [
+                    "# SCAN",
+                    "",
+                    "scan",
+                    "  - discover and connect to all VISA instruments",
+                    "  - instruments are assigned names: psu1, awg1, dmm1, scope1, …",
+                    "  - re-run at any time to pick up newly connected devices",
+                ]
+            )
             return
         if not scan_done.is_set():
             ColorPrinter.info("Waiting for background scan to finish...")
@@ -44,29 +47,36 @@ class GeneralCommands(BaseCommand):
     def do_list(self, arg: str) -> None:
         args = self.parse_args(arg)
         if self.is_help(args):
-            self.print_colored_usage([
-                "# LIST", "",
-                "list",
-                "  - show all connected instruments and their assigned names",
-                "  - the active instrument (set via 'use') is highlighted",
-            ])
+            self.print_colored_usage(
+                [
+                    "# LIST",
+                    "",
+                    "list",
+                    "  - show all connected instruments and their assigned names",
+                    "  - the active instrument (set via 'use') is highlighted",
+                ]
+            )
             return
         self.print_devices()
 
     def do_use(self, arg: str) -> None:
         args = self.parse_args(arg)
         if self.is_help(args) or not args:
-            self.print_colored_usage([
-                "# USE — select active instrument", "",
-                "use <name>",
-                "  - With one PSU connected, bare 'psu' commands work automatically.",
-                "  - With two PSUs (psu1, psu2), you must be explicit:",
-                "    - Either prefix every command:  psu1 set 5.0  /  psu2 set 12.0",
-                "    - Or pick one with 'use':  use psu1  then  psu set 5.0  (acts on psu1)",
-                "  - 'use' only affects bare commands — psu1/psu2 prefixes always work.",
-                "", "  - example: use psu1   then: psu set 5.0   psu meas v",
-                "  - example: use dmm1   then: dmm meas vdc",
-            ])
+            self.print_colored_usage(
+                [
+                    "# USE — select active instrument",
+                    "",
+                    "use <name>",
+                    "  - With one PSU connected, bare 'psu' commands work automatically.",
+                    "  - With two PSUs (psu1, psu2), you must be explicit:",
+                    "    - Either prefix every command:  psu1 set 5.0  /  psu2 set 12.0",
+                    "    - Or pick one with 'use':  use psu1  then  psu set 5.0  (acts on psu1)",
+                    "  - 'use' only affects bare commands — psu1/psu2 prefixes always work.",
+                    "",
+                    "  - example: use psu1   then: psu set 5.0   psu meas v",
+                    "  - example: use dmm1   then: dmm meas vdc",
+                ]
+            )
             self.print_devices()
             return
         name = args[0]
@@ -82,12 +92,18 @@ class GeneralCommands(BaseCommand):
     def do_idn(self, arg: str) -> None:
         args = self.parse_args(arg)
         if self.is_help(args):
-            self.print_colored_usage([
-                "# IDN", "",
-                "idn", "  - query *IDN? on the active instrument",
-                "idn <name>", "  - query *IDN? on a specific named instrument",
-                "  - example: idn dmm", "  - example: idn psu2",
-            ])
+            self.print_colored_usage(
+                [
+                    "# IDN",
+                    "",
+                    "idn",
+                    "  - query *IDN? on the active instrument",
+                    "idn <name>",
+                    "  - query *IDN? on a specific named instrument",
+                    "  - example: idn dmm",
+                    "  - example: idn psu2",
+                ]
+            )
             return
         name = args[0] if args else None
         dev = self.registry.get_device(name)
@@ -103,15 +119,21 @@ class GeneralCommands(BaseCommand):
         args = self.parse_args(arg)
         args, help_flag = self.strip_help(args)
         if not args or help_flag:
-            self.print_colored_usage([
-                "# RAW", "",
-                "raw <scpi>", "  - send a raw SCPI command to the active instrument",
-                "  - commands ending with ? are queries — response is printed",
-                "raw <name> <scpi>", "  - send to a specific named instrument",
-                "  - example: raw *IDN?", "  - example: raw *RST",
-                "  - example: raw scope MEASUrement:IMMed:VALue?",
-                "  - example: raw psu2 MEAS:VOLT?",
-            ])
+            self.print_colored_usage(
+                [
+                    "# RAW",
+                    "",
+                    "raw <scpi>",
+                    "  - send a raw SCPI command to the active instrument",
+                    "  - commands ending with ? are queries — response is printed",
+                    "raw <name> <scpi>",
+                    "  - send to a specific named instrument",
+                    "  - example: raw *IDN?",
+                    "  - example: raw *RST",
+                    "  - example: raw scope MEASUrement:IMMed:VALue?",
+                    "  - example: raw psu2 MEAS:VOLT?",
+                ]
+            )
             return
         name = None
         if args[0] in self.registry.devices:
@@ -172,17 +194,26 @@ class GeneralCommands(BaseCommand):
             ColorPrinter.error(str(exc))
 
     def _state_help(self) -> None:
-        self.print_colored_usage([
-            "# STATE", "",
-            "state on", "  - enable outputs on all instruments",
-            "state off", "  - disable outputs on all instruments",
-            "state safe", "  - apply safe state to all instruments (voltage/current to minimum)",
-            "state reset", "  - send *RST to all instruments",
-            "state <device> on|off|safe|reset",
-            "  - apply a state to one specific instrument",
-            "  - example: state psu1 off", "  - example: state awg safe",
-            "state list", "  - show current output state of all instruments",
-        ])
+        self.print_colored_usage(
+            [
+                "# STATE",
+                "",
+                "state on",
+                "  - enable outputs on all instruments",
+                "state off",
+                "  - disable outputs on all instruments",
+                "state safe",
+                "  - apply safe state to all instruments (voltage/current to minimum)",
+                "state reset",
+                "  - send *RST to all instruments",
+                "state <device> on|off|safe|reset",
+                "  - apply a state to one specific instrument",
+                "  - example: state psu1 off",
+                "  - example: state awg safe",
+                "state list",
+                "  - show current output state of all instruments",
+            ]
+        )
 
     def _state_psu(self, name, dev, state):
         if state in ("safe", "off"):
@@ -256,11 +287,15 @@ class GeneralCommands(BaseCommand):
     def do_close(self, arg: str) -> None:
         args = self.parse_args(arg)
         if self.is_help(args):
-            self.print_colored_usage([
-                "# CLOSE", "",
-                "close", "  - disconnect all instruments and release VISA resources",
-                "  - use 'scan' to reconnect",
-            ])
+            self.print_colored_usage(
+                [
+                    "# CLOSE",
+                    "",
+                    "close",
+                    "  - disconnect all instruments and release VISA resources",
+                    "  - use 'scan' to reconnect",
+                ]
+            )
             return
         for name, dev in list(self.registry.devices.items()):
             try:
@@ -294,13 +329,20 @@ class GeneralCommands(BaseCommand):
         args = self.parse_args(arg)
         args, help_flag = self.strip_help(args)
         if not args or help_flag:
-            self.print_colored_usage([
-                "# ALL", "",
-                "all on", "  - enable outputs on every connected instrument",
-                "all off", "  - disable outputs on every connected instrument",
-                "all safe", "  - apply safe state to every instrument (voltages/currents to minimum)",
-                "all reset", "  - send *RST to every connected instrument",
-            ])
+            self.print_colored_usage(
+                [
+                    "# ALL",
+                    "",
+                    "all on",
+                    "  - enable outputs on every connected instrument",
+                    "all off",
+                    "  - disable outputs on every connected instrument",
+                    "all safe",
+                    "  - apply safe state to every instrument (voltages/currents to minimum)",
+                    "all reset",
+                    "  - send *RST to every connected instrument",
+                ]
+            )
             return
         state = args[0].lower()
         {"on": self.on_all, "off": self.off_all, "safe": self.safe_all, "reset": self.reset_all}.get(

@@ -29,20 +29,23 @@ class ScriptingCommands(BaseCommand):
         args = self.parse_args(arg)
         args, help_flag = self.strip_help(args)
         if not args or help_flag:
-            self.print_colored_usage([
-                "# SCRIPT — manage and run named scripts", "",
-                "script new <name>            # create a new script (opens in editor)",
-                "script run <name>            # execute a script",
-                "script debug <name>          # execute with step debugger",
-                "script edit <name>           # open in editor",
-                "script list                  # show all saved scripts",
-                "script rm <name>             # delete a script",
-                "script show <name>           # display script contents",
-                "script import <name> <path>  # import a .scpi file",
-                "script load                  # reload scripts from disk",
-                "script save                  # save all scripts to disk",
-                "script dir [path|reset]      # get or set scripts directory",
-            ])
+            self.print_colored_usage(
+                [
+                    "# SCRIPT — manage and run named scripts",
+                    "",
+                    "script new <name>            # create a new script (opens in editor)",
+                    "script run <name>            # execute a script",
+                    "script debug <name>          # execute with step debugger",
+                    "script edit <name>           # open in editor",
+                    "script list                  # show all saved scripts",
+                    "script rm <name>             # delete a script",
+                    "script show <name>           # display script contents",
+                    "script import <name> <path>  # import a .scpi file",
+                    "script load                  # reload scripts from disk",
+                    "script save                  # save all scripts to disk",
+                    "script dir [path|reset]      # get or set scripts directory",
+                ]
+            )
             return
         sub = args[0].lower()
         if sub == "new" and len(args) >= 2:
@@ -145,12 +148,15 @@ class ScriptingCommands(BaseCommand):
                 ColorPrinter.info(f"Recording to: {self.ctx.record_script}")
             else:
                 ColorPrinter.warning("Not recording.")
-            self.print_colored_usage([
-                "# RECORD", "",
-                "record start <name>  # start recording commands to a script",
-                "record stop          # stop recording",
-                "record status        # show recording status",
-            ])
+            self.print_colored_usage(
+                [
+                    "# RECORD",
+                    "",
+                    "record start <name>  # start recording commands to a script",
+                    "record stop          # stop recording",
+                    "record status        # show recording status",
+                ]
+            )
             return
         sub = args[0].lower()
         if sub == "start" and len(args) >= 2:
@@ -163,7 +169,9 @@ class ScriptingCommands(BaseCommand):
             if self.ctx.record_script:
                 name = self.ctx.record_script
                 self._save_script(name)
-                ColorPrinter.success(f"Stopped recording. Script '{name}' saved ({len(self.ctx.scripts.get(name, []))} lines).")
+                ColorPrinter.success(
+                    f"Stopped recording. Script '{name}' saved ({len(self.ctx.scripts.get(name, []))} lines)."
+                )
                 self.ctx.record_script = None
             else:
                 ColorPrinter.warning("Not recording.")
@@ -204,15 +212,18 @@ class ScriptingCommands(BaseCommand):
         args = self.parse_args(arg)
         args, help_flag = self.strip_help(args)
         if help_flag or not args:
-            self.print_colored_usage([
-                "# PYTHON SCRIPT EXECUTION", "",
-                "python <file.py> - execute external Python script",
-                "  - The script has access to REPL context:",
-                "  - repl: the REPL instance",
-                "  - devices: dictionary of connected instruments",
-                "  - measurements: list of recorded measurements",
-                "  - ColorPrinter: for colored output",
-            ])
+            self.print_colored_usage(
+                [
+                    "# PYTHON SCRIPT EXECUTION",
+                    "",
+                    "python <file.py> - execute external Python script",
+                    "  - The script has access to REPL context:",
+                    "  - repl: the REPL instance",
+                    "  - devices: dictionary of connected instruments",
+                    "  - measurements: list of recorded measurements",
+                    "  - ColorPrinter: for colored output",
+                ]
+            )
             return
         filename = args[0]
         if not os.path.exists(filename):
@@ -245,16 +256,26 @@ class ScriptingCommands(BaseCommand):
 
     def do_upper_limit(self, arg: str) -> None:
         if not arg:
-            self.print_colored_usage([
-                "# UPPER LIMIT", "",
-                "upper_limit <device> [chan <N>] <param> <value>",
-                "", "# PSU PARAMS", "",
-                "upper_limit psu voltage <V>", "upper_limit psu current <A>",
-                "upper_limit psu chan <N> voltage <V>",
-                "", "# AWG PARAMS", "",
-                "upper_limit awg voltage <V>", "upper_limit awg vpp <V>",
-                "upper_limit awg freq <Hz>", "upper_limit awg chan <N> voltage <V>",
-            ])
+            self.print_colored_usage(
+                [
+                    "# UPPER LIMIT",
+                    "",
+                    "upper_limit <device> [chan <N>] <param> <value>",
+                    "",
+                    "# PSU PARAMS",
+                    "",
+                    "upper_limit psu voltage <V>",
+                    "upper_limit psu current <A>",
+                    "upper_limit psu chan <N> voltage <V>",
+                    "",
+                    "# AWG PARAMS",
+                    "",
+                    "upper_limit awg voltage <V>",
+                    "upper_limit awg vpp <V>",
+                    "upper_limit awg freq <Hz>",
+                    "upper_limit awg chan <N> voltage <V>",
+                ]
+            )
             return
         before = self.ctx.command_had_error
         self.ctx.command_had_error = False
@@ -266,15 +287,24 @@ class ScriptingCommands(BaseCommand):
 
     def do_lower_limit(self, arg: str) -> None:
         if not arg:
-            self.print_colored_usage([
-                "# LOWER LIMIT", "",
-                "lower_limit <device> [chan <N>] <param> <value>",
-                "", "# PSU PARAMS", "",
-                "lower_limit psu voltage <V>", "lower_limit psu current <A>",
-                "", "# AWG PARAMS", "",
-                "lower_limit awg voltage <V>", "lower_limit awg vpp <V>",
-                "lower_limit awg freq <Hz>",
-            ])
+            self.print_colored_usage(
+                [
+                    "# LOWER LIMIT",
+                    "",
+                    "lower_limit <device> [chan <N>] <param> <value>",
+                    "",
+                    "# PSU PARAMS",
+                    "",
+                    "lower_limit psu voltage <V>",
+                    "lower_limit psu current <A>",
+                    "",
+                    "# AWG PARAMS",
+                    "",
+                    "lower_limit awg voltage <V>",
+                    "lower_limit awg vpp <V>",
+                    "lower_limit awg freq <Hz>",
+                ]
+            )
             return
         before = self.ctx.command_had_error
         self.ctx.command_had_error = False
@@ -319,10 +349,14 @@ class ScriptingCommands(BaseCommand):
         editor = os.environ.get("EDITOR", "nano")
         tmp_path = None
         try:
-            with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".repl", encoding="utf-8", newline="\n") as handle:
+            with tempfile.NamedTemporaryFile(
+                mode="w", delete=False, suffix=".repl", encoding="utf-8", newline="\n"
+            ) as handle:
                 tmp_path = handle.name
                 handle.write(f"# Script: {name}\n")
-                handle.write("# Syntax: set <var> <val>  |  $var  |  repeat <n> ... end  |  for <var> v1 v2 ... end  |  call <name>\n")
+                handle.write(
+                    "# Syntax: set <var> <val>  |  $var  |  repeat <n> ... end  |  for <var> v1 v2 ... end  |  call <name>\n"
+                )
                 handle.write("#\n")
                 for line in current_lines:
                     handle.write(f"{line}\n")

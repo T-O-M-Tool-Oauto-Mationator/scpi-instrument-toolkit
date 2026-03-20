@@ -55,6 +55,7 @@ class ReplContext:
     def error(self, message: str) -> None:
         """Report an error message and set the error flag."""
         from lab_instruments.src.terminal import ColorPrinter
+
         self.command_had_error = True
         ColorPrinter.error(message)
 
@@ -202,6 +203,7 @@ class ReplContext:
     def load_scripts(self) -> Dict[str, Any]:
         """Load all .scpi scripts from the user scripts directory."""
         from lab_instruments.src.terminal import ColorPrinter
+
         scripts = {}
         d = self.get_scripts_dir()
         try:

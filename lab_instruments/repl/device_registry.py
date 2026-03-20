@@ -54,8 +54,7 @@ class DeviceRegistry:
             return self.selected
 
         ColorPrinter.warning(
-            f"Multiple {device_type.upper()}s found: {candidates}. "
-            f"Use explicit name, e.g. '{candidates[0]}'."
+            f"Multiple {device_type.upper()}s found: {candidates}. Use explicit name, e.g. '{candidates[0]}'."
         )
         return None
 

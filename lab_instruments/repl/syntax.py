@@ -92,7 +92,7 @@ def safe_eval(expr: str, names: Dict[str, Any]) -> Any:
                 ast.Sub: lambda a, b: a - b,
                 ast.Mult: lambda a, b: a * b,
                 ast.Div: lambda a, b: a / b,
-                ast.Pow: lambda a, b: a ** b,
+                ast.Pow: lambda a, b: a**b,
                 ast.Mod: lambda a, b: a % b,
             }
             op_func = ops.get(type(node.op))
