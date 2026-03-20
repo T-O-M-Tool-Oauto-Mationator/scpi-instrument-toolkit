@@ -4,7 +4,7 @@ import sys
 
 from lab_instruments.src.terminal import ColorPrinter
 
-from .shell import InstrumentRepl, _REPL_VERSION
+from .shell import _REPL_VERSION, InstrumentRepl
 
 _GITHUB_REPO = "T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit"
 

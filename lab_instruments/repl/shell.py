@@ -2,14 +2,11 @@
 
 import atexit
 import cmd
-import contextlib
-import os
 import re
 import shlex
 import signal
 import sys
 import threading
-import time
 from typing import Any, Dict
 
 try:

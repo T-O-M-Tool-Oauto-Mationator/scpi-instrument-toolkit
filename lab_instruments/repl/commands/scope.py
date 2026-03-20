@@ -7,7 +7,6 @@ from typing import Any
 
 from lab_instruments.src.terminal import ColorPrinter
 
-from ..capabilities import Capability
 from ..context import ReplContext
 from .base import BaseCommand
 

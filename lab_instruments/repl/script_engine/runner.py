@@ -1,6 +1,5 @@
 """Script execution and interactive debugger."""
 
-import time
 from typing import Any, List, Set, Tuple
 
 from lab_instruments.src.terminal import ColorPrinter

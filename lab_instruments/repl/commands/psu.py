@@ -1,11 +1,10 @@
 """PSU command handler for the REPL."""
 
 import inspect
-from typing import Any, Optional
+from typing import Any
 
 from lab_instruments.src.terminal import ColorPrinter
 
-from ..capabilities import Capability
 from ..context import ReplContext
 from .base import BaseCommand
 from .safety import SafetySystem

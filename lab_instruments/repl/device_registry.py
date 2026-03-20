@@ -105,7 +105,6 @@ class DeviceRegistry:
 
         Searches all connected devices for alternatives that have the required cap.
         """
-        dev = self.devices.get(device_name)
         display = self.display_name(device_name)
         base_type = re.sub(r"\d+$", "", device_name)
 

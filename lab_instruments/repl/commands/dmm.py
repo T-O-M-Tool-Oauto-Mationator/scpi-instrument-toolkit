@@ -36,7 +36,6 @@ class DmmCommand(BaseCommand):
         """
         # Detect capabilities
         caps = self.registry.get_caps(dev)
-        has_nplc = bool(caps & Capability.DMM_NPLC)
         has_display_control = bool(caps & Capability.DMM_DISPLAY_CONTROL)
         has_display_text = bool(caps & Capability.DMM_DISPLAY_TEXT)
         has_fetch = bool(caps & Capability.DMM_FETCH)

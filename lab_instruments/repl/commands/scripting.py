@@ -5,7 +5,6 @@ import json
 import os
 import pathlib
 import subprocess
-import sys
 import tempfile
 import time
 import traceback
@@ -187,7 +186,7 @@ class ScriptingCommands(BaseCommand):
             for name, info in EXAMPLES.items():
                 desc = info.get("description", "")
                 ColorPrinter.cyan(f"  {name}: {desc}")
-            print(f"\n  Use: examples load <name>  or  examples load all")
+            print("\n  Use: examples load <name>  or  examples load all")
             return
         if args[0].lower() == "load":
             name = args[1] if len(args) >= 2 else None

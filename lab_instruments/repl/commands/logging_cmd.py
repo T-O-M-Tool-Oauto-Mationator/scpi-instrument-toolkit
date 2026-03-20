@@ -2,7 +2,6 @@
 
 import os
 import re
-import time
 
 from lab_instruments.src.terminal import ColorPrinter
 
@@ -292,8 +291,9 @@ class LoggingCommands(BaseCommand):
         print(f"\nOverall: {verdict}  ({n_pass}/{total} passed)")
 
     def _generate_pdf_report(self, path: str) -> None:
-        from fpdf import FPDF
         import datetime
+
+        from fpdf import FPDF
 
         pdf = FPDF()
         pdf.set_auto_page_break(auto=True, margin=15)

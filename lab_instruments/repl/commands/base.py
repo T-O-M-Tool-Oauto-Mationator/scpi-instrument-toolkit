@@ -1,7 +1,7 @@
 """Base class for REPL command handlers."""
 
 import shlex
-from typing import Any, List
+from typing import List
 
 from lab_instruments.src.terminal import ColorPrinter
 
