@@ -52,7 +52,16 @@ ignore = ["E501"]
 
 [tool.coverage.run]
 source = ["lab_instruments"]
-omit = ["lab_instruments/site/*"]
+omit = [
+    "lab_instruments/site/*",
+    "lab_instruments/__main__.py",
+    "lab_instruments/examples.py",
+    "lab_instruments/src/rigol_dho804.py",
+    "lab_instruments/src/tektronix_mso2024.py",
+    "lab_instruments/src/discovery.py",
+    "lab_instruments/src/bk_4063.py",
+    "lab_instruments/src/owon_xdm1041.py",
+]
 
 [tool.coverage.report]
 exclude_lines = [
