@@ -16,6 +16,12 @@ def _check_for_updates(force=False):
             print("Running from source — skipping update check.")
         return False
 
+    # Nightly / dev builds skip the update check — they're ahead of stable
+    if "dev" in _REPL_VERSION:
+        if force:
+            ColorPrinter.info(f"Running nightly build (v{_REPL_VERSION}) — skipping update check.")
+        return False
+
     import json
     import urllib.request
 
