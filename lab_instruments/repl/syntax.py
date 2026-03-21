@@ -110,12 +110,16 @@ def safe_eval(expr: str, names: Dict[str, Any]) -> Any:
             value = _eval(node.value)
             if not isinstance(value, dict):
                 raise ValueError("Subscript base must be a dict.")
-            if isinstance(node.slice, ast.Constant):
-                key = node.slice.value
-            elif isinstance(node.slice, ast.Name):
-                key = node.slice.id
+            # Python 3.8 wraps slice in ast.Index; 3.9+ does not
+            slice_node = node.slice
+            if hasattr(ast, "Index") and isinstance(slice_node, ast.Index):
+                slice_node = slice_node.value
+            if isinstance(slice_node, ast.Constant):
+                key = slice_node.value
+            elif isinstance(slice_node, ast.Name):
+                key = slice_node.id
             else:
-                key = _eval(node.slice)
+                key = _eval(slice_node)
             return value[key]
         if isinstance(node, ast.Call):
             func = _eval(node.func)

@@ -69,14 +69,14 @@ class TestPsuSingleChannelChan:
     def test_chan_on(self, make_repl):
         dev = MockMPS6010H()
         repl = make_repl({"psu1": dev})
-        repl.onecmd("psu chan on")
+        repl.onecmd("psu1 on")
         assert dev._output is True
 
     def test_chan_off(self, make_repl):
         dev = MockMPS6010H()
         dev._output = True
         repl = make_repl({"psu1": dev})
-        repl.onecmd("psu chan off")
+        repl.onecmd("psu1 off")
         assert dev._output is False
 
 
