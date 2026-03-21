@@ -168,9 +168,30 @@ jobs:
           name: nightly-dist
           path: dist/
 
-      - name: Force-update nightly tag
+      - name: Stamp dev version in source and force-update nightly tag
         shell: bash
         run: |
+          DATE=$(date -u +%Y%m%d)
+          BASE=$(python3 -c "
+          import tomllib
+          with open('pyproject.toml', 'rb') as f:
+              print(tomllib.load(f)['project']['version'])
+          ")
+          DEV_VERSION="${BASE}.dev${DATE}"
+
+          # Patch pyproject.toml so pip install git+...@nightly gets the dev version
+          python3 -c "
+          import re, pathlib
+          p = pathlib.Path('pyproject.toml')
+          text = p.read_text()
+          text = re.sub(r'version\s*=\s*\"[^\"]+\"', 'version = \"${DEV_VERSION}\"', text)
+          p.write_text(text)
+          "
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add pyproject.toml
+          git commit -m "nightly: stamp version ${DEV_VERSION} [skip ci]"
           git tag -f nightly HEAD
           git push origin nightly --force
 
