@@ -8,7 +8,6 @@ Covers:
   - Regression: existing $var, ${var}, set, print behavior unchanged
 """
 
-
 from lab_instruments.repl.syntax import substitute_vars
 
 # ---------------------------------------------------------------------------
@@ -21,7 +20,10 @@ class TestSubstituteVars:
         assert substitute_vars("v={voltage}", {"voltage": "5.0"}) == "v=5.0"
 
     def test_fstring_in_sentence(self):
-        assert substitute_vars("Setting {voltage}V to {label}", {"voltage": "5.0", "label": "vtest"}) == "Setting 5.0V to vtest"
+        assert (
+            substitute_vars("Setting {voltage}V to {label}", {"voltage": "5.0", "label": "vtest"})
+            == "Setting 5.0V to vtest"
+        )
 
     def test_dollar_style_still_works(self):
         assert substitute_vars("v=$voltage", {"voltage": "3.3"}) == "v=3.3"
