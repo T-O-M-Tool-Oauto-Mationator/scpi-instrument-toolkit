@@ -171,7 +171,10 @@ def make_repl(monkeypatch):
         from lab_instruments.repl import InstrumentRepl
 
         repl = InstrumentRepl()
-        repl._scan_done.set()
+        # Join the background scan thread so its safe_all() call completes before
+        # the test manipulates device state — prevents a race where safe_all()
+        # resets state set by an earlier command in the test.
+        repl._scan_thread.join(timeout=5.0)
         repl.devices = devices
         return repl
 
