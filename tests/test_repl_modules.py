@@ -688,8 +688,8 @@ class TestVariableCommands:
         vc, ctx = self._make()
         vc.do_print("")
         out = capsys.readouterr().out
-        # Should still print (empty message)
-        assert out.strip() != ""  # colored empty string still prints ANSI codes
+        # Empty print outputs a blank line (print is now plain text, no ANSI codes)
+        assert out == "\n"
 
     def test_do_set_math_eval(self, capsys):
         vc, ctx = self._make()

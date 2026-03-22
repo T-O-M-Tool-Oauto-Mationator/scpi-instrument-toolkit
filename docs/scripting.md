@@ -155,27 +155,43 @@ Scripts persist between REPL sessions via `.repl_scripts.json`. Use `script save
 
 Variables let you parameterize scripts so the same script works for different test conditions.
 
-### set — define a variable
+### Defining variables
+
+Use Python-style assignment — the same syntax you'd write in Python:
 
 ```
-set <varname> <expression>
+voltage = 5.0
+label = vtest
+doubled = voltage * 2     # arithmetic works — doubled = 10.0
+offset = voltage - 0.5    # offset = 4.5
 ```
 
-Defines a variable accessible as `${varname}` in all subsequent lines. Evaluated at **script expansion time** (before execution begins), so arithmetic using other variables works.
+Variables are evaluated at **script expansion time** (before execution begins), so you can use one variable in another's expression.
 
-| Parameter    | Required | Description                                 |
-| ------------ | -------- | ------------------------------------------- |
-| `varname`    | required | Variable name. No spaces — use underscores. |
-| `expression` | required | Value, string, or arithmetic expression.    |
+| Part         | Description                                               |
+| ------------ | --------------------------------------------------------- |
+| `varname`    | Variable name. No spaces — use underscores.               |
+| `expression` | Value, string, or arithmetic using other variable names.  |
+
+Supported operators: `+  -  *  /  **  %`
+Supported functions: `abs()  min()  max()  round()`
+
+### Variable substitution
+
+Use `{varname}` (f-string style) anywhere in a script line:
 
 ```
-set voltage 5.0           # ${voltage} = 5.0
-set label vtest           # ${label} = "vtest"
-set doubled ${voltage} * 2    # ${doubled} = 10.0
-set offset ${voltage} - 0.5   # ${offset} = 4.5
+voltage = 5.0
+label = my_run
+
+psu1 set {voltage}               # → psu1 set 5.0
+dmm1 meas_store {label} unit=V   # → dmm1 meas_store my_run unit=V
+print "Setting {voltage}V"       # → prints  Setting 5.0V
 ```
 
-#### Error handling: set -e / set +e
+Both `{varname}` and `$varname` work. `{varname}` is the preferred style.
+
+### Error handling: set -e / set +e
 
 Control whether a script stops when a command fails (like bash's `set -e`).
 
@@ -190,7 +206,7 @@ set +e    # Disable exit-on-error: continue despite errors
 set -e
 psu1 set 5.0           # if this fails, script stops here
 dmm1 config vdc        # this won't run if PSU command failed
-print Done             # this won't run either
+print "Done             # this won't run either"
 ```
 
 **Example: continue on error**
@@ -199,38 +215,37 @@ print Done             # this won't run either
 set +e
 psu1 set 5.0           # if this fails, continue anyway
 dmm1 config vdc        # this runs regardless
-print Done             # always executes
+print "Done             # always executes"
 ```
 
 !!! tip
 Use `set -e` for critical test sequences where a single failure should abort the entire test. Use `set +e` when you want to collect partial results even if some commands fail.
 
-### Variable substitution
-
-Use `${varname}` anywhere in a script line and it will be replaced with the variable's value before the command runs:
-
-```
-set voltage 5.0
-set label my_run
-
-psu1 set ${voltage}               # → psu1 set 5.0
-dmm1 meas_store ${label} unit=V   # → dmm1 meas_store my_run unit=V
-print Setting ${voltage}V         # → prints "Setting 5.0V"
-```
-
 ### Overriding variables at run time
 
-Variables defined with `set` can be overridden when running the script from the command line:
+Script variables can be overridden when running the script from the command line:
 
 ```
-# Script has:  set voltage 5.0
+# Script has:  voltage = 5.0
 script run my_test voltage=3.3    # runs with voltage=3.3 instead of 5.0
 script run my_test voltage=12.0 label=high_v
 ```
 
 This is how you reuse the same script for different test conditions without editing it.
 
-**Priority order:** command-line params > `set` defaults in the script.
+**Priority order:** command-line params > defaults defined in the script.
+
+### Legacy: `set` syntax (deprecated)
+
+The `set varname expr` syntax still works but is deprecated for variable assignment:
+
+```
+set voltage 5.0     # ⚠️  deprecated — use: voltage = 5.0
+set -e              # still valid — exit-on-error control (not deprecated)
+set +e              # still valid
+```
+
+Use `var = value` for new scripts.
 
 ---
 
@@ -265,14 +280,14 @@ See [Log & Calc](logging.md) for the full reference.
 
 Script variables and log labels are **two separate things**:
 
-- **Script variable** (`${var}`) — substituted into command text before the command runs
+- **Script variable** (`{var}`) — substituted into command text before the command runs
 - **Log label** — the name given to a stored measurement row
 
 You can use a script variable _as_ the log label — this is how you make labels dynamic:
 
 ```
-set meas_name output_v         # script variable: meas_name = "output_v"
-psu1 meas_store v ${meas_name} unit=V
+meas_name = output_v         # script variable: meas_name = "output_v"
+psu1 meas_store v {meas_name} unit=V
 #                  └─ expands to: psu1 meas_store v output_v unit=V
 #                     log label = "output_v"
 ```
@@ -282,9 +297,9 @@ This is especially useful in loops — each iteration gets a different label:
 ```
 dmm1 config vdc
 for v 3.3 5.0 12.0
-  psu1 set ${v}
+  psu1 set {v}
   sleep 0.5
-  dmm1 meas_store dmm_${v} unit=V   # labels: dmm_3.3, dmm_5.0, dmm_12.0
+  dmm1 meas_store dmm_{v} unit=V   # labels: dmm_3.3, dmm_5.0, dmm_12.0
 end
 log print    # all three rows appear in the log
 ```
@@ -293,12 +308,12 @@ log print    # all three rows appear in the log
 
 ```
 # my_test — measure PSU accuracy at a target voltage
-set voltage 5.0
-set test_name vout_5v
+voltage = 5.0
+test_name = vout_5v
 
-print === Starting test: ${test_name} ===
+print "=== Starting test: {test_name} ==="
 psu1 chan 1 on
-psu1 set ${voltage}
+psu1 set {voltage}
 sleep 0.5
 
 psu1 meas_store v psu_v unit=V         # save PSU reading as "psu_v"
@@ -309,10 +324,10 @@ calc error     m["dmm_v"] - m["psu_v"] unit=V
 calc error_pct m["error"] / m["psu_v"] * 100 unit=%
 
 log print
-log save ${test_name}.csv
+log save {test_name}.csv
 
 psu1 chan 1 off
-print === Done ===
+print "=== Done ==="
 ```
 
 Run it with different voltages without editing the script:
@@ -329,18 +344,24 @@ script run my_test voltage=12.0 test_name=vout_12v
 ### print — display a message
 
 ```
-print <message>
+print "message with {variables}"
 ```
 
-Prints a message to the terminal. Variable substitution works.
+Prints a message to the terminal. Use `{varname}` to embed variable values (Python f-string style). Quotes are optional but recommended for clarity.
 
 ```
-print === PSU/DMM Test ===
-print Setting ${voltage}V to ${label}
-print Test complete. Check log print for results.
+voltage = 5.0
+label = vtest
+
+print "=== PSU/DMM Test ==="
+print "Setting {voltage}V to {label}"
+print "Test complete. Check log print for results."
+print "# blank line"
 ```
 
-Use `print` to add section headers, progress updates, and instructions in your scripts.
+Both `{varname}` and `$varname` work in print messages. `{varname}` is preferred.
+
+Use `print` to add section headers, progress updates, and operator instructions in your scripts.
 
 ### pause — wait for operator
 
@@ -366,12 +387,12 @@ pause Swap DUT before continuing
 input <varname> [prompt text]
 ```
 
-Prompts the operator to type a value at runtime. The entered text is stored as `${varname}` and substituted into all subsequent lines.
+Prompts the operator to type a value at runtime. The entered text is stored as `{varname}` and substituted into all subsequent lines.
 
-| Parameter     | Required | Description                                                                                           |
-| ------------- | -------- | ----------------------------------------------------------------------------------------------------- |
-| `varname`     | required | Variable name. The entered value will be available as `${varname}` in all lines after this directive. |
-| `prompt text` | optional | Text shown to operator. Default: the variable name.                                                   |
+| Parameter     | Required | Description                                                                                         |
+| ------------- | -------- | --------------------------------------------------------------------------------------------------- |
+| `varname`     | required | Variable name. The entered value will be available as `{varname}` in all lines after this directive.|
+| `prompt text` | optional | Text shown to operator. Default: the variable name.                                                 |
 
 ```
 input voltage Enter target voltage (V):
@@ -379,14 +400,14 @@ input dut_id DUT serial number:
 input operator_name Operator name:
 ```
 
-After `input voltage`, you can use `${voltage}` anywhere:
+After `input voltage`, you can use `{voltage}` anywhere:
 
 ```
 input voltage Enter target voltage (V):
-psu1 set ${voltage}
-print Voltage set to ${voltage}V
+psu1 set {voltage}
+print "Voltage set to {voltage}V"
 dmm1 config vdc
-dmm1 meas_store output_${voltage} unit=V
+dmm1 meas_store output_{voltage} unit=V
 ```
 
 !!! note
@@ -406,7 +427,7 @@ Pauses execution for the given duration. Variable substitution works:
 
 ```
 sleep 0.5              # pause 500 ms
-sleep ${delay}         # pause using a variable
+sleep {delay}         # pause using a variable
 sleep 1.0              # wait 1 second for signal to settle
 ```
 
@@ -452,11 +473,11 @@ for <var> <val1> <val2> ... <valN>
 end
 ```
 
-Iterates over a whitespace-separated list of values. On each iteration, `${var}` is set to the next value in the list.
+Iterates over a whitespace-separated list of values. On each iteration, `{var}` is set to the next value in the list.
 
 | Parameter       | Required | Description                                                 |
 | --------------- | -------- | ----------------------------------------------------------- |
-| `var`           | required | Loop variable name. Available as `${var}` inside the block. |
+| `var`           | required | Loop variable name. Available as `{var}` inside the block. |
 | `val1 val2 ...` | required | Space-separated list of values to iterate over.             |
 
 **Sweep PSU through voltages:**
@@ -464,10 +485,10 @@ Iterates over a whitespace-separated list of values. On each iteration, `${var}`
 ```
 dmm1 config vdc
 for v 1.0 2.0 3.3 5.0 9.0 12.0
-  print Setting ${v}V...
-  psu1 set ${v}
+  print Setting {v}V...
+  psu1 set {v}
   sleep 0.5
-  dmm1 meas_store v_${v} unit=V
+  dmm1 meas_store v_{v} unit=V
 end
 ```
 
@@ -475,7 +496,7 @@ end
 
 ```
 for ch 1 2 3 4
-  scope1 chan ${ch} on
+  scope1 chan {ch} on
 end
 ```
 
@@ -483,10 +504,10 @@ end
 
 ```
 for f 100 500 1000 5000 10000 50000
-  awg1 freq 1 ${f}
+  awg1 freq 1 {f}
   sleep 0.4
-  scope1 meas_store 1 FREQUENCY freq_${f} unit=Hz
-  scope1 meas_store 1 PK2PK pk2pk_${f} unit=V
+  scope1 meas_store 1 FREQUENCY freq_{f} unit=Hz
+  scope1 meas_store 1 PK2PK pk2pk_{f} unit=V
 end
 ```
 
@@ -496,8 +517,8 @@ Loop over multiple variables at once by separating them with commas. Values in t
 
 ```
 for VIN,VSCALE,LABEL 5.0,1.0,five 3.3,0.5,three 2.5,0.5,two
-  print Testing ${VIN}V with scale ${VSCALE} (${LABEL})
-  psu1 set ${VIN}
+  print Testing {VIN}V with scale {VSCALE} ({LABEL})
+  psu1 set {VIN}
   sleep 0.5
 end
 ```
@@ -508,8 +529,8 @@ You can enter `for` and `repeat` blocks directly in the interactive REPL. The pr
 
 ```
 eset> for VIN 5.0 3.3 2.5
-  > print Testing VIN=${VIN}
-  > psu1 set ${VIN}
+  > print Testing VIN={VIN}
+  > psu1 set {VIN}
   > sleep 0.5
   > end
 Testing VIN=5.0
@@ -526,12 +547,12 @@ The loop variable is substituted in all lines inside the block — including lab
 **Variable references in the value list:**
 
 ```
-set v_start 1.0
-set v_mid 5.0
-set v_end 12.0
+v_start = 1.0
+v_mid = 5.0
+v_end = 12.0
 
-for v ${v_start} ${v_mid} ${v_end}
-  psu1 set ${v}
+for v {v_start} {v_mid} {v_end}
+  psu1 set {v}
   sleep 0.5
 end
 ```
@@ -564,10 +585,10 @@ array SWEEP
   1.5,0.0005,0.2
 end
 
-for VIN,HSCALE,VSCALE ${SWEEP}
-  psu set ${VIN} 0.5
-  scope hscale ${HSCALE}
-  scope vscale 1 ${VSCALE} 0
+for VIN,HSCALE,VSCALE {SWEEP}
+  psu set {VIN} 0.5
+  scope hscale {HSCALE}
+  scope vscale 1 {VSCALE} 0
 end
 ```
 
@@ -589,8 +610,8 @@ Copies a variable from the calling scope (REPL or parent script) into the curren
 
 ```
 import FREQ VREF    # bring FREQ and VREF in from the REPL
-psu set ${VREF} 0.5
-awg freq 1 ${FREQ}
+psu set {VREF} 0.5
+awg freq 1 {FREQ}
 ```
 
 ### export — push a variable back to the parent scope
@@ -602,21 +623,21 @@ export <varname> [varname2 ...]
 When the script finishes, copies the named variable back to the calling scope (REPL or parent script). Only explicitly exported variables survive — everything else stays local.
 
 ```
-set result 42.0
-export result    # ${result} becomes available in the REPL after the script runs
+result = 42.0
+export result    # {result} becomes available in the REPL after the script runs
 ```
 
 **Example: script that returns a computed value**
 
 ```
 # measure_vout — measures PSU output, exports result
-set VOUT 0.0
+VOUT = 0.0
 psu meas_store v psu_reading unit=V
-set VOUT m["psu_reading"]
+VOUT = m["psu_reading"]
 export VOUT
 ```
 
-After `script run measure_vout`, `${VOUT}` is available in the REPL.
+After `script run measure_vout`, `{VOUT}` is available in the REPL.
 
 ---
 
@@ -637,7 +658,7 @@ Executes another script as a sub-routine. The called script runs in its own vari
 
 ```
 call set_psu voltage=5.0
-call set_psu voltage=${target_v}     # pass a variable from current script
+call set_psu voltage={target_v}     # pass a variable from current script
 ```
 
 **Example: reusable sub-script pattern**
@@ -647,13 +668,13 @@ Create a script `set_psu`:
 ```
 # set_psu — sets PSU to a voltage and verifies
 # Params: voltage, label
-set voltage 5.0
-set label psu_out
+voltage = 5.0
+label = psu_out
 
 psu1 chan 1 on
-psu1 set ${voltage}
+psu1 set {voltage}
 sleep 0.5
-psu1 meas_store v ${label} unit=V
+psu1 meas_store v {label} unit=V
 ```
 
 Call it from another script:
@@ -662,8 +683,8 @@ Call it from another script:
 # main test
 dmm1 config vdc
 for v 3.3 5.0 12.0
-  call set_psu voltage=${v} label=psu_${v}
-  dmm1 meas_store dmm_${v} unit=V
+  call set_psu voltage={v} label=psu_{v}
+  dmm1 meas_store dmm_{v} unit=V
 end
 log print
 ```
@@ -772,7 +793,7 @@ Lines beginning with `#` are ignored during execution.
 
 ```
 # This is a comment
-set voltage 5.0     # inline comments work too
+voltage = 5.0     # inline comments work too
 ```
 
 Use comments liberally to document what each section does, expected values, and any hardware setup required.
@@ -799,7 +820,7 @@ script debug my_sweep voltage=3.3
 Add `breakpoint` anywhere in a script file to automatically pause there, even when running with `script run`:
 
 ```
-psu set ${VIN} 0.5
+psu set {VIN} 0.5
 psu chan on
 breakpoint          ← execution pauses here; drops into debugger
 scope single
@@ -855,15 +876,15 @@ A script combining all features:
 # Params: dut_name, v_min, v_max, steps
 
 # ── Defaults ────────────────────────────────
-set dut_name my_dut
-set v_min 1.0
-set v_max 5.0
-set steps 5
-set delay 0.5
+dut_name = my_dut
+v_min = 1.0
+v_max = 5.0
+steps = 5
+delay = 0.5
 
 # ── Operator setup ───────────────────────────
-print === Voltage Characterization Test ===
-print DUT: ${dut_name}
+print "=== Voltage Characterization Test ==="
+print "DUT: {dut_name}"
 pause Connect DUT and DMM probes, then press Enter
 
 # ── Optional runtime input ────────────────────
@@ -871,27 +892,27 @@ input operator Operator initials:
 
 # ── PSU on ───────────────────────────────────
 psu1 chan 1 on
-print PSU enabled
+print "PSU enabled"
 dmm1 config vdc
 
 # ── Sweep ────────────────────────────────────
 for v 1.0 2.0 3.3 5.0 9.0 12.0
-  print Testing ${v}V...
-  psu1 set ${v}
-  sleep ${delay}
-  psu1 meas_store v psu_${v} unit=V
-  dmm1 meas_store dmm_${v} unit=V
-  calc err_${v} (m["dmm_${v}"] - m["psu_${v}"]) / m["psu_${v}"] * 100 unit=%
+  print Testing {v}V...
+  psu1 set {v}
+  sleep {delay}
+  psu1 meas_store v psu_{v} unit=V
+  dmm1 meas_store dmm_{v} unit=V
+  calc err_{v} (m["dmm_{v}"] - m["psu_{v}"]) / m["psu_{v}"] * 100 unit=%
 end
 
 # ── Results ────────────────────────────────────
-print === Test complete ===
+print "=== Test complete ==="
 log print
-log save ${dut_name}_results.csv
+log save {dut_name}_results.csv
 
 # ── Safe state ────────────────────────────────
 psu1 chan 1 off
-print PSU off — done
+print "PSU off — done"
 ```
 
 Run it:

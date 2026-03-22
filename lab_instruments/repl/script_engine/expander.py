@@ -9,6 +9,9 @@ from lab_instruments.src.terminal import ColorPrinter
 
 from ..syntax import safe_eval, substitute_legacy
 
+# Matches Python-style assignment: identifier = expression
+_ASSIGN_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.+)$")
+
 
 def expand_script_lines(
     lines: List[str],
@@ -190,6 +193,23 @@ def expand_script_lines(
 
         if head in ("lower_limit", "upper_limit") and len(tokens) >= 3:
             _parse_limit(head, tokens, ctx, expanded, _loop_ctx, raw_line)
+            continue
+
+        # Python-style assignment: identifier = expression
+        _assign_match = _ASSIGN_RE.match(raw_line)
+        if _assign_match:
+            key = _assign_match.group(1)
+            raw_val = substitute_legacy(_assign_match.group(2).strip(), variables)
+            try:
+                num_vars = {}
+                for k, v in variables.items():
+                    with contextlib.suppress(TypeError, ValueError):
+                        num_vars[k] = float(v)
+                result = safe_eval(raw_val, num_vars)
+                variables[key] = str(result)
+            except Exception:
+                variables[key] = raw_val
+            expanded.append(("__NOP__", f"{_loop_ctx}{raw_line}  →  {key} = {variables[key]}"))
             continue
 
         expanded.append((substitute_legacy(raw_line, variables), _loop_ctx + raw_line))

@@ -242,10 +242,10 @@ You can also use it inside a `.scpi` script so the output location is part of th
 data dir .     # save everything relative to where I launched the REPL
 
 log clear
-for VIN ${SWEEP}
+for VIN {SWEEP}
   ...
-  scope screenshot cap_${VIN}V.png
-  scope save 1,2,3,4 wave_${VIN}V.csv
+  scope screenshot cap_{VIN}V.png
+  scope save 1,2,3,4 wave_{VIN}V.csv
 end
 log save results.csv
 ```
