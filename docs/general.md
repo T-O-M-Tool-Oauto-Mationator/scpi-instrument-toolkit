@@ -167,7 +167,7 @@ sleep 0.5     # wait 500 ms
 wait 2        # wait 2 seconds
 ```
 
-Also valid as a [script directive](scripting.md#timing): `sleep ${delay}`
+Also valid as a [script directive](scripting.md#timing): `sleep {delay}`
 
 ---
 

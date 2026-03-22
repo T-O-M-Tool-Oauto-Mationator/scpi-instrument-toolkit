@@ -35,32 +35,32 @@ script run psu_dmm_test voltage=3.3 label=v3v3
 **What it does:**
 
 1. Turns on PSU channel 1
-2. Sets the voltage to `${voltage}` V
+2. Sets the voltage to `{voltage}` V
 3. Waits 500 ms for the output to settle
 4. Records the PSU's measured output as `psu_v`
-5. Takes a DC voltage reading from the DMM, records as `${label}`
+5. Takes a DC voltage reading from the DMM, records as `{label}`
 6. Prints the log
 
 **Script source:**
 
 ```
 # psu_dmm_test
-set voltage 5.0
-set label vtest
+voltage = 5.0
+label = vtest
 
-print === PSU/DMM Voltage Test ===
-print Target: ${voltage}V
+print "=== PSU/DMM Voltage Test ==="
+print "Target: {voltage}V"
 
 psu1 chan 1 on
-psu1 set ${voltage}
+psu1 set {voltage}
 sleep 0.5
 
 psu1 meas_store v psu_v unit=V
 
 dmm1 config vdc
-dmm1 meas_store ${label} unit=V
+dmm1 meas_store {label} unit=V
 
-print === Test complete ===
+print "=== Test complete ==="
 log print
 ```
 
@@ -111,20 +111,20 @@ script run voltage_sweep
 
 ```
 # voltage_sweep
-print === Voltage Sweep ===
+print "=== Voltage Sweep ==="
 psu1 chan 1 on
 sleep 0.3
 dmm1 config vdc
 
 for v 1.0 2.0 3.3 5.0 9.0 12.0
-  print Setting ${v}V...
-  psu1 set ${v}
+  print Setting {v}V...
+  psu1 set {v}
   sleep 0.5
-  dmm1 meas_store v_${v} unit=V
+  dmm1 meas_store v_{v} unit=V
 end
 
 psu1 chan 1 off
-print === Sweep complete ===
+print "=== Sweep complete ==="
 log print
 log save voltage_sweep.csv
 ```
@@ -163,7 +163,7 @@ script run awg_scope_check freq=10000 amp=1.0
 **What it does:**
 
 1. Enables AWG channel 1
-2. Configures a sine wave at `${freq}` Hz, `${amp}` Vpp
+2. Configures a sine wave at `{freq}` Hz, `{amp}` Vpp
 3. Waits 500 ms for signal to stabilize
 4. Runs `scope autoset` to auto-configure the scope
 5. Waits 1 s for autoset to settle
@@ -173,14 +173,14 @@ script run awg_scope_check freq=10000 amp=1.0
 
 ```
 # awg_scope_check
-set freq 1000
-set amp 2.0
+freq = 1000
+amp = 2.0
 
-print === AWG + Scope Signal Check ===
-print Frequency: ${freq} Hz   Amplitude: ${amp} Vpp
+print "=== AWG + Scope Signal Check ==="
+print "Frequency: {freq} Hz   Amplitude: {amp} Vpp"
 
 awg1 chan 1 on
-awg1 wave 1 sine freq=${freq} amp=${amp} offset=0
+awg1 wave 1 sine freq={freq} amp={amp} offset=0
 sleep 0.5
 
 scope1 autoset
@@ -190,7 +190,7 @@ scope1 meas_store 1 FREQUENCY meas_freq unit=Hz
 scope1 meas_store 1 PK2PK     meas_pk2pk unit=V
 scope1 meas_store 1 RMS       meas_rms unit=V
 
-print === Results ===
+print "=== Results ==="
 log print
 ```
 
@@ -229,21 +229,21 @@ script run freq_sweep
 
 ```
 # freq_sweep
-print === Frequency Sweep ===
+print "=== Frequency Sweep ==="
 awg1 chan 1 on
 awg1 wave 1 sine amp=2.0 offset=0
 sleep 0.3
 
 for f 100 500 1000 5000 10000 50000 100000
-  print Testing ${f} Hz...
-  awg1 freq 1 ${f}
+  print Testing {f} Hz...
+  awg1 freq 1 {f}
   sleep 0.4
-  scope1 meas_store 1 FREQUENCY freq_${f} unit=Hz
-  scope1 meas_store 1 PK2PK     pk2pk_${f} unit=V
+  scope1 meas_store 1 FREQUENCY freq_{f} unit=Hz
+  scope1 meas_store 1 PK2PK     pk2pk_{f} unit=V
 end
 
 awg1 chan 1 off
-print === Sweep complete ===
+print "=== Sweep complete ==="
 log print
 log save freq_sweep.csv
 ```
@@ -255,11 +255,11 @@ If you're testing a filter or amplifier, measure the input and output simultaneo
 ```
 # Modify the loop to capture both channels:
 for f 100 500 1000 5000 10000 50000
-  awg1 freq 1 ${f}
+  awg1 freq 1 {f}
   sleep 0.4
-  scope1 meas_store 1 PK2PK in_${f} unit=V
-  scope1 meas_store 2 PK2PK out_${f} unit=V
-  calc gain_${f} m["out_${f}"] / m["in_${f}"]
+  scope1 meas_store 1 PK2PK in_{f} unit=V
+  scope1 meas_store 2 PK2PK out_{f} unit=V
+  calc gain_{f} m["out_{f}"] / m["in_{f}"]
 end
 ```
 
@@ -291,24 +291,24 @@ script run psu_ramp v_start=0 v_end=12.0 delay=1.0
 
 ```
 # psu_ramp
-set v_start 0
-set v_end 12.0
-set steps 7
-set delay 0.5
+v_start = 0
+v_end = 12.0
+steps = 7
+delay = 0.5
 
-print === PSU Voltage Ramp ===
-print ${v_start}V → ${v_end}V in ${steps} steps
+print "=== PSU Voltage Ramp ==="
+print "{v_start}V → {v_end}V in {steps} steps"
 
 psu1 chan 1 on
 
-for v ${v_start} 2.0 4.0 6.0 8.0 10.0 ${v_end}
-  print Ramping to ${v}V
-  psu1 set ${v}
-  sleep ${delay}
-  psu1 meas_store v ramp_${v} unit=V
+for v {v_start} 2.0 4.0 6.0 8.0 10.0 {v_end}
+  print Ramping to {v}V
+  psu1 set {v}
+  sleep {delay}
+  psu1 meas_store v ramp_{v} unit=V
 end
 
-print === Ramp complete ===
+print "=== Ramp complete ==="
 log print
 ```
 
@@ -323,18 +323,18 @@ Use these examples as templates. The general pattern for any measurement script 
 
 ```
 # 1. Set defaults (overridable at run time)
-set voltage 5.0
-set label my_test
-set delay 0.5
+voltage = 5.0
+label = my_test
+delay = 0.5
 
 # 2. Operator setup
-print === My Test ===
+print "=== My Test ==="
 pause Connect hardware, then press Enter
 
 # 3. Configure instruments
 psu1 chan 1 on
-psu1 set ${voltage}
-sleep ${delay}
+psu1 set {voltage}
+sleep {delay}
 
 # 4. Measure and store
 psu1 meas_store v psu_out unit=V
@@ -346,7 +346,7 @@ calc error m["dmm_out"] - m["psu_out"] unit=V
 
 # 6. Export
 log print
-log save ${label}_results.csv
+log save {label}_results.csv
 
 # 7. Safe state
 psu1 chan 1 off
