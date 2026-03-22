@@ -1,4 +1,9 @@
-"""Unified $name variable resolution and safe expression evaluation."""
+"""Unified variable resolution and safe expression evaluation.
+
+Variable syntax supported in script files:
+  {varname}   Python f-string style  (preferred)
+  $varname    shell-style            (still supported)
+"""
 
 import ast
 import re
@@ -6,7 +11,10 @@ from typing import Any, Dict, Optional
 
 from .measurement_store import MeasurementStore
 
-# Match $identifier (alphanumeric + underscore, not followed by more word chars)
+# Combined pattern: matches either $varname or {varname}
+_SUBST_RE = re.compile(r"\$([A-Za-z_][A-Za-z0-9_]*)|\{([A-Za-z_][A-Za-z0-9_]*)\}")
+
+# Legacy ${name} pattern kept for explicit backward-compat callers
 _VAR_RE = re.compile(r"\$([A-Za-z_][A-Za-z0-9_]*)")
 
 # Identifiers that cannot be used as variable/label names
@@ -27,14 +35,20 @@ def substitute_vars(
     script_vars: Dict[str, str],
     measurements: Optional[MeasurementStore] = None,
 ) -> str:
-    """Replace all $name references in *text*.
+    """Replace $name and {name} references in *text*.
+
+    Both syntaxes are supported:
+      {varname}  — Python f-string style (preferred)
+      $varname   — shell-style (still supported)
 
     Resolution order: script_vars first, then measurement store labels.
     'last' resolves to the most recent measurement value.
+    Unresolved tokens are left as-is.
     """
 
     def _replace(match: re.Match) -> str:
-        name = match.group(1)
+        # group(1) is from $name, group(2) is from {name}
+        name = match.group(1) if match.group(1) is not None else match.group(2)
         # Script variables take priority
         if name in script_vars:
             return str(script_vars[name])
@@ -51,7 +65,7 @@ def substitute_vars(
         # No match -- leave the original token so the user sees what wasn't resolved
         return match.group(0)
 
-    return _VAR_RE.sub(_replace, text)
+    return _SUBST_RE.sub(_replace, text)
 
 
 def substitute_legacy(text: str, variables: Dict[str, str]) -> str:

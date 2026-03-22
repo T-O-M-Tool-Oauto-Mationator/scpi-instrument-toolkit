@@ -14,9 +14,19 @@ class VariableCommands(BaseCommand):
     """Handles set, print, pause, input, sleep commands."""
 
     def do_print(self, arg: str) -> None:
-        """print uses raw arg string (no shlex) to avoid quote stripping."""
-        msg = substitute_vars(arg, self.ctx.script_vars, self.ctx.measurements) if arg else ""
-        builtins.print(f"{ColorPrinter.CYAN}{msg}{ColorPrinter.RESET}")
+        """print <message> — display text; supports {var} and $var interpolation.
+
+        Quotes are optional but recommended for clarity:
+            print "Voltage is {v}V"
+            print Voltage is {v}V    # also works
+        """
+        msg = arg.strip()
+        # Strip optional outer quotes: print "hello {v}" or print 'hello {v}'
+        if len(msg) >= 2 and msg[0] in ('"', "'") and msg[-1] == msg[0]:
+            msg = msg[1:-1]
+        # Apply variable substitution (handles both {var} and $var)
+        msg = substitute_vars(msg, self.ctx.script_vars, self.ctx.measurements)
+        builtins.print(msg)
 
     def do_pause(self, arg: str) -> None:
         args = self.parse_args(arg)
@@ -32,19 +42,10 @@ class VariableCommands(BaseCommand):
         prompt = " ".join(args[1:]) if len(args) > 1 else f"{varname}: "
         value = builtins.input(f"{ColorPrinter.YELLOW}{prompt}{ColorPrinter.RESET} ")
         self.ctx.script_vars[varname] = value
-        ColorPrinter.success(f"${varname} = {value!r}")
+        ColorPrinter.success(f"{varname} = {value!r}")
 
-    def do_set(self, arg: str) -> None:
-        args = self.parse_args(arg)
-        if len(args) < 2:
-            ColorPrinter.warning("Usage: set <varname> <expr>")
-            if self.ctx.script_vars:
-                ColorPrinter.info("Current variables:")
-                for k, v in self.ctx.script_vars.items():
-                    print(f"  {k} = {v}")
-            return
-        key = args[0]
-        raw_val = " ".join(args[1:])
+    def _assign_var(self, key: str, raw_val: str) -> None:
+        """Core variable assignment — shared by 'var = expr' and 'set var expr'."""
         raw_val = substitute_vars(raw_val, self.ctx.script_vars, self.ctx.measurements)
         try:
             num_vars = {}
@@ -56,6 +57,27 @@ class VariableCommands(BaseCommand):
         except Exception:
             self.ctx.script_vars[key] = raw_val
         ColorPrinter.success(f"{key} = {self.ctx.script_vars[key]}")
+
+    def do_set(self, arg: str) -> None:
+        args = self.parse_args(arg)
+        # set -e / set +e are control-flow directives — not deprecated
+        if args and args[0] in ("-e", "+e"):
+            flag = args[0]
+            self.ctx.exit_on_error = flag == "-e"
+            ColorPrinter.info(f"Exit on error {'enabled' if self.ctx.exit_on_error else 'disabled'}")
+            return
+        if len(args) < 2:
+            ColorPrinter.warning("Usage: var = expr  (or legacy: set <varname> <expr>)")
+            if self.ctx.script_vars:
+                ColorPrinter.info("Current variables:")
+                for k, v in self.ctx.script_vars.items():
+                    print(f"  {k} = {v}")
+            return
+        key = args[0]
+        raw_val = " ".join(args[1:])
+        # Deprecation warning for variable assignment via 'set'
+        ColorPrinter.warning(f"'set' is deprecated for assignment — use '{key} = {raw_val}' instead.")
+        self._assign_var(key, raw_val)
 
     def do_sleep(self, arg: str) -> None:
         args = self.parse_args(arg)

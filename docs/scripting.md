@@ -155,27 +155,43 @@ Scripts persist between REPL sessions via `.repl_scripts.json`. Use `script save
 
 Variables let you parameterize scripts so the same script works for different test conditions.
 
-### set — define a variable
+### Defining variables
+
+Use Python-style assignment — the same syntax you'd write in Python:
 
 ```
-set <varname> <expression>
+voltage = 5.0
+label = vtest
+doubled = voltage * 2     # arithmetic works — doubled = 10.0
+offset = voltage - 0.5    # offset = 4.5
 ```
 
-Defines a variable accessible as `${varname}` in all subsequent lines. Evaluated at **script expansion time** (before execution begins), so arithmetic using other variables works.
+Variables are evaluated at **script expansion time** (before execution begins), so you can use one variable in another's expression.
 
-| Parameter    | Required | Description                                 |
-| ------------ | -------- | ------------------------------------------- |
-| `varname`    | required | Variable name. No spaces — use underscores. |
-| `expression` | required | Value, string, or arithmetic expression.    |
+| Part         | Description                                               |
+| ------------ | --------------------------------------------------------- |
+| `varname`    | Variable name. No spaces — use underscores.               |
+| `expression` | Value, string, or arithmetic using other variable names.  |
+
+Supported operators: `+  -  *  /  **  %`
+Supported functions: `abs()  min()  max()  round()`
+
+### Variable substitution
+
+Use `{varname}` (f-string style) anywhere in a script line:
 
 ```
-set voltage 5.0           # ${voltage} = 5.0
-set label vtest           # ${label} = "vtest"
-set doubled ${voltage} * 2    # ${doubled} = 10.0
-set offset ${voltage} - 0.5   # ${offset} = 4.5
+voltage = 5.0
+label = my_run
+
+psu1 set {voltage}               # → psu1 set 5.0
+dmm1 meas_store {label} unit=V   # → dmm1 meas_store my_run unit=V
+print "Setting {voltage}V"       # → prints  Setting 5.0V
 ```
 
-#### Error handling: set -e / set +e
+Both `{varname}` and `$varname` work. `{varname}` is the preferred style.
+
+### Error handling: set -e / set +e
 
 Control whether a script stops when a command fails (like bash's `set -e`).
 
@@ -205,32 +221,31 @@ print Done             # always executes
 !!! tip
 Use `set -e` for critical test sequences where a single failure should abort the entire test. Use `set +e` when you want to collect partial results even if some commands fail.
 
-### Variable substitution
-
-Use `${varname}` anywhere in a script line and it will be replaced with the variable's value before the command runs:
-
-```
-set voltage 5.0
-set label my_run
-
-psu1 set ${voltage}               # → psu1 set 5.0
-dmm1 meas_store ${label} unit=V   # → dmm1 meas_store my_run unit=V
-print Setting ${voltage}V         # → prints "Setting 5.0V"
-```
-
 ### Overriding variables at run time
 
-Variables defined with `set` can be overridden when running the script from the command line:
+Script variables can be overridden when running the script from the command line:
 
 ```
-# Script has:  set voltage 5.0
+# Script has:  voltage = 5.0
 script run my_test voltage=3.3    # runs with voltage=3.3 instead of 5.0
 script run my_test voltage=12.0 label=high_v
 ```
 
 This is how you reuse the same script for different test conditions without editing it.
 
-**Priority order:** command-line params > `set` defaults in the script.
+**Priority order:** command-line params > defaults defined in the script.
+
+### Legacy: `set` syntax (deprecated)
+
+The `set varname expr` syntax still works but is deprecated for variable assignment:
+
+```
+set voltage 5.0     # ⚠️  deprecated — use: voltage = 5.0
+set -e              # still valid — exit-on-error control (not deprecated)
+set +e              # still valid
+```
+
+Use `var = value` for new scripts.
 
 ---
 
@@ -329,18 +344,24 @@ script run my_test voltage=12.0 test_name=vout_12v
 ### print — display a message
 
 ```
-print <message>
+print "message with {variables}"
 ```
 
-Prints a message to the terminal. Variable substitution works.
+Prints a message to the terminal. Use `{varname}` to embed variable values (Python f-string style). Quotes are optional but recommended for clarity.
 
 ```
-print === PSU/DMM Test ===
-print Setting ${voltage}V to ${label}
-print Test complete. Check log print for results.
+voltage = 5.0
+label = vtest
+
+print "=== PSU/DMM Test ==="
+print "Setting {voltage}V to {label}"
+print "Test complete. Check log print for results."
+print                          # blank line
 ```
 
-Use `print` to add section headers, progress updates, and instructions in your scripts.
+Both `{varname}` and `$varname` work in print messages. `{varname}` is preferred.
+
+Use `print` to add section headers, progress updates, and operator instructions in your scripts.
 
 ### pause — wait for operator
 
@@ -366,12 +387,12 @@ pause Swap DUT before continuing
 input <varname> [prompt text]
 ```
 
-Prompts the operator to type a value at runtime. The entered text is stored as `${varname}` and substituted into all subsequent lines.
+Prompts the operator to type a value at runtime. The entered text is stored as `{varname}` and substituted into all subsequent lines.
 
-| Parameter     | Required | Description                                                                                           |
-| ------------- | -------- | ----------------------------------------------------------------------------------------------------- |
-| `varname`     | required | Variable name. The entered value will be available as `${varname}` in all lines after this directive. |
-| `prompt text` | optional | Text shown to operator. Default: the variable name.                                                   |
+| Parameter     | Required | Description                                                                                         |
+| ------------- | -------- | --------------------------------------------------------------------------------------------------- |
+| `varname`     | required | Variable name. The entered value will be available as `{varname}` in all lines after this directive.|
+| `prompt text` | optional | Text shown to operator. Default: the variable name.                                                 |
 
 ```
 input voltage Enter target voltage (V):
@@ -379,7 +400,7 @@ input dut_id DUT serial number:
 input operator_name Operator name:
 ```
 
-After `input voltage`, you can use `${voltage}` anywhere:
+After `input voltage`, you can use `{voltage}` anywhere:
 
 ```
 input voltage Enter target voltage (V):

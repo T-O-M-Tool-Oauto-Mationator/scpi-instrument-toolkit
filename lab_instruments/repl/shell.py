@@ -390,8 +390,10 @@ class InstrumentRepl(cmd.Cmd):
                 pass
         return stop
 
+    _ASSIGN_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.+)$")
+
     def default(self, line):
-        """Handle numbered device names like 'awg1', 'scope2', 'psu1'."""
+        """Handle numbered device names ('awg1', 'scope2') and var = expr assignment."""
         parts = line.split(None, 1)
         cmd_token = parts[0]
         rest = parts[1] if len(parts) > 1 else ""
@@ -406,6 +408,12 @@ class InstrumentRepl(cmd.Cmd):
                 finally:
                     self.ctx.registry._device_override = None
                 return
+
+        # Python-style assignment: voltage = 5.0  /  label = "mytest"
+        m = self._ASSIGN_RE.match(line.strip())
+        if m:
+            self._var_cmd._assign_var(m.group(1), m.group(2).strip())
+            return
 
         self.ctx.command_had_error = True
         ColorPrinter.error(f"Unknown syntax: {line}")
