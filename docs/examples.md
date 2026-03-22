@@ -2,7 +2,7 @@
 
 These bundled examples demonstrate common lab measurement workflows. Load any example into your session and run it, or use it as a starting point for your own scripts.
 
-```
+```text
 examples                        # list all bundled examples
 examples load <name>            # load a specific example
 examples load all               # load all examples at once
@@ -26,7 +26,7 @@ This is the simplest useful workflow: power a DUT at a target voltage and record
 
 **Load and run:**
 
-```
+```text
 examples load psu_dmm_test
 script run psu_dmm_test voltage=5.0 label=vtest
 script run psu_dmm_test voltage=3.3 label=v3v3
@@ -43,7 +43,7 @@ script run psu_dmm_test voltage=3.3 label=v3v3
 
 **Script source:**
 
-```
+```text
 # psu_dmm_test
 voltage = 5.0
 label = vtest
@@ -68,7 +68,7 @@ log print
 
 After running, `log print` shows:
 
-```
+```text
 Label      Value      Unit   Source
 psu_v      4.9987     V      psu.meas
 vtest      4.9992     V      dmm.read
@@ -76,7 +76,7 @@ vtest      4.9992     V      dmm.read
 
 Compute the error between PSU setpoint and DMM reading:
 
-```
+```text
 calc error m["vtest"] - 5.0 unit=V
 calc error_pct (m["vtest"] - 5.0) / 5.0 * 100 unit=%
 ```
@@ -91,7 +91,7 @@ Tests how a DUT responds across a range of supply voltages.
 
 **Load and run:**
 
-```
+```text
 examples load voltage_sweep
 script run voltage_sweep
 ```
@@ -109,7 +109,7 @@ script run voltage_sweep
 
 **Script source:**
 
-```
+```text
 # voltage_sweep
 print "=== Voltage Sweep ==="
 psu1 chan 1 on
@@ -133,7 +133,7 @@ log save voltage_sweep.csv
 
 After running, each voltage step is recorded as `v_1.0`, `v_2.0`, `v_3.3`, etc. You can compute differences:
 
-```
+```text
 calc delta_3v3_5v m["v_5.0"] - m["v_3.3"] unit=V
 ```
 
@@ -154,7 +154,7 @@ A basic signal integrity check — verify the AWG is outputting what you expect.
 
 **Load and run:**
 
-```
+```text
 examples load awg_scope_check
 script run awg_scope_check freq=1000 amp=2.0
 script run awg_scope_check freq=10000 amp=1.0
@@ -171,7 +171,7 @@ script run awg_scope_check freq=10000 amp=1.0
 
 **Script source:**
 
-```
+```text
 # awg_scope_check
 freq = 1000
 amp = 2.0
@@ -196,7 +196,7 @@ log print
 
 **Check accuracy:**
 
-```
+```text
 calc freq_error (m["meas_freq"] - 1000) / 1000 * 100 unit=%
 calc amp_error (m["meas_pk2pk"] - 2.0) / 2.0 * 100 unit=%
 ```
@@ -211,7 +211,7 @@ Characterize frequency response — useful for testing filters, amplifiers, and 
 
 **Load and run:**
 
-```
+```text
 examples load freq_sweep
 script run freq_sweep
 ```
@@ -227,7 +227,7 @@ script run freq_sweep
 
 **Script source:**
 
-```
+```text
 # freq_sweep
 print "=== Frequency Sweep ==="
 awg1 chan 1 on
@@ -252,7 +252,7 @@ log save freq_sweep.csv
 
 If you're testing a filter or amplifier, measure the input and output simultaneously:
 
-```
+```text
 # Modify the loop to capture both channels:
 for f 100 500 1000 5000 10000 50000
   awg1 freq 1 {f}
@@ -282,14 +282,14 @@ Useful for gradually bringing up power to a DUT and logging the response at each
 
 **Load and run:**
 
-```
+```text
 examples load psu_ramp
 script run psu_ramp v_start=0 v_end=12.0 delay=1.0
 ```
 
 **Script source:**
 
-```
+```text
 # psu_ramp
 v_start = 0
 v_end = 12.0
@@ -321,7 +321,7 @@ log print
 
 Use these examples as templates. The general pattern for any measurement script is:
 
-```
+```text
 # 1. Set defaults (overridable at run time)
 voltage = 5.0
 label = my_test
