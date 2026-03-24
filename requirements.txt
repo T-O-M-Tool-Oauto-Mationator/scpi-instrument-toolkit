@@ -19,3 +19,6 @@ openpyxl>=3.1.0
 # Utilities
 pyfunctional>=1.4.0
 requests>=2.31.0
+
+#NI PXIE-1073
+nidcpower>=1.5.0
