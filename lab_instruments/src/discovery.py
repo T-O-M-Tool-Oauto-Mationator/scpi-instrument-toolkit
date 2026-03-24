@@ -16,6 +16,7 @@ from .hp_e3631a import HP_E3631A
 from .jds6600_generator import JDS6600_Generator
 from .keysight_edu33212a import Keysight_EDU33212A
 from .matrix_mps6010h import MATRIX_MPS6010H
+from .ni_pxie_4139 import NI_PXIe_4139
 from .owon_xdm1041 import Owon_XDM1041
 from .rigol_dho804 import Rigol_DHO804
 from .tektronix_mso2024 import Tektronix_MSO2024
@@ -38,6 +39,7 @@ class InstrumentDiscovery:
         "XDM1041": Owon_XDM1041,
         "JDS6600": JDS6600_Generator,
         "EDU33212A": Keysight_EDU33212A,
+        "PXIe-4139": NI_PXIe_4139,
     }
 
     # Friendly names for the instruments (use generic names)
@@ -51,7 +53,11 @@ class InstrumentDiscovery:
         "XDM1041": "dmm",  # Generic name
         "JDS6600": "awg",
         "EDU33212A": "awg",
+        "PXIe-4139": "smu",
     }
+
+    # PXI slot range to scan for NI-DCPower devices
+    PXI_SLOT_RANGE = range(2, 19)
 
     def __init__(self):
         self.rm = pyvisa.ResourceManager()
@@ -192,6 +198,69 @@ class InstrumentDiscovery:
 
         return None
 
+    def _probe_nidcpower(self, verbose: bool) -> list:
+        """Probe PXI slots for NI-DCPower devices (e.g. PXIe-4139 SMUs).
+
+        Returns a list of (generic_name, driver_instance, model_key, idn) tuples.
+        """
+        try:
+            import nidcpower
+        except ImportError:
+            if verbose:
+                self._safe_print("Skipping NI-DCPower scan (nidcpower not installed)")
+            return []
+
+        if verbose:
+            self._safe_print("Scanning PXI slots for NI-DCPower devices...", flush=True)
+
+        results = []
+        for slot in self.PXI_SLOT_RANGE:
+            resource_name = f"PXI1Slot{slot}"
+            try:
+                session = nidcpower.Session(resource_name=resource_name, channels="0")
+                try:
+                    model = session.instrument_model
+                finally:
+                    session.close()
+
+                # Match against known NI-DCPower models
+                model_key = None
+                for key in self.MODEL_MAP:
+                    if key in model:
+                        model_key = key
+                        break
+
+                if model_key is None:
+                    if verbose:
+                        self._safe_print(
+                            f"Checking {resource_name}... "
+                            f"{ColorPrinter.GREEN}Found: {model}{ColorPrinter.RESET}"
+                        )
+                        self._safe_print(
+                            f"{ColorPrinter.YELLOW}  -> Unknown NI-DCPower device.{ColorPrinter.RESET}"
+                        )
+                    continue
+
+                generic = self.NAME_MAP[model_key]
+                driver = NI_PXIe_4139(resource_name)
+                driver.connect()
+                idn = f"National Instruments,{model},{resource_name},nidcpower"
+
+                if verbose:
+                    self._safe_print(
+                        f"Checking {resource_name}... "
+                        f"{ColorPrinter.GREEN}Found: {idn}{ColorPrinter.RESET}"
+                    )
+                    self._safe_print(f"  -> Identified as {generic.upper()} ({model_key})")
+
+                results.append((generic, driver, model_key, idn))
+
+            except Exception:
+                # Slot empty or not an NI-DCPower device — skip silently
+                continue
+
+        return results
+
     def _probe_resource(self, resource: str, verbose: bool) -> Optional[Tuple[str, Any, str, str]]:
         """
         Probe a single resource and return (generic_name, driver_instance, model_key, idn) if successful.
@@ -327,6 +396,10 @@ class InstrumentDiscovery:
                 except Exception as e:
                     if verbose:
                         self._safe_print(f"{ColorPrinter.RED}Thread error during scan: {e}{ColorPrinter.RESET}")
+
+        # Probe PXI slots for NI-DCPower devices (SMUs)
+        nidcpower_results = self._probe_nidcpower(verbose)
+        results.extend(nidcpower_results)
 
         # Post-process: handle naming and type counts
         # Sort results by resource name to ensure deterministic naming (e.g. ASRL1 is psu1, ASRL4 is psu2)

@@ -545,6 +545,12 @@ class MockMPS6010H(MockPSU):
         pass
 
 
+class MockNI_PXIe_4139(MockPSU):
+    """Mock NI PXIe-4139 Source Measure Unit."""
+
+    pass
+
+
 class MockHP_E3631A(MockPSU):
     """Mock HP E3631A triple-output power supply."""
 
@@ -581,11 +587,14 @@ def get_mock_devices(verbose=True):
     if verbose:
         ColorPrinter.warning("Mock mode — no real instruments connected")
         ColorPrinter.info(
-            "Injecting: psu1 (MockHP_E3631A), psu2 (MockMPS6010H), awg1 (MockEDU33212A), awg2 (MockJDS6600), dmm1 (MockHP_34401A), dmm2 (MockXDM1041), scope1 (MockDHO804), scope2 (MockMSO2024)"
+            "Injecting: psu1 (MockHP_E3631A), psu2 (MockMPS6010H), smu (MockNI_PXIe_4139), "
+            "awg1 (MockEDU33212A), awg2 (MockJDS6600), dmm1 (MockHP_34401A), dmm2 (MockXDM1041), "
+            "scope1 (MockDHO804), scope2 (MockMSO2024)"
         )
     return {
         "psu1": MockHP_E3631A(),
         "psu2": MockMPS6010H(),
+        "smu": MockNI_PXIe_4139(),
         "awg1": MockEDU33212A(),
         "awg2": MockJDS6600(),
         "dmm1": MockHP_34401A(),

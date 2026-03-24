@@ -26,6 +26,7 @@ from .commands.psu import PsuCommand
 from .commands.safety import SafetySystem
 from .commands.scope import ScopeCommand
 from .commands.scripting import ScriptingCommands
+from .commands.smu import SmuCommand
 from .commands.variables import VariableCommands
 from .context import ReplContext
 from .syntax import substitute_vars
@@ -73,6 +74,7 @@ class InstrumentRepl(cmd.Cmd):
         self._awg_cmd = AwgCommand(self.ctx)
         self._dmm_cmd = DmmCommand(self.ctx)
         self._scope_cmd = ScopeCommand(self.ctx)
+        self._smu_cmd = SmuCommand(self.ctx)
         self._var_cmd = VariableCommands(self.ctx)
         self._log_cmd = LoggingCommands(self.ctx)
         self._script_cmd = ScriptingCommands(self.ctx, self._safety, shell=self)
@@ -82,6 +84,7 @@ class InstrumentRepl(cmd.Cmd):
         self._awg_cmd.set_state_callback = lambda arg: self.do_state(arg)
         self._dmm_cmd.set_state_callback = lambda arg: self.do_state(arg)
         self._scope_cmd.set_state_callback = lambda arg: self.do_state(arg)
+        self._smu_cmd.set_state_callback = lambda arg: self.do_state(arg)
 
         # Multi-line loop support
         self._in_loop = False
@@ -749,6 +752,23 @@ class InstrumentRepl(cmd.Cmd):
             self.ctx.command_had_error = True
             return
         self._scope_cmd.execute(arg, dev, scope_name)
+
+    def do_smu(self, arg):
+        "smu <cmd>: control the source measure unit"
+        self._wait_for_scan()
+        smu_name = self.ctx.registry.resolve_type("smu")
+        if not smu_name:
+            self.ctx.command_had_error = True
+            if not self.ctx.registry.devices:
+                ColorPrinter.warning("No instruments connected. Run 'scan' first.")
+            else:
+                self._error("No SMU found. Run 'scan' first.")
+            return
+        dev = self.ctx.registry.get_device(smu_name)
+        if not dev:
+            self.ctx.command_had_error = True
+            return
+        self._smu_cmd.execute(arg, dev, smu_name)
 
     # Variable/IO commands
     def do_print(self, arg):

@@ -59,6 +59,8 @@ DRIVER_CAPABILITIES = {
     ),
     "MATRIX_MPS6010H": Capability.NONE,  # single channel, no readback
     "MockMPS6010H": Capability.NONE,
+    "NI_PXIe_4139": Capability.PSU_READBACK,
+    "MockNI_PXIe_4139": Capability.PSU_READBACK,
     "Keysight_EDU36311A": (
         Capability.PSU_MULTI_CHANNEL | Capability.PSU_READBACK | Capability.PSU_TRACKING | Capability.PSU_SAVE_RECALL
     ),
@@ -136,6 +138,8 @@ DISPLAY_NAMES = {
     "MockHP_E3631A": "HP E3631A (Mock)",
     "MATRIX_MPS6010H": "MATRIX MPS-6010H",
     "MockMPS6010H": "MATRIX MPS-6010H (Mock)",
+    "NI_PXIe_4139": "NI PXIe-4139 SMU",
+    "MockNI_PXIe_4139": "NI PXIe-4139 SMU (Mock)",
     "Keysight_EDU33212A": "Keysight EDU33212A",
     "MockEDU33212A": "Keysight EDU33212A (Mock)",
     "BK_4063": "BK Precision 4063",

@@ -387,6 +387,9 @@ class GeneralCommands(BaseCommand):
                                 dev.awg_set_offset(0.0)
                         except Exception:
                             pass
+                elif name.startswith("smu"):
+                    if hasattr(dev, "disable_all_channels"):
+                        dev.disable_all_channels()
                 elif name.startswith("dmm") and hasattr(dev, "reset"):
                     dev.reset()
                 ColorPrinter.success(f"{name}: safe state applied")
@@ -432,6 +435,12 @@ class GeneralCommands(BaseCommand):
                             with contextlib.suppress(Exception):
                                 dev.disable_channel(ch)
                         ColorPrinter.success(f"{name}: all channels disabled")
+                elif name.startswith("smu"):
+                    if hasattr(dev, "disable_all_channels"):
+                        dev.disable_all_channels()
+                    elif hasattr(dev, "enable_output"):
+                        dev.enable_output(False)
+                    ColorPrinter.success(f"{name}: output disabled")
                 elif name.startswith("dmm") and hasattr(dev, "reset"):
                     dev.reset()
                     ColorPrinter.success(f"{name}: reset")
@@ -462,6 +471,12 @@ class GeneralCommands(BaseCommand):
                             dev.enable_output(1, True)
                             dev.enable_output(2, True)
                         ColorPrinter.success(f"{name}: outputs enabled")
+                elif name.startswith("smu"):
+                    if hasattr(dev, "enable_output"):
+                        if not self.safety.check_psu_output_allowed(name):
+                            continue
+                        dev.enable_output(True)
+                        ColorPrinter.success(f"{name}: output enabled")
                 elif name.startswith("scope") and hasattr(dev, "enable_all_channels"):
                     dev.enable_all_channels()
                     ColorPrinter.success(f"{name}: channels enabled")

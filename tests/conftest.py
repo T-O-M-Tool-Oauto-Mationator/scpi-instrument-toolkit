@@ -31,6 +31,19 @@ def ensure_pyvisa_mocked():
     yield
 
 
+@pytest.fixture(autouse=True, scope="session")
+def ensure_nidcpower_mocked():
+    """Inject a minimal fake nidcpower module if nidcpower is not installed."""
+    if "nidcpower" not in sys.modules:
+        fake = MagicMock()
+        fake.OutputFunction = MagicMock()
+        fake.OutputFunction.DC_VOLTAGE = "DC_VOLTAGE"
+        fake.OutputFunction.DC_CURRENT = "DC_CURRENT"
+        fake.Session = MagicMock
+        sys.modules["nidcpower"] = fake
+    yield
+
+
 # ---------------------------------------------------------------------------
 # Layer 2 — per-test ResourceManager patch
 # ---------------------------------------------------------------------------
@@ -152,6 +165,26 @@ def tektronix_mso2024(mock_visa_rm):
     scope.instrument = mock_instrument
     mock_instrument.reset_mock()
     return scope, mock_instrument
+
+
+@pytest.fixture
+def ni_pxie_4139(ensure_nidcpower_mocked):
+    mock_session = MagicMock()
+    mock_session.voltage_level = 0.0
+    mock_session.current_limit = 0.01
+    mock_session.output_enabled = False
+    mock_session.instrument_model = "PXIe-4139"
+    mock_session.measure_multiple.return_value = [
+        MagicMock(voltage=0.0, current=0.0)
+    ]
+
+    with patch("nidcpower.Session", return_value=mock_session):
+        from lab_instruments.src.ni_pxie_4139 import NI_PXIe_4139
+
+        smu = NI_PXIe_4139("PXI1Slot2")
+        smu.connect()
+        mock_session.reset_mock()
+        yield smu, mock_session
 
 
 # ---------------------------------------------------------------------------

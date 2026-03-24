@@ -201,13 +201,13 @@ class TestMockDHO804:
 
 
 class TestGetMockDevices:
-    def test_returns_8_keys(self):
+    def test_returns_9_keys(self):
         devices = get_mock_devices(verbose=False)
-        assert len(devices) == 8
+        assert len(devices) == 9
 
     def test_expected_keys(self):
         devices = get_mock_devices(verbose=False)
-        for key in ("psu1", "psu2", "awg1", "awg2", "dmm1", "dmm2", "scope1", "scope2"):
+        for key in ("psu1", "psu2", "smu", "awg1", "awg2", "dmm1", "dmm2", "scope1", "scope2"):
             assert key in devices
 
     def test_psu1_type(self):
