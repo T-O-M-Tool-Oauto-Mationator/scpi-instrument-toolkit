@@ -140,14 +140,91 @@ script import <name> <path>
 
 ### script load / save
 
-Reload scripts from disk, or show the current scripts directory.
+Reload all scripts from the scripts directory, or flush all in-memory scripts back to disk.
 
 ```
-script save [path]         # save (default: .repl_scripts.json)
-script load [path]         # load (default: .repl_scripts.json)
+script save    # write every in-memory script to the scripts directory as .scpi files
+script load    # re-read all .scpi files from the scripts directory
 ```
 
-Scripts persist between REPL sessions via `.repl_scripts.json`. Use `script save` before exiting and `script load` on next launch, or let the REPL do it automatically.
+Scripts are stored as individual `.scpi` files in the scripts directory (default: `~/Documents/scpi-instrument-toolkit/scripts/`). The REPL loads them automatically at startup. Use `script load` if you have edited the files externally, and `script save` to flush any changes made in-session.
+
+---
+
+## Recording Commands to a Script
+
+### record start / stop / status
+
+Record interactive REPL commands directly into a named script without opening an editor.
+
+```
+record start <name>    # begin recording commands to a script
+record stop            # stop recording and save
+record status          # show whether recording is active and how many lines are buffered
+```
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `name` | required (start) | Name of the script to record into. Created if it does not exist; appended to if it does. |
+
+Every command you type at the REPL prompt (except `record` itself) is appended to the named script in real time. The script file is saved automatically when you run `record stop`.
+
+```
+record start my_psu_test    # start recording
+psu1 set 5.0
+sleep 0.5
+dmm1 config vdc
+dmm1 meas_store vout unit=V
+log print
+record stop                  # saves as my_psu_test.scpi in scripts dir
+script run my_psu_test       # run the recorded script
+```
+
+!!! tip
+    Use `record start` as a quick way to capture a sequence you have already typed interactively, without writing a script file by hand.
+
+---
+
+## Running External Python Scripts
+
+### python
+
+Execute an external Python script file with access to the REPL's live context.
+
+```
+python <file.py>
+```
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `file.py` | required | Path to the Python script file (absolute or relative to cwd). |
+
+The script receives the following variables injected into its global namespace:
+
+| Variable | Type | Description |
+|----------|------|-------------|
+| `repl` | `InstrumentRepl` | The REPL instance |
+| `devices` | `dict` | Connected instruments, keyed by name (`psu1`, `dmm1`, …) |
+| `measurements` | `list` | Recorded measurement entries |
+| `ColorPrinter` | class | Colored terminal output |
+| `os`, `json`, `time` | modules | Standard library modules |
+
+```python
+# my_script.py
+psu = devices.get("psu1")
+if psu:
+    psu.set_voltage(1, 5.0)
+    psu.enable_output(True)
+    ColorPrinter.success("PSU set to 5.0 V")
+```
+
+```
+python my_script.py
+python /home/user/projects/lab_sequence.py
+```
+
+!!! note
+    Use `python` for automation that needs the full Python ecosystem (NumPy, matplotlib, etc.) beyond what the script language provides.
 
 ---
 

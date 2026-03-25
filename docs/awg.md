@@ -67,6 +67,7 @@ awg wave <1|2|all> <type> [freq=<Hz>] [amp=<Vpp>] [offset=<V>] [duty=<%>] [phase
 | `noise` | White noise |
 | `dc` | DC level (set with `offset=`) |
 | `arb` | Arbitrary waveform (device-dependent) |
+| `prbs` | Pseudo-random binary sequence (device-dependent) |
 
 All keyword arguments are optional — omitted parameters keep their current values.
 
@@ -198,6 +199,19 @@ awg sync off    # disable sync output
 
 !!! note
     Sync output is only available on AWGs that support it.
+
+---
+
+## awg on / awg off
+
+Enable or disable all output channels at once.
+
+```
+awg on     # enable all channels
+awg off    # disable all channels
+```
+
+Shorthand for toggling both channels simultaneously. Equivalent to `awg chan all on` / `awg chan all off`.
 
 ---
 

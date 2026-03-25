@@ -659,6 +659,10 @@ class InstrumentRepl(cmd.Cmd):
         "close: disconnect all instruments"
         self._general.do_close(arg)
 
+    def do_docs(self, arg):
+        "docs: open full HTML documentation in your browser"
+        self._general.do_docs(arg)
+
     def do_version(self, arg):
         "version: show version"
         self._general.do_version(arg, _REPL_VERSION)
@@ -929,6 +933,7 @@ class InstrumentRepl(cmd.Cmd):
         cmd_line("sleep", "pause between actions  (sleep <seconds>)")
         cmd_line("version", "show toolkit version")
         cmd_line("close", "disconnect all instruments")
+        cmd_line("docs", "open full HTML documentation in your browser")
         cmd_line("exit", "quit the REPL")
 
         section("INSTRUMENTS  (run with no args for full sub-command help)")
@@ -1039,6 +1044,9 @@ class InstrumentRepl(cmd.Cmd):
                 "  - indicates which instrument is currently active (set via 'use')",
             ]
         )
+
+    def help_docs(self):
+        self._general.do_docs("help")
 
     def help_check(self):
         self.do_check("")

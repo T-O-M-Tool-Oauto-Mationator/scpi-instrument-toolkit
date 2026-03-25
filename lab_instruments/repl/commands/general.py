@@ -17,6 +17,87 @@ class GeneralCommands(BaseCommand):
     def __init__(self, ctx, safety: SafetySystem) -> None:
         super().__init__(ctx)
         self.safety = safety
+        self._docs_port = None
+
+    def do_docs(self, arg: str) -> None:
+        import http.server
+        import pathlib
+        import socket
+        import subprocess
+        import threading
+        import webbrowser
+
+        args = self.parse_args(arg)
+        if self.is_help(args):
+            self.print_colored_usage(
+                [
+                    "# DOCS",
+                    "",
+                    "docs",
+                    "  - open the full command reference in your web browser",
+                    "  - serves the bundled MkDocs site if available",
+                    "  - auto-builds from mkdocs.yml if the site has not been built yet",
+                    "  - requires: pip install mkdocs-material  (for auto-build)",
+                ]
+            )
+            return
+
+        # Locate paths relative to the package
+        # __file__ = lab_instruments/repl/commands/general.py
+        # lab_instruments/ is 3 parents up; repo root is 4 parents up
+        lab_pkg = pathlib.Path(__file__).resolve().parent.parent.parent
+        pkg_root = lab_pkg.parent  # repo root — mkdocs.yml lives here
+        site_dir = lab_pkg / "site"  # matches site_dir in mkdocs.yml
+        mkdocs_yml = pkg_root / "mkdocs.yml"
+
+        # Auto-build if needed
+        if not (site_dir / "index.html").exists() and mkdocs_yml.exists():
+            ColorPrinter.info("Building docs (first run — takes a few seconds)...")
+            try:
+                subprocess.run(
+                    ["mkdocs", "build"],
+                    cwd=str(pkg_root),
+                    check=True,
+                    capture_output=True,
+                )
+                ColorPrinter.success("Docs built.")
+            except FileNotFoundError:
+                ColorPrinter.warning("mkdocs not found. Install with: pip install mkdocs-material")
+                ColorPrinter.info(f"Docs source: {pkg_root / 'docs'}")
+                return
+            except subprocess.CalledProcessError as exc:
+                stderr = exc.stderr.decode(errors="replace")[:200] if exc.stderr else ""
+                ColorPrinter.error(f"mkdocs build failed: {stderr}")
+                return
+
+        if not (site_dir / "index.html").exists():
+            ColorPrinter.warning("No built docs site found.")
+            ColorPrinter.info(f"To build: cd {pkg_root} && mkdocs build")
+            ColorPrinter.info("Requires: pip install mkdocs-material")
+            return
+
+        # Spawn HTTP server on first call; reuse port on subsequent calls
+        if self._docs_port is None:
+            with socket.socket() as s:
+                s.bind(("127.0.0.1", 0))
+                port = s.getsockname()[1]
+
+            _site = str(site_dir)
+
+            class _QuietHandler(http.server.SimpleHTTPRequestHandler):
+                def __init__(self_h, *a, **kw):
+                    super().__init__(*a, directory=_site, **kw)
+
+                def log_message(self_h, fmt, *a):
+                    pass
+
+            server = http.server.HTTPServer(("127.0.0.1", port), _QuietHandler)
+            threading.Thread(target=server.serve_forever, daemon=True).start()
+            self._docs_port = port
+
+        url = f"http://127.0.0.1:{self._docs_port}/index.html"
+        ColorPrinter.info(f"Opening docs: {url}")
+        webbrowser.open(url)
 
     def do_scan(self, arg: str, discovery: Any, scan_done: Any) -> None:
         args = self.parse_args(arg)

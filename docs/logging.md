@@ -208,6 +208,73 @@ calc crest_factor m["pk2pk"] / (2 * m["rms"])
 
 ---
 
+## check
+
+Assert that a stored measurement falls within acceptable limits. Appends a pass/fail result to the test report.
+
+```
+check <label> <min> <max>
+check <label> <expected> tol=<N>
+check <label> <expected> tol=<N>%
+```
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `label` | required | Label of a stored measurement (must exist in the log). |
+| `min` / `max` | required (range form) | Inclusive lower and upper bounds. |
+| `expected` + `tol=` | required (tolerance form) | Center value and absolute tolerance. |
+| `tol=<N>%` | optional | Percentage tolerance: pass if `|value − expected| ≤ N/100 × expected`. |
+
+Prints `[PASS]` or `[FAIL]` with the measured value and limits. A failed check sets an error flag — scripts with `set -e` will stop on failure.
+
+```
+dmm1 config vdc
+dmm1 meas_store vout unit=V
+
+check vout 4.75 5.25          # pass if 4.75 V ≤ vout ≤ 5.25 V
+check vout 5.0 tol=0.25       # pass if |vout − 5.0| ≤ 0.25 V
+check vout 5.0 tol=5%         # pass if within 5% of 5.0 V
+```
+
+Results are collected in memory and shown with `report print` or exported with `report save`.
+
+---
+
+## report
+
+View or export a lab test report containing all `check` pass/fail results.
+
+```
+report print
+report save <path>
+report clear
+report title <text>
+report operator <name>
+```
+
+| Subcommand | Description |
+|------------|-------------|
+| `print` | Print the check results table to the terminal |
+| `save <path>` | Generate a PDF report at the given path |
+| `clear` | Clear test results and the screenshot list |
+| `title <text>` | Set the report title shown in the PDF header |
+| `operator <name>` | Set the operator name shown in the report header |
+
+```
+report title "PSU Accuracy Test"
+report operator "J. Smith"
+
+# ... run checks ...
+
+report print              # view results in terminal
+report save results.pdf   # export PDF
+```
+
+!!! note
+    `report save` requires `reportlab`: `pip install reportlab`
+
+---
+
 ## data dir — controlling where files are saved
 
 By default, screenshots, waveform CSVs, and `log save` files all land in `~/Documents/scpi-instrument-toolkit/data/`. Use `data dir` to point them anywhere you want for the current session.

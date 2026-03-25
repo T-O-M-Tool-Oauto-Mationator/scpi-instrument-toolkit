@@ -33,6 +33,37 @@ scope single    # arm single-shot trigger
 | `stop` | Freeze the display at the current waveform |
 | `single` | Arm the trigger — capture one waveform then stop |
 
+### scope wait_stop
+
+Block until the scope finishes its current acquisition (i.e. the trigger fires and the display stops).
+
+```
+scope wait_stop [timeout=<s>]
+```
+
+| Parameter | Required | Default | Description |
+|-----------|----------|---------|-------------|
+| `timeout=` | optional | `10` | Maximum seconds to wait. Prints a warning if the scope is still armed after this time. |
+
+Use after `scope single` to ensure the trigger has fired before querying measurements. Without this, `scope meas_store` may return `9.9e+37` (the SCPI sentinel for "not yet computed").
+
+=== "Rigol DHO804"
+
+    ```
+    scope single
+    scope wait_stop timeout=10    # wait up to 10 s for trigger
+    scope meas_force              # force DSP to finalize values
+    scope meas_store 1 FREQUENCY freq unit=Hz
+    ```
+
+=== "Tektronix MSO2024"
+
+    ```
+    scope single
+    scope wait_stop               # default 10 s timeout
+    scope meas_store 1 FREQUENCY freq unit=Hz
+    ```
+
 ---
 
 ## Channel Control
@@ -529,10 +560,39 @@ These commands access built-in scope tools where available.
 Control the built-in waveform generator (DHO914S and DHO924S only).
 
 ```
-scope awg              # show available subcommands
-scope awg on           # enable AWG output
-scope awg off          # disable AWG output
-scope awg sine 1000 2.0 0    # configure: sine, 1 kHz, 2 Vpp, 0 V offset
+scope awg chan <on|off>                    # enable/disable AWG output
+scope awg set <func> <freq> <amp> [offset=<V>]  # quick configure
+scope awg func <SINusoid|SQUare|RAMP|DC|NOISe>  # set waveform type
+scope awg freq <Hz>                        # set frequency
+scope awg amp <Vpp>                        # set amplitude
+scope awg offset <V>                       # set DC offset
+scope awg phase <deg>                      # set phase (0–360)
+scope awg duty <%>                         # set square duty cycle
+scope awg sym <%>                          # set ramp symmetry
+scope awg mod <on|off>                     # enable/disable modulation
+scope awg mod_type <AM|FM|PM>              # set modulation type
+```
+
+| Subcommand | Parameters | Description |
+|------------|-----------|-------------|
+| `chan` | `on\|off` | Enable or disable AWG output |
+| `set` | `func freq amp [offset=]` | Configure waveform in one step |
+| `func` | waveform type | Set waveform function |
+| `freq` | float (Hz) | Set frequency |
+| `amp` | float (Vpp) | Set peak-to-peak amplitude |
+| `offset` | float (V) | Set DC offset |
+| `phase` | 0–360 | Set phase offset |
+| `duty` | 0–100 | Set square wave duty cycle |
+| `sym` | 0–100 | Set ramp symmetry |
+| `mod` | `on\|off` | Enable/disable modulation |
+| `mod_type` | `AM`, `FM`, `PM` | Set modulation type |
+
+```
+scope awg set SINusoid 1000 2.0             # 1 kHz sine, 2 Vpp
+scope awg set SQUare 500 3.3 offset=1.65   # 500 Hz square with offset
+scope awg mod on
+scope awg mod_type AM
+scope awg chan off
 ```
 
 ### scope counter
