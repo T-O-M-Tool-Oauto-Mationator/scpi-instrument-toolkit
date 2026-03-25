@@ -21,7 +21,7 @@
       
       
       <link rel="icon" href="assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.3">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
@@ -619,6 +619,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="smu.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Source Measure Unit (SMU)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -871,6 +899,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#ni-pxie-instruments-ni-pxie-4139-smu" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        NI PXIe instruments (NI PXIe-4139 SMU)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#serial-instruments-matrix-mps-jds6600" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1004,6 +1043,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#ni-pxie-instruments-ni-pxie-4139-smu" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        NI PXIe instruments (NI PXIe-4139 SMU)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#serial-instruments-matrix-mps-jds6600" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1127,6 +1177,12 @@
 <td>Serial</td>
 <td>DDS waveform codes</td>
 </tr>
+<tr>
+<td>NI PXIe-4139</td>
+<td>SMU</td>
+<td>PXIe (nidcpower)</td>
+<td>±60 V / 1 A four-quadrant, voltage/current source and measure</td>
+</tr>
 </tbody>
 </table>
 <hr />
@@ -1137,6 +1193,11 @@
 <li>Connect the instrument</li>
 <li>Launch <code>scpi-repl</code> — it will auto-detect the instrument</li>
 </ol>
+<h3 id="ni-pxie-instruments-ni-pxie-4139-smu">NI PXIe instruments (NI PXIe-4139 SMU)<a class="headerlink" href="#ni-pxie-instruments-ni-pxie-4139-smu" title="Permanent link">&para;</a></h3>
+<p>The NI PXIe-4139 uses the NI-DCPower driver, <strong>not</strong> VISA/SCPI. It is auto-detected by the REPL when the <code>nidcpower</code> Python package and NI-DAQmx runtime are installed:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip<span class="w"> </span>install<span class="w"> </span>nidcpower
+</code></pre></div>
+<p>The instrument appears as <code>smu1</code> in the REPL. See <a href="smu.html">Source Measure Unit (SMU)</a> for commands.</p>
 <h3 id="serial-instruments-matrix-mps-jds6600">Serial instruments (Matrix MPS, JDS6600)<a class="headerlink" href="#serial-instruments-matrix-mps-jds6600" title="Permanent link">&para;</a></h3>
 <p>Serial instruments are probed automatically at multiple baud rates. No manual configuration is needed. Connect via USB-to-serial adapter, then launch <code>scpi-repl</code>.</p>
 <hr />
@@ -1152,7 +1213,7 @@
 <hr />
 <h2 id="testing-without-hardware">Testing without hardware<a class="headerlink" href="#testing-without-hardware" title="Permanent link">&para;</a></h2>
 <p>Use <code>--mock</code> to run the REPL with simulated instruments:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>scpi-repl<span class="w"> </span>--mock
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>scpi-repl<span class="w"> </span>--mock
 </code></pre></div>
 <p>Mock mode injects: <code>psu1</code>, <code>psu2</code>, <code>awg1</code>, <code>awg2</code>, <code>dmm1</code>, <code>dmm2</code>, <code>scope1</code>, <code>scope2</code> — two of each type. Measurements return realistic random values. Useful for testing scripts before connecting real hardware.</p>
 

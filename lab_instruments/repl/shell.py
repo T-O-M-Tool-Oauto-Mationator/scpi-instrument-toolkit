@@ -941,6 +941,7 @@ class InstrumentRepl(cmd.Cmd):
         cmd_line("awg", "function generator  — chan, wave, freq, amp, offset, duty, phase")
         cmd_line("dmm", "multimeter  — config, read, fetch, meas, beep, display")
         cmd_line("scope", "oscilloscope  — chan, meas, save, trigger, awg, dvm, counter")
+        cmd_line("smu", "source measure unit  — set, meas, meas_store, get, on, off")
 
         section("SCRIPTING")
         cmd_line("script", "manage and run named scripts  — new, run, debug, edit, list, rm, show, dir")

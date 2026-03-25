@@ -13,6 +13,7 @@
 | BK Precision 4063 | Function Generator | USB | Basic AWG commands |
 | Keysight EDU33212A | Function Generator | USB | Dual-channel |
 | JDS6600 (Seesii DDS) | Function Generator | Serial | DDS waveform codes |
+| NI PXIe-4139 | SMU | PXIe (nidcpower) | ±60 V / 1 A four-quadrant, voltage/current source and measure |
 
 ---
 
@@ -23,6 +24,16 @@
 1. Install [NI-VISA](https://www.ni.com/en/support/downloads/drivers/download.ni-visa.html)
 2. Connect the instrument
 3. Launch `scpi-repl` — it will auto-detect the instrument
+
+### NI PXIe instruments (NI PXIe-4139 SMU)
+
+The NI PXIe-4139 uses the NI-DCPower driver, **not** VISA/SCPI. It is auto-detected by the REPL when the `nidcpower` Python package and NI-DAQmx runtime are installed:
+
+```bash
+pip install nidcpower
+```
+
+The instrument appears as `smu1` in the REPL. See [Source Measure Unit (SMU)](smu.md) for commands.
 
 ### Serial instruments (Matrix MPS, JDS6600)
 

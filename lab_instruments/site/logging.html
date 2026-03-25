@@ -21,7 +21,7 @@
       
       
       <link rel="icon" href="assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.3">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
@@ -619,6 +619,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="smu.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Source Measure Unit (SMU)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -926,6 +954,28 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#check" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        check
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#report" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        report
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#data-dir-controlling-where-files-are-saved" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1148,6 +1198,28 @@
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#check" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        check
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#report" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        report
+      
+    </span>
+  </a>
   
 </li>
       
@@ -1413,11 +1485,109 @@
 <a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>calc crest_factor m[&quot;pk2pk&quot;] / (2 * m[&quot;rms&quot;])
 </code></pre></div>
 <hr />
+<h2 id="check">check<a class="headerlink" href="#check" title="Permanent link">&para;</a></h2>
+<p>Assert that a stored measurement falls within acceptable limits. Appends a pass/fail result to the test report.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>check &lt;label&gt; &lt;min&gt; &lt;max&gt;
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>check &lt;label&gt; &lt;expected&gt; tol=&lt;N&gt;
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>check &lt;label&gt; &lt;expected&gt; tol=&lt;N&gt;%
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>label</code></td>
+<td>required</td>
+<td>Label of a stored measurement (must exist in the log).</td>
+</tr>
+<tr>
+<td><code>min</code> / <code>max</code></td>
+<td>required (range form)</td>
+<td>Inclusive lower and upper bounds.</td>
+</tr>
+<tr>
+<td><code>expected</code> + <code>tol=</code></td>
+<td>required (tolerance form)</td>
+<td>Center value and absolute tolerance.</td>
+</tr>
+<tr>
+<td><code>tol=&lt;N&gt;%</code></td>
+<td>optional</td>
+<td>Percentage tolerance: pass if <code>|value − expected| ≤ N/100 × expected</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>Prints <code>[PASS]</code> or <code>[FAIL]</code> with the measured value and limits. A failed check sets an error flag — scripts with <code>set -e</code> will stop on failure.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>dmm1 config vdc
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>dmm1 meas_store vout unit=V
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>
+<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a>check vout 4.75 5.25          # pass if 4.75 V ≤ vout ≤ 5.25 V
+<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a>check vout 5.0 tol=0.25       # pass if |vout − 5.0| ≤ 0.25 V
+<a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a>check vout 5.0 tol=5%         # pass if within 5% of 5.0 V
+</code></pre></div>
+<p>Results are collected in memory and shown with <code>report print</code> or exported with <code>report save</code>.</p>
+<hr />
+<h2 id="report">report<a class="headerlink" href="#report" title="Permanent link">&para;</a></h2>
+<p>View or export a lab test report containing all <code>check</code> pass/fail results.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>report print
+<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>report save &lt;path&gt;
+<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>report clear
+<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a>report title &lt;text&gt;
+<a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a>report operator &lt;name&gt;
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Subcommand</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>print</code></td>
+<td>Print the check results table to the terminal</td>
+</tr>
+<tr>
+<td><code>save &lt;path&gt;</code></td>
+<td>Generate a PDF report at the given path</td>
+</tr>
+<tr>
+<td><code>clear</code></td>
+<td>Clear test results and the screenshot list</td>
+</tr>
+<tr>
+<td><code>title &lt;text&gt;</code></td>
+<td>Set the report title shown in the PDF header</td>
+</tr>
+<tr>
+<td><code>operator &lt;name&gt;</code></td>
+<td>Set the operator name shown in the report header</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>report title &quot;PSU Accuracy Test&quot;
+<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>report operator &quot;J. Smith&quot;
+<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a>
+<a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a># ... run checks ...
+<a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a>
+<a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a>report print              # view results in terminal
+<a id="__codelineno-19-7" name="__codelineno-19-7" href="#__codelineno-19-7"></a>report save results.pdf   # export PDF
+</code></pre></div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><code>report save</code> requires <code>reportlab</code>: <code>pip install reportlab</code></p>
+</div>
+<hr />
 <h2 id="data-dir-controlling-where-files-are-saved">data dir — controlling where files are saved<a class="headerlink" href="#data-dir-controlling-where-files-are-saved" title="Permanent link">&para;</a></h2>
 <p>By default, screenshots, waveform CSVs, and <code>log save</code> files all land in <code>~/Documents/scpi-instrument-toolkit/data/</code>. Use <code>data dir</code> to point them anywhere you want for the current session.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>data dir &lt;path&gt;    # set output directory (absolute or relative to cwd)
-<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>data dir           # print the current output directory
-<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>data dir reset     # go back to the default
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>data dir &lt;path&gt;    # set output directory (absolute or relative to cwd)
+<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a>data dir           # print the current output directory
+<a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a>data dir reset     # go back to the default
 </code></pre></div>
 <table>
 <thead>
@@ -1452,22 +1622,22 @@
 <div class="admonition tip">
 <p class="admonition-title">Windows paths</p>
 <p>Forward slashes work on all platforms. Backslashes and spaces in paths are also supported without quoting:
-<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>data dir C:\Users\lab\output
-<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>data dir C:/My Documents/lab
+<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>data dir C:\Users\lab\output
+<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a>data dir C:/My Documents/lab
 </code></pre></div></p>
 </div>
 <p>The setting applies to every save command in the session — <code>scope screenshot</code>, <code>scope save</code>, and <code>log save</code> all respect it. Subdirectories within the output dir are still created automatically (e.g. <code>scope screenshot lab3/cap.png</code> → <code>&lt;data_dir&gt;/lab3/cap.png</code>).</p>
 <p>You can also use it inside a <code>.scpi</code> script so the output location is part of the test setup:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a># lab3.scpi
-<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>data dir .     # save everything relative to where I launched the REPL
-<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>
-<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a>log clear
-<a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a>for VIN ${SWEEP}
-<a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a>  ...
-<a id="__codelineno-18-7" name="__codelineno-18-7" href="#__codelineno-18-7"></a>  scope screenshot cap_${VIN}V.png
-<a id="__codelineno-18-8" name="__codelineno-18-8" href="#__codelineno-18-8"></a>  scope save 1,2,3,4 wave_${VIN}V.csv
-<a id="__codelineno-18-9" name="__codelineno-18-9" href="#__codelineno-18-9"></a>end
-<a id="__codelineno-18-10" name="__codelineno-18-10" href="#__codelineno-18-10"></a>log save results.csv
+<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a># lab3.scpi
+<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a>data dir .     # save everything relative to where I launched the REPL
+<a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a>
+<a id="__codelineno-22-4" name="__codelineno-22-4" href="#__codelineno-22-4"></a>log clear
+<a id="__codelineno-22-5" name="__codelineno-22-5" href="#__codelineno-22-5"></a>for VIN {SWEEP}
+<a id="__codelineno-22-6" name="__codelineno-22-6" href="#__codelineno-22-6"></a>  ...
+<a id="__codelineno-22-7" name="__codelineno-22-7" href="#__codelineno-22-7"></a>  scope screenshot cap_{VIN}V.png
+<a id="__codelineno-22-8" name="__codelineno-22-8" href="#__codelineno-22-8"></a>  scope save 1,2,3,4 wave_{VIN}V.csv
+<a id="__codelineno-22-9" name="__codelineno-22-9" href="#__codelineno-22-9"></a>end
+<a id="__codelineno-22-10" name="__codelineno-22-10" href="#__codelineno-22-10"></a>log save results.csv
 </code></pre></div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
@@ -1475,27 +1645,27 @@
 </div>
 <hr />
 <h2 id="typical-workflow">Typical workflow<a class="headerlink" href="#typical-workflow" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a># 1. Clear previous results
-<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>log clear
-<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a>
-<a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a># 2. Run measurements
-<a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a>psu1 chan 1 on
-<a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a>psu1 set 5.0
-<a id="__codelineno-19-7" name="__codelineno-19-7" href="#__codelineno-19-7"></a>sleep 0.5
-<a id="__codelineno-19-8" name="__codelineno-19-8" href="#__codelineno-19-8"></a>
-<a id="__codelineno-19-9" name="__codelineno-19-9" href="#__codelineno-19-9"></a>psu1 meas_store v psu_v unit=V     # save as &quot;psu_v&quot;
-<a id="__codelineno-19-10" name="__codelineno-19-10" href="#__codelineno-19-10"></a>psu1 meas_store i psu_i unit=A     # save as &quot;psu_i&quot;
-<a id="__codelineno-19-11" name="__codelineno-19-11" href="#__codelineno-19-11"></a>dmm1 config vdc
-<a id="__codelineno-19-12" name="__codelineno-19-12" href="#__codelineno-19-12"></a>dmm1 meas_store dmm_v unit=V       # save as &quot;dmm_v&quot;
-<a id="__codelineno-19-13" name="__codelineno-19-13" href="#__codelineno-19-13"></a>
-<a id="__codelineno-19-14" name="__codelineno-19-14" href="#__codelineno-19-14"></a># 3. Derive values
-<a id="__codelineno-19-15" name="__codelineno-19-15" href="#__codelineno-19-15"></a>calc power       m[&quot;psu_v&quot;] * m[&quot;psu_i&quot;] unit=W
-<a id="__codelineno-19-16" name="__codelineno-19-16" href="#__codelineno-19-16"></a>calc v_error     m[&quot;dmm_v&quot;] - m[&quot;psu_v&quot;] unit=V
-<a id="__codelineno-19-17" name="__codelineno-19-17" href="#__codelineno-19-17"></a>calc v_error_pct m[&quot;v_error&quot;] / m[&quot;psu_v&quot;] * 100 unit=%
-<a id="__codelineno-19-18" name="__codelineno-19-18" href="#__codelineno-19-18"></a>
-<a id="__codelineno-19-19" name="__codelineno-19-19" href="#__codelineno-19-19"></a># 4. Review and export
-<a id="__codelineno-19-20" name="__codelineno-19-20" href="#__codelineno-19-20"></a>log print
-<a id="__codelineno-19-21" name="__codelineno-19-21" href="#__codelineno-19-21"></a>log save results.csv
+<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a># 1. Clear previous results
+<a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a>log clear
+<a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a>
+<a id="__codelineno-23-4" name="__codelineno-23-4" href="#__codelineno-23-4"></a># 2. Run measurements
+<a id="__codelineno-23-5" name="__codelineno-23-5" href="#__codelineno-23-5"></a>psu1 chan 1 on
+<a id="__codelineno-23-6" name="__codelineno-23-6" href="#__codelineno-23-6"></a>psu1 set 5.0
+<a id="__codelineno-23-7" name="__codelineno-23-7" href="#__codelineno-23-7"></a>sleep 0.5
+<a id="__codelineno-23-8" name="__codelineno-23-8" href="#__codelineno-23-8"></a>
+<a id="__codelineno-23-9" name="__codelineno-23-9" href="#__codelineno-23-9"></a>psu1 meas_store v psu_v unit=V     # save as &quot;psu_v&quot;
+<a id="__codelineno-23-10" name="__codelineno-23-10" href="#__codelineno-23-10"></a>psu1 meas_store i psu_i unit=A     # save as &quot;psu_i&quot;
+<a id="__codelineno-23-11" name="__codelineno-23-11" href="#__codelineno-23-11"></a>dmm1 config vdc
+<a id="__codelineno-23-12" name="__codelineno-23-12" href="#__codelineno-23-12"></a>dmm1 meas_store dmm_v unit=V       # save as &quot;dmm_v&quot;
+<a id="__codelineno-23-13" name="__codelineno-23-13" href="#__codelineno-23-13"></a>
+<a id="__codelineno-23-14" name="__codelineno-23-14" href="#__codelineno-23-14"></a># 3. Derive values
+<a id="__codelineno-23-15" name="__codelineno-23-15" href="#__codelineno-23-15"></a>calc power       m[&quot;psu_v&quot;] * m[&quot;psu_i&quot;] unit=W
+<a id="__codelineno-23-16" name="__codelineno-23-16" href="#__codelineno-23-16"></a>calc v_error     m[&quot;dmm_v&quot;] - m[&quot;psu_v&quot;] unit=V
+<a id="__codelineno-23-17" name="__codelineno-23-17" href="#__codelineno-23-17"></a>calc v_error_pct m[&quot;v_error&quot;] / m[&quot;psu_v&quot;] * 100 unit=%
+<a id="__codelineno-23-18" name="__codelineno-23-18" href="#__codelineno-23-18"></a>
+<a id="__codelineno-23-19" name="__codelineno-23-19" href="#__codelineno-23-19"></a># 4. Review and export
+<a id="__codelineno-23-20" name="__codelineno-23-20" href="#__codelineno-23-20"></a>log print
+<a id="__codelineno-23-21" name="__codelineno-23-21" href="#__codelineno-23-21"></a>log save results.csv
 </code></pre></div>
 
 

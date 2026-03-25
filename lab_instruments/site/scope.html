@@ -14,14 +14,14 @@
         <link rel="prev" href="dmm.html">
       
       
-        <link rel="next" href="scripting.html">
+        <link rel="next" href="smu.html">
       
       
         
       
       
       <link rel="icon" href="assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.3">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
@@ -694,6 +694,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#scope-wait_stop" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        scope wait_stop
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1174,6 +1185,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="smu.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Source Measure Unit (SMU)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1433,6 +1472,17 @@
     <span class="md-ellipsis">
       
         scope run / stop / single
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scope-wait_stop" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        scope wait_stop
       
     </span>
   </a>
@@ -1970,11 +2020,51 @@
 </tr>
 </tbody>
 </table>
+<h3 id="scope-wait_stop">scope wait_stop<a class="headerlink" href="#scope-wait_stop" title="Permanent link">&para;</a></h3>
+<p>Block until the scope finishes its current acquisition (i.e. the trigger fires and the display stops).</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>scope wait_stop [timeout=&lt;s&gt;]
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Required</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>timeout=</code></td>
+<td>optional</td>
+<td><code>10</code></td>
+<td>Maximum seconds to wait. Prints a warning if the scope is still armed after this time.</td>
+</tr>
+</tbody>
+</table>
+<p>Use after <code>scope single</code> to ensure the trigger has fired before querying measurements. Without this, <code>scope meas_store</code> may return <code>9.9e+37</code> (the SCPI sentinel for "not yet computed").</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Rigol DHO804</label><label for="__tabbed_1_2">Tektronix MSO2024</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>scope single
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>scope wait_stop timeout=10    # wait up to 10 s for trigger
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>scope meas_force              # force DSP to finalize values
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>scope meas_store 1 FREQUENCY freq unit=Hz
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>scope single
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>scope wait_stop               # default 10 s timeout
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>scope meas_store 1 FREQUENCY freq unit=Hz
+</code></pre></div>
+</div>
+</div>
+</div>
 <hr />
 <h2 id="channel-control">Channel Control<a class="headerlink" href="#channel-control" title="Permanent link">&para;</a></h2>
 <h3 id="scope-chan">scope chan<a class="headerlink" href="#scope-chan" title="Permanent link">&para;</a></h3>
 <p>Enable or disable channel display.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>scope chan &lt;1-4|all&gt; &lt;on|off&gt;
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>scope chan &lt;1-4|all&gt; &lt;on|off&gt;
 </code></pre></div>
 <table>
 <thead>
@@ -2000,13 +2090,13 @@
 </tr>
 </tbody>
 </table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>scope chan 1 on      # show channel 1
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>scope chan 3 off     # hide channel 3
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>scope chan all on    # show all channels
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>scope chan 1 on      # show channel 1
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>scope chan 3 off     # hide channel 3
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>scope chan all on    # show all channels
 </code></pre></div>
 <h3 id="scope-coupling">scope coupling<a class="headerlink" href="#scope-coupling" title="Permanent link">&para;</a></h3>
 <p>Set input coupling for one or more channels.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>scope coupling &lt;1-4|all&gt; &lt;DC|AC|GND&gt;
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>scope coupling &lt;1-4|all&gt; &lt;DC|AC|GND&gt;
 </code></pre></div>
 <table>
 <thead>
@@ -2032,12 +2122,12 @@
 </tr>
 </tbody>
 </table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>scope coupling 1 AC       # AC-couple channel 1
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>scope coupling all DC     # DC-couple all channels
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>scope coupling 1 AC       # AC-couple channel 1
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>scope coupling all DC     # DC-couple all channels
 </code></pre></div>
 <h3 id="scope-probe">scope probe<a class="headerlink" href="#scope-probe" title="Permanent link">&para;</a></h3>
 <p>Set probe attenuation so the scope displays correct voltages.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>scope probe &lt;1-4|all&gt; &lt;attenuation&gt;
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>scope probe &lt;1-4|all&gt; &lt;attenuation&gt;
 </code></pre></div>
 <table>
 <thead>
@@ -2063,14 +2153,14 @@
 </tr>
 </tbody>
 </table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>scope probe 1 10    # channel 1 has a 10× probe
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>scope probe all 1   # all channels: direct (1×) connection
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>scope probe 1 10    # channel 1 has a 10× probe
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>scope probe all 1   # all channels: direct (1×) connection
 </code></pre></div>
 <hr />
 <h2 id="horizontal-time-axis">Horizontal (Time) Axis<a class="headerlink" href="#horizontal-time-axis" title="Permanent link">&para;</a></h2>
 <h3 id="scope-hscale">scope hscale<a class="headerlink" href="#scope-hscale" title="Permanent link">&para;</a></h3>
 <p>Set the time per division.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>scope hscale &lt;s/div&gt;
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>scope hscale &lt;s/div&gt;
 </code></pre></div>
 <table>
 <thead>
@@ -2090,13 +2180,13 @@
 </tr>
 </tbody>
 </table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>scope hscale 0.001      # 1 ms/div
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>scope hscale 0.0001     # 100 µs/div
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>scope hscale 0.001      # 1 ms/div
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>scope hscale 0.0001     # 100 µs/div
 </code></pre></div>
 <h3 id="scope-hpos-hmove">scope hpos / hmove<a class="headerlink" href="#scope-hpos-hmove" title="Permanent link">&para;</a></h3>
 <p>Set or adjust the horizontal trigger position.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>scope hpos &lt;percentage&gt;     # set absolute position
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>scope hmove &lt;delta&gt;         # adjust relative to current position
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>scope hpos &lt;percentage&gt;     # set absolute position
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>scope hmove &lt;delta&gt;         # adjust relative to current position
 </code></pre></div>
 <table>
 <thead>
@@ -2119,14 +2209,14 @@
 </tr>
 </tbody>
 </table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>scope hpos 50     # center trigger at 50%
-<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>scope hmove 10    # shift right by 10%
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>scope hpos 50     # center trigger at 50%
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>scope hmove 10    # shift right by 10%
 </code></pre></div>
 <hr />
 <h2 id="vertical-voltage-axis">Vertical (Voltage) Axis<a class="headerlink" href="#vertical-voltage-axis" title="Permanent link">&para;</a></h2>
 <h3 id="scope-vscale">scope vscale<a class="headerlink" href="#scope-vscale" title="Permanent link">&para;</a></h3>
 <p>Set voltage per division for one or more channels.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>scope vscale &lt;1-4|all&gt; &lt;V/div&gt; [pos]
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>scope vscale &lt;1-4|all&gt; &lt;V/div&gt; [pos]
 </code></pre></div>
 <table>
 <thead>
@@ -2158,23 +2248,23 @@
 </tr>
 </tbody>
 </table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>scope vscale 1 0.5           # channel 1: 0.5 V/div
-<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>scope vscale 1 0.5 -2        # 0.5 V/div, shifted down 2 divisions
-<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>scope vscale all 1.0 0       # all channels: 1 V/div, centered
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>scope vscale 1 0.5           # channel 1: 0.5 V/div
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>scope vscale 1 0.5 -2        # 0.5 V/div, shifted down 2 divisions
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>scope vscale all 1.0 0       # all channels: 1 V/div, centered
 </code></pre></div>
 <h3 id="scope-vpos-vmove">scope vpos / vmove<a class="headerlink" href="#scope-vpos-vmove" title="Permanent link">&para;</a></h3>
 <p>Set or adjust vertical position.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>scope vpos &lt;1-4|all&gt; &lt;divisions&gt;    # set absolute position
-<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>scope vmove &lt;1-4|all&gt; &lt;delta&gt;       # adjust relative to current
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>scope vpos &lt;1-4|all&gt; &lt;divisions&gt;    # set absolute position
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>scope vmove &lt;1-4|all&gt; &lt;delta&gt;       # adjust relative to current
 </code></pre></div>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>scope vpos 1 0        # center channel 1
-<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>scope vmove 1 -1      # move channel 1 down by 1 division
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>scope vpos 1 0        # center channel 1
+<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>scope vmove 1 -1      # move channel 1 down by 1 division
 </code></pre></div>
 <hr />
 <h2 id="trigger">Trigger<a class="headerlink" href="#trigger" title="Permanent link">&para;</a></h2>
 <h3 id="scope-trigger">scope trigger<a class="headerlink" href="#scope-trigger" title="Permanent link">&para;</a></h3>
 <p>Configure the trigger.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>scope trigger &lt;channel&gt; &lt;level&gt; [slope=&lt;RISE|FALL&gt;] [mode=&lt;AUTO|NORM|SINGLE&gt;]
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>scope trigger &lt;channel&gt; &lt;level&gt; [slope=&lt;RISE|FALL&gt;] [mode=&lt;AUTO|NORM|SINGLE&gt;]
 </code></pre></div>
 <table>
 <thead>
@@ -2212,15 +2302,15 @@
 </tr>
 </tbody>
 </table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>scope trigger 1 0.0                           # ch1, 0 V threshold, rising edge
-<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>scope trigger 1 1.5 slope=FALL                # ch1, 1.5 V, falling edge
-<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>scope trigger 1 0.0 slope=RISE mode=NORM      # ch1, normal mode
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>scope trigger 1 0.0                           # ch1, 0 V threshold, rising edge
+<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a>scope trigger 1 1.5 slope=FALL                # ch1, 1.5 V, falling edge
+<a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a>scope trigger 1 0.0 slope=RISE mode=NORM      # ch1, normal mode
 </code></pre></div>
 <hr />
 <h2 id="measurements">Measurements<a class="headerlink" href="#measurements" title="Permanent link">&para;</a></h2>
 <h3 id="scope-meas">scope meas<a class="headerlink" href="#scope-meas" title="Permanent link">&para;</a></h3>
 <p>Take and print a single measurement.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>scope meas &lt;1-4|all&gt; &lt;type&gt;
+<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>scope meas &lt;1-4|all&gt; &lt;type&gt;
 </code></pre></div>
 <table>
 <thead>
@@ -2246,7 +2336,7 @@
 </tr>
 </tbody>
 </table>
-<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Rigol DHO804</label><label for="__tabbed_1_2">Tektronix MSO2024</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="2:2"><input checked="checked" id="__tabbed_2_1" name="__tabbed_2" type="radio" /><input id="__tabbed_2_2" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="__tabbed_2_1">Rigol DHO804</label><label for="__tabbed_2_2">Tektronix MSO2024</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <p>All types are case-insensitive. Aliases are separated by <code>/</code>.</p>
@@ -2452,10 +2542,10 @@
 </tr>
 </tbody>
 </table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>scope meas 1 FREQUENCY    # print channel 1 frequency
-<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>scope meas 1 PK2PK        # print channel 1 peak-to-peak
-<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a>scope meas 2 RISE         # print channel 2 rise time
-<a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a>scope meas 3 OVERSHOOT    # print channel 3 overshoot
+<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a>scope meas 1 FREQUENCY    # print channel 1 frequency
+<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a>scope meas 1 PK2PK        # print channel 1 peak-to-peak
+<a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a>scope meas 2 RISE         # print channel 2 rise time
+<a id="__codelineno-22-4" name="__codelineno-22-4" href="#__codelineno-22-4"></a>scope meas 3 OVERSHOOT    # print channel 3 overshoot
 </code></pre></div>
 </div>
 <div class="tabbed-block">
@@ -2560,9 +2650,9 @@
 </tr>
 </tbody>
 </table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>scope meas 1 FREQUENCY    # print channel 1 frequency
-<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a>scope meas 1 PK2PK        # print channel 1 peak-to-peak
-<a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a>scope meas 2 RISE         # print channel 2 rise time
+<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a>scope meas 1 FREQUENCY    # print channel 1 frequency
+<a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a>scope meas 1 PK2PK        # print channel 1 peak-to-peak
+<a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a>scope meas 2 RISE         # print channel 2 rise time
 </code></pre></div>
 </div>
 </div>
@@ -2573,7 +2663,7 @@
 </div>
 <h3 id="scope-meas_setup">scope meas_setup<a class="headerlink" href="#scope-meas_setup" title="Permanent link">&para;</a></h3>
 <p>Configure a measurement slot before capturing so the scope computes the value when the trigger fires.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>scope meas_setup &lt;1-4|all&gt; &lt;type&gt;
+<div class="highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a>scope meas_setup &lt;1-4|all&gt; &lt;type&gt;
 </code></pre></div>
 <table>
 <thead>
@@ -2599,15 +2689,15 @@
 </tr>
 </tbody>
 </table>
-<div class="tabbed-set tabbed-alternate" data-tabs="2:2"><input checked="checked" id="__tabbed_2_1" name="__tabbed_2" type="radio" /><input id="__tabbed_2_2" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="__tabbed_2_1">Rigol DHO804</label><label for="__tabbed_2_2">Tektronix MSO2024</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="3:2"><input checked="checked" id="__tabbed_3_1" name="__tabbed_3" type="radio" /><input id="__tabbed_3_2" name="__tabbed_3" type="radio" /><div class="tabbed-labels"><label for="__tabbed_3_1">Rigol DHO804</label><label for="__tabbed_3_2">Tektronix MSO2024</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a>scope meas_setup 3 RISE     # configure CH3 rise time slot
-<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a>scope meas_setup 4 RISE     # configure CH4 rise time slot
-<a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a>scope single
-<a id="__codelineno-22-4" name="__codelineno-22-4" href="#__codelineno-22-4"></a>scope wait_stop timeout=10
-<a id="__codelineno-22-5" name="__codelineno-22-5" href="#__codelineno-22-5"></a>scope meas_force            # force DSP computation
-<a id="__codelineno-22-6" name="__codelineno-22-6" href="#__codelineno-22-6"></a>scope meas_store 3 RISE ch3_rise unit=s
+<div class="highlight"><pre><span></span><code><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a>scope meas_setup 3 RISE     # configure CH3 rise time slot
+<a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a>scope meas_setup 4 RISE     # configure CH4 rise time slot
+<a id="__codelineno-25-3" name="__codelineno-25-3" href="#__codelineno-25-3"></a>scope single
+<a id="__codelineno-25-4" name="__codelineno-25-4" href="#__codelineno-25-4"></a>scope wait_stop timeout=10
+<a id="__codelineno-25-5" name="__codelineno-25-5" href="#__codelineno-25-5"></a>scope meas_force            # force DSP computation
+<a id="__codelineno-25-6" name="__codelineno-25-6" href="#__codelineno-25-6"></a>scope meas_store 3 RISE ch3_rise unit=s
 </code></pre></div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
@@ -2621,10 +2711,10 @@
 </div>
 <h3 id="scope-meas_force">scope meas_force<a class="headerlink" href="#scope-meas_force" title="Permanent link">&para;</a></h3>
 <p>Force the scope's measurement DSP to compute all configured slots.</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="3:2"><input checked="checked" id="__tabbed_3_1" name="__tabbed_3" type="radio" /><input id="__tabbed_3_2" name="__tabbed_3" type="radio" /><div class="tabbed-labels"><label for="__tabbed_3_1">Rigol DHO804</label><label for="__tabbed_3_2">Tektronix MSO2024</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="4:2"><input checked="checked" id="__tabbed_4_1" name="__tabbed_4" type="radio" /><input id="__tabbed_4_2" name="__tabbed_4" type="radio" /><div class="tabbed-labels"><label for="__tabbed_4_1">Rigol DHO804</label><label for="__tabbed_4_2">Tektronix MSO2024</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a>scope meas_force
+<div class="highlight"><pre><span></span><code><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a>scope meas_force
 </code></pre></div>
 <p>The DHO804 computes measurements lazily — values are only finalized when the display refreshes. <code>scope meas_force</code> triggers an internal display refresh (no file written) so that <code>scope meas_store</code> returns valid values immediately after <code>scope wait_stop</code>.</p>
 <div class="admonition note">
@@ -2639,16 +2729,16 @@
 </div>
 <h3 id="scope-meas_clear">scope meas_clear<a class="headerlink" href="#scope-meas_clear" title="Permanent link">&para;</a></h3>
 <p>Remove all measurement items from the on-screen results panel.</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="4:2"><input checked="checked" id="__tabbed_4_1" name="__tabbed_4" type="radio" /><input id="__tabbed_4_2" name="__tabbed_4" type="radio" /><div class="tabbed-labels"><label for="__tabbed_4_1">Rigol DHO804</label><label for="__tabbed_4_2">Tektronix MSO2024</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="5:2"><input checked="checked" id="__tabbed_5_1" name="__tabbed_5" type="radio" /><input id="__tabbed_5_2" name="__tabbed_5" type="radio" /><div class="tabbed-labels"><label for="__tabbed_5_1">Rigol DHO804</label><label for="__tabbed_5_2">Tektronix MSO2024</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a>scope meas_clear
+<div class="highlight"><pre><span></span><code><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a>scope meas_clear
 </code></pre></div>
 <p>Sends <code>:MEASure:CLEar</code> to hide the measurement sidebar. Use before <code>scope screenshot</code> to capture a clean image without the measurement overlay.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a>scope meas_force
-<a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a>scope meas_store 3 RISE ch3_rise unit=s
-<a id="__codelineno-25-3" name="__codelineno-25-3" href="#__codelineno-25-3"></a>scope meas_clear              # close the panel
-<a id="__codelineno-25-4" name="__codelineno-25-4" href="#__codelineno-25-4"></a>scope screenshot cap.png      # clean screenshot
+<div class="highlight"><pre><span></span><code><a id="__codelineno-28-1" name="__codelineno-28-1" href="#__codelineno-28-1"></a>scope meas_force
+<a id="__codelineno-28-2" name="__codelineno-28-2" href="#__codelineno-28-2"></a>scope meas_store 3 RISE ch3_rise unit=s
+<a id="__codelineno-28-3" name="__codelineno-28-3" href="#__codelineno-28-3"></a>scope meas_clear              # close the panel
+<a id="__codelineno-28-4" name="__codelineno-28-4" href="#__codelineno-28-4"></a>scope screenshot cap.png      # clean screenshot
 </code></pre></div>
 </div>
 <div class="tabbed-block">
@@ -2658,7 +2748,7 @@
 </div>
 <h3 id="scope-meas_store">scope meas_store<a class="headerlink" href="#scope-meas_store" title="Permanent link">&para;</a></h3>
 <p>Measure and record to the measurement log.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a>scope meas_store &lt;1-4|all&gt; &lt;type&gt; &lt;label&gt; [unit=&lt;str&gt;]
+<div class="highlight"><pre><span></span><code><a id="__codelineno-29-1" name="__codelineno-29-1" href="#__codelineno-29-1"></a>scope meas_store &lt;1-4|all&gt; &lt;type&gt; &lt;label&gt; [unit=&lt;str&gt;]
 </code></pre></div>
 <table>
 <thead>
@@ -2696,29 +2786,29 @@
 </tr>
 </tbody>
 </table>
-<div class="tabbed-set tabbed-alternate" data-tabs="5:2"><input checked="checked" id="__tabbed_5_1" name="__tabbed_5" type="radio" /><input id="__tabbed_5_2" name="__tabbed_5" type="radio" /><div class="tabbed-labels"><label for="__tabbed_5_1">Rigol DHO804</label><label for="__tabbed_5_2">Tektronix MSO2024</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="6:2"><input checked="checked" id="__tabbed_6_1" name="__tabbed_6" type="radio" /><input id="__tabbed_6_2" name="__tabbed_6" type="radio" /><div class="tabbed-labels"><label for="__tabbed_6_1">Rigol DHO804</label><label for="__tabbed_6_2">Tektronix MSO2024</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a>scope meas_store 1 FREQUENCY meas_freq unit=Hz
-<a id="__codelineno-27-2" name="__codelineno-27-2" href="#__codelineno-27-2"></a>scope meas_store 1 PK2PK     meas_pk2pk unit=V
-<a id="__codelineno-27-3" name="__codelineno-27-3" href="#__codelineno-27-3"></a>scope meas_store 3 RISE      ch3_rise unit=s
+<div class="highlight"><pre><span></span><code><a id="__codelineno-30-1" name="__codelineno-30-1" href="#__codelineno-30-1"></a>scope meas_store 1 FREQUENCY meas_freq unit=Hz
+<a id="__codelineno-30-2" name="__codelineno-30-2" href="#__codelineno-30-2"></a>scope meas_store 1 PK2PK     meas_pk2pk unit=V
+<a id="__codelineno-30-3" name="__codelineno-30-3" href="#__codelineno-30-3"></a>scope meas_store 3 RISE      ch3_rise unit=s
 </code></pre></div>
 </div>
 <div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><a id="__codelineno-28-1" name="__codelineno-28-1" href="#__codelineno-28-1"></a>scope meas_store 1 FREQUENCY meas_freq unit=Hz
-<a id="__codelineno-28-2" name="__codelineno-28-2" href="#__codelineno-28-2"></a>scope meas_store 1 PK2PK     meas_pk2pk unit=V
-<a id="__codelineno-28-3" name="__codelineno-28-3" href="#__codelineno-28-3"></a>scope meas_store 2 RISE      ch2_rise unit=s
+<div class="highlight"><pre><span></span><code><a id="__codelineno-31-1" name="__codelineno-31-1" href="#__codelineno-31-1"></a>scope meas_store 1 FREQUENCY meas_freq unit=Hz
+<a id="__codelineno-31-2" name="__codelineno-31-2" href="#__codelineno-31-2"></a>scope meas_store 1 PK2PK     meas_pk2pk unit=V
+<a id="__codelineno-31-3" name="__codelineno-31-3" href="#__codelineno-31-3"></a>scope meas_store 2 RISE      ch2_rise unit=s
 </code></pre></div>
 </div>
 </div>
 </div>
 <p>Then use in calculations:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-29-1" name="__codelineno-29-1" href="#__codelineno-29-1"></a>calc crest_factor m[&quot;meas_pk2pk&quot;] / m[&quot;meas_rms&quot;]   # compute crest factor
-<a id="__codelineno-29-2" name="__codelineno-29-2" href="#__codelineno-29-2"></a>log print
+<div class="highlight"><pre><span></span><code><a id="__codelineno-32-1" name="__codelineno-32-1" href="#__codelineno-32-1"></a>calc crest_factor m[&quot;meas_pk2pk&quot;] / m[&quot;meas_rms&quot;]   # compute crest factor
+<a id="__codelineno-32-2" name="__codelineno-32-2" href="#__codelineno-32-2"></a>log print
 </code></pre></div>
 <h3 id="scope-meas_delay">scope meas_delay<a class="headerlink" href="#scope-meas_delay" title="Permanent link">&para;</a></h3>
 <p>Measure the time delay between two channels.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-30-1" name="__codelineno-30-1" href="#__codelineno-30-1"></a>scope meas_delay &lt;ch1&gt; &lt;ch2&gt; [edge1=RISE] [edge2=RISE]
+<div class="highlight"><pre><span></span><code><a id="__codelineno-33-1" name="__codelineno-33-1" href="#__codelineno-33-1"></a>scope meas_delay &lt;ch1&gt; &lt;ch2&gt; [edge1=RISE] [edge2=RISE]
 </code></pre></div>
 <table>
 <thead>
@@ -2744,23 +2834,23 @@
 </tr>
 </tbody>
 </table>
-<div class="tabbed-set tabbed-alternate" data-tabs="6:2"><input checked="checked" id="__tabbed_6_1" name="__tabbed_6" type="radio" /><input id="__tabbed_6_2" name="__tabbed_6" type="radio" /><div class="tabbed-labels"><label for="__tabbed_6_1">Rigol DHO804</label><label for="__tabbed_6_2">Tektronix MSO2024</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="7:2"><input checked="checked" id="__tabbed_7_1" name="__tabbed_7" type="radio" /><input id="__tabbed_7_2" name="__tabbed_7" type="radio" /><div class="tabbed-labels"><label for="__tabbed_7_1">Rigol DHO804</label><label for="__tabbed_7_2">Tektronix MSO2024</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><a id="__codelineno-31-1" name="__codelineno-31-1" href="#__codelineno-31-1"></a>scope meas_delay 1 2              # delay from ch1 rising to ch2 rising
-<a id="__codelineno-31-2" name="__codelineno-31-2" href="#__codelineno-31-2"></a>scope meas_delay 1 2 edge2=FALL  # delay from ch1 rising to ch2 falling
+<div class="highlight"><pre><span></span><code><a id="__codelineno-34-1" name="__codelineno-34-1" href="#__codelineno-34-1"></a>scope meas_delay 1 2              # delay from ch1 rising to ch2 rising
+<a id="__codelineno-34-2" name="__codelineno-34-2" href="#__codelineno-34-2"></a>scope meas_delay 1 2 edge2=FALL  # delay from ch1 rising to ch2 falling
 </code></pre></div>
 </div>
 <div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><a id="__codelineno-32-1" name="__codelineno-32-1" href="#__codelineno-32-1"></a>scope meas_delay 1 2              # delay from ch1 rising to ch2 rising
-<a id="__codelineno-32-2" name="__codelineno-32-2" href="#__codelineno-32-2"></a>scope meas_delay 1 2 edge2=FALL  # delay from ch1 rising to ch2 falling
+<div class="highlight"><pre><span></span><code><a id="__codelineno-35-1" name="__codelineno-35-1" href="#__codelineno-35-1"></a>scope meas_delay 1 2              # delay from ch1 rising to ch2 rising
+<a id="__codelineno-35-2" name="__codelineno-35-2" href="#__codelineno-35-2"></a>scope meas_delay 1 2 edge2=FALL  # delay from ch1 rising to ch2 falling
 </code></pre></div>
 </div>
 </div>
 </div>
 <h3 id="scope-meas_delay_store">scope meas_delay_store<a class="headerlink" href="#scope-meas_delay_store" title="Permanent link">&para;</a></h3>
 <p>Measure delay and record to the log.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-33-1" name="__codelineno-33-1" href="#__codelineno-33-1"></a>scope meas_delay_store &lt;ch1&gt; &lt;ch2&gt; &lt;label&gt; [edge1=RISE] [edge2=RISE] [direction=FORWARDS] [unit=]
+<div class="highlight"><pre><span></span><code><a id="__codelineno-36-1" name="__codelineno-36-1" href="#__codelineno-36-1"></a>scope meas_delay_store &lt;ch1&gt; &lt;ch2&gt; &lt;label&gt; [edge1=RISE] [edge2=RISE] [direction=FORWARDS] [unit=]
 </code></pre></div>
 <table>
 <thead>
@@ -2804,14 +2894,14 @@
 </tr>
 </tbody>
 </table>
-<div class="tabbed-set tabbed-alternate" data-tabs="7:2"><input checked="checked" id="__tabbed_7_1" name="__tabbed_7" type="radio" /><input id="__tabbed_7_2" name="__tabbed_7" type="radio" /><div class="tabbed-labels"><label for="__tabbed_7_1">Rigol DHO804</label><label for="__tabbed_7_2">Tektronix MSO2024</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="8:2"><input checked="checked" id="__tabbed_8_1" name="__tabbed_8" type="radio" /><input id="__tabbed_8_2" name="__tabbed_8" type="radio" /><div class="tabbed-labels"><label for="__tabbed_8_1">Rigol DHO804</label><label for="__tabbed_8_2">Tektronix MSO2024</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><a id="__codelineno-34-1" name="__codelineno-34-1" href="#__codelineno-34-1"></a>scope meas_delay_store 1 2 prop_delay unit=s
+<div class="highlight"><pre><span></span><code><a id="__codelineno-37-1" name="__codelineno-37-1" href="#__codelineno-37-1"></a>scope meas_delay_store 1 2 prop_delay unit=s
 </code></pre></div>
 </div>
 <div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><a id="__codelineno-35-1" name="__codelineno-35-1" href="#__codelineno-35-1"></a>scope meas_delay_store 1 2 prop_delay unit=s
+<div class="highlight"><pre><span></span><code><a id="__codelineno-38-1" name="__codelineno-38-1" href="#__codelineno-38-1"></a>scope meas_delay_store 1 2 prop_delay unit=s
 </code></pre></div>
 </div>
 </div>
@@ -2820,7 +2910,7 @@
 <h2 id="waveform-capture">Waveform Capture<a class="headerlink" href="#waveform-capture" title="Permanent link">&para;</a></h2>
 <h3 id="scope-save">scope save<a class="headerlink" href="#scope-save" title="Permanent link">&para;</a></h3>
 <p>Download waveform data and save to a CSV file.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-36-1" name="__codelineno-36-1" href="#__codelineno-36-1"></a>scope save &lt;channels&gt; &lt;file.csv&gt; [record=&lt;s&gt;] [time=&lt;s&gt;] [points=&lt;n&gt;]
+<div class="highlight"><pre><span></span><code><a id="__codelineno-39-1" name="__codelineno-39-1" href="#__codelineno-39-1"></a>scope save &lt;channels&gt; &lt;file.csv&gt; [record=&lt;s&gt;] [time=&lt;s&gt;] [points=&lt;n&gt;]
 </code></pre></div>
 <table>
 <thead>
@@ -2858,37 +2948,116 @@
 </tr>
 </tbody>
 </table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-37-1" name="__codelineno-37-1" href="#__codelineno-37-1"></a>scope save 1 output.csv              # save channel 1 waveform
-<a id="__codelineno-37-2" name="__codelineno-37-2" href="#__codelineno-37-2"></a>scope save 1,2 both.csv             # save channels 1 and 2
-<a id="__codelineno-37-3" name="__codelineno-37-3" href="#__codelineno-37-3"></a>scope save 1 data.csv record=2.0    # record for 2 s then save
+<div class="highlight"><pre><span></span><code><a id="__codelineno-40-1" name="__codelineno-40-1" href="#__codelineno-40-1"></a>scope save 1 output.csv              # save channel 1 waveform
+<a id="__codelineno-40-2" name="__codelineno-40-2" href="#__codelineno-40-2"></a>scope save 1,2 both.csv             # save channels 1 and 2
+<a id="__codelineno-40-3" name="__codelineno-40-3" href="#__codelineno-40-3"></a>scope save 1 data.csv record=2.0    # record for 2 s then save
 </code></pre></div>
 <hr />
 <h2 id="built-in-tools">Built-in Tools<a class="headerlink" href="#built-in-tools" title="Permanent link">&para;</a></h2>
 <p>These commands access built-in scope tools where available.</p>
 <h3 id="scope-awg">scope awg<a class="headerlink" href="#scope-awg" title="Permanent link">&para;</a></h3>
 <p>Control the built-in waveform generator (DHO914S and DHO924S only).</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-38-1" name="__codelineno-38-1" href="#__codelineno-38-1"></a>scope awg              # show available subcommands
-<a id="__codelineno-38-2" name="__codelineno-38-2" href="#__codelineno-38-2"></a>scope awg on           # enable AWG output
-<a id="__codelineno-38-3" name="__codelineno-38-3" href="#__codelineno-38-3"></a>scope awg off          # disable AWG output
-<a id="__codelineno-38-4" name="__codelineno-38-4" href="#__codelineno-38-4"></a>scope awg sine 1000 2.0 0    # configure: sine, 1 kHz, 2 Vpp, 0 V offset
+<div class="highlight"><pre><span></span><code><a id="__codelineno-41-1" name="__codelineno-41-1" href="#__codelineno-41-1"></a>scope awg chan &lt;on|off&gt;                    # enable/disable AWG output
+<a id="__codelineno-41-2" name="__codelineno-41-2" href="#__codelineno-41-2"></a>scope awg set &lt;func&gt; &lt;freq&gt; &lt;amp&gt; [offset=&lt;V&gt;]  # quick configure
+<a id="__codelineno-41-3" name="__codelineno-41-3" href="#__codelineno-41-3"></a>scope awg func &lt;SINusoid|SQUare|RAMP|DC|NOISe&gt;  # set waveform type
+<a id="__codelineno-41-4" name="__codelineno-41-4" href="#__codelineno-41-4"></a>scope awg freq &lt;Hz&gt;                        # set frequency
+<a id="__codelineno-41-5" name="__codelineno-41-5" href="#__codelineno-41-5"></a>scope awg amp &lt;Vpp&gt;                        # set amplitude
+<a id="__codelineno-41-6" name="__codelineno-41-6" href="#__codelineno-41-6"></a>scope awg offset &lt;V&gt;                       # set DC offset
+<a id="__codelineno-41-7" name="__codelineno-41-7" href="#__codelineno-41-7"></a>scope awg phase &lt;deg&gt;                      # set phase (0–360)
+<a id="__codelineno-41-8" name="__codelineno-41-8" href="#__codelineno-41-8"></a>scope awg duty &lt;%&gt;                         # set square duty cycle
+<a id="__codelineno-41-9" name="__codelineno-41-9" href="#__codelineno-41-9"></a>scope awg sym &lt;%&gt;                          # set ramp symmetry
+<a id="__codelineno-41-10" name="__codelineno-41-10" href="#__codelineno-41-10"></a>scope awg mod &lt;on|off&gt;                     # enable/disable modulation
+<a id="__codelineno-41-11" name="__codelineno-41-11" href="#__codelineno-41-11"></a>scope awg mod_type &lt;AM|FM|PM&gt;              # set modulation type
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Subcommand</th>
+<th>Parameters</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>chan</code></td>
+<td><code>on\|off</code></td>
+<td>Enable or disable AWG output</td>
+</tr>
+<tr>
+<td><code>set</code></td>
+<td><code>func freq amp [offset=]</code></td>
+<td>Configure waveform in one step</td>
+</tr>
+<tr>
+<td><code>func</code></td>
+<td>waveform type</td>
+<td>Set waveform function</td>
+</tr>
+<tr>
+<td><code>freq</code></td>
+<td>float (Hz)</td>
+<td>Set frequency</td>
+</tr>
+<tr>
+<td><code>amp</code></td>
+<td>float (Vpp)</td>
+<td>Set peak-to-peak amplitude</td>
+</tr>
+<tr>
+<td><code>offset</code></td>
+<td>float (V)</td>
+<td>Set DC offset</td>
+</tr>
+<tr>
+<td><code>phase</code></td>
+<td>0–360</td>
+<td>Set phase offset</td>
+</tr>
+<tr>
+<td><code>duty</code></td>
+<td>0–100</td>
+<td>Set square wave duty cycle</td>
+</tr>
+<tr>
+<td><code>sym</code></td>
+<td>0–100</td>
+<td>Set ramp symmetry</td>
+</tr>
+<tr>
+<td><code>mod</code></td>
+<td><code>on\|off</code></td>
+<td>Enable/disable modulation</td>
+</tr>
+<tr>
+<td><code>mod_type</code></td>
+<td><code>AM</code>, <code>FM</code>, <code>PM</code></td>
+<td>Set modulation type</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-42-1" name="__codelineno-42-1" href="#__codelineno-42-1"></a>scope awg set SINusoid 1000 2.0             # 1 kHz sine, 2 Vpp
+<a id="__codelineno-42-2" name="__codelineno-42-2" href="#__codelineno-42-2"></a>scope awg set SQUare 500 3.3 offset=1.65   # 500 Hz square with offset
+<a id="__codelineno-42-3" name="__codelineno-42-3" href="#__codelineno-42-3"></a>scope awg mod on
+<a id="__codelineno-42-4" name="__codelineno-42-4" href="#__codelineno-42-4"></a>scope awg mod_type AM
+<a id="__codelineno-42-5" name="__codelineno-42-5" href="#__codelineno-42-5"></a>scope awg chan off
 </code></pre></div>
 <h3 id="scope-counter">scope counter<a class="headerlink" href="#scope-counter" title="Permanent link">&para;</a></h3>
 <p>Control the built-in frequency counter.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-39-1" name="__codelineno-39-1" href="#__codelineno-39-1"></a>scope counter on       # enable counter
-<a id="__codelineno-39-2" name="__codelineno-39-2" href="#__codelineno-39-2"></a>scope counter off      # disable counter
-<a id="__codelineno-39-3" name="__codelineno-39-3" href="#__codelineno-39-3"></a>scope counter read     # read current frequency
-<a id="__codelineno-39-4" name="__codelineno-39-4" href="#__codelineno-39-4"></a>scope counter source 1 # set counter source to channel 1
+<div class="highlight"><pre><span></span><code><a id="__codelineno-43-1" name="__codelineno-43-1" href="#__codelineno-43-1"></a>scope counter on       # enable counter
+<a id="__codelineno-43-2" name="__codelineno-43-2" href="#__codelineno-43-2"></a>scope counter off      # disable counter
+<a id="__codelineno-43-3" name="__codelineno-43-3" href="#__codelineno-43-3"></a>scope counter read     # read current frequency
+<a id="__codelineno-43-4" name="__codelineno-43-4" href="#__codelineno-43-4"></a>scope counter source 1 # set counter source to channel 1
 </code></pre></div>
 <h3 id="scope-dvm">scope dvm<a class="headerlink" href="#scope-dvm" title="Permanent link">&para;</a></h3>
 <p>Control the built-in digital voltmeter.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-40-1" name="__codelineno-40-1" href="#__codelineno-40-1"></a>scope dvm on           # enable DVM
-<a id="__codelineno-40-2" name="__codelineno-40-2" href="#__codelineno-40-2"></a>scope dvm off          # disable DVM
-<a id="__codelineno-40-3" name="__codelineno-40-3" href="#__codelineno-40-3"></a>scope dvm read         # read current DVM value
-<a id="__codelineno-40-4" name="__codelineno-40-4" href="#__codelineno-40-4"></a>scope dvm source 1     # set DVM source to channel 1
+<div class="highlight"><pre><span></span><code><a id="__codelineno-44-1" name="__codelineno-44-1" href="#__codelineno-44-1"></a>scope dvm on           # enable DVM
+<a id="__codelineno-44-2" name="__codelineno-44-2" href="#__codelineno-44-2"></a>scope dvm off          # disable DVM
+<a id="__codelineno-44-3" name="__codelineno-44-3" href="#__codelineno-44-3"></a>scope dvm read         # read current DVM value
+<a id="__codelineno-44-4" name="__codelineno-44-4" href="#__codelineno-44-4"></a>scope dvm source 1     # set DVM source to channel 1
 </code></pre></div>
 <hr />
 <h2 id="scope-state">scope state<a class="headerlink" href="#scope-state" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-41-1" name="__codelineno-41-1" href="#__codelineno-41-1"></a>scope state &lt;on|off|safe|reset&gt;
+<div class="highlight"><pre><span></span><code><a id="__codelineno-45-1" name="__codelineno-45-1" href="#__codelineno-45-1"></a>scope state &lt;on|off|safe|reset&gt;
 </code></pre></div>
 <table>
 <thead>
@@ -2921,12 +3090,12 @@
 <p>The following commands are available on the Rigol DHO804 and similar Rigol oscilloscopes.</p>
 <h3 id="scope-screenshot">scope screenshot<a class="headerlink" href="#scope-screenshot" title="Permanent link">&para;</a></h3>
 <p>Capture the scope display and save as PNG.</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="8:2"><input checked="checked" id="__tabbed_8_1" name="__tabbed_8" type="radio" /><input id="__tabbed_8_2" name="__tabbed_8" type="radio" /><div class="tabbed-labels"><label for="__tabbed_8_1">Rigol DHO804</label><label for="__tabbed_8_2">Tektronix MSO2024</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="9:2"><input checked="checked" id="__tabbed_9_1" name="__tabbed_9" type="radio" /><input id="__tabbed_9_2" name="__tabbed_9" type="radio" /><div class="tabbed-labels"><label for="__tabbed_9_1">Rigol DHO804</label><label for="__tabbed_9_2">Tektronix MSO2024</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><a id="__codelineno-42-1" name="__codelineno-42-1" href="#__codelineno-42-1"></a>scope screenshot                    # auto-named: screenshot_HHMMSS.png
-<a id="__codelineno-42-2" name="__codelineno-42-2" href="#__codelineno-42-2"></a>scope screenshot capture.png        # save as capture.png in data dir
-<a id="__codelineno-42-3" name="__codelineno-42-3" href="#__codelineno-42-3"></a>scope screenshot /path/to/file.png  # save to absolute path
+<div class="highlight"><pre><span></span><code><a id="__codelineno-46-1" name="__codelineno-46-1" href="#__codelineno-46-1"></a>scope screenshot                    # auto-named: screenshot_HHMMSS.png
+<a id="__codelineno-46-2" name="__codelineno-46-2" href="#__codelineno-46-2"></a>scope screenshot capture.png        # save as capture.png in data dir
+<a id="__codelineno-46-3" name="__codelineno-46-3" href="#__codelineno-46-3"></a>scope screenshot /path/to/file.png  # save to absolute path
 </code></pre></div>
 <p>Screenshots are saved to <code>~/Documents/scpi-instrument-toolkit/data/</code> by default.</p>
 </div>
@@ -2936,12 +3105,12 @@
 </div>
 </div>
 <h3 id="scope-label-invert-bwlimit">scope label / invert / bwlimit<a class="headerlink" href="#scope-label-invert-bwlimit" title="Permanent link">&para;</a></h3>
-<div class="tabbed-set tabbed-alternate" data-tabs="9:2"><input checked="checked" id="__tabbed_9_1" name="__tabbed_9" type="radio" /><input id="__tabbed_9_2" name="__tabbed_9" type="radio" /><div class="tabbed-labels"><label for="__tabbed_9_1">Rigol DHO804</label><label for="__tabbed_9_2">Tektronix MSO2024</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="10:2"><input checked="checked" id="__tabbed_10_1" name="__tabbed_10" type="radio" /><input id="__tabbed_10_2" name="__tabbed_10" type="radio" /><div class="tabbed-labels"><label for="__tabbed_10_1">Rigol DHO804</label><label for="__tabbed_10_2">Tektronix MSO2024</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><a id="__codelineno-43-1" name="__codelineno-43-1" href="#__codelineno-43-1"></a>scope label &lt;1-4&gt; &lt;text&gt;        # set channel label
-<a id="__codelineno-43-2" name="__codelineno-43-2" href="#__codelineno-43-2"></a>scope invert &lt;1-4&gt; &lt;on|off&gt;     # invert channel display
-<a id="__codelineno-43-3" name="__codelineno-43-3" href="#__codelineno-43-3"></a>scope bwlimit &lt;1-4&gt; &lt;20M|OFF&gt;   # set bandwidth limit
+<div class="highlight"><pre><span></span><code><a id="__codelineno-47-1" name="__codelineno-47-1" href="#__codelineno-47-1"></a>scope label &lt;1-4&gt; &lt;text&gt;        # set channel label
+<a id="__codelineno-47-2" name="__codelineno-47-2" href="#__codelineno-47-2"></a>scope invert &lt;1-4&gt; &lt;on|off&gt;     # invert channel display
+<a id="__codelineno-47-3" name="__codelineno-47-3" href="#__codelineno-47-3"></a>scope bwlimit &lt;1-4&gt; &lt;20M|OFF&gt;   # set bandwidth limit
 </code></pre></div>
 <table>
 <thead>
@@ -2969,9 +3138,9 @@
 </tr>
 </tbody>
 </table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-44-1" name="__codelineno-44-1" href="#__codelineno-44-1"></a>scope label 1 VCC
-<a id="__codelineno-44-2" name="__codelineno-44-2" href="#__codelineno-44-2"></a>scope invert 2 on
-<a id="__codelineno-44-3" name="__codelineno-44-3" href="#__codelineno-44-3"></a>scope bwlimit 1 20M
+<div class="highlight"><pre><span></span><code><a id="__codelineno-48-1" name="__codelineno-48-1" href="#__codelineno-48-1"></a>scope label 1 VCC
+<a id="__codelineno-48-2" name="__codelineno-48-2" href="#__codelineno-48-2"></a>scope invert 2 on
+<a id="__codelineno-48-3" name="__codelineno-48-3" href="#__codelineno-48-3"></a>scope bwlimit 1 20M
 </code></pre></div>
 </div>
 <div class="tabbed-block">
@@ -2981,26 +3150,26 @@
 </div>
 <h3 id="scope-force">scope force<a class="headerlink" href="#scope-force" title="Permanent link">&para;</a></h3>
 <p>Force a trigger event immediately.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-45-1" name="__codelineno-45-1" href="#__codelineno-45-1"></a>scope force
+<div class="highlight"><pre><span></span><code><a id="__codelineno-49-1" name="__codelineno-49-1" href="#__codelineno-49-1"></a>scope force
 </code></pre></div>
 <p>Useful when the trigger is armed but not triggering. Works on all scope models.</p>
 <h3 id="scope-reset">scope reset<a class="headerlink" href="#scope-reset" title="Permanent link">&para;</a></h3>
 <p>Reset the scope to factory defaults.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-46-1" name="__codelineno-46-1" href="#__codelineno-46-1"></a>scope reset
+<div class="highlight"><pre><span></span><code><a id="__codelineno-50-1" name="__codelineno-50-1" href="#__codelineno-50-1"></a>scope reset
 </code></pre></div>
 <p>Sends <code>*RST</code> to restore factory defaults. Works on all scope models.</p>
 <hr />
 <h3 id="scope-display">scope display<a class="headerlink" href="#scope-display" title="Permanent link">&para;</a></h3>
-<div class="tabbed-set tabbed-alternate" data-tabs="10:2"><input checked="checked" id="__tabbed_10_1" name="__tabbed_10" type="radio" /><input id="__tabbed_10_2" name="__tabbed_10" type="radio" /><div class="tabbed-labels"><label for="__tabbed_10_1">Rigol DHO804</label><label for="__tabbed_10_2">Tektronix MSO2024</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="11:2"><input checked="checked" id="__tabbed_11_1" name="__tabbed_11" type="radio" /><input id="__tabbed_11_2" name="__tabbed_11" type="radio" /><div class="tabbed-labels"><label for="__tabbed_11_1">Rigol DHO804</label><label for="__tabbed_11_2">Tektronix MSO2024</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <p>Control display settings.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-47-1" name="__codelineno-47-1" href="#__codelineno-47-1"></a>scope display clear                  # clear waveform display
-<a id="__codelineno-47-2" name="__codelineno-47-2" href="#__codelineno-47-2"></a>scope display brightness &lt;0-100&gt;     # set waveform brightness
-<a id="__codelineno-47-3" name="__codelineno-47-3" href="#__codelineno-47-3"></a>scope display grid &lt;FULL|HALF|NONE&gt;  # set grid style
-<a id="__codelineno-47-4" name="__codelineno-47-4" href="#__codelineno-47-4"></a>scope display gridbright &lt;0-100&gt;     # set grid brightness
-<a id="__codelineno-47-5" name="__codelineno-47-5" href="#__codelineno-47-5"></a>scope display persist &lt;MIN|1|5|10|INF|OFF&gt;  # set persistence time
-<a id="__codelineno-47-6" name="__codelineno-47-6" href="#__codelineno-47-6"></a>scope display type &lt;VECTORS|DOTS&gt;    # set display type
+<div class="highlight"><pre><span></span><code><a id="__codelineno-51-1" name="__codelineno-51-1" href="#__codelineno-51-1"></a>scope display clear                  # clear waveform display
+<a id="__codelineno-51-2" name="__codelineno-51-2" href="#__codelineno-51-2"></a>scope display brightness &lt;0-100&gt;     # set waveform brightness
+<a id="__codelineno-51-3" name="__codelineno-51-3" href="#__codelineno-51-3"></a>scope display grid &lt;FULL|HALF|NONE&gt;  # set grid style
+<a id="__codelineno-51-4" name="__codelineno-51-4" href="#__codelineno-51-4"></a>scope display gridbright &lt;0-100&gt;     # set grid brightness
+<a id="__codelineno-51-5" name="__codelineno-51-5" href="#__codelineno-51-5"></a>scope display persist &lt;MIN|1|5|10|INF|OFF&gt;  # set persistence time
+<a id="__codelineno-51-6" name="__codelineno-51-6" href="#__codelineno-51-6"></a>scope display type &lt;VECTORS|DOTS&gt;    # set display type
 </code></pre></div>
 <table>
 <thead>
@@ -3051,14 +3220,14 @@
 </div>
 <hr />
 <h3 id="scope-acquire">scope acquire<a class="headerlink" href="#scope-acquire" title="Permanent link">&para;</a></h3>
-<div class="tabbed-set tabbed-alternate" data-tabs="11:2"><input checked="checked" id="__tabbed_11_1" name="__tabbed_11" type="radio" /><input id="__tabbed_11_2" name="__tabbed_11" type="radio" /><div class="tabbed-labels"><label for="__tabbed_11_1">Rigol DHO804</label><label for="__tabbed_11_2">Tektronix MSO2024</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="12:2"><input checked="checked" id="__tabbed_12_1" name="__tabbed_12" type="radio" /><input id="__tabbed_12_2" name="__tabbed_12" type="radio" /><div class="tabbed-labels"><label for="__tabbed_12_1">Rigol DHO804</label><label for="__tabbed_12_2">Tektronix MSO2024</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <p>Control acquisition settings.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-48-1" name="__codelineno-48-1" href="#__codelineno-48-1"></a>scope acquire type &lt;NORMAL|AVERAGE|PEAK|HRES&gt;  # set acquisition type
-<a id="__codelineno-48-2" name="__codelineno-48-2" href="#__codelineno-48-2"></a>scope acquire averages &lt;count&gt;                  # set number of averages
-<a id="__codelineno-48-3" name="__codelineno-48-3" href="#__codelineno-48-3"></a>scope acquire depth &lt;AUTO|1K|10K|100K|1M|...&gt;   # set memory depth
-<a id="__codelineno-48-4" name="__codelineno-48-4" href="#__codelineno-48-4"></a>scope acquire rate                              # show current sample rate
+<div class="highlight"><pre><span></span><code><a id="__codelineno-52-1" name="__codelineno-52-1" href="#__codelineno-52-1"></a>scope acquire type &lt;NORMAL|AVERAGE|PEAK|HRES&gt;  # set acquisition type
+<a id="__codelineno-52-2" name="__codelineno-52-2" href="#__codelineno-52-2"></a>scope acquire averages &lt;count&gt;                  # set number of averages
+<a id="__codelineno-52-3" name="__codelineno-52-3" href="#__codelineno-52-3"></a>scope acquire depth &lt;AUTO|1K|10K|100K|1M|...&gt;   # set memory depth
+<a id="__codelineno-52-4" name="__codelineno-52-4" href="#__codelineno-52-4"></a>scope acquire rate                              # show current sample rate
 </code></pre></div>
 <table>
 <thead>
@@ -3099,14 +3268,14 @@
 </div>
 <hr />
 <h3 id="scope-cursor">scope cursor<a class="headerlink" href="#scope-cursor" title="Permanent link">&para;</a></h3>
-<div class="tabbed-set tabbed-alternate" data-tabs="12:2"><input checked="checked" id="__tabbed_12_1" name="__tabbed_12" type="radio" /><input id="__tabbed_12_2" name="__tabbed_12" type="radio" /><div class="tabbed-labels"><label for="__tabbed_12_1">Rigol DHO804</label><label for="__tabbed_12_2">Tektronix MSO2024</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="13:2"><input checked="checked" id="__tabbed_13_1" name="__tabbed_13" type="radio" /><input id="__tabbed_13_2" name="__tabbed_13" type="radio" /><div class="tabbed-labels"><label for="__tabbed_13_1">Rigol DHO804</label><label for="__tabbed_13_2">Tektronix MSO2024</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <p>Control measurement cursors.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-49-1" name="__codelineno-49-1" href="#__codelineno-49-1"></a>scope cursor off                        # disable cursors
-<a id="__codelineno-49-2" name="__codelineno-49-2" href="#__codelineno-49-2"></a>scope cursor manual &lt;X|Y|XY&gt; [source]   # enable manual cursors
-<a id="__codelineno-49-3" name="__codelineno-49-3" href="#__codelineno-49-3"></a>scope cursor set &lt;ax&gt; [ay] [bx] [by]    # set cursor positions
-<a id="__codelineno-49-4" name="__codelineno-49-4" href="#__codelineno-49-4"></a>scope cursor read                       # read cursor values
+<div class="highlight"><pre><span></span><code><a id="__codelineno-53-1" name="__codelineno-53-1" href="#__codelineno-53-1"></a>scope cursor off                        # disable cursors
+<a id="__codelineno-53-2" name="__codelineno-53-2" href="#__codelineno-53-2"></a>scope cursor manual &lt;X|Y|XY&gt; [source]   # enable manual cursors
+<a id="__codelineno-53-3" name="__codelineno-53-3" href="#__codelineno-53-3"></a>scope cursor set &lt;ax&gt; [ay] [bx] [by]    # set cursor positions
+<a id="__codelineno-53-4" name="__codelineno-53-4" href="#__codelineno-53-4"></a>scope cursor read                       # read cursor values
 </code></pre></div>
 <table>
 <thead>
@@ -3139,9 +3308,9 @@
 </tr>
 </tbody>
 </table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-50-1" name="__codelineno-50-1" href="#__codelineno-50-1"></a>scope cursor manual X CH1         # enable X cursors on channel 1
-<a id="__codelineno-50-2" name="__codelineno-50-2" href="#__codelineno-50-2"></a>scope cursor set 0.001 0.002      # set A and B cursor positions
-<a id="__codelineno-50-3" name="__codelineno-50-3" href="#__codelineno-50-3"></a>scope cursor read                 # read delta values
+<div class="highlight"><pre><span></span><code><a id="__codelineno-54-1" name="__codelineno-54-1" href="#__codelineno-54-1"></a>scope cursor manual X CH1         # enable X cursors on channel 1
+<a id="__codelineno-54-2" name="__codelineno-54-2" href="#__codelineno-54-2"></a>scope cursor set 0.001 0.002      # set A and B cursor positions
+<a id="__codelineno-54-3" name="__codelineno-54-3" href="#__codelineno-54-3"></a>scope cursor read                 # read delta values
 </code></pre></div>
 </div>
 <div class="tabbed-block">
@@ -3151,16 +3320,16 @@
 </div>
 <hr />
 <h3 id="scope-math">scope math<a class="headerlink" href="#scope-math" title="Permanent link">&para;</a></h3>
-<div class="tabbed-set tabbed-alternate" data-tabs="13:2"><input checked="checked" id="__tabbed_13_1" name="__tabbed_13" type="radio" /><input id="__tabbed_13_2" name="__tabbed_13" type="radio" /><div class="tabbed-labels"><label for="__tabbed_13_1">Rigol DHO804</label><label for="__tabbed_13_2">Tektronix MSO2024</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="14:2"><input checked="checked" id="__tabbed_14_1" name="__tabbed_14" type="radio" /><input id="__tabbed_14_2" name="__tabbed_14" type="radio" /><div class="tabbed-labels"><label for="__tabbed_14_1">Rigol DHO804</label><label for="__tabbed_14_2">Tektronix MSO2024</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <p>Control math channels (operations, FFT, filters).</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-51-1" name="__codelineno-51-1" href="#__codelineno-51-1"></a>scope math on|off [ch]                              # enable/disable math channel
-<a id="__codelineno-51-2" name="__codelineno-51-2" href="#__codelineno-51-2"></a>scope math op &lt;ch&gt; &lt;ADD|SUB|MUL|DIV&gt; &lt;src1&gt; [src2]  # arithmetic operation
-<a id="__codelineno-51-3" name="__codelineno-51-3" href="#__codelineno-51-3"></a>scope math func &lt;ch&gt; &lt;ABS|SQRT|LG|LN|EXP&gt; &lt;src&gt;    # math function
-<a id="__codelineno-51-4" name="__codelineno-51-4" href="#__codelineno-51-4"></a>scope math fft &lt;ch&gt; &lt;src&gt; [window=RECT]             # FFT analysis
-<a id="__codelineno-51-5" name="__codelineno-51-5" href="#__codelineno-51-5"></a>scope math filter &lt;ch&gt; &lt;LPAS|HPAS|BPAS|BSTOP&gt; &lt;src&gt; [upper=] [lower=]  # digital filter
-<a id="__codelineno-51-6" name="__codelineno-51-6" href="#__codelineno-51-6"></a>scope math scale &lt;ch&gt; &lt;scale&gt; [offset]              # set math channel scale
+<div class="highlight"><pre><span></span><code><a id="__codelineno-55-1" name="__codelineno-55-1" href="#__codelineno-55-1"></a>scope math on|off [ch]                              # enable/disable math channel
+<a id="__codelineno-55-2" name="__codelineno-55-2" href="#__codelineno-55-2"></a>scope math op &lt;ch&gt; &lt;ADD|SUB|MUL|DIV&gt; &lt;src1&gt; [src2]  # arithmetic operation
+<a id="__codelineno-55-3" name="__codelineno-55-3" href="#__codelineno-55-3"></a>scope math func &lt;ch&gt; &lt;ABS|SQRT|LG|LN|EXP&gt; &lt;src&gt;    # math function
+<a id="__codelineno-55-4" name="__codelineno-55-4" href="#__codelineno-55-4"></a>scope math fft &lt;ch&gt; &lt;src&gt; [window=RECT]             # FFT analysis
+<a id="__codelineno-55-5" name="__codelineno-55-5" href="#__codelineno-55-5"></a>scope math filter &lt;ch&gt; &lt;LPAS|HPAS|BPAS|BSTOP&gt; &lt;src&gt; [upper=] [lower=]  # digital filter
+<a id="__codelineno-55-6" name="__codelineno-55-6" href="#__codelineno-55-6"></a>scope math scale &lt;ch&gt; &lt;scale&gt; [offset]              # set math channel scale
 </code></pre></div>
 <table>
 <thead>
@@ -3196,10 +3365,10 @@
 </tr>
 </tbody>
 </table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-52-1" name="__codelineno-52-1" href="#__codelineno-52-1"></a>scope math on 1                        # enable math channel 1
-<a id="__codelineno-52-2" name="__codelineno-52-2" href="#__codelineno-52-2"></a>scope math op 1 SUB CH1 CH2            # Math1 = CH1 - CH2
-<a id="__codelineno-52-3" name="__codelineno-52-3" href="#__codelineno-52-3"></a>scope math fft 1 CH1 window=HANN       # FFT of CH1 with Hanning window
-<a id="__codelineno-52-4" name="__codelineno-52-4" href="#__codelineno-52-4"></a>scope math filter 1 LPAS CH1 upper=1000  # 1 kHz low-pass filter
+<div class="highlight"><pre><span></span><code><a id="__codelineno-56-1" name="__codelineno-56-1" href="#__codelineno-56-1"></a>scope math on 1                        # enable math channel 1
+<a id="__codelineno-56-2" name="__codelineno-56-2" href="#__codelineno-56-2"></a>scope math op 1 SUB CH1 CH2            # Math1 = CH1 - CH2
+<a id="__codelineno-56-3" name="__codelineno-56-3" href="#__codelineno-56-3"></a>scope math fft 1 CH1 window=HANN       # FFT of CH1 with Hanning window
+<a id="__codelineno-56-4" name="__codelineno-56-4" href="#__codelineno-56-4"></a>scope math filter 1 LPAS CH1 upper=1000  # 1 kHz low-pass filter
 </code></pre></div>
 </div>
 <div class="tabbed-block">
@@ -3209,16 +3378,16 @@
 </div>
 <hr />
 <h3 id="scope-record">scope record<a class="headerlink" href="#scope-record" title="Permanent link">&para;</a></h3>
-<div class="tabbed-set tabbed-alternate" data-tabs="14:2"><input checked="checked" id="__tabbed_14_1" name="__tabbed_14" type="radio" /><input id="__tabbed_14_2" name="__tabbed_14" type="radio" /><div class="tabbed-labels"><label for="__tabbed_14_1">Rigol DHO804</label><label for="__tabbed_14_2">Tektronix MSO2024</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="15:2"><input checked="checked" id="__tabbed_15_1" name="__tabbed_15" type="radio" /><input id="__tabbed_15_2" name="__tabbed_15" type="radio" /><div class="tabbed-labels"><label for="__tabbed_15_1">Rigol DHO804</label><label for="__tabbed_15_2">Tektronix MSO2024</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <p>Control waveform recording and playback.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-53-1" name="__codelineno-53-1" href="#__codelineno-53-1"></a>scope record on|off           # enable/disable recording
-<a id="__codelineno-53-2" name="__codelineno-53-2" href="#__codelineno-53-2"></a>scope record frames &lt;count&gt;   # set number of frames to record
-<a id="__codelineno-53-3" name="__codelineno-53-3" href="#__codelineno-53-3"></a>scope record start            # start recording
-<a id="__codelineno-53-4" name="__codelineno-53-4" href="#__codelineno-53-4"></a>scope record stop             # stop recording
-<a id="__codelineno-53-5" name="__codelineno-53-5" href="#__codelineno-53-5"></a>scope record status           # show recording status
-<a id="__codelineno-53-6" name="__codelineno-53-6" href="#__codelineno-53-6"></a>scope record play             # start playback of recorded frames
+<div class="highlight"><pre><span></span><code><a id="__codelineno-57-1" name="__codelineno-57-1" href="#__codelineno-57-1"></a>scope record on|off           # enable/disable recording
+<a id="__codelineno-57-2" name="__codelineno-57-2" href="#__codelineno-57-2"></a>scope record frames &lt;count&gt;   # set number of frames to record
+<a id="__codelineno-57-3" name="__codelineno-57-3" href="#__codelineno-57-3"></a>scope record start            # start recording
+<a id="__codelineno-57-4" name="__codelineno-57-4" href="#__codelineno-57-4"></a>scope record stop             # stop recording
+<a id="__codelineno-57-5" name="__codelineno-57-5" href="#__codelineno-57-5"></a>scope record status           # show recording status
+<a id="__codelineno-57-6" name="__codelineno-57-6" href="#__codelineno-57-6"></a>scope record play             # start playback of recorded frames
 </code></pre></div>
 <table>
 <thead>
@@ -3261,10 +3430,10 @@
 </tr>
 </tbody>
 </table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-54-1" name="__codelineno-54-1" href="#__codelineno-54-1"></a>scope record frames 500       # record 500 frames
-<a id="__codelineno-54-2" name="__codelineno-54-2" href="#__codelineno-54-2"></a>scope record start            # begin recording
-<a id="__codelineno-54-3" name="__codelineno-54-3" href="#__codelineno-54-3"></a>scope record status           # check status
-<a id="__codelineno-54-4" name="__codelineno-54-4" href="#__codelineno-54-4"></a>scope record play             # play back recording
+<div class="highlight"><pre><span></span><code><a id="__codelineno-58-1" name="__codelineno-58-1" href="#__codelineno-58-1"></a>scope record frames 500       # record 500 frames
+<a id="__codelineno-58-2" name="__codelineno-58-2" href="#__codelineno-58-2"></a>scope record start            # begin recording
+<a id="__codelineno-58-3" name="__codelineno-58-3" href="#__codelineno-58-3"></a>scope record status           # check status
+<a id="__codelineno-58-4" name="__codelineno-58-4" href="#__codelineno-58-4"></a>scope record play             # play back recording
 </code></pre></div>
 </div>
 <div class="tabbed-block">
@@ -3274,18 +3443,18 @@
 </div>
 <hr />
 <h3 id="scope-mask">scope mask<a class="headerlink" href="#scope-mask" title="Permanent link">&para;</a></h3>
-<div class="tabbed-set tabbed-alternate" data-tabs="15:2"><input checked="checked" id="__tabbed_15_1" name="__tabbed_15" type="radio" /><input id="__tabbed_15_2" name="__tabbed_15" type="radio" /><div class="tabbed-labels"><label for="__tabbed_15_1">Rigol DHO804</label><label for="__tabbed_15_2">Tektronix MSO2024</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="16:2"><input checked="checked" id="__tabbed_16_1" name="__tabbed_16" type="radio" /><input id="__tabbed_16_2" name="__tabbed_16" type="radio" /><div class="tabbed-labels"><label for="__tabbed_16_1">Rigol DHO804</label><label for="__tabbed_16_2">Tektronix MSO2024</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <p>Control pass/fail mask testing.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-55-1" name="__codelineno-55-1" href="#__codelineno-55-1"></a>scope mask on|off                 # enable/disable mask testing
-<a id="__codelineno-55-2" name="__codelineno-55-2" href="#__codelineno-55-2"></a>scope mask source &lt;1-4&gt;           # set mask source channel
-<a id="__codelineno-55-3" name="__codelineno-55-3" href="#__codelineno-55-3"></a>scope mask tolerance &lt;x&gt; &lt;y&gt;      # set X and Y tolerance
-<a id="__codelineno-55-4" name="__codelineno-55-4" href="#__codelineno-55-4"></a>scope mask create                 # auto-create mask from current waveform
-<a id="__codelineno-55-5" name="__codelineno-55-5" href="#__codelineno-55-5"></a>scope mask start                  # start mask test
-<a id="__codelineno-55-6" name="__codelineno-55-6" href="#__codelineno-55-6"></a>scope mask stop                   # stop mask test
-<a id="__codelineno-55-7" name="__codelineno-55-7" href="#__codelineno-55-7"></a>scope mask stats                  # show pass/fail statistics
-<a id="__codelineno-55-8" name="__codelineno-55-8" href="#__codelineno-55-8"></a>scope mask reset                  # reset statistics
+<div class="highlight"><pre><span></span><code><a id="__codelineno-59-1" name="__codelineno-59-1" href="#__codelineno-59-1"></a>scope mask on|off                 # enable/disable mask testing
+<a id="__codelineno-59-2" name="__codelineno-59-2" href="#__codelineno-59-2"></a>scope mask source &lt;1-4&gt;           # set mask source channel
+<a id="__codelineno-59-3" name="__codelineno-59-3" href="#__codelineno-59-3"></a>scope mask tolerance &lt;x&gt; &lt;y&gt;      # set X and Y tolerance
+<a id="__codelineno-59-4" name="__codelineno-59-4" href="#__codelineno-59-4"></a>scope mask create                 # auto-create mask from current waveform
+<a id="__codelineno-59-5" name="__codelineno-59-5" href="#__codelineno-59-5"></a>scope mask start                  # start mask test
+<a id="__codelineno-59-6" name="__codelineno-59-6" href="#__codelineno-59-6"></a>scope mask stop                   # stop mask test
+<a id="__codelineno-59-7" name="__codelineno-59-7" href="#__codelineno-59-7"></a>scope mask stats                  # show pass/fail statistics
+<a id="__codelineno-59-8" name="__codelineno-59-8" href="#__codelineno-59-8"></a>scope mask reset                  # reset statistics
 </code></pre></div>
 <table>
 <thead>
@@ -3333,10 +3502,10 @@
 </tr>
 </tbody>
 </table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-56-1" name="__codelineno-56-1" href="#__codelineno-56-1"></a>scope mask source 1               # set mask source to CH1
-<a id="__codelineno-56-2" name="__codelineno-56-2" href="#__codelineno-56-2"></a>scope mask create                  # create mask from current waveform
-<a id="__codelineno-56-3" name="__codelineno-56-3" href="#__codelineno-56-3"></a>scope mask start                  # start testing
-<a id="__codelineno-56-4" name="__codelineno-56-4" href="#__codelineno-56-4"></a>scope mask stats                  # view results
+<div class="highlight"><pre><span></span><code><a id="__codelineno-60-1" name="__codelineno-60-1" href="#__codelineno-60-1"></a>scope mask source 1               # set mask source to CH1
+<a id="__codelineno-60-2" name="__codelineno-60-2" href="#__codelineno-60-2"></a>scope mask create                  # create mask from current waveform
+<a id="__codelineno-60-3" name="__codelineno-60-3" href="#__codelineno-60-3"></a>scope mask start                  # start testing
+<a id="__codelineno-60-4" name="__codelineno-60-4" href="#__codelineno-60-4"></a>scope mask stats                  # view results
 </code></pre></div>
 </div>
 <div class="tabbed-block">

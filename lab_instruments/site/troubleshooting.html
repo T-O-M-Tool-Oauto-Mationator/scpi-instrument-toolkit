@@ -19,7 +19,7 @@
       
       
       <link rel="icon" href="assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.3">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
@@ -617,6 +617,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="smu.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Source Measure Unit (SMU)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -911,6 +939,28 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#first-time-setup-on-tamu-managed-windows-machines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        First-time setup on TAMU / managed Windows machines
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#git-is-not-recognized-on-managed-windows-machines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        git is not recognized on managed Windows machines
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -995,6 +1045,28 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#first-time-setup-on-tamu-managed-windows-machines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        First-time setup on TAMU / managed Windows machines
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#git-is-not-recognized-on-managed-windows-machines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        git is not recognized on managed Windows machines
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1051,6 +1123,31 @@ You'll need to run these two lines again each time you open a new terminal.</p>
 <p>The toolkit needs <a href="https://www.ni.com/en/support/downloads/drivers/download.ni-visa.html">NI-VISA</a> to communicate with instruments over USB or GPIB. If you see an error about VISA not being found, download and install NI-VISA from the link above, then restart your terminal and try again.</p>
 <p>If you just want to explore the tool without any hardware, use mock mode — no VISA required:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">python</span> <span class="n">-m</span> <span class="n">lab_instruments</span> <span class="p">-</span><span class="n">-mock</span>
+</code></pre></div>
+<hr />
+<h2 id="first-time-setup-on-tamu-managed-windows-machines">First-time setup on TAMU / managed Windows machines<a class="headerlink" href="#first-time-setup-on-tamu-managed-windows-machines" title="Permanent link">&para;</a></h2>
+<p>If you are starting from scratch on a managed machine, use the all-in-one setup script — it installs GitHub Desktop (including git), Python, and the toolkit in one step with no admin rights:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nb">irm </span><span class="s2">&quot;https://raw.githubusercontent.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit/main/setup-tamu.ps1&quot;</span> <span class="p">|</span> <span class="nb">iex</span>
+</code></pre></div>
+<p>Or if you have already cloned the repo:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="p">.\</span><span class="n">setup-tamu</span><span class="p">.</span><span class="n">ps1</span>
+</code></pre></div>
+<hr />
+<h2 id="git-is-not-recognized-on-managed-windows-machines"><code>git</code> is not recognized on managed Windows machines<a class="headerlink" href="#git-is-not-recognized-on-managed-windows-machines" title="Permanent link">&para;</a></h2>
+<p>If you only need to fix git (Python and the toolkit are already installed), use the smaller helper script (no admin needed):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="p">.\</span><span class="n">setup-git</span><span class="p">.</span><span class="n">ps1</span>
+</code></pre></div>
+<p>What the script does:</p>
+<ul>
+<li>Locates GitHub Desktop's bundled <code>git.exe</code> dynamically (supports changing <code>app-x.y.z</code> folders)</li>
+<li>Adds only the <code>...\git\cmd</code> directory to your <strong>user</strong> PATH</li>
+<li>Skips duplicate PATH entries safely</li>
+</ul>
+<p>After running it, open a <strong>new</strong> terminal and verify:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="n">git</span> <span class="p">-</span><span class="n">-version</span>
+</code></pre></div>
+<p>If you cannot run scripts, use this one-liner in PowerShell:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="nv">$g</span><span class="p">=(</span><span class="nb">Get-ChildItem</span> <span class="s2">&quot;$env:LOCALAPPDATA\GitHubDesktop\app-*\resources\app\git\cmd\git.exe&quot;</span> <span class="n">-EA</span> <span class="n">0</span><span class="p">|</span><span class="nb">Sort-Object</span> <span class="n">LastWriteTime</span> <span class="n">-Desc</span><span class="p">|</span><span class="nb">Select-Object</span> <span class="n">-First</span> <span class="n">1</span><span class="p">);</span> <span class="k">if</span><span class="p">(</span><span class="o">-not</span> <span class="nv">$g</span><span class="p">){</span><span class="nv">$g</span><span class="p">=(</span><span class="nb">Get-ChildItem</span> <span class="s2">&quot;$env:LOCALAPPDATA\GitHubDesktop&quot;</span> <span class="n">-Filter</span> <span class="n">git</span><span class="p">.</span><span class="n">exe</span> <span class="n">-Recurse</span> <span class="n">-EA</span> <span class="n">0</span><span class="p">|?{</span><span class="nv">$_</span><span class="p">.</span><span class="n">DirectoryName</span> <span class="o">-like</span> <span class="s2">&quot;*\git\cmd&quot;</span><span class="p">}|</span><span class="nb">Sort-Object</span> <span class="n">LastWriteTime</span> <span class="n">-Desc</span><span class="p">|</span><span class="nb">Select-Object</span> <span class="n">-First</span> <span class="n">1</span><span class="p">)};</span> <span class="k">if</span><span class="p">(</span><span class="o">-not</span> <span class="nv">$g</span><span class="p">){</span><span class="nb">Write-Host</span> <span class="s2">&quot;GitHub Desktop Git not found&quot;</span> <span class="n">-FG</span> <span class="n">Red</span><span class="p">}</span><span class="k">else</span><span class="p">{</span><span class="nv">$p</span><span class="p">=</span><span class="nv">$g</span><span class="p">.</span><span class="n">DirectoryName</span><span class="p">;</span><span class="nv">$u</span><span class="p">=</span><span class="no">[Environment]</span><span class="p">::</span><span class="n">GetEnvironmentVariable</span><span class="p">(</span><span class="s1">&#39;Path&#39;</span><span class="p">,</span><span class="s1">&#39;User&#39;</span><span class="p">);</span> <span class="k">if</span><span class="p">((</span><span class="nv">$u</span> <span class="n">-split</span> <span class="s1">&#39;;&#39;</span><span class="p">|%{</span><span class="nv">$_</span><span class="p">.</span><span class="n">TrimEnd</span><span class="p">(</span><span class="s1">&#39;\\&#39;</span><span class="p">).</span><span class="n">ToLowerInvariant</span><span class="p">()})</span> <span class="o">-notcontains</span> <span class="nv">$p</span><span class="p">.</span><span class="n">TrimEnd</span><span class="p">(</span><span class="s1">&#39;\\&#39;</span><span class="p">).</span><span class="n">ToLowerInvariant</span><span class="p">()){</span><span class="no">[Environment]</span><span class="p">::</span><span class="n">SetEnvironmentVariable</span><span class="p">(</span><span class="s1">&#39;Path&#39;</span><span class="p">,($(</span><span class="k">if</span><span class="p">(</span><span class="no">[string]</span><span class="p">::</span><span class="n">IsNullOrWhiteSpace</span><span class="p">(</span><span class="nv">$u</span><span class="p">)){</span><span class="nv">$p</span><span class="p">}</span><span class="k">else</span><span class="p">{</span><span class="s2">&quot;$u;$p&quot;</span><span class="p">})),</span><span class="s1">&#39;User&#39;</span><span class="p">)};</span> <span class="nb">Write-Host</span> <span class="s2">&quot;Done. Open a new terminal and run: git --version&quot;</span> <span class="n">-FG</span> <span class="n">Green</span><span class="p">}</span>
 </code></pre></div>
 
 

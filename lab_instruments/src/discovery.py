@@ -16,7 +16,13 @@ from .hp_e3631a import HP_E3631A
 from .jds6600_generator import JDS6600_Generator
 from .keysight_edu33212a import Keysight_EDU33212A
 from .matrix_mps6010h import MATRIX_MPS6010H
-from .ni_pxie_4139 import NI_PXIe_4139
+try:
+    from .ni_pxie_4139 import NI_PXIe_4139
+
+    _NI_PXIE_AVAILABLE = True
+except ImportError:
+    NI_PXIe_4139 = None  # type: ignore[assignment,misc]
+    _NI_PXIE_AVAILABLE = False
 from .owon_xdm1041 import Owon_XDM1041
 from .rigol_dho804 import Rigol_DHO804
 from .tektronix_mso2024 import Tektronix_MSO2024
@@ -39,7 +45,7 @@ class InstrumentDiscovery:
         "XDM1041": Owon_XDM1041,
         "JDS6600": JDS6600_Generator,
         "EDU33212A": Keysight_EDU33212A,
-        "PXIe-4139": NI_PXIe_4139,
+        **({"PXIe-4139": NI_PXIe_4139} if _NI_PXIE_AVAILABLE else {}),
     }
 
     # Friendly names for the instruments (use generic names)
