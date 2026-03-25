@@ -156,8 +156,12 @@ jobs:
 
       - name: Check coverage threshold
         shell: bash
+        env:
+          COVERAGE_THRESHOLD: "80.0"
+          MIN_EXECUTABLE_LINES: "5"
         run: |
           python3 - <<'EOF'
+          import os
           import xml.etree.ElementTree as ET
           import sys
 
@@ -168,7 +172,8 @@ jobs:
               print(f"::error::Coverage XML not found at {xml_path}. Did the test job succeed?")
               sys.exit(1)
 
-          threshold = 80.0
+          threshold = float(os.environ.get("COVERAGE_THRESHOLD", "80.0"))
+          min_executable_lines = int(os.environ.get("MIN_EXECUTABLE_LINES", "5"))
           root = tree.getroot()
 
           # --- Total coverage check ---
@@ -186,10 +191,15 @@ jobs:
               if not filename.startswith("lab_instruments/") or "/site/" in filename:
                   continue
               lines = cls.findall("lines/line")
-              if len(lines) < 5:
-                  # Skip tiny files (< 5 executable lines) — not meaningful to gate
+              if len(lines) < min_executable_lines:
+                  # Skip tiny files — not meaningful to gate
                   continue
-              file_rate = float(cls.attrib.get("line-rate", 1.0)) * 100
+              raw_rate = cls.attrib.get("line-rate")
+              if raw_rate is None:
+                  print(f"::warning file={filename}::line-rate attribute missing; treating as 0%")
+                  file_rate = 0.0
+              else:
+                  file_rate = float(raw_rate) * 100
               if file_rate < threshold:
                   failures.append((filename, file_rate))
 

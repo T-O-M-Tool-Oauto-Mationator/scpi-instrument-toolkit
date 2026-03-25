@@ -38,7 +38,7 @@ If Python can't find the DLL, add the IVI Bin directory to your system PATH.
 1. Seat the PXIe-4139 card in the PXIe chassis.
 2. Connect the chassis to the host PC via MXI-Express or Thunderbolt.
 3. Open **NI MAX** (Measurement & Automation Explorer) and verify the card appears under `My System > Devices and Interfaces`.
-4. Note the **resource name** shown in NI MAX (e.g., `PXI1Slot2`). The REPL uses the device name reported by `nidcpower` — typically the card auto-discovers.
+4. Note the **resource name** shown in NI MAX (e.g., `PXI1Slot2`). This name is needed for manual Python scripts (see the example below). The REPL typically auto-discovers the card without requiring manual resource specification; the resource name is only needed as a fallback if auto-detection fails or you need to force a specific device.
 
 ---
 
@@ -79,7 +79,7 @@ with nidcpower.Session("PXI1Slot2") as session:
 
 Once detected as `smu1`, use the standard SMU commands:
 
-```
+```bash
 upper_limit smu voltage 6.0
 upper_limit smu current 0.05
 

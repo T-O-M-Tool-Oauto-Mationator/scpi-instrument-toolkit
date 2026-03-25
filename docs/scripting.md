@@ -142,12 +142,12 @@ script import <name> <path>
 
 Reload all scripts from the scripts directory, or flush all in-memory scripts back to disk.
 
-```
+```bash
 script save    # write every in-memory script to the scripts directory as .scpi files
 script load    # re-read all .scpi files from the scripts directory
 ```
 
-Scripts are stored as individual `.scpi` files in the scripts directory (default: `~/Documents/scpi-instrument-toolkit/scripts/`). The REPL loads them automatically at startup. Use `script load` if you have edited the files externally, and `script save` to flush any changes made in-session.
+Scripts are stored as individual `.scpi` files in the scripts directory (default: `~/Documents/scpi-instrument-toolkit/scripts/`), making them easy to version-control, share, and edit with any text editor. The REPL loads them automatically at startup. Use `script load` if you have edited the files externally, and `script save` to flush any changes made in-session.
 
 ---
 
@@ -157,7 +157,7 @@ Scripts are stored as individual `.scpi` files in the scripts directory (default
 
 Record interactive REPL commands directly into a named script without opening an editor.
 
-```
+```bash
 record start <name>    # begin recording commands to a script
 record stop            # stop recording and save
 record status          # show whether recording is active and how many lines are buffered
@@ -169,7 +169,7 @@ record status          # show whether recording is active and how many lines are
 
 Every command you type at the REPL prompt (except `record` itself) is appended to the named script in real time. The script file is saved automatically when you run `record stop`.
 
-```
+```bash
 record start my_psu_test    # start recording
 psu1 set 5.0
 sleep 0.5
@@ -182,6 +182,12 @@ script run my_psu_test       # run the recorded script
 
 !!! tip
     Use `record start` as a quick way to capture a sequence you have already typed interactively, without writing a script file by hand.
+
+!!! warning "Recording behavior"
+    - Recording to an existing script **appends** new lines rather than overwriting.
+    - Nested recording is not supported — `record start` while already recording raises an error.
+    - Exiting the REPL while recording is active automatically saves the buffered commands.
+    - The `record` command itself is never captured; all other REPL commands are recorded.
 
 ---
 
@@ -218,7 +224,7 @@ if psu:
     ColorPrinter.success("PSU set to 5.0 V")
 ```
 
-```
+```bash
 python my_script.py
 python /home/user/projects/lab_sequence.py
 ```
@@ -320,7 +326,7 @@ Delete a previously defined variable so it can no longer be used or substituted:
 unset <varname>
 ```
 
-```
+```bash
 voltage = 5.0
 print "Voltage is {voltage}"    # prints: Voltage is 5.0
 unset voltage
@@ -328,6 +334,9 @@ print "Voltage is {voltage}"    # prints: Voltage is {voltage}  (unexpanded)
 ```
 
 This is useful in interactive sessions when you want to re-run a script with a clean variable state, or when a variable was set interactively and is no longer needed.
+
+!!! note "Scope interactions"
+    `unset` only affects the current scope. In scripts, unsetting an imported variable does not modify the parent scope. Unsetting a variable that was overridden via command-line (`script run my_test voltage=3.3`) inside the script will cause `{voltage}` to remain unexpanded rather than restoring any parent or default value.
 
 ---
 

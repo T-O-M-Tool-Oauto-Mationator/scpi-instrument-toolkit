@@ -171,11 +171,11 @@ Also valid as a [script directive](scripting.md#timing): `sleep {delay}`
 
 Show all connected instruments and which one is currently active.
 
-```
+```bash
 status
 ```
 
-Equivalent to `list`. Displays each instrument's assigned name and highlights the active one.
+Identical to `list`. See the `list` command for full details. `status` exists as a convenience alias.
 
 ---
 
@@ -183,7 +183,7 @@ Equivalent to `list`. Displays each instrument's assigned name and highlights th
 
 Disconnect all instruments and release VISA resources.
 
-```
+```bash
 close
 ```
 
@@ -195,13 +195,13 @@ Use `scan` to reconnect after closing.
 
 Open the full HTML command reference in your web browser.
 
-```
+```bash
 docs
 ```
 
 Serves the bundled MkDocs site via a local HTTP server on a random port. If the site has not been built yet and `mkdocs.yml` is present, it automatically runs `mkdocs build` first.
 
-```
+```bash
 docs    # opens http://127.0.0.1:<port>/index.html in your default browser
 ```
 

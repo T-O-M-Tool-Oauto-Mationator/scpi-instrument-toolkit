@@ -18,11 +18,11 @@ class GeneralCommands(BaseCommand):
         super().__init__(ctx)
         self.safety = safety
         self._docs_port = None
+        self._docs_server = None
 
     def do_docs(self, arg: str) -> None:
         import http.server
         import pathlib
-        import socket
         import subprocess
         import threading
         import webbrowser
@@ -55,10 +55,11 @@ class GeneralCommands(BaseCommand):
             ColorPrinter.info("Building docs (first run — takes a few seconds)...")
             try:
                 subprocess.run(
-                    ["mkdocs", "build"],
+                    [sys.executable, "-m", "mkdocs", "build"],
                     cwd=str(pkg_root),
                     check=True,
                     capture_output=True,
+                    text=True,
                 )
                 ColorPrinter.success("Docs built.")
             except FileNotFoundError:
@@ -66,7 +67,7 @@ class GeneralCommands(BaseCommand):
                 ColorPrinter.info(f"Docs source: {pkg_root / 'docs'}")
                 return
             except subprocess.CalledProcessError as exc:
-                stderr = exc.stderr.decode(errors="replace")[:200] if exc.stderr else ""
+                stderr = (exc.stderr or "")[:200]
                 ColorPrinter.error(f"mkdocs build failed: {stderr}")
                 return
 
@@ -77,11 +78,7 @@ class GeneralCommands(BaseCommand):
             return
 
         # Spawn HTTP server on first call; reuse port on subsequent calls
-        if self._docs_port is None:
-            with socket.socket() as s:
-                s.bind(("127.0.0.1", 0))
-                port = s.getsockname()[1]
-
+        if self._docs_server is None:
             _site = str(site_dir)
 
             class _QuietHandler(http.server.SimpleHTTPRequestHandler):
@@ -91,9 +88,9 @@ class GeneralCommands(BaseCommand):
                 def log_message(self_h, fmt, *a):
                     pass
 
-            server = http.server.HTTPServer(("127.0.0.1", port), _QuietHandler)
-            threading.Thread(target=server.serve_forever, daemon=True).start()
-            self._docs_port = port
+            self._docs_server = http.server.HTTPServer(("127.0.0.1", 0), _QuietHandler)
+            self._docs_port = self._docs_server.server_address[1]
+            threading.Thread(target=self._docs_server.serve_forever, daemon=True).start()
 
         url = f"http://127.0.0.1:{self._docs_port}/index.html"
         ColorPrinter.info(f"Opening docs: {url}")

@@ -37,7 +37,7 @@ scope single    # arm single-shot trigger
 
 Block until the scope finishes its current acquisition (i.e. the trigger fires and the display stops).
 
-```
+```bash
 scope wait_stop [timeout=<s>]
 ```
 
@@ -49,7 +49,7 @@ Use after `scope single` to ensure the trigger has fired before querying measure
 
 === "Rigol DHO804"
 
-    ```
+    ```bash
     scope single
     scope wait_stop timeout=10    # wait up to 10 s for trigger
     scope meas_force              # force DSP to finalize values
@@ -58,7 +58,7 @@ Use after `scope single` to ensure the trigger has fired before querying measure
 
 === "Tektronix MSO2024"
 
-    ```
+    ```bash
     scope single
     scope wait_stop               # default 10 s timeout
     scope meas_store 1 FREQUENCY freq unit=Hz
@@ -435,7 +435,7 @@ Remove all measurement items from the on-screen results panel.
 
 Continuously measure a channel at a fixed interval and print results. Press **Ctrl+C** to stop.
 
-```
+```bash
 scope meas_loop <1-4|all> <type> [interval=1.0] [count=0] [label=<name>] [unit=<str>]
 ```
 
@@ -448,11 +448,11 @@ scope meas_loop <1-4|all> <type> [interval=1.0] [count=0] [label=<name>] [unit=<
 | `label=` | optional | string, no spaces | If provided, each reading is also stored to the measurement log (same as `meas_store`). |
 | `unit=` | optional | string | Unit shown in log (requires `label=`). |
 
-```
+```bash
 scope meas_loop 1 FREQUENCY                         # print CH1 frequency every 1s, run forever
 scope meas_loop 1 FREQUENCY interval=0.5            # measure every 500 ms
 scope meas_loop 1 RMS count=10 label=vrms unit=V    # 10 samples, store each to log
-scope meas_loop 1,2 PK2PK interval=2.0              # both CH1 and CH2, every 2s
+scope meas_loop all PK2PK interval=2.0               # all channels, every 2s
 ```
 
 !!! tip
@@ -588,7 +588,7 @@ These commands access built-in scope tools where available.
 
 Control the built-in waveform generator (DHO914S and DHO924S only).
 
-```
+```bash
 scope awg chan <on|off>                    # enable/disable AWG output
 scope awg set <func> <freq> <amp> [offset=<V>]  # quick configure
 scope awg func <SINusoid|SQUare|RAMP|DC|NOISe>  # set waveform type
@@ -616,7 +616,7 @@ scope awg mod_type <AM|FM|PM>              # set modulation type
 | `mod` | `on\|off` | Enable/disable modulation |
 | `mod_type` | `AM`, `FM`, `PM` | Set modulation type |
 
-```
+```bash
 scope awg set SINusoid 1000 2.0             # 1 kHz sine, 2 Vpp
 scope awg set SQUare 500 3.3 offset=1.65   # 500 Hz square with offset
 scope awg mod on

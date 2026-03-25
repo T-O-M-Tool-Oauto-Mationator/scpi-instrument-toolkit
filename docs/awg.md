@@ -67,16 +67,20 @@ awg wave <1|2|all> <type> [freq=<Hz>] [amp=<Vpp>] [offset=<V>] [duty=<%>] [phase
 | `noise` | White noise |
 | `dc` | DC level (set with `offset=`) |
 | `arb` | Arbitrary waveform (device-dependent) |
-| `prbs` | Pseudo-random binary sequence (device-dependent) |
+| `prbs` | Pseudo-random binary sequence — used for BER testing and channel characterization (Keysight EDU33212A only) |
 
 All keyword arguments are optional — omitted parameters keep their current values.
 
-```
+```bash
 awg wave 1 sine freq=1000 amp=2.0 offset=0     # 1 kHz sine, 2 Vpp
 awg wave 1 square freq=500 duty=25              # 500 Hz square, 25% duty
 awg wave all sine freq=10000                    # set both channels to 10 kHz sine
 awg wave 2 ramp freq=100 amp=5.0               # 100 Hz ramp on channel 2
+awg wave 1 prbs freq=1000000 amp=3.3           # 1 Mbps PRBS for BER testing (EDU33212A only)
 ```
+
+!!! note "PRBS limitations"
+    PRBS is supported on Keysight EDU33212A only. Typical bit rates range from 1 kbps to 50 Mbps. Standard parameters (`freq=`, `amp=`) apply; `duty=` and `offset=` are ignored for PRBS mode.
 
 ---
 
@@ -206,7 +210,7 @@ awg sync off    # disable sync output
 
 Enable or disable all output channels at once.
 
-```
+```bash
 awg on     # enable all channels
 awg off    # disable all channels
 ```
