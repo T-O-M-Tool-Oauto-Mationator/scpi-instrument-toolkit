@@ -20,7 +20,11 @@ Configure the measurement mode. The mode stays active until changed.
 
 ```
 dmm config <mode> [range] [resolution] [nplc=<n>]
+dmm mode <mode> [range] [resolution] [nplc=<n>]
 ```
+
+!!! note
+    `dmm mode` is an alias for `dmm config` — both are identical.
 
 | Parameter | Required | Values | Description |
 |-----------|----------|--------|-------------|
@@ -43,8 +47,8 @@ dmm config <mode> [range] [resolution] [nplc=<n>]
 | `per` | Period |
 | `cont` | Continuity |
 | `diode` | Diode forward voltage |
-| `cap` | Capacitance |
-| `temp` | Temperature |
+| `cap` | Capacitance (device-dependent) |
+| `temp` | Temperature (device-dependent) |
 
 ```
 dmm config vdc                    # DC voltage, auto-range
@@ -208,6 +212,46 @@ dmm text <message> [scroll=<auto|on|off>] [delay=<s>] [loops=<n>] [pad=<n>] [wid
 ```
 dmm text READY
 dmm text TESTING scroll=auto delay=0.2
+```
+
+!!! note
+    HP 34401A only.
+
+---
+
+## dmm text_loop
+
+Scroll text continuously across the DMM display in a background loop.
+
+```
+dmm text_loop <message> [delay=<s>] [pad=<n>] [width=<n>]
+dmm text_loop off
+```
+
+| Parameter | Required | Values | Description |
+|-----------|----------|--------|-------------|
+| `message` | required | string | Text to scroll. |
+| `delay=` | optional | float (s) | Seconds between scroll steps. Default: `0.2`. |
+| `pad=` | optional | int | Blank characters to pad each side of the message. Default: `4`. |
+| `width=` | optional | int | Display window width in characters. Default: `12`. |
+| `off` | — | — | Stop the scrolling loop and clear the display. |
+
+```
+dmm text_loop TESTING delay=0.15    # start scrolling
+dmm text_loop off                   # stop
+```
+
+!!! note
+    HP 34401A only. The loop runs until `dmm text_loop off` is called or the REPL exits.
+
+---
+
+## dmm cleartext
+
+Clear any custom text from the DMM display and restore the measurement display.
+
+```
+dmm cleartext
 ```
 
 !!! note

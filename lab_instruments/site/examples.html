@@ -21,7 +21,7 @@
       
       
       <link rel="icon" href="assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.3">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
@@ -619,6 +619,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="smu.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Source Measure Unit (SMU)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1093,30 +1121,30 @@
 <p><strong>What it does:</strong></p>
 <ol>
 <li>Turns on PSU channel 1</li>
-<li>Sets the voltage to <code>${voltage}</code> V</li>
+<li>Sets the voltage to <code>{voltage}</code> V</li>
 <li>Waits 500 ms for the output to settle</li>
 <li>Records the PSU's measured output as <code>psu_v</code></li>
-<li>Takes a DC voltage reading from the DMM, records as <code>${label}</code></li>
+<li>Takes a DC voltage reading from the DMM, records as <code>{label}</code></li>
 <li>Prints the log</li>
 </ol>
 <p><strong>Script source:</strong></p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a># psu_dmm_test
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>set voltage 5.0
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>set label vtest
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>voltage = 5.0
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>label = vtest
 <a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>print === PSU/DMM Voltage Test ===
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>print Target: ${voltage}V
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>print &quot;=== PSU/DMM Voltage Test ===&quot;
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>print &quot;Target: {voltage}V&quot;
 <a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>
 <a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>psu1 chan 1 on
-<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>psu1 set ${voltage}
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>psu1 set {voltage}
 <a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>sleep 0.5
 <a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>
 <a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>psu1 meas_store v psu_v unit=V
 <a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>
 <a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>dmm1 config vdc
-<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>dmm1 meas_store ${label} unit=V
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>dmm1 meas_store {label} unit=V
 <a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>
-<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>print === Test complete ===
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>print &quot;=== Test complete ===&quot;
 <a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>log print
 </code></pre></div>
 <p><strong>Interpreting results:</strong></p>
@@ -1148,20 +1176,20 @@
 <p><strong>To change the voltage list:</strong> load the example, then <code>script edit voltage_sweep</code> and modify the <code>for</code> line.</p>
 <p><strong>Script source:</strong></p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a># voltage_sweep
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>print === Voltage Sweep ===
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>print &quot;=== Voltage Sweep ===&quot;
 <a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>psu1 chan 1 on
 <a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>sleep 0.3
 <a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>dmm1 config vdc
 <a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>
 <a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>for v 1.0 2.0 3.3 5.0 9.0 12.0
-<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>  print Setting ${v}V...
-<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>  psu1 set ${v}
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>  print Setting {v}V...
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>  psu1 set {v}
 <a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>  sleep 0.5
-<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>  dmm1 meas_store v_${v} unit=V
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>  dmm1 meas_store v_{v} unit=V
 <a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>end
 <a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>
 <a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>psu1 chan 1 off
-<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>print === Sweep complete ===
+<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>print &quot;=== Sweep complete ===&quot;
 <a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a>log print
 <a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a>log save voltage_sweep.csv
 </code></pre></div>
@@ -1203,7 +1231,7 @@
 <p><strong>What it does:</strong></p>
 <ol>
 <li>Enables AWG channel 1</li>
-<li>Configures a sine wave at <code>${freq}</code> Hz, <code>${amp}</code> Vpp</li>
+<li>Configures a sine wave at <code>{freq}</code> Hz, <code>{amp}</code> Vpp</li>
 <li>Waits 500 ms for signal to stabilize</li>
 <li>Runs <code>scope autoset</code> to auto-configure the scope</li>
 <li>Waits 1 s for autoset to settle</li>
@@ -1211,14 +1239,14 @@
 </ol>
 <p><strong>Script source:</strong></p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a># awg_scope_check
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>set freq 1000
-<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>set amp 2.0
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>freq = 1000
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>amp = 2.0
 <a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>
-<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>print === AWG + Scope Signal Check ===
-<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>print Frequency: ${freq} Hz   Amplitude: ${amp} Vpp
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>print &quot;=== AWG + Scope Signal Check ===&quot;
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>print &quot;Frequency: {freq} Hz   Amplitude: {amp} Vpp&quot;
 <a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>
 <a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>awg1 chan 1 on
-<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>awg1 wave 1 sine freq=${freq} amp=${amp} offset=0
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>awg1 wave 1 sine freq={freq} amp={amp} offset=0
 <a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>sleep 0.5
 <a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>
 <a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>scope1 autoset
@@ -1228,7 +1256,7 @@
 <a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a>scope1 meas_store 1 PK2PK     meas_pk2pk unit=V
 <a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a>scope1 meas_store 1 RMS       meas_rms unit=V
 <a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a>
-<a id="__codelineno-9-19" name="__codelineno-9-19" href="#__codelineno-9-19"></a>print === Results ===
+<a id="__codelineno-9-19" name="__codelineno-9-19" href="#__codelineno-9-19"></a>print &quot;=== Results ===&quot;
 <a id="__codelineno-9-20" name="__codelineno-9-20" href="#__codelineno-9-20"></a>log print
 </code></pre></div>
 <p><strong>Check accuracy:</strong></p>
@@ -1253,21 +1281,21 @@
 <p><strong>Default frequency list:</strong> <code>100 500 1000 5000 10000 50000 100000</code> (Hz)</p>
 <p><strong>Script source:</strong></p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a># freq_sweep
-<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>print === Frequency Sweep ===
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>print &quot;=== Frequency Sweep ===&quot;
 <a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>awg1 chan 1 on
 <a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>awg1 wave 1 sine amp=2.0 offset=0
 <a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>sleep 0.3
 <a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>
 <a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>for f 100 500 1000 5000 10000 50000 100000
-<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>  print Testing ${f} Hz...
-<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a>  awg1 freq 1 ${f}
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>  print Testing {f} Hz...
+<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a>  awg1 freq 1 {f}
 <a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a>  sleep 0.4
-<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a>  scope1 meas_store 1 FREQUENCY freq_${f} unit=Hz
-<a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a>  scope1 meas_store 1 PK2PK     pk2pk_${f} unit=V
+<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a>  scope1 meas_store 1 FREQUENCY freq_{f} unit=Hz
+<a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a>  scope1 meas_store 1 PK2PK     pk2pk_{f} unit=V
 <a id="__codelineno-12-13" name="__codelineno-12-13" href="#__codelineno-12-13"></a>end
 <a id="__codelineno-12-14" name="__codelineno-12-14" href="#__codelineno-12-14"></a>
 <a id="__codelineno-12-15" name="__codelineno-12-15" href="#__codelineno-12-15"></a>awg1 chan 1 off
-<a id="__codelineno-12-16" name="__codelineno-12-16" href="#__codelineno-12-16"></a>print === Sweep complete ===
+<a id="__codelineno-12-16" name="__codelineno-12-16" href="#__codelineno-12-16"></a>print &quot;=== Sweep complete ===&quot;
 <a id="__codelineno-12-17" name="__codelineno-12-17" href="#__codelineno-12-17"></a>log print
 <a id="__codelineno-12-18" name="__codelineno-12-18" href="#__codelineno-12-18"></a>log save freq_sweep.csv
 </code></pre></div>
@@ -1275,11 +1303,11 @@
 <p>If you're testing a filter or amplifier, measure the input and output simultaneously:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a># Modify the loop to capture both channels:
 <a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>for f 100 500 1000 5000 10000 50000
-<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>  awg1 freq 1 ${f}
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>  awg1 freq 1 {f}
 <a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>  sleep 0.4
-<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>  scope1 meas_store 1 PK2PK in_${f} unit=V
-<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>  scope1 meas_store 2 PK2PK out_${f} unit=V
-<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>  calc gain_${f} m[&quot;out_${f}&quot;] / m[&quot;in_${f}&quot;]
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>  scope1 meas_store 1 PK2PK in_{f} unit=V
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>  scope1 meas_store 2 PK2PK out_{f} unit=V
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>  calc gain_{f} m[&quot;out_{f}&quot;] / m[&quot;in_{f}&quot;]
 <a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>end
 </code></pre></div>
 <hr />
@@ -1324,24 +1352,24 @@
 </code></pre></div>
 <p><strong>Script source:</strong></p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a># psu_ramp
-<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>set v_start 0
-<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>set v_end 12.0
-<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>set steps 7
-<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>set delay 0.5
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>v_start = 0
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>v_end = 12.0
+<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>steps = 7
+<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>delay = 0.5
 <a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a>
-<a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a>print === PSU Voltage Ramp ===
-<a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a>print ${v_start}V → ${v_end}V in ${steps} steps
+<a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a>print &quot;=== PSU Voltage Ramp ===&quot;
+<a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a>print &quot;{v_start}V → {v_end}V in {steps} steps&quot;
 <a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a>
 <a id="__codelineno-15-10" name="__codelineno-15-10" href="#__codelineno-15-10"></a>psu1 chan 1 on
 <a id="__codelineno-15-11" name="__codelineno-15-11" href="#__codelineno-15-11"></a>
-<a id="__codelineno-15-12" name="__codelineno-15-12" href="#__codelineno-15-12"></a>for v ${v_start} 2.0 4.0 6.0 8.0 10.0 ${v_end}
-<a id="__codelineno-15-13" name="__codelineno-15-13" href="#__codelineno-15-13"></a>  print Ramping to ${v}V
-<a id="__codelineno-15-14" name="__codelineno-15-14" href="#__codelineno-15-14"></a>  psu1 set ${v}
-<a id="__codelineno-15-15" name="__codelineno-15-15" href="#__codelineno-15-15"></a>  sleep ${delay}
-<a id="__codelineno-15-16" name="__codelineno-15-16" href="#__codelineno-15-16"></a>  psu1 meas_store v ramp_${v} unit=V
+<a id="__codelineno-15-12" name="__codelineno-15-12" href="#__codelineno-15-12"></a>for v {v_start} 2.0 4.0 6.0 8.0 10.0 {v_end}
+<a id="__codelineno-15-13" name="__codelineno-15-13" href="#__codelineno-15-13"></a>  print Ramping to {v}V
+<a id="__codelineno-15-14" name="__codelineno-15-14" href="#__codelineno-15-14"></a>  psu1 set {v}
+<a id="__codelineno-15-15" name="__codelineno-15-15" href="#__codelineno-15-15"></a>  sleep {delay}
+<a id="__codelineno-15-16" name="__codelineno-15-16" href="#__codelineno-15-16"></a>  psu1 meas_store v ramp_{v} unit=V
 <a id="__codelineno-15-17" name="__codelineno-15-17" href="#__codelineno-15-17"></a>end
 <a id="__codelineno-15-18" name="__codelineno-15-18" href="#__codelineno-15-18"></a>
-<a id="__codelineno-15-19" name="__codelineno-15-19" href="#__codelineno-15-19"></a>print === Ramp complete ===
+<a id="__codelineno-15-19" name="__codelineno-15-19" href="#__codelineno-15-19"></a>print &quot;=== Ramp complete ===&quot;
 <a id="__codelineno-15-20" name="__codelineno-15-20" href="#__codelineno-15-20"></a>log print
 </code></pre></div>
 <div class="admonition tip">
@@ -1352,18 +1380,18 @@
 <h2 id="building-your-own">Building your own<a class="headerlink" href="#building-your-own" title="Permanent link">&para;</a></h2>
 <p>Use these examples as templates. The general pattern for any measurement script is:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a># 1. Set defaults (overridable at run time)
-<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>set voltage 5.0
-<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>set label my_test
-<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a>set delay 0.5
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>voltage = 5.0
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>label = my_test
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a>delay = 0.5
 <a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a>
 <a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a># 2. Operator setup
-<a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a>print === My Test ===
+<a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a>print &quot;=== My Test ===&quot;
 <a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a>pause Connect hardware, then press Enter
 <a id="__codelineno-16-9" name="__codelineno-16-9" href="#__codelineno-16-9"></a>
 <a id="__codelineno-16-10" name="__codelineno-16-10" href="#__codelineno-16-10"></a># 3. Configure instruments
 <a id="__codelineno-16-11" name="__codelineno-16-11" href="#__codelineno-16-11"></a>psu1 chan 1 on
-<a id="__codelineno-16-12" name="__codelineno-16-12" href="#__codelineno-16-12"></a>psu1 set ${voltage}
-<a id="__codelineno-16-13" name="__codelineno-16-13" href="#__codelineno-16-13"></a>sleep ${delay}
+<a id="__codelineno-16-12" name="__codelineno-16-12" href="#__codelineno-16-12"></a>psu1 set {voltage}
+<a id="__codelineno-16-13" name="__codelineno-16-13" href="#__codelineno-16-13"></a>sleep {delay}
 <a id="__codelineno-16-14" name="__codelineno-16-14" href="#__codelineno-16-14"></a>
 <a id="__codelineno-16-15" name="__codelineno-16-15" href="#__codelineno-16-15"></a># 4. Measure and store
 <a id="__codelineno-16-16" name="__codelineno-16-16" href="#__codelineno-16-16"></a>psu1 meas_store v psu_out unit=V
@@ -1375,7 +1403,7 @@
 <a id="__codelineno-16-22" name="__codelineno-16-22" href="#__codelineno-16-22"></a>
 <a id="__codelineno-16-23" name="__codelineno-16-23" href="#__codelineno-16-23"></a># 6. Export
 <a id="__codelineno-16-24" name="__codelineno-16-24" href="#__codelineno-16-24"></a>log print
-<a id="__codelineno-16-25" name="__codelineno-16-25" href="#__codelineno-16-25"></a>log save ${label}_results.csv
+<a id="__codelineno-16-25" name="__codelineno-16-25" href="#__codelineno-16-25"></a>log save {label}_results.csv
 <a id="__codelineno-16-26" name="__codelineno-16-26" href="#__codelineno-16-26"></a>
 <a id="__codelineno-16-27" name="__codelineno-16-27" href="#__codelineno-16-27"></a># 7. Safe state
 <a id="__codelineno-16-28" name="__codelineno-16-28" href="#__codelineno-16-28"></a>psu1 chan 1 off

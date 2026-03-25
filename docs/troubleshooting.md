@@ -46,6 +46,37 @@ On machines where group policy blocks user registry edits, the automatic fix abo
 
 ---
 
+## Serial port permission denied (Linux)
+
+On Linux, serial ports (`/dev/ttyUSB*`, `/dev/ttyACM*`) are owned by a system group. Your user must be in that group or you will get a `Permission denied` error when connecting to serial instruments (Matrix MPS, JDS6600, etc.).
+
+### Arch Linux — group is `uucp`
+
+```bash
+sudo usermod -aG uucp $USER
+```
+
+### Debian / Ubuntu / Raspberry Pi OS — group is `dialout`
+
+```bash
+sudo usermod -aG dialout $USER
+```
+
+After running the command, **log out and log back in** (or reboot) for the group membership to take effect. Verify with:
+
+```bash
+groups   # should include uucp or dialout
+```
+
+!!! tip "Check which group owns the port"
+    ```bash
+    ls -l /dev/ttyUSB0
+    # crw-rw---- 1 root uucp 188, 0 ...
+    ```
+    The third column is the owning group.
+
+---
+
 ## NI-VISA not found
 
 The toolkit needs [NI-VISA](https://www.ni.com/en/support/downloads/drivers/download.ni-visa.html) to communicate with instruments over USB or GPIB. If you see an error about VISA not being found, download and install NI-VISA from the link above, then restart your terminal and try again.

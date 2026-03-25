@@ -98,9 +98,7 @@ class SmuCommand(BaseCommand):
         dev.set_voltage(voltage)
         if current is not None:
             dev.set_current_limit(current)
-        ColorPrinter.success(
-            f"Set: {voltage}V @ {current if current else dev.get_current_limit()}A"
-        )
+        ColorPrinter.success(f"Set: {voltage}V @ {current if current else dev.get_current_limit()}A")
 
     def _handle_meas(self, args, dev) -> None:
         if len(args) < 2:

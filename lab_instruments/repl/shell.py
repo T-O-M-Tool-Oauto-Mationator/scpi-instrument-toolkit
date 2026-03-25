@@ -659,6 +659,10 @@ class InstrumentRepl(cmd.Cmd):
         "close: disconnect all instruments"
         self._general.do_close(arg)
 
+    def do_docs(self, arg):
+        "docs: open full HTML documentation in your browser"
+        self._general.do_docs(arg)
+
     def do_version(self, arg):
         "version: show version"
         self._general.do_version(arg, _REPL_VERSION)
@@ -786,6 +790,10 @@ class InstrumentRepl(cmd.Cmd):
     def do_set(self, arg):
         "set <varname> <expr>: define a variable"
         self._var_cmd.do_set(arg)
+
+    def do_unset(self, arg):
+        "unset <varname>: delete a script variable"
+        self._var_cmd.do_unset(arg)
 
     def do_sleep(self, arg):
         "sleep <duration>[us|ms|s|m]: pause execution"
@@ -929,13 +937,15 @@ class InstrumentRepl(cmd.Cmd):
         cmd_line("sleep", "pause between actions  (sleep <seconds>)")
         cmd_line("version", "show toolkit version")
         cmd_line("close", "disconnect all instruments")
+        cmd_line("docs", "open full HTML documentation in your browser")
         cmd_line("exit", "quit the REPL")
 
         section("INSTRUMENTS  (run with no args for full sub-command help)")
         cmd_line("psu", "power supply  — chan, set, meas, track, save, recall")
         cmd_line("awg", "function generator  — chan, wave, freq, amp, offset, duty, phase")
         cmd_line("dmm", "multimeter  — config, read, fetch, meas, beep, display")
-        cmd_line("scope", "oscilloscope  — chan, meas, save, trigger, awg, dvm, counter")
+        cmd_line("scope", "oscilloscope  — chan, meas, meas_loop, save, trigger, awg, dvm, counter")
+        cmd_line("smu", "source measure unit  — set, meas, meas_store, get, on, off")
 
         section("SCRIPTING")
         cmd_line("script", "manage and run named scripts  — new, run, debug, edit, list, rm, show, dir")
@@ -943,6 +953,7 @@ class InstrumentRepl(cmd.Cmd):
         cmd_line("python", "execute an external Python script with REPL context")
         cmd_line("upper_limit", "set an upper safety bound  — psu/awg, optional chan, param, value")
         cmd_line("lower_limit", "set a lower safety bound  — psu/awg, optional chan, param, value")
+        cmd_line("unset", "delete a saved script variable  (unset <varname>)")
 
         section("LOGGING & MATH")
         cmd_line("log", "show or save recorded measurements  — print, save, clear")
@@ -1039,6 +1050,9 @@ class InstrumentRepl(cmd.Cmd):
                 "  - indicates which instrument is currently active (set via 'use')",
             ]
         )
+
+    def help_docs(self):
+        self._general.do_docs("help")
 
     def help_check(self):
         self.do_check("")

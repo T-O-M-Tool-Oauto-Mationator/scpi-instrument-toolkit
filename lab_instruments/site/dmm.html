@@ -21,7 +21,7 @@
       
       
       <link rel="icon" href="assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.3">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
@@ -721,6 +721,28 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#dmm-text_loop" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dmm text_loop
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dmm-cleartext" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dmm cleartext
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#dmm-ranges" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -766,6 +788,34 @@
     
   
     Oscilloscope (Scope)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="smu.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Source Measure Unit (SMU)
   
 
     
@@ -1099,6 +1149,28 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#dmm-text_loop" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dmm text_loop
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dmm-cleartext" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dmm cleartext
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#dmm-ranges" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1161,7 +1233,12 @@
 <h2 id="dmm-config">dmm config<a class="headerlink" href="#dmm-config" title="Permanent link">&para;</a></h2>
 <p>Configure the measurement mode. The mode stays active until changed.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>dmm config &lt;mode&gt; [range] [resolution] [nplc=&lt;n&gt;]
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>dmm mode &lt;mode&gt; [range] [resolution] [nplc=&lt;n&gt;]
 </code></pre></div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><code>dmm mode</code> is an alias for <code>dmm config</code> — both are identical.</p>
+</div>
 <table>
 <thead>
 <tr>
@@ -1249,11 +1326,11 @@
 </tr>
 <tr>
 <td><code>cap</code></td>
-<td>Capacitance</td>
+<td>Capacitance (device-dependent)</td>
 </tr>
 <tr>
 <td><code>temp</code></td>
-<td>Temperature</td>
+<td>Temperature (device-dependent)</td>
 </tr>
 </tbody>
 </table>
@@ -1466,13 +1543,77 @@
 <p>HP 34401A only.</p>
 </div>
 <hr />
+<h2 id="dmm-text_loop">dmm text_loop<a class="headerlink" href="#dmm-text_loop" title="Permanent link">&para;</a></h2>
+<p>Scroll text continuously across the DMM display in a background loop.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>dmm text_loop &lt;message&gt; [delay=&lt;s&gt;] [pad=&lt;n&gt;] [width=&lt;n&gt;]
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>dmm text_loop off
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Required</th>
+<th>Values</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>message</code></td>
+<td>required</td>
+<td>string</td>
+<td>Text to scroll.</td>
+</tr>
+<tr>
+<td><code>delay=</code></td>
+<td>optional</td>
+<td>float (s)</td>
+<td>Seconds between scroll steps. Default: <code>0.2</code>.</td>
+</tr>
+<tr>
+<td><code>pad=</code></td>
+<td>optional</td>
+<td>int</td>
+<td>Blank characters to pad each side of the message. Default: <code>4</code>.</td>
+</tr>
+<tr>
+<td><code>width=</code></td>
+<td>optional</td>
+<td>int</td>
+<td>Display window width in characters. Default: <code>12</code>.</td>
+</tr>
+<tr>
+<td><code>off</code></td>
+<td>—</td>
+<td>—</td>
+<td>Stop the scrolling loop and clear the display.</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>dmm text_loop TESTING delay=0.15    # start scrolling
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>dmm text_loop off                   # stop
+</code></pre></div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>HP 34401A only. The loop runs until <code>dmm text_loop off</code> is called or the REPL exits.</p>
+</div>
+<hr />
+<h2 id="dmm-cleartext">dmm cleartext<a class="headerlink" href="#dmm-cleartext" title="Permanent link">&para;</a></h2>
+<p>Clear any custom text from the DMM display and restore the measurement display.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>dmm cleartext
+</code></pre></div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>HP 34401A only.</p>
+</div>
+<hr />
 <h2 id="dmm-ranges">dmm ranges<a class="headerlink" href="#dmm-ranges" title="Permanent link">&para;</a></h2>
 <p>Print the valid measurement ranges for the connected DMM model.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>dmm ranges
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>dmm ranges
 </code></pre></div>
 <hr />
 <h2 id="dmm-state">dmm state<a class="headerlink" href="#dmm-state" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>dmm state &lt;safe|reset&gt;
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>dmm state &lt;safe|reset&gt;
 </code></pre></div>
 <table>
 <thead>

@@ -50,12 +50,15 @@ markdown_extensions:
 
 nav:
   - Home: index.md
+  - Installation: install.md
   - General Commands: general.md
   - Instruments:
     - Power Supply (PSU): psu.md
     - Function Generator (AWG): awg.md
     - Multimeter (DMM): dmm.md
     - Oscilloscope (Scope): scope.md
+    - Source Measure Unit (SMU): smu.md
+    - NI PXIe-4139 Setup: ni_pxie.md
   - Scripting:
     - Scripts & Directives: scripting.md
     - Example Workflows: examples.md

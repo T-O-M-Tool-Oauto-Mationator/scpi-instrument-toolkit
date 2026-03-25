@@ -6,6 +6,8 @@ Uses the nidcpower Python package (NI-DCPower driver) instead of PyVISA/SCPI.
 Does NOT inherit from DeviceManager.
 """
 
+import contextlib
+
 import nidcpower
 
 
@@ -100,14 +102,10 @@ class NI_PXIe_4139:
         self._session.voltage_level = 0.0
         self._session.current_limit = self.DEFAULT_CURRENT_LIMIT
         self._session.output_enabled = False
-        try:
+        with contextlib.suppress(Exception):
             self._session.initiate()
-        except Exception:
-            pass
-        try:
+        with contextlib.suppress(Exception):
             self._session.abort()
-        except Exception:
-            pass
 
     # ------------------------------------------------------------------
     # Voltage / current configuration

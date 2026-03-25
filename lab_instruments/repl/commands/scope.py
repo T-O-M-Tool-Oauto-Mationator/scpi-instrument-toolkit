@@ -125,6 +125,9 @@ class ScopeCommand(BaseCommand):
             elif cmd_name == "meas":
                 self._handle_meas(args, dev)
 
+            elif cmd_name == "meas_loop":
+                self._handle_meas_loop(args, dev)
+
             elif cmd_name == "meas_setup" and len(args) >= 3:
                 channels = self.parse_channels(args[1], max_ch=4)
                 measure_type = args[2]
@@ -269,6 +272,12 @@ class ScopeCommand(BaseCommand):
                 "scope trigger <chan> <level> [slope=RISE] [mode=AUTO]",
                 "",
                 "scope meas <1-4|all> <type> - measure waveform parameter",
+                "scope meas_loop <1-4|all> <type> [interval=1.0] [count=0] [label=] [unit=]",
+                "  - continuously measure at an interval; Ctrl+C to stop",
+                "  - count=0 means run until stopped",
+                "  - label= stores each reading to the measurement log",
+                "  - example: scope meas_loop 1 FREQUENCY interval=0.5",
+                "  - example: scope meas_loop 1 RMS count=10 label=vrms unit=V",
                 "  - types: FREQUENCY, PK2PK, RMS, MEAN, PERIOD, MINIMUM, MAXIMUM",
                 "  - types: RISE, FALL, AMPLITUDE, HIGH, LOW, PWIDTH, NWIDTH, CRMS",
                 "  - example: scope meas 1 FREQUENCY",
@@ -348,6 +357,60 @@ class ScopeCommand(BaseCommand):
         if hasattr(dev, "set_trigger_sweep"):
             dev.set_trigger_sweep(sweep)
         ColorPrinter.success(f"Trigger configured: CH{channel} @ {level}V, SLOPE={slope}, MODE={sweep}")
+
+    def _handle_meas_loop(self, args, dev) -> None:
+        """scope meas_loop <ch> <type> [interval=<s>] [count=<n>] [label=<name>] [unit=<u>]"""
+        if len(args) < 3:
+            ColorPrinter.warning("Usage: scope meas_loop <1-4> <type> [interval=1.0] [count=0] [label=] [unit=]")
+            return
+        channels = self.parse_channels(args[1], max_ch=4)
+        measure_type = args[2].upper()
+        interval = 1.0
+        count = 0
+        label = ""
+        unit = ""
+        for token in args[3:]:
+            k, _, v = token.partition("=")
+            k = k.lower()
+            if k == "interval":
+                with contextlib.suppress(ValueError):
+                    interval = float(v)
+            elif k == "count":
+                with contextlib.suppress(ValueError):
+                    count = int(v)
+            elif k == "label":
+                label = v
+            elif k == "unit":
+                unit = v
+        ColorPrinter.info(
+            f"Continuous {measure_type} on CH{','.join(str(c) for c in channels)} "
+            f"every {interval}s{f', {count} samples' if count else ''} — press Ctrl+C to stop"
+        )
+        self.ctx.interrupt_requested = False
+        iteration = 0
+        try:
+            while True:
+                if self.ctx.interrupt_requested:
+                    print()
+                    break
+                for channel in channels:
+                    val = dev.measure_bnf(channel, measure_type)
+                    ts = time.strftime("%H:%M:%S")
+                    ColorPrinter.cyan(f"[{ts}] CH{channel} {measure_type}: {val}")
+                    if label:
+                        stored_label = f"{label}_ch{channel}" if len(channels) > 1 else label
+                        self.measurements.record(stored_label, val, unit or "", f"scope.meas.{measure_type}")
+                iteration += 1
+                if count and iteration >= count:
+                    break
+                end_time = time.time() + interval
+                while time.time() < end_time:
+                    if self.ctx.interrupt_requested:
+                        print()
+                        return
+                    time.sleep(0.05)
+        except KeyboardInterrupt:
+            print()
 
     def _handle_meas(self, args, dev) -> None:
         if len(args) < 3:

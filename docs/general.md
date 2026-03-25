@@ -146,28 +146,70 @@ all off       # turn off all outputs
 
 ---
 
-## sleep / wait
+## sleep
 
 Pause for a specified duration.
 
 ```
 sleep <seconds>
-wait <seconds>
 ```
 
 | Parameter | Required | Description |
 |-----------|----------|-------------|
 | `seconds` | required | Duration to pause. Supports fractions: `0.5` = 500 ms. |
 
-`wait` is an alias for `sleep`.
-
 ```
 sleep 1.0     # wait 1 second
 sleep 0.5     # wait 500 ms
-wait 2        # wait 2 seconds
 ```
 
 Also valid as a [script directive](scripting.md#timing): `sleep {delay}`
+
+---
+
+## status
+
+Show all connected instruments and which one is currently active.
+
+```
+status
+```
+
+Equivalent to `list`. Displays each instrument's assigned name and highlights the active one.
+
+---
+
+## close
+
+Disconnect all instruments and release VISA resources.
+
+```
+close
+```
+
+Use `scan` to reconnect after closing.
+
+---
+
+## docs
+
+Open the full HTML command reference in your web browser.
+
+```
+docs
+```
+
+Serves the bundled MkDocs site via a local HTTP server on a random port. If the site has not been built yet and `mkdocs.yml` is present, it automatically runs `mkdocs build` first.
+
+```
+docs    # opens http://127.0.0.1:<port>/index.html in your default browser
+```
+
+!!! tip
+    The HTTP server stays alive for the rest of the session. Calling `docs` again reuses the same port — no second server is started.
+
+!!! note
+    Auto-build requires: `pip install mkdocs-material`
 
 ---
 
