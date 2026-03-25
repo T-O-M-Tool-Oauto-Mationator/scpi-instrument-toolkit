@@ -175,7 +175,7 @@ Show all connected instruments and which one is currently active.
 status
 ```
 
-Equivalent to `list`. Displays each instrument's assigned name and highlights the active one.
+Identical to `list`. See the `list` command for full details. `status` exists as a convenience alias.
 
 ---
 

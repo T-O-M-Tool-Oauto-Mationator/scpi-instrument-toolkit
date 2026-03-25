@@ -74,9 +74,9 @@ pip install -e .
 
 | Extra | Command | Purpose |
 |-------|---------|---------|
-| NI PXIe-4139 SMU | `pip install nidcpower` | NI DCPower driver for PXIe SMU |
-| Docs build | `pip install "scpi-instrument-toolkit[docs]"` | Build HTML docs locally with MkDocs |
-| Test suite | `pip install "scpi-instrument-toolkit[test]"` | Run unit/integration tests |
+| NI PXIe-4139 SMU | `pip install nidcpower` | NI DCPower driver for PXIe SMU — required only if you have NI PXIe-4139 hardware |
+| Docs build | `pip install "scpi-instrument-toolkit[docs]"` | Build HTML docs locally with MkDocs — when building documentation locally |
+| Test suite | `pip install "scpi-instrument-toolkit[test]"` | Run unit/integration tests — when running the test suite |
 
 ---
 

@@ -18,7 +18,7 @@ Controls digital multimeters.
 
 Configure the measurement mode. The mode stays active until changed.
 
-```
+```bash
 dmm config <mode> [range] [resolution] [nplc=<n>]
 dmm mode <mode> [range] [resolution] [nplc=<n>]
 ```
@@ -223,7 +223,7 @@ dmm text TESTING scroll=auto delay=0.2
 
 Scroll text continuously across the DMM display in a background loop.
 
-```
+```bash
 dmm text_loop <message> [delay=<s>] [pad=<n>] [width=<n>]
 dmm text_loop off
 ```
@@ -236,7 +236,7 @@ dmm text_loop off
 | `width=` | optional | int | Display window width in characters. Default: `12`. |
 | `off` | — | — | Stop the scrolling loop and clear the display. |
 
-```
+```bash
 dmm text_loop TESTING delay=0.15    # start scrolling
 dmm text_loop off                   # stop
 ```
@@ -250,7 +250,7 @@ dmm text_loop off                   # stop
 
 Clear any custom text from the DMM display and restore the measurement display.
 
-```
+```bash
 dmm cleartext
 ```
 

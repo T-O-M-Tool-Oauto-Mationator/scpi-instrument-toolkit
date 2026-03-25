@@ -212,7 +212,7 @@ calc crest_factor m["pk2pk"] / (2 * m["rms"])
 
 Assert that a stored measurement falls within acceptable limits. Appends a pass/fail result to the test report.
 
-```
+```bash
 check <label> <min> <max>
 check <label> <expected> tol=<N>
 check <label> <expected> tol=<N>%
@@ -227,7 +227,7 @@ check <label> <expected> tol=<N>%
 
 Prints `[PASS]` or `[FAIL]` with the measured value and limits. A failed check sets an error flag — scripts with `set -e` will stop on failure.
 
-```
+```bash
 dmm1 config vdc
 dmm1 meas_store vout unit=V
 
@@ -244,7 +244,7 @@ Results are collected in memory and shown with `report print` or exported with `
 
 View or export a lab test report containing all `check` pass/fail results.
 
-```
+```bash
 report print
 report save <path>
 report clear
@@ -260,7 +260,7 @@ report operator <name>
 | `title <text>` | Set the report title shown in the PDF header |
 | `operator <name>` | Set the operator name shown in the report header |
 
-```
+```bash
 report title "PSU Accuracy Test"
 report operator "J. Smith"
 

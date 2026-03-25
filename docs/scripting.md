@@ -142,7 +142,7 @@ script import <name> <path>
 
 Reload all scripts from the scripts directory, or flush all in-memory scripts back to disk.
 
-```
+```bash
 script save    # write every in-memory script to the scripts directory as .scpi files
 script load    # re-read all .scpi files from the scripts directory
 ```
@@ -157,7 +157,7 @@ Scripts are stored as individual `.scpi` files in the scripts directory (default
 
 Record interactive REPL commands directly into a named script without opening an editor.
 
-```
+```bash
 record start <name>    # begin recording commands to a script
 record stop            # stop recording and save
 record status          # show whether recording is active and how many lines are buffered
@@ -169,7 +169,7 @@ record status          # show whether recording is active and how many lines are
 
 Every command you type at the REPL prompt (except `record` itself) is appended to the named script in real time. The script file is saved automatically when you run `record stop`.
 
-```
+```bash
 record start my_psu_test    # start recording
 psu1 set 5.0
 sleep 0.5
@@ -218,7 +218,7 @@ if psu:
     ColorPrinter.success("PSU set to 5.0 V")
 ```
 
-```
+```bash
 python my_script.py
 python /home/user/projects/lab_sequence.py
 ```
@@ -320,7 +320,7 @@ Delete a previously defined variable so it can no longer be used or substituted:
 unset <varname>
 ```
 
-```
+```bash
 voltage = 5.0
 print "Voltage is {voltage}"    # prints: Voltage is 5.0
 unset voltage

@@ -67,7 +67,7 @@ awg wave <1|2|all> <type> [freq=<Hz>] [amp=<Vpp>] [offset=<V>] [duty=<%>] [phase
 | `noise` | White noise |
 | `dc` | DC level (set with `offset=`) |
 | `arb` | Arbitrary waveform (device-dependent) |
-| `prbs` | Pseudo-random binary sequence (device-dependent) |
+| `prbs` | Pseudo-random binary sequence — used for BER testing and channel characterization (Keysight EDU33212A only) |
 
 All keyword arguments are optional — omitted parameters keep their current values.
 
@@ -206,7 +206,7 @@ awg sync off    # disable sync output
 
 Enable or disable all output channels at once.
 
-```
+```bash
 awg on     # enable all channels
 awg off    # disable all channels
 ```
