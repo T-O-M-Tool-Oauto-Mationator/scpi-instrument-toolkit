@@ -373,11 +373,15 @@ class ScopeCommand(BaseCommand):
             k, _, v = token.partition("=")
             k = k.lower()
             if k == "interval":
-                with contextlib.suppress(ValueError):
+                try:
                     interval = float(v)
+                except ValueError:
+                    ColorPrinter.warning(f"Invalid interval value: {v!r}. Using default {interval}s.")
             elif k == "count":
-                with contextlib.suppress(ValueError):
+                try:
                     count = int(v)
+                except ValueError:
+                    ColorPrinter.warning(f"Invalid count value: {v!r}. Using default (unlimited).")
             elif k == "label":
                 label = v
             elif k == "unit":

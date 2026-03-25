@@ -223,7 +223,7 @@ check <label> <expected> tol=<N>%
 | `label` | required | Label of a stored measurement (must exist in the log). |
 | `min` / `max` | required (range form) | Inclusive lower and upper bounds. |
 | `expected` + `tol=` | required (tolerance form) | Center value and absolute tolerance. |
-| `tol=<N>%` | optional | Percentage tolerance: pass if `|value − expected| ≤ N/100 × expected`. |
+| `tol=<N>%` | optional | Percentage tolerance: pass if `\|value − expected\| ≤ N/100 × expected`. |
 
 Prints `[PASS]` or `[FAIL]` with the measured value and limits. A failed check sets an error flag — scripts with `set -e` will stop on failure.
 
@@ -271,7 +271,7 @@ report save results.pdf   # export PDF
 ```
 
 !!! note
-    `report save` requires `reportlab`: `pip install reportlab`
+    `report save` requires `fpdf2`: `pip install fpdf2`
 
 ---
 

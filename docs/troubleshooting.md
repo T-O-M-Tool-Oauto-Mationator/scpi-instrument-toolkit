@@ -73,7 +73,7 @@ groups   # should include uucp or dialout
     ls -l /dev/ttyUSB0
     # crw-rw---- 1 root uucp 188, 0 ...
     ```
-    The third column is the owning group.
+    The fourth field (after owner) is the owning group.
 
 ---
 
@@ -91,7 +91,17 @@ python -m lab_instruments --mock
 
 ## First-time setup on TAMU / managed Windows machines
 
-If you are starting from scratch on a managed machine, use the all-in-one setup script — it installs GitHub Desktop (including git), Python, and the toolkit in one step with no admin rights:
+If you are starting from scratch on a managed machine, use the all-in-one setup script — it installs GitHub Desktop (including git), Python, and the toolkit in one step with no admin rights.
+
+!!! warning "Review the script before running"
+    Always inspect a script before piping it to `iex`. Download and read `setup-tamu.ps1` from the repository first, then run it locally.
+
+```powershell
+# Preferred: clone the repo and run from disk
+.\setup-tamu.ps1
+```
+
+Or if you just want a one-liner and have reviewed the script source:
 
 ```powershell
 irm "https://raw.githubusercontent.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit/main/setup-tamu.ps1" | iex

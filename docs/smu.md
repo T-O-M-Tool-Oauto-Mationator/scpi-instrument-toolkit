@@ -136,17 +136,17 @@ See [Safety Limits](scripting.md#safety-limits) for the full reference.
 ## Typical workflow
 
 ```
-upper_limit smu voltage 6.0
-upper_limit smu current 0.05
+upper_limit smu1 voltage 6.0
+upper_limit smu1 current 0.05
 
-smu set 5.0 0.02     # 5 V, 20 mA limit
-smu on
+smu1 set 5.0 0.02     # 5 V, 20 mA limit
+smu1 on
 sleep 0.5
 
-smu meas_store v vout unit=V
-smu meas_store i iout unit=A
+smu1 meas_store v vout unit=V
+smu1 meas_store i iout unit=A
 calc power m["vout"] * m["iout"] unit=W
 
 log print
-smu off
+smu1 off
 ```
