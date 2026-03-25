@@ -19,7 +19,8 @@ def make_repl(devices):
     from lab_instruments.repl import InstrumentRepl
 
     repl = InstrumentRepl()
-    repl._scan_done.set()
+    repl._scan_thread.join(timeout=5.0)
+    repl._scan_done.wait(timeout=5.0)
     repl.devices = devices
     return repl
 
