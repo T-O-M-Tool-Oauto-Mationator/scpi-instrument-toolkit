@@ -22,3 +22,9 @@ requests>=2.31.0
 
 #NI PXIE-1073
 nidcpower>=1.5.0
+
+# Documentation
+mkdocs>=1.5.3
+
+# Linting
+ruff

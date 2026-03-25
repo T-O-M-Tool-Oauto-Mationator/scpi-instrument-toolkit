@@ -317,6 +317,7 @@ class MockScope(MockBase):
 
 def get_mock_devices(verbose=True):
     from lab_instruments import ColorPrinter
+
     if verbose:
         ColorPrinter.warning("Mock mode — no real instruments connected")
         ColorPrinter.info("Injecting: psu (MockPSU), awg (MockAWG), dmm (MockDMM), scope (MockScope)")
