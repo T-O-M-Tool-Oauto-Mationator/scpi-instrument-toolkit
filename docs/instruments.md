@@ -27,7 +27,7 @@
 
 ### NI PXIe instruments (NI PXIe-4139 SMU)
 
-The NI PXIe-4139 uses the NI-DCPower driver, **not** VISA/SCPI. It is auto-detected by the REPL when the `nidcpower` Python package and NI-DAQmx runtime are installed:
+The NI PXIe-4139 uses the NI-DCPower driver, **not** VISA/SCPI. It is auto-detected by the REPL when the `nidcpower` Python package and NI-DCPower runtime are installed:
 
 ```bash
 pip install nidcpower
@@ -37,8 +37,8 @@ The instrument appears as `smu1` in the REPL. See [Source Measure Unit (SMU)](sm
 
 **Prerequisites and limitations:**
 
-- Requires a PXIe chassis with a compatible controller slot; MXI-Express or Thunderbolt connection to the host PC.
-- NI-DAQmx runtime and `nidcpower` Python package must be installed (Windows only; Linux support is limited).
+- Requires a PXIe chassis with a compatible controller slot connected to the host PC via MXI-Express or Thunderbolt.
+- NI-DCPower runtime and `nidcpower` Python package must be installed (Windows only; Linux support is limited).
 - The REPL auto-detects the first available device as `smu1`. Multiple cards are not currently supported.
 - Not compatible with VISA/SCPI — VISA-based commands (`*IDN?`, etc.) do not apply.
 - Remote PXI controllers are not supported.

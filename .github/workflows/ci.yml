@@ -156,8 +156,12 @@ jobs:
 
       - name: Check coverage threshold
         shell: bash
+        env:
+          COVERAGE_THRESHOLD: "80.0"
+          MIN_EXECUTABLE_LINES: "5"
         run: |
           python3 - <<'EOF'
+          import os
           import xml.etree.ElementTree as ET
           import sys
 
@@ -168,7 +172,8 @@ jobs:
               print(f"::error::Coverage XML not found at {xml_path}. Did the test job succeed?")
               sys.exit(1)
 
-          threshold = 80.0
+          threshold = float(os.environ.get("COVERAGE_THRESHOLD", "80.0"))
+          min_executable_lines = int(os.environ.get("MIN_EXECUTABLE_LINES", "5"))
           root = tree.getroot()
 
           # --- Total coverage check ---
@@ -179,7 +184,6 @@ jobs:
               sys.exit(1)
 
           # --- Per-file coverage check ---
-          min_executable_lines = 5  # Skip trivially small files
           failures = []
           for cls in root.findall(".//class"):
               filename = cls.attrib.get("filename", "")

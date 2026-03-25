@@ -58,7 +58,7 @@ pip install -e .
     pip3 install scpi-instrument-toolkit
     ```
 
-    Serial instruments also require adding your user to the `dialout` group — see [Troubleshooting](troubleshooting.md#serial-port-permission-denied-linux).
+    Serial instruments communicate via device files (`/dev/ttyUSB*`, `/dev/ttyACM*`) owned by the `dialout` group — your user must be a member. See [Troubleshooting](troubleshooting.md#serial-port-permission-denied-linux).
 
 === "Linux (Arch)"
     ```bash
@@ -66,7 +66,7 @@ pip install -e .
     pip install scpi-instrument-toolkit
     ```
 
-    Serial instruments also require adding your user to the `uucp` group — see [Troubleshooting](troubleshooting.md#serial-port-permission-denied-linux).
+    Serial instruments communicate via device files (`/dev/ttyUSB*`, `/dev/ttyACM*`) owned by the `uucp` group — your user must be a member. See [Troubleshooting](troubleshooting.md#serial-port-permission-denied-linux).
 
 ---
 
@@ -75,8 +75,8 @@ pip install -e .
 | Extra | Command | Purpose |
 |-------|---------|---------|
 | NI PXIe-4139 SMU | `pip install nidcpower` | NI DCPower driver for PXIe SMU — required only if you have NI PXIe-4139 hardware |
-| Docs build | `pip install "scpi-instrument-toolkit[docs]"` | Build HTML docs locally with MkDocs — when building documentation locally |
-| Test suite | `pip install "scpi-instrument-toolkit[test]"` | Run unit/integration tests — when running the test suite |
+| Docs build | `pip install "scpi-instrument-toolkit[docs]"` | Build HTML docs locally with MkDocs |
+| Test suite | `pip install "scpi-instrument-toolkit[test]"` | Run unit/integration tests |
 
 ---
 

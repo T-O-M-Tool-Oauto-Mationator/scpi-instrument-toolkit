@@ -147,7 +147,7 @@ script save    # write every in-memory script to the scripts directory as .scpi 
 script load    # re-read all .scpi files from the scripts directory
 ```
 
-Scripts are stored as individual `.scpi` files in the scripts directory (default: `~/Documents/scpi-instrument-toolkit/scripts/`). The REPL loads them automatically at startup. Use `script load` if you have edited the files externally, and `script save` to flush any changes made in-session.
+Scripts are stored as individual `.scpi` files in the scripts directory (default: `~/Documents/scpi-instrument-toolkit/scripts/`), making them easy to version-control, share, and edit with any text editor. The REPL loads them automatically at startup. Use `script load` if you have edited the files externally, and `script save` to flush any changes made in-session.
 
 ---
 
@@ -182,6 +182,12 @@ script run my_psu_test       # run the recorded script
 
 !!! tip
     Use `record start` as a quick way to capture a sequence you have already typed interactively, without writing a script file by hand.
+
+!!! warning "Recording behavior"
+    - Recording to an existing script **appends** new lines rather than overwriting.
+    - Nested recording is not supported — `record start` while already recording raises an error.
+    - Exiting the REPL while recording is active automatically saves the buffered commands.
+    - The `record` command itself is never captured; all other REPL commands are recorded.
 
 ---
 
@@ -328,6 +334,9 @@ print "Voltage is {voltage}"    # prints: Voltage is {voltage}  (unexpanded)
 ```
 
 This is useful in interactive sessions when you want to re-run a script with a clean variable state, or when a variable was set interactively and is no longer needed.
+
+!!! note "Scope interactions"
+    `unset` only affects the current scope. In scripts, unsetting an imported variable does not modify the parent scope. Unsetting a variable that was overridden via command-line (`script run my_test voltage=3.3`) inside the script will cause `{voltage}` to remain unexpanded rather than restoring any parent or default value.
 
 ---
 

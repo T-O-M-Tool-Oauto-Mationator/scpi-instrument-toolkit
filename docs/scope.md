@@ -452,7 +452,7 @@ scope meas_loop <1-4|all> <type> [interval=1.0] [count=0] [label=<name>] [unit=<
 scope meas_loop 1 FREQUENCY                         # print CH1 frequency every 1s, run forever
 scope meas_loop 1 FREQUENCY interval=0.5            # measure every 500 ms
 scope meas_loop 1 RMS count=10 label=vrms unit=V    # 10 samples, store each to log
-scope meas_loop 1,2 PK2PK interval=2.0              # both CH1 and CH2, every 2s
+scope meas_loop all PK2PK interval=2.0               # all channels, every 2s
 ```
 
 !!! tip

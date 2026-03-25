@@ -221,20 +221,28 @@ dmm text TESTING scroll=auto delay=0.2
 
 ## dmm text_loop
 
-Scroll text continuously across the DMM display in a background loop.
+Scroll text continuously across the DMM display in a background loop. Use this for long messages that don't fit on the 12-character display, or for unattended display status — contrast with `dmm text` which sets a static one-shot message.
+
+### Start scrolling
 
 ```bash
 dmm text_loop <message> [delay=<s>] [pad=<n>] [width=<n>]
-dmm text_loop off
 ```
 
 | Parameter | Required | Values | Description |
 |-----------|----------|--------|-------------|
 | `message` | required | string | Text to scroll. |
 | `delay=` | optional | float (s) | Seconds between scroll steps. Default: `0.2`. |
-| `pad=` | optional | int | Blank characters to pad each side of the message. Default: `4`. |
+| `pad=` | optional | int | Blank characters to pad each side of the message. Default: `4` (the HP 34401A display is 12 characters wide). |
 | `width=` | optional | int | Display window width in characters. Default: `12`. |
-| `off` | — | — | Stop the scrolling loop and clear the display. |
+
+### Stop scrolling
+
+```bash
+dmm text_loop off
+```
+
+Stops the scrolling loop and clears the display.
 
 ```bash
 dmm text_loop TESTING delay=0.15    # start scrolling
@@ -243,6 +251,11 @@ dmm text_loop off                   # stop
 
 !!! note
     HP 34401A only. The loop runs until `dmm text_loop off` is called or the REPL exits.
+
+!!! warning "Edge cases"
+    - Calling `dmm text_loop` while a loop is already running replaces the existing loop immediately.
+    - Empty messages scroll blank padding across the display.
+    - If `pad + message length > width`, the message wraps naturally as the scroll window advances.
 
 ---
 
@@ -254,8 +267,10 @@ Clear any custom text from the DMM display and restore the measurement display.
 dmm cleartext
 ```
 
+Clears text set by either `dmm text` or `dmm text_loop`. If a scrolling loop is active, stop it first with `dmm text_loop off` before calling `dmm cleartext`. Calling `dmm cleartext` when no custom text is displayed is a no-op.
+
 !!! note
-    HP 34401A only.
+    HP 34401A only. See also: `dmm text`, `dmm text_loop`.
 
 ---
 
