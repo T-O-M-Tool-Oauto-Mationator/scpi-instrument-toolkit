@@ -31,10 +31,13 @@ def _check_for_updates(force=False):
         with urllib.request.urlopen(req, timeout=2) as resp:
             tags = json.loads(resp.read())
 
-        if not tags:
+        import re
+
+        semver_tags = [t for t in tags if re.match(r"^v?\d+\.\d+\.\d+$", t["name"])]
+        if not semver_tags:
             return False
 
-        latest_tag = tags[0]["name"]
+        latest_tag = semver_tags[0]["name"]
         latest = latest_tag.lstrip("v")
 
         def _vtuple(v):
