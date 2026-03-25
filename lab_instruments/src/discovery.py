@@ -240,12 +240,9 @@ class InstrumentDiscovery:
                 if model_key is None:
                     if verbose:
                         self._safe_print(
-                            f"Checking {resource_name}... "
-                            f"{ColorPrinter.GREEN}Found: {model}{ColorPrinter.RESET}"
+                            f"Checking {resource_name}... {ColorPrinter.GREEN}Found: {model}{ColorPrinter.RESET}"
                         )
-                        self._safe_print(
-                            f"{ColorPrinter.YELLOW}  -> Unknown NI-DCPower device.{ColorPrinter.RESET}"
-                        )
+                        self._safe_print(f"{ColorPrinter.YELLOW}  -> Unknown NI-DCPower device.{ColorPrinter.RESET}")
                     continue
 
                 generic = self.NAME_MAP[model_key]
@@ -255,8 +252,7 @@ class InstrumentDiscovery:
 
                 if verbose:
                     self._safe_print(
-                        f"Checking {resource_name}... "
-                        f"{ColorPrinter.GREEN}Found: {idn}{ColorPrinter.RESET}"
+                        f"Checking {resource_name}... {ColorPrinter.GREEN}Found: {idn}{ColorPrinter.RESET}"
                     )
                     self._safe_print(f"  -> Identified as {generic.upper()} ({model_key})")
 
