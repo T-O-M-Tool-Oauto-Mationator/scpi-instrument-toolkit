@@ -79,6 +79,19 @@ class VariableCommands(BaseCommand):
         ColorPrinter.warning(f"'set' is deprecated for assignment — use '{key} = {raw_val}' instead.")
         self._assign_var(key, raw_val)
 
+    def do_unset(self, arg: str) -> None:
+        """unset <varname> — delete a script variable."""
+        args = self.parse_args(arg)
+        if not args:
+            ColorPrinter.warning("Usage: unset <varname>")
+            return
+        varname = args[0]
+        if varname in self.ctx.script_vars:
+            del self.ctx.script_vars[varname]
+            ColorPrinter.success(f"Unset '{varname}'")
+        else:
+            ColorPrinter.warning(f"Variable '{varname}' is not defined")
+
     def do_sleep(self, arg: str) -> None:
         args = self.parse_args(arg)
         if self.is_help(args) or not args:

@@ -16,12 +16,16 @@ authors = [
 keywords = ["scpi", "visa", "instrument", "oscilloscope", "power-supply", "multimeter", "function-generator", "lab", "test-equipment"]
 dependencies = [
     "PyVISA>=1.14.0",
+    "pyvisa-py>=0.7.0",
+    "pyserial>=3.5",
+    "psutil>=5.9.0",
+    "zeroconf>=0.131.0",
     "numpy>=1.21.0",
     "fpdf2>=2.7.0",
 ]
 
 [project.optional-dependencies]
-sim = ["pyvisa-py"]
+sim = []
 docs = ["mkdocs-material"]
 test = ["pytest>=7.0", "pytest-cov>=4.0"]
 lint = ["ruff>=0.4.0"]

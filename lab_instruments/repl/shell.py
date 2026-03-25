@@ -791,6 +791,10 @@ class InstrumentRepl(cmd.Cmd):
         "set <varname> <expr>: define a variable"
         self._var_cmd.do_set(arg)
 
+    def do_unset(self, arg):
+        "unset <varname>: delete a script variable"
+        self._var_cmd.do_unset(arg)
+
     def do_sleep(self, arg):
         "sleep <duration>[us|ms|s|m]: pause execution"
         self._var_cmd.do_sleep(arg)
@@ -940,7 +944,7 @@ class InstrumentRepl(cmd.Cmd):
         cmd_line("psu", "power supply  — chan, set, meas, track, save, recall")
         cmd_line("awg", "function generator  — chan, wave, freq, amp, offset, duty, phase")
         cmd_line("dmm", "multimeter  — config, read, fetch, meas, beep, display")
-        cmd_line("scope", "oscilloscope  — chan, meas, save, trigger, awg, dvm, counter")
+        cmd_line("scope", "oscilloscope  — chan, meas, meas_loop, save, trigger, awg, dvm, counter")
         cmd_line("smu", "source measure unit  — set, meas, meas_store, get, on, off")
 
         section("SCRIPTING")
@@ -949,6 +953,7 @@ class InstrumentRepl(cmd.Cmd):
         cmd_line("python", "execute an external Python script with REPL context")
         cmd_line("upper_limit", "set an upper safety bound  — psu/awg, optional chan, param, value")
         cmd_line("lower_limit", "set a lower safety bound  — psu/awg, optional chan, param, value")
+        cmd_line("unset", "delete a saved script variable  (unset <varname>)")
 
         section("LOGGING & MATH")
         cmd_line("log", "show or save recorded measurements  — print, save, clear")

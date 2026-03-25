@@ -431,6 +431,35 @@ Remove all measurement items from the on-screen results panel.
 === "Tektronix MSO2024"
     Not supported. The MSO2024 does not maintain an on-screen measurement panel via SCPI.
 
+### scope meas_loop
+
+Continuously measure a channel at a fixed interval and print results. Press **Ctrl+C** to stop.
+
+```
+scope meas_loop <1-4|all> <type> [interval=1.0] [count=0] [label=<name>] [unit=<str>]
+```
+
+| Parameter | Required | Values | Description |
+|-----------|----------|--------|-------------|
+| `1-4\|all` | required | `1`–`4`, `all` | Channel(s) to measure. |
+| `type` | required | see measurement types above | Measurement type. |
+| `interval=` | optional | seconds (default `1.0`) | Time between measurements. |
+| `count=` | optional | integer (default `0` = unlimited) | Stop after this many samples. `0` runs until Ctrl+C. |
+| `label=` | optional | string, no spaces | If provided, each reading is also stored to the measurement log (same as `meas_store`). |
+| `unit=` | optional | string | Unit shown in log (requires `label=`). |
+
+```
+scope meas_loop 1 FREQUENCY                         # print CH1 frequency every 1s, run forever
+scope meas_loop 1 FREQUENCY interval=0.5            # measure every 500 ms
+scope meas_loop 1 RMS count=10 label=vrms unit=V    # 10 samples, store each to log
+scope meas_loop 1,2 PK2PK interval=2.0              # both CH1 and CH2, every 2s
+```
+
+!!! tip
+    Use `count=N label=<name>` together to collect a fixed number of samples and then pass them to `calc` for post-processing.
+
+---
+
 ### scope meas_store
 
 Measure and record to the measurement log.

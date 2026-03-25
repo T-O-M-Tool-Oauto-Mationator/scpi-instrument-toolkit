@@ -312,6 +312,25 @@ This is how you reuse the same script for different test conditions without edit
 
 **Priority order:** command-line params > defaults defined in the script.
 
+### Clearing a variable: `unset`
+
+Delete a previously defined variable so it can no longer be used or substituted:
+
+```
+unset <varname>
+```
+
+```
+voltage = 5.0
+print "Voltage is {voltage}"    # prints: Voltage is 5.0
+unset voltage
+print "Voltage is {voltage}"    # prints: Voltage is {voltage}  (unexpanded)
+```
+
+This is useful in interactive sessions when you want to re-run a script with a clean variable state, or when a variable was set interactively and is no longer needed.
+
+---
+
 ### Legacy: `set` syntax (deprecated)
 
 The `set varname expr` syntax still works but is deprecated for variable assignment:
