@@ -248,3 +248,38 @@ class TestRegressions:
         repl.onecmd("print hi")
         out = capsys.readouterr().out
         assert "hi" in out
+
+
+# ---------------------------------------------------------------------------
+# unset command
+# ---------------------------------------------------------------------------
+
+
+class TestUnsetCommand:
+    def test_unset_removes_variable(self, make_repl, capsys):
+        repl = make_repl({})
+        repl.ctx.script_vars["voltage"] = "5.0"
+        repl.onecmd("unset voltage")
+        assert "voltage" not in repl.ctx.script_vars
+
+    def test_unset_nonexistent_warns(self, make_repl, capsys):
+        repl = make_repl({})
+        repl.onecmd("unset nothere")
+        out = capsys.readouterr().out
+        assert "not defined" in out or "nothere" in out
+
+    def test_unset_no_args_warns(self, make_repl, capsys):
+        repl = make_repl({})
+        repl.onecmd("unset")
+        out = capsys.readouterr().out
+        assert "Usage" in out or "usage" in out.lower() or out != ""
+
+    def test_unset_stops_substitution(self, make_repl, capsys):
+        repl = make_repl({})
+        repl.ctx.script_vars["x"] = "42"
+        repl.onecmd("unset x")
+        capsys.readouterr()
+        repl.onecmd('print "{x}"')
+        out = capsys.readouterr().out
+        assert "42" not in out
+        assert "{x}" in out

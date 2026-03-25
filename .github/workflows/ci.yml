@@ -168,13 +168,37 @@ jobs:
               print(f"::error::Coverage XML not found at {xml_path}. Did the test job succeed?")
               sys.exit(1)
 
-          rate = float(tree.getroot().attrib["line-rate"]) * 100
           threshold = 80.0
-          print(f"Line coverage: {rate:.1f}%  (threshold: {threshold:.0f}%)")
+          root = tree.getroot()
 
-          if rate < threshold:
-              print(f"::error::Coverage {rate:.1f}% is below the required {threshold:.0f}% threshold.")
+          # --- Total coverage check ---
+          total_rate = float(root.attrib["line-rate"]) * 100
+          print(f"Total line coverage: {total_rate:.1f}%  (threshold: {threshold:.0f}%)")
+          if total_rate < threshold:
+              print(f"::error::Total coverage {total_rate:.1f}% is below the required {threshold:.0f}% threshold.")
               sys.exit(1)
 
-          print("Coverage gate passed.")
+          # --- Per-file coverage check ---
+          failures = []
+          for cls in root.findall(".//class"):
+              filename = cls.attrib.get("filename", "")
+              # Skip generated/site files
+              if not filename.startswith("lab_instruments/") or "/site/" in filename:
+                  continue
+              lines = cls.findall("lines/line")
+              if len(lines) < 5:
+                  # Skip tiny files (< 5 executable lines) — not meaningful to gate
+                  continue
+              file_rate = float(cls.attrib.get("line-rate", 1.0)) * 100
+              if file_rate < threshold:
+                  failures.append((filename, file_rate))
+
+          if failures:
+              print(f"\nPer-file coverage failures ({len(failures)} file(s) below {threshold:.0f}%):")
+              for fname, rate in sorted(failures):
+                  print(f"  {fname}: {rate:.1f}%")
+                  print(f"::error file={fname}::Coverage {rate:.1f}% is below the required {threshold:.0f}% threshold.")
+              sys.exit(1)
+
+          print("Coverage gate passed (total + per-file).")
           EOF

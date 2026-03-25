@@ -153,6 +153,23 @@ class TestScopeMeasurements:
         repl.onecmd("scope meas_delay_store 1 2 prop_delay unit=s")
         assert len(repl.measurements) == 1
 
+    def test_meas_loop_fixed_count(self, repl):
+        """meas_loop with count=N should collect exactly N readings."""
+        repl.onecmd("scope meas_loop 1 FREQUENCY count=3 label=freq_sample unit=Hz")
+        assert len(repl.measurements) == 3
+        assert all(m["label"] == "freq_sample" for m in repl.measurements)
+
+    def test_meas_loop_no_label_no_store(self, repl):
+        """meas_loop without label= should print but not store measurements."""
+        repl.onecmd("scope meas_loop 1 RMS count=2")
+        assert len(repl.measurements) == 0
+
+    def test_meas_loop_missing_args(self, repl, capsys):
+        """meas_loop with missing args should print usage, not crash."""
+        repl.onecmd("scope meas_loop")
+        out = capsys.readouterr().out
+        assert out != ""
+
 
 # --- Waveform save ---
 
