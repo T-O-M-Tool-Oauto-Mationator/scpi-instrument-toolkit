@@ -54,15 +54,33 @@ python --version
 
 If you don't have Python, download it from [python.org](https://www.python.org/downloads/).
 
-### Install the toolkit
+### Install channels
 
-Open a terminal and run:
+There are two channels: **stable** (recommended) and **nightly** (latest development build).
+
+#### Stable
+
+The latest reviewed, tested release:
 
 ```
-pip install git+https://github.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit.git
+pip install "git+https://github.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit.git"
 ```
 
-That's it. This installs everything including the `scpi-repl` command.
+#### Nightly
+
+Built automatically from the latest `main` branch every night at midnight CST. Use this to get the newest features before a stable release. Not recommended for production lab use.
+
+```
+pip install "git+https://github.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit.git@nightly"
+```
+
+To update to the latest nightly:
+
+```
+pip install --upgrade "git+https://github.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit.git@nightly"
+```
+
+That's it. Both channels install everything including the `scpi-repl` command.
 
 > **Note:** You also need [NI-VISA](https://www.ni.com/en/support/downloads/drivers/download.ni-visa.html) installed for the tool to detect instruments over USB or GPIB.
 
@@ -147,10 +165,16 @@ Scripts are saved as individual `.scpi` files in your user scripts directory (us
 
 ## Updating
 
-To get the latest version:
+**Stable:**
 
 ```
-pip install --upgrade git+https://github.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit.git
+pip install --upgrade "git+https://github.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit.git"
+```
+
+**Nightly:**
+
+```
+pip install --upgrade "git+https://github.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit.git@nightly"
 ```
 
 ---
