@@ -281,6 +281,13 @@ class TestSmuSetMode:
         out = capsys.readouterr().out
         assert out != ""
 
+    def test_set_mode_current_safety_limit_exceeded(self, repl, capsys):
+        repl.onecmd("upper_limit smu current 0.01")
+        repl.onecmd("smu set_mode current 0.5")
+        out = capsys.readouterr().out
+        assert out != ""
+        assert repl.devices["smu"]._output_mode == "voltage"  # mode unchanged
+
 
 class TestSmuAvg:
     def test_set_avg(self, repl):

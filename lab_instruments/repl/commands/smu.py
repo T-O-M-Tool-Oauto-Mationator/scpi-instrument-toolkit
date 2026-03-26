@@ -181,6 +181,8 @@ class SmuCommand(BaseCommand):
         elif mode in ("current", "i"):
             current = float(args[2])
             voltage_limit = float(args[3]) if len(args) >= 4 else None
+            if not self.safety.check_psu_limits(smu_name, None, voltage=voltage_limit, current=current):
+                return
             dev.set_current_mode(current, voltage_limit)
             suffix = f"  voltage_limit={voltage_limit}V" if voltage_limit is not None else ""
             ColorPrinter.success(f"Mode: DC_CURRENT  {current}A{suffix}")

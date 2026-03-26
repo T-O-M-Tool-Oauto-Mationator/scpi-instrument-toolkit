@@ -558,8 +558,12 @@ class MockNI_PXIe_4139(MockPSU):
         self._in_compliance = False
 
     def measure_vi(self) -> dict:
-        v = round(random.uniform(self._voltage * 0.997, self._voltage * 1.003), 6)
-        i = round(random.uniform(self._current * 0.990, self._current * 1.010), 6)
+        if self._output_mode == "current":
+            v = round(random.uniform(self._voltage_limit * 0.997, self._voltage_limit * 1.003), 6)
+            i = round(random.uniform(self._current_level * 0.990, self._current_level * 1.010), 6)
+        else:
+            v = round(random.uniform(self._voltage * 0.997, self._voltage * 1.003), 6)
+            i = round(random.uniform(self._current * 0.990, self._current * 1.010), 6)
         return {"voltage": v, "current": i, "in_compliance": self._in_compliance}
 
     def measure_voltage(self, ch=None):
@@ -575,8 +579,8 @@ class MockNI_PXIe_4139(MockPSU):
         self._in_compliance = bool(state)
 
     def set_source_delay(self, seconds: float) -> None:
-        if seconds < 0:
-            raise ValueError("source_delay must be >= 0 seconds")
+        if not 0 <= seconds <= 167.0:
+            raise ValueError("source_delay must be between 0 and 167.0 seconds")
         self._source_delay = float(seconds)
 
     def get_source_delay(self) -> float:
@@ -596,6 +600,16 @@ class MockNI_PXIe_4139(MockPSU):
 
     def get_output_mode(self) -> str:
         return self._output_mode
+
+    def get_voltage_setpoint(self):
+        if self._output_mode == "current":
+            return self._voltage_limit
+        return self._voltage
+
+    def get_current_limit(self):
+        if self._output_mode == "current":
+            return self._current_level
+        return self._current
 
     def set_samples_to_average(self, n: int) -> None:
         n = int(n)

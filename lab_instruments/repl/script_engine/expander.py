@@ -256,6 +256,7 @@ def _parse_limit(
     VALID_PARAMS = {
         "awg": {"vpeak", "vtrough", "vpp", "freq", "voltage"},
         "psu": {"voltage", "current"},
+        "smu": {"voltage", "current"},
     }
     if base_type not in VALID_PARAMS:
         ctx.error(f"{head}: unknown device type '{device_str}'")

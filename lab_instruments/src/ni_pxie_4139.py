@@ -26,6 +26,7 @@ class NI_PXIe_4139:
     # Hardware limits for the PXIe-4139
     MAX_VOLTAGE = 60.0
     MAX_CURRENT = 1.0
+    MAX_SOURCE_DELAY = 167.0  # seconds, hardware limit per NI-DCPower spec
     DEFAULT_CURRENT_LIMIT = 0.01  # 10 mA
     DEFAULT_VOLTAGE_LIMIT = 5.0  # V, compliance when in current mode
 
@@ -152,7 +153,9 @@ class NI_PXIe_4139:
         return {
             "voltage": m.voltage,
             "current": m.current,
-            "in_compliance": bool(m.in_compliance),
+            # measure_multiple does not populate in_compliance; use the
+            # dedicated query which is always accurate.
+            "in_compliance": self.query_in_compliance(),
         }
 
     def measure_voltage(self) -> float:
@@ -194,10 +197,10 @@ class NI_PXIe_4139:
     # ------------------------------------------------------------------
 
     def set_source_delay(self, seconds: float) -> None:
-        """Set the source settle delay before measurement."""
+        """Set the source settle delay before measurement (0 to 167 seconds)."""
         self._check_session()
-        if seconds < 0:
-            raise ValueError("source_delay must be >= 0 seconds")
+        if not 0 <= seconds <= self.MAX_SOURCE_DELAY:
+            raise ValueError(f"source_delay must be between 0 and {self.MAX_SOURCE_DELAY} seconds")
         self._session.source_delay = datetime.timedelta(seconds=seconds)
         self._session.commit()
 
@@ -306,6 +309,11 @@ class NI_PXIe_4139:
     def send_command(self, cmd):
         """No-op SCPI compatibility stub."""
         pass
+
+    def get_error(self) -> str:
+        """SCPI compatibility stub — error queue not supported on NI_PXIe_4139."""
+        self._check_session()
+        return "not supported on NI_PXIe_4139"
 
     # ------------------------------------------------------------------
     # Internal

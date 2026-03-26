@@ -206,6 +206,12 @@ class TestNIPXIe4139_Stubs:
         smu, _ms = ni_pxie_4139
         smu.send_command("*RST")  # Should not raise
 
+    def test_get_error_returns_stub(self, ni_pxie_4139):
+        smu, _ms = ni_pxie_4139
+        result = smu.get_error()
+        assert "not supported" in result
+        assert "NI_PXIe_4139" in result
+
 
 # ===========================================================================
 # Error when not connected
@@ -242,8 +248,9 @@ class TestNIPXIe4139_MeasureVI:
         ms.measure_multiple.assert_called_once()
 
     def test_compliance_true(self, ni_pxie_4139):
+        # in_compliance comes from query_in_compliance(), not measure_multiple
         smu, ms = ni_pxie_4139
-        ms.measure_multiple.return_value = [type("M", (), {"voltage": 5.0, "current": 0.01, "in_compliance": True})()]
+        ms.query_in_compliance.return_value = True
         result = smu.measure_vi()
         assert result["in_compliance"] is True
 
@@ -308,6 +315,11 @@ class TestNIPXIe4139_SourceDelay:
         smu, _ms = ni_pxie_4139
         with pytest.raises(ValueError):
             smu.set_source_delay(-0.1)
+
+    def test_set_source_delay_too_high_raises(self, ni_pxie_4139):
+        smu, _ms = ni_pxie_4139
+        with pytest.raises(ValueError):
+            smu.set_source_delay(smu.MAX_SOURCE_DELAY + 1)
 
     def test_get_source_delay(self, ni_pxie_4139):
         import datetime
