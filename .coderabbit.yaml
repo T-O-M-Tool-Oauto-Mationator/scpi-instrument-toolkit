@@ -67,18 +67,6 @@ reviews:
         - set -e / set +e are valid -- do not flag them as deprecated.
         - Keep scripting.md and examples.md in sync with any REPL syntax changes.
 
-tools:
-  ruff:
-    enabled: true
-  shellcheck:
-    enabled: true
-  markdownlint:
-    enabled: true
-  yamllint:
-    enabled: true
-  gitleaks:
-    enabled: true
-
 knowledge_base:
   learnings:
     scope: local
