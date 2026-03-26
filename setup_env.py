@@ -12,9 +12,9 @@ from pathlib import Path
 
 def run_command(cmd, description):
     """Run a command and print status"""
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print(f"{description}")
-    print(f"{'='*80}")
+    print(f"{'=' * 80}")
     print(f"Running: {' '.join(cmd)}")
 
     try:
@@ -74,9 +74,7 @@ def main():
         python_exe = venv_dir / "bin" / "python"
 
     # Upgrade pip
-    if not run_command(
-        [str(python_exe), "-m", "pip", "install", "--upgrade", "pip"], "Upgrading pip"
-    ):
+    if not run_command([str(python_exe), "-m", "pip", "install", "--upgrade", "pip"], "Upgrading pip"):
         print("\n⚠ Warning: Failed to upgrade pip (continuing anyway)")
 
     # Install requirements
@@ -103,9 +101,7 @@ def main():
             "pyserial-asyncio",
             "openpyxl",
         ]
-        if not run_command(
-            [str(pip_exe), "install"] + packages, "Installing basic packages"
-        ):
+        if not run_command([str(pip_exe), "install"] + packages, "Installing basic packages"):
             print("\n❌ Failed to install packages")
             return 1
 

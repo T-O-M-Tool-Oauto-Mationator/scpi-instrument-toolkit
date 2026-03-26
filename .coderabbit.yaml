@@ -1,0 +1,76 @@
+language: "en-US"
+
+reviews:
+  profile: assertive
+  request_changes_workflow: false
+  high_level_summary: true
+  high_level_summary_in_walkthrough: true
+  collapse_walkthrough: false
+  review_status: true
+  review_details: true
+  commit_status: true
+  sequence_diagrams: true
+  estimate_code_review_effort: true
+  assess_linked_issues: true
+  related_issues: true
+  related_prs: true
+  suggested_labels: true
+  poem: false
+
+  auto_review:
+    enabled: true
+    auto_incremental_review: true
+    drafts: false
+    base_branches:
+      - main
+      - "dev/nightly"
+    ignore_title_keywords:
+      - "[skip ci]"
+      - "[no review]"
+      - "WIP"
+      - "wip"
+
+  path_filters:
+    - "!**/*.egg-info/**"
+    - "!**/site/**"
+    - "!datasheets/**"
+    - "!**/.ruff_cache/**"
+    - "!**/.pytest_cache/**"
+    - "!**/__pycache__/**"
+    - "!**/CHANGELOG.md"
+
+  path_instructions:
+    - path: "lab_instruments/src/**/*.py"
+      instructions: |
+        This is a SCPI instrument driver. Enforce the driver contract strictly:
+        - Getters must return self._attr, never a hardcoded value.
+        - Never use `from time import sleep` -- always `import time; time.sleep(...)`.
+        - get_error() must be implemented; stub with "not supported on <ClassName>" if needed.
+        - write() must NOT be used for commands that return a value -- use query() instead.
+        - Numeric inputs must be validated against min/max; raise ValueError on violation.
+        - Enum inputs must be validated against a class-level ALLOWLIST constant.
+        - Every driver must implement __enter__ / __exit__; __exit__ must fire after exceptions.
+        - self._cache must be updated atomically with every write() call.
+
+    - path: "tests/**/*.py"
+      instructions: |
+        Test rules for this project:
+        - Mock classes must track state, not return constants.
+        - Use `monkeypatch.setattr(module.time, "sleep", lambda _: None)` for timing mocks.
+        - Every driver fix should ship with its test in the same commit.
+
+    - path: "docs/**/*.md"
+      instructions: |
+        Docs are built by MkDocs and served to users.
+        - Variable syntax must use {var} (not ${var}) and `var = value` (not `set var value`).
+        - print examples must use quoted strings: `print "message {var}"`.
+        - set -e / set +e are valid -- do not flag them as deprecated.
+        - Keep scripting.md and examples.md in sync with any REPL syntax changes.
+
+knowledge_base:
+  learnings:
+    scope: local
+  issues:
+    scope: local
+  pull_requests:
+    scope: local

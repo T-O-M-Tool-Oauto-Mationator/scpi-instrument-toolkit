@@ -40,6 +40,7 @@ See [docs/troubleshooting.md](docs/troubleshooting.md) if you run into issues.
 | OWON XDM1041 | Multimeter |
 | Matrix MPS6010H | Power Supply |
 | JDS6600 | Function Generator |
+| NI PXIe-4139 | SMU |
 
 ---
 

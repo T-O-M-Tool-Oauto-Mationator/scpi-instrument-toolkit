@@ -7,14 +7,9 @@ import shlex
 import signal
 import sys
 import threading
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as _pkg_version
 from typing import Any, Dict
-
-try:
-    from importlib.metadata import version as _pkg_version
-
-    _REPL_VERSION = _pkg_version("scpi-instrument-toolkit")
-except Exception:
-    _REPL_VERSION = "unknown"
 
 from lab_instruments import ColorPrinter, InstrumentDiscovery
 
@@ -30,6 +25,16 @@ from .commands.smu import SmuCommand
 from .commands.variables import VariableCommands
 from .context import ReplContext
 from .syntax import substitute_vars
+
+
+def get_version():
+    try:
+        return _pkg_version("scpi-instrument-toolkit")
+    except PackageNotFoundError:
+        return "unknown"
+
+
+_REPL_VERSION = get_version()
 
 
 def _split_on_semicolons(line):
