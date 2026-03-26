@@ -293,6 +293,17 @@ class InstrumentRepl(cmd.Cmd):
 
     def _restore_terminal(self):
         try:
+            if sys.stdout.isatty():
+                # Reset extended keyboard reporting modes that readline may have
+                # enabled.  These are no-ops on terminals that don't support them:
+                #   ?2004l  disable bracketed paste
+                #   >4m     reset XTerm modifyOtherKeys (fixes 9;5u spam on Ctrl+C)
+                #   <u      pop kitty keyboard protocol stack
+                sys.stdout.write("\x1b[?2004l\x1b[>4m\x1b[<u")
+                sys.stdout.flush()
+        except Exception:
+            pass
+        try:
             if self._term_settings is not None:
                 import termios
 
@@ -327,6 +338,7 @@ class InstrumentRepl(cmd.Cmd):
                 self._general.safe_all()
             except Exception as exc:
                 ColorPrinter.error(f"Error during cleanup: {exc}")
+        self._restore_terminal()
         if self.ctx.in_script:
             raise KeyboardInterrupt
         self._should_exit = True
