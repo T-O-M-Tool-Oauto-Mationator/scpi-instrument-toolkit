@@ -262,6 +262,8 @@ class GeneralCommands(BaseCommand):
         try:
             if name.startswith("psu"):
                 self._state_psu(name, dev, state)
+            elif name.startswith("smu"):
+                self._state_smu(name, dev, state)
             elif name.startswith("awg"):
                 self._state_awg(name, dev, state)
             elif name.startswith("scope"):
@@ -356,6 +358,25 @@ class GeneralCommands(BaseCommand):
         elif state == "reset":
             dev.reset()
             ColorPrinter.success(f"{name}: reset")
+
+    def _state_smu(self, name, dev, state):
+        if state in ("safe", "off"):
+            if hasattr(dev, "disable_all_channels"):
+                dev.disable_all_channels()
+            elif hasattr(dev, "enable_output"):
+                dev.enable_output(False)
+            ColorPrinter.success(f"{name}: output disabled")
+        elif state == "on":
+            if not self.safety.check_psu_output_allowed(name):
+                return
+            if hasattr(dev, "enable_output"):
+                dev.enable_output(True)
+            ColorPrinter.success(f"{name}: output enabled")
+        elif state == "reset":
+            dev.reset()
+            ColorPrinter.success(f"{name}: reset")
+        else:
+            ColorPrinter.warning("SMU states: on, off, safe, reset")
 
     def _state_dmm(self, name, dev, state):
         if state in ("safe", "reset"):

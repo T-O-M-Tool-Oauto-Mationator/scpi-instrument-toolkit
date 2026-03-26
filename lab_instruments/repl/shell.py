@@ -85,11 +85,11 @@ class InstrumentRepl(cmd.Cmd):
         self._script_cmd = ScriptingCommands(self.ctx, self._safety, shell=self)
 
         # Wire up state callback for instrument commands that delegate to do_state
-        self._psu_cmd.set_state_callback = lambda arg: self.do_state(arg)
-        self._awg_cmd.set_state_callback = lambda arg: self.do_state(arg)
-        self._dmm_cmd.set_state_callback = lambda arg: self.do_state(arg)
-        self._scope_cmd.set_state_callback = lambda arg: self.do_state(arg)
-        self._smu_cmd.set_state_callback = lambda arg: self.do_state(arg)
+        self._psu_cmd.set_state_callback(lambda name, st: self.do_state(f"{name} {st}"))
+        self._awg_cmd.set_state_callback(lambda name, st: self.do_state(f"{name} {st}"))
+        self._dmm_cmd.set_state_callback(lambda name, st: self.do_state(f"{name} {st}"))
+        self._scope_cmd.set_state_callback(lambda name, st: self.do_state(f"{name} {st}"))
+        self._smu_cmd.set_state_callback(lambda name, st: self.do_state(f"{name} {st}"))
 
         # Multi-line loop support
         self._in_loop = False

@@ -224,3 +224,196 @@ class TestNIPXIe4139_NotConnected:
         smu._session = None
         with pytest.raises(ConnectionError):
             smu.measure_voltage()
+
+
+# ===========================================================================
+# Atomic V+I measurement
+# ===========================================================================
+
+
+class TestNIPXIe4139_MeasureVI:
+    def test_returns_dict(self, ni_pxie_4139):
+        smu, ms = ni_pxie_4139
+        ms.measure_multiple.return_value = [type("M", (), {"voltage": 3.3, "current": 0.05, "in_compliance": False})()]
+        result = smu.measure_vi()
+        assert result["voltage"] == pytest.approx(3.3)
+        assert result["current"] == pytest.approx(0.05)
+        assert result["in_compliance"] is False
+        ms.measure_multiple.assert_called_once()
+
+    def test_compliance_true(self, ni_pxie_4139):
+        smu, ms = ni_pxie_4139
+        ms.measure_multiple.return_value = [type("M", (), {"voltage": 5.0, "current": 0.01, "in_compliance": True})()]
+        result = smu.measure_vi()
+        assert result["in_compliance"] is True
+
+    def test_measure_voltage_uses_single_call(self, ni_pxie_4139):
+        smu, ms = ni_pxie_4139
+        ms.measure_multiple.return_value = [type("M", (), {"voltage": 1.5, "current": 0.0, "in_compliance": False})()]
+        assert smu.measure_voltage() == pytest.approx(1.5)
+        assert ms.measure_multiple.call_count == 1
+
+    def test_measure_current_uses_single_call(self, ni_pxie_4139):
+        smu, ms = ni_pxie_4139
+        ms.measure_multiple.return_value = [type("M", (), {"voltage": 0.0, "current": 0.042, "in_compliance": False})()]
+        assert smu.measure_current() == pytest.approx(0.042)
+        assert ms.measure_multiple.call_count == 1
+
+
+# ===========================================================================
+# Compliance query
+# ===========================================================================
+
+
+class TestNIPXIe4139_QueryCompliance:
+    def test_not_in_compliance(self, ni_pxie_4139):
+        smu, ms = ni_pxie_4139
+        ms.query_in_compliance.return_value = False
+        assert smu.query_in_compliance() is False
+
+    def test_in_compliance(self, ni_pxie_4139):
+        smu, ms = ni_pxie_4139
+        ms.query_in_compliance.return_value = True
+        assert smu.query_in_compliance() is True
+
+    def test_not_connected_raises(self, ni_pxie_4139):
+        smu, _ms = ni_pxie_4139
+        smu._session = None
+        with pytest.raises(ConnectionError):
+            smu.query_in_compliance()
+
+
+# ===========================================================================
+# Source delay
+# ===========================================================================
+
+
+class TestNIPXIe4139_SourceDelay:
+    def test_set_source_delay(self, ni_pxie_4139):
+        import datetime
+
+        smu, ms = ni_pxie_4139
+        smu.set_source_delay(0.5)
+        assert ms.source_delay == datetime.timedelta(seconds=0.5)
+        ms.commit.assert_called()
+
+    def test_set_source_delay_zero(self, ni_pxie_4139):
+        import datetime
+
+        smu, ms = ni_pxie_4139
+        smu.set_source_delay(0.0)
+        assert ms.source_delay == datetime.timedelta(seconds=0.0)
+
+    def test_set_source_delay_negative_raises(self, ni_pxie_4139):
+        smu, _ms = ni_pxie_4139
+        with pytest.raises(ValueError):
+            smu.set_source_delay(-0.1)
+
+    def test_get_source_delay(self, ni_pxie_4139):
+        import datetime
+
+        smu, ms = ni_pxie_4139
+        ms.source_delay = datetime.timedelta(seconds=0.25)
+        assert smu.get_source_delay() == pytest.approx(0.25)
+
+
+# ===========================================================================
+# Output mode (voltage / current)
+# ===========================================================================
+
+
+class TestNIPXIe4139_CurrentMode:
+    def test_set_current_mode(self, ni_pxie_4139):
+        import nidcpower
+
+        smu, ms = ni_pxie_4139
+        smu.set_current_mode(0.05, 5.0)
+        assert ms.current_level == pytest.approx(0.05)
+        assert ms.voltage_limit == pytest.approx(5.0)
+        assert ms.output_function == nidcpower.OutputFunction.DC_CURRENT
+        ms.commit.assert_called()
+        assert smu._output_mode == "current"
+
+    def test_set_current_mode_default_voltage_limit(self, ni_pxie_4139):
+        smu, ms = ni_pxie_4139
+        smu.set_current_mode(0.01)
+        assert ms.voltage_limit == pytest.approx(smu.DEFAULT_VOLTAGE_LIMIT)
+
+    def test_set_current_mode_too_high_raises(self, ni_pxie_4139):
+        smu, _ms = ni_pxie_4139
+        with pytest.raises(ValueError):
+            smu.set_current_mode(5.0)
+
+    def test_set_current_mode_voltage_limit_too_high_raises(self, ni_pxie_4139):
+        smu, _ms = ni_pxie_4139
+        with pytest.raises(ValueError):
+            smu.set_current_mode(0.01, 100.0)
+
+    def test_set_voltage_mode_switches_back(self, ni_pxie_4139):
+        import nidcpower
+
+        smu, ms = ni_pxie_4139
+        smu.set_current_mode(0.05, 5.0)
+        smu.set_voltage_mode(3.3, 0.1)
+        assert ms.output_function == nidcpower.OutputFunction.DC_VOLTAGE
+        assert ms.voltage_level == pytest.approx(3.3)
+        assert ms.current_limit == pytest.approx(0.1)
+        assert smu._output_mode == "voltage"
+
+    def test_get_output_mode_default(self, ni_pxie_4139):
+        smu, _ms = ni_pxie_4139
+        assert smu.get_output_mode() == "voltage"
+
+    def test_get_output_mode_after_current(self, ni_pxie_4139):
+        smu, _ms = ni_pxie_4139
+        smu.set_current_mode(0.01)
+        assert smu.get_output_mode() == "current"
+
+
+# ===========================================================================
+# Samples to average
+# ===========================================================================
+
+
+class TestNIPXIe4139_SamplesToAverage:
+    def test_set_samples_to_average(self, ni_pxie_4139):
+        smu, ms = ni_pxie_4139
+        smu.set_samples_to_average(10)
+        assert ms.samples_to_average == 10
+        ms.commit.assert_called()
+
+    def test_set_samples_to_average_one(self, ni_pxie_4139):
+        smu, ms = ni_pxie_4139
+        smu.set_samples_to_average(1)
+        assert ms.samples_to_average == 1
+
+    def test_set_samples_to_average_zero_raises(self, ni_pxie_4139):
+        smu, _ms = ni_pxie_4139
+        with pytest.raises(ValueError):
+            smu.set_samples_to_average(0)
+
+    def test_get_samples_to_average(self, ni_pxie_4139):
+        smu, ms = ni_pxie_4139
+        ms.samples_to_average = 5
+        assert smu.get_samples_to_average() == 5
+
+
+# ===========================================================================
+# Temperature
+# ===========================================================================
+
+
+class TestNIPXIe4139_Temperature:
+    def test_returns_float(self, ni_pxie_4139):
+        smu, ms = ni_pxie_4139
+        ms.read_current_temperature.return_value = 27.3
+        temp = smu.read_temperature()
+        assert isinstance(temp, float)
+        assert temp == pytest.approx(27.3)
+        ms.read_current_temperature.assert_called_once()
+
+    def test_not_connected_raises(self, ni_pxie_4139):
+        smu, _ms = ni_pxie_4139
+        smu._session = None
+        with pytest.raises(ConnectionError):
+            smu.read_temperature()

@@ -122,6 +122,38 @@ class TestSmuGet:
         repl.onecmd("smu get")
 
 
+class TestSmuState:
+    def test_state_on(self, repl):
+        devices = repl.devices
+        repl.onecmd("smu state on")
+        assert not repl._command_had_error
+        assert devices["smu"].get_output_state() is True
+
+    def test_state_off(self, repl):
+        devices = repl.devices
+        repl.onecmd("smu state on")
+        repl.onecmd("smu state off")
+        assert not repl._command_had_error
+        assert devices["smu"].get_output_state() is False
+
+    def test_state_safe(self, repl):
+        devices = repl.devices
+        repl.onecmd("smu state on")
+        repl.onecmd("smu state safe")
+        assert not repl._command_had_error
+        assert devices["smu"].get_output_state() is False
+
+    def test_state_reset(self, repl):
+        repl.onecmd("smu state reset")
+        assert not repl._command_had_error
+
+    def test_state_no_args_shows_help(self, repl, capsys):
+        repl.onecmd("smu state")
+        out = capsys.readouterr().out
+        assert "state" in out.lower()
+        assert not repl._command_had_error
+
+
 class TestSmuHelp:
     def test_help_no_args(self, repl, capsys):
         repl.onecmd("smu")
@@ -146,3 +178,143 @@ class TestSmuSafety:
         repl.onecmd("smu set 5.0")
         out = capsys.readouterr().out
         assert out != ""
+
+
+class TestSmuMeasVI:
+    def test_no_arg_gives_vi(self, repl, capsys):
+        # smu meas with no argument now gives atomic V+I output
+        repl.onecmd("smu meas")
+        out = capsys.readouterr().out
+        assert "V=" in out
+        assert "I=" in out
+
+    def test_vi_subcommand(self, repl, capsys):
+        repl.onecmd("smu meas vi")
+        out = capsys.readouterr().out
+        assert "V=" in out
+        assert "I=" in out
+
+    def test_v_still_works(self, repl, capsys):
+        repl.onecmd("smu meas v")
+        out = capsys.readouterr().out
+        assert "V" in out
+
+    def test_i_still_works(self, repl, capsys):
+        repl.onecmd("smu meas i")
+        out = capsys.readouterr().out
+        assert "A" in out
+
+    def test_compliance_annotation_when_set(self, repl, capsys):
+        repl.devices["smu"]._set_mock_compliance(True)
+        repl.onecmd("smu meas vi")
+        out = capsys.readouterr().out
+        assert "COMPLIANCE" in out
+
+    def test_no_compliance_annotation_when_clear(self, repl, capsys):
+        repl.devices["smu"]._set_mock_compliance(False)
+        repl.onecmd("smu meas vi")
+        out = capsys.readouterr().out
+        assert "COMPLIANCE" not in out
+
+
+class TestSmuCompliance:
+    def test_not_in_compliance(self, repl, capsys):
+        repl.devices["smu"]._set_mock_compliance(False)
+        repl.onecmd("smu compliance")
+        out = capsys.readouterr().out
+        assert out != ""
+
+    def test_in_compliance_shows_warning(self, repl, capsys):
+        repl.devices["smu"]._set_mock_compliance(True)
+        repl.onecmd("smu compliance")
+        out = capsys.readouterr().out
+        assert "COMPLIANCE" in out.upper()
+
+
+class TestSmuSourceDelay:
+    def test_set_source_delay(self, repl):
+        repl.onecmd("smu source_delay 0.5")
+        assert repl.devices["smu"]._source_delay == pytest.approx(0.5)
+
+    def test_get_source_delay(self, repl, capsys):
+        repl.devices["smu"]._source_delay = 0.25
+        repl.onecmd("smu source_delay")
+        out = capsys.readouterr().out
+        assert "0.25" in out
+
+    def test_source_delay_zero(self, repl):
+        repl.onecmd("smu source_delay 0")
+        assert repl.devices["smu"]._source_delay == pytest.approx(0.0)
+
+    def test_source_delay_negative_shows_error(self, repl, capsys):
+        repl.onecmd("smu source_delay -0.1")
+        out = capsys.readouterr().out
+        assert out != ""
+
+
+class TestSmuSetMode:
+    def test_set_mode_current(self, repl):
+        repl.onecmd("smu set_mode current 0.05 5.0")
+        dev = repl.devices["smu"]
+        assert dev._output_mode == "current"
+        assert dev._current_level == pytest.approx(0.05)
+        assert dev._voltage_limit == pytest.approx(5.0)
+
+    def test_set_mode_current_no_voltage_limit(self, repl):
+        repl.onecmd("smu set_mode current 0.01")
+        assert repl.devices["smu"]._output_mode == "current"
+
+    def test_set_mode_voltage_switches_back(self, repl):
+        repl.onecmd("smu set_mode current 0.05")
+        repl.onecmd("smu set_mode voltage 3.3 0.1")
+        dev = repl.devices["smu"]
+        assert dev._output_mode == "voltage"
+        assert dev._voltage == pytest.approx(3.3)
+
+    def test_set_mode_missing_args_shows_help(self, repl, capsys):
+        repl.onecmd("smu set_mode")
+        out = capsys.readouterr().out
+        assert out != ""
+
+    def test_set_mode_unknown_mode_shows_warning(self, repl, capsys):
+        repl.onecmd("smu set_mode dc 0.05")
+        out = capsys.readouterr().out
+        assert out != ""
+
+
+class TestSmuAvg:
+    def test_set_avg(self, repl):
+        repl.onecmd("smu avg 10")
+        assert repl.devices["smu"]._samples_to_average == 10
+
+    def test_get_avg(self, repl, capsys):
+        repl.devices["smu"]._samples_to_average = 5
+        repl.onecmd("smu avg")
+        out = capsys.readouterr().out
+        assert "5" in out
+
+    def test_avg_one(self, repl):
+        repl.onecmd("smu avg 1")
+        assert repl.devices["smu"]._samples_to_average == 1
+
+    def test_avg_zero_shows_error(self, repl, capsys):
+        repl.onecmd("smu avg 0")
+        out = capsys.readouterr().out
+        assert out != ""
+
+
+class TestSmuTemp:
+    def test_temp_shows_degrees(self, repl, capsys):
+        repl.onecmd("smu temp")
+        out = capsys.readouterr().out
+        assert "degrees C" in out
+
+    def test_temp_value_in_range(self, repl, capsys):
+        repl.onecmd("smu temp")
+        out = capsys.readouterr().out
+        import re
+
+        match = re.search(r"(\d+\.\d+)", out)
+        assert match is not None
+        val = float(match.group(1))
+        assert 10.0 <= val <= 100.0

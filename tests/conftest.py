@@ -174,7 +174,13 @@ def ni_pxie_4139(ensure_nidcpower_mocked):
     mock_session.current_limit = 0.01
     mock_session.output_enabled = False
     mock_session.instrument_model = "PXIe-4139"
-    mock_session.measure_multiple.return_value = [MagicMock(voltage=0.0, current=0.0)]
+    import datetime
+
+    mock_session.measure_multiple.return_value = [MagicMock(voltage=0.0, current=0.0, in_compliance=False)]
+    mock_session.source_delay = datetime.timedelta(seconds=0.0)
+    mock_session.samples_to_average = 1
+    mock_session.query_in_compliance.return_value = False
+    mock_session.read_current_temperature.return_value = 25.0
 
     with patch("nidcpower.Session", return_value=mock_session):
         from lab_instruments.src.ni_pxie_4139 import NI_PXIe_4139

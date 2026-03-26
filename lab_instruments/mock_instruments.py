@@ -548,7 +548,66 @@ class MockMPS6010H(MockPSU):
 class MockNI_PXIe_4139(MockPSU):
     """Mock NI PXIe-4139 Source Measure Unit."""
 
-    pass
+    def __init__(self):
+        super().__init__()
+        self._output_mode = "voltage"
+        self._current_level = 0.0
+        self._voltage_limit = 5.0
+        self._source_delay = 0.0
+        self._samples_to_average = 1
+        self._in_compliance = False
+
+    def measure_vi(self) -> dict:
+        v = round(random.uniform(self._voltage * 0.997, self._voltage * 1.003), 6)
+        i = round(random.uniform(self._current * 0.990, self._current * 1.010), 6)
+        return {"voltage": v, "current": i, "in_compliance": self._in_compliance}
+
+    def measure_voltage(self, ch=None):
+        return self.measure_vi()["voltage"]
+
+    def measure_current(self, ch=None):
+        return self.measure_vi()["current"]
+
+    def query_in_compliance(self) -> bool:
+        return self._in_compliance
+
+    def _set_mock_compliance(self, state: bool) -> None:
+        self._in_compliance = bool(state)
+
+    def set_source_delay(self, seconds: float) -> None:
+        if seconds < 0:
+            raise ValueError("source_delay must be >= 0 seconds")
+        self._source_delay = float(seconds)
+
+    def get_source_delay(self) -> float:
+        return self._source_delay
+
+    def set_voltage_mode(self, voltage: float, current_limit: float = None) -> None:
+        self._voltage = float(voltage)
+        if current_limit is not None:
+            self._current = float(current_limit)
+        self._output_mode = "voltage"
+
+    def set_current_mode(self, current: float, voltage_limit: float = None) -> None:
+        self._current_level = float(current)
+        if voltage_limit is not None:
+            self._voltage_limit = float(voltage_limit)
+        self._output_mode = "current"
+
+    def get_output_mode(self) -> str:
+        return self._output_mode
+
+    def set_samples_to_average(self, n: int) -> None:
+        n = int(n)
+        if n < 1:
+            raise ValueError("samples_to_average must be >= 1")
+        self._samples_to_average = n
+
+    def get_samples_to_average(self) -> int:
+        return self._samples_to_average
+
+    def read_temperature(self) -> float:
+        return round(random.uniform(22.0, 28.0), 1)
 
 
 class MockHP_E3631A(MockPSU):

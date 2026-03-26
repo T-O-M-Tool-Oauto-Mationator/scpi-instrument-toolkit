@@ -73,6 +73,27 @@ class TestFullWorkflow_DMM:
         assert repl.test_results[-1]["passed"] is True
 
 
+class TestFullWorkflow_SMU:
+    def test_smu_state_delegation(self, make_repl):
+        from lab_instruments.mock_instruments import MockNI_PXIe_4139
+
+        devices = {"smu": MockNI_PXIe_4139()}
+        repl = make_repl(devices)
+        # This exercises the delegation from 'smu state on' to shell.do_state('smu on')
+        repl.onecmd("smu state on")
+        assert not repl._command_had_error
+        assert devices["smu"].get_output_state() is True
+
+    def test_smu_set_and_meas(self, make_repl):
+        from lab_instruments.mock_instruments import MockNI_PXIe_4139
+
+        devices = {"smu": MockNI_PXIe_4139()}
+        repl = make_repl(devices)
+        repl.onecmd("smu set 5.0 0.01")
+        repl.onecmd("smu meas v")
+        assert not repl._command_had_error
+
+
 class TestFullWorkflow_SafetyLimits:
     def test_upper_limit_blocks_awg(self, make_repl):
         devices = {"awg1": MockEDU33212A()}
