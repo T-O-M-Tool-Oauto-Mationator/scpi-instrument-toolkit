@@ -165,31 +165,25 @@ class TestAssignmentSyntax:
 # ---------------------------------------------------------------------------
 
 
-class TestSetDeprecation:
-    def test_set_emits_deprecation_warning(self, make_repl, capsys):
+class TestSetBehavior:
+    def test_set_assignment_prints_error(self, make_repl, capsys):
         repl = make_repl({})
         repl.onecmd("set x 42")
         out = capsys.readouterr().out
-        assert "deprecated" in out.lower()
+        assert "var = expr" in out.lower() or "unknown" in out.lower()
+        assert "x" not in repl.ctx.script_vars
 
-    def test_set_still_assigns_variable(self, make_repl, capsys):
-        repl = make_repl({})
-        repl.onecmd("set x 42")
-        assert repl.ctx.script_vars["x"] == "42"
-
-    def test_set_minus_e_not_deprecated(self, make_repl, capsys):
+    def test_set_minus_e_works(self, make_repl, capsys):
         repl = make_repl({})
         repl.onecmd("set -e")
-        out = capsys.readouterr().out
-        assert "deprecated" not in out.lower()
+        capsys.readouterr()
         assert repl.ctx.exit_on_error is True
 
-    def test_set_plus_e_not_deprecated(self, make_repl, capsys):
+    def test_set_plus_e_works(self, make_repl, capsys):
         repl = make_repl({})
         repl.ctx.exit_on_error = True
         repl.onecmd("set +e")
-        out = capsys.readouterr().out
-        assert "deprecated" not in out.lower()
+        capsys.readouterr()
         assert repl.ctx.exit_on_error is False
 
 
@@ -222,17 +216,21 @@ class TestRegressions:
         out = capsys.readouterr().out
         assert "1" in out
 
-    def test_set_x_42_assigns(self, make_repl, capsys):
-        """test_do_set_via_shell regression — set still assigns despite deprecation."""
+    def test_set_x_42_prints_error(self, make_repl, capsys):
+        """set for assignment is removed — prints error message."""
         repl = make_repl({})
         repl.onecmd("set x 42")
-        assert repl.ctx.script_vars["x"] == "42"
+        out = capsys.readouterr().out
+        assert "var = expr" in out.lower() or "unknown" in out.lower()
+        assert "x" not in repl.ctx.script_vars
 
-    def test_set_arithmetic(self, make_repl, capsys):
-        """set with arithmetic expression still works."""
+    def test_set_arithmetic_prints_error(self, make_repl, capsys):
+        """set for assignment is removed — prints error message."""
         repl = make_repl({})
         repl.onecmd("set doubled 2 * 5")
-        assert float(repl.ctx.script_vars["doubled"]) == 10.0
+        out = capsys.readouterr().out
+        assert "var = expr" in out.lower() or "unknown" in out.lower()
+        assert "doubled" not in repl.ctx.script_vars
 
     def test_semicolon_splitting(self, make_repl, capsys):
         """Semicolons still split commands."""

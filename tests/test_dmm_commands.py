@@ -70,18 +70,6 @@ class TestDmmMeasure:
         repl.onecmd("dmm meas freq")
 
 
-class TestDmmMeasStore:
-    def test_meas_store(self, repl):
-        repl.onecmd("dmm config vdc")
-        repl.onecmd("dmm meas_store test_v unit=V")
-        assert len(repl.measurements) == 1
-
-    def test_meas_store_with_scale(self, repl):
-        repl.onecmd("dmm config vdc")
-        repl.onecmd("dmm meas_store test_mv scale=1000 unit=mV")
-        assert len(repl.measurements) == 1
-
-
 class TestDmmFetch:
     def test_fetch(self, repl):
         repl.onecmd("dmm fetch")

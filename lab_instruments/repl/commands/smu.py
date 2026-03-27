@@ -44,9 +44,6 @@ class SmuCommand(BaseCommand):
             elif cmd_name == "meas":
                 self._handle_meas(args, dev, smu_name)
 
-            elif cmd_name == "meas_store":
-                self._handle_meas_store(args, dev)
-
             elif cmd_name == "compliance":
                 self._handle_compliance(args, dev)
 
@@ -103,7 +100,7 @@ class SmuCommand(BaseCommand):
                 "  - example: smu set_mode current 0.05 5.0",
                 "smu meas [v|i|vi]",
                 "  - no arg or vi: atomic V+I+compliance in one call",
-                "smu meas_store v|i <label> [unit=]",
+                "  - or assign: value = smu read [unit=]",
                 "smu compliance  (query compliance state)",
                 "smu source_delay [<seconds>]  (get/set settle delay)",
                 "smu avg [<N>]  (get/set samples_to_average)",
@@ -144,29 +141,6 @@ class SmuCommand(BaseCommand):
             ColorPrinter.cyan(f"{value:.6f}A")
         else:
             ColorPrinter.warning("smu meas [v|i|vi]")
-
-    def _handle_meas_store(self, args, dev) -> None:
-        ColorPrinter.warning("'meas_store' is deprecated — use 'varname = smu read' instead.")
-        if len(args) < 3:
-            ColorPrinter.warning("Usage: smu meas_store v|i <label> [unit=]")
-            return
-        mode = args[1].lower()
-        label = args[2]
-        unit = ""
-        for token in args[3:]:
-            if token.lower().startswith("unit="):
-                unit = token.split("=", 1)[1]
-        if mode in ("v", "volt", "voltage"):
-            value = dev.measure_voltage()
-            unit = unit or "V"
-        elif mode in ("i", "curr", "current"):
-            value = dev.measure_current()
-            unit = unit or "A"
-        else:
-            ColorPrinter.warning("smu meas_store v|i <label>")
-            return
-        self.measurements.record(label, value, unit, "smu.meas")
-        ColorPrinter.cyan(str(value))
 
     def _handle_set_mode(self, args, dev, smu_name) -> None:
         if len(args) < 3:

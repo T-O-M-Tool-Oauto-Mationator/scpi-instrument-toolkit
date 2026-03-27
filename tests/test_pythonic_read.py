@@ -5,8 +5,6 @@ Covers:
   - value = dmm read in .scpi scripts
   - {value} resolves in print, calc, set, and instrument commands
   - log save CSV captures measurements assigned via new syntax
-  - meas_store still works but prints deprecation warning
-  - m["label"] still works in calc but prints deprecation warning
   - Unit auto-detection for all modes
 """
 
@@ -203,30 +201,6 @@ class TestLogSave:
 # -----------------------------------------------------------------------
 # Deprecation warnings
 # -----------------------------------------------------------------------
-
-
-class TestDeprecationWarnings:
-    """Test that deprecated syntax still works but prints warnings."""
-
-    def test_meas_store_still_works(self, repl_dmm, capsys):
-        repl_dmm.onecmd("dmm config vdc")
-        repl_dmm.onecmd("dmm meas_store test_v unit=V")
-        assert len(repl_dmm.ctx.measurements) == 1
-        captured = capsys.readouterr()
-        assert "deprecated" in captured.out.lower()
-
-    def test_m_bracket_in_calc_warns(self, repl_dmm, capsys):
-        repl_dmm.onecmd("dmm config vdc")
-        repl_dmm.onecmd("dmm meas_store test_v unit=V")
-        repl_dmm.onecmd('calc power m["test_v"] * 0.1 unit=W')
-        captured = capsys.readouterr()
-        assert "deprecated" in captured.out.lower()
-
-    def test_psu_meas_store_still_works(self, repl_dmm_psu, capsys):
-        repl_dmm_psu.onecmd("psu meas_store v test_psu unit=V")
-        assert repl_dmm_psu.ctx.measurements.get_by_label("test_psu") is not None
-        captured = capsys.readouterr()
-        assert "deprecated" in captured.out.lower()
 
 
 # -----------------------------------------------------------------------

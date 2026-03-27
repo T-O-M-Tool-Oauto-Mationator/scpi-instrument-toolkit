@@ -174,25 +174,24 @@ class VariableCommands(BaseCommand):
         ColorPrinter.success(f"{key} = {self.ctx.script_vars[key]}")
 
     def do_set(self, arg: str) -> None:
+        """set -e / set +e — control exit-on-error behavior."""
         args = self.parse_args(arg)
-        # set -e / set +e are control-flow directives — not deprecated
         if args and args[0] in ("-e", "+e"):
             flag = args[0]
             self.ctx.exit_on_error = flag == "-e"
             ColorPrinter.info(f"Exit on error {'enabled' if self.ctx.exit_on_error else 'disabled'}")
             return
-        if len(args) < 2:
-            ColorPrinter.warning("Usage: var = expr  (or legacy: set <varname> <expr>)")
+        if not args:
             if self.ctx.script_vars:
                 ColorPrinter.info("Current variables:")
                 for k, v in self.ctx.script_vars.items():
                     print(f"  {k} = {v}")
+            else:
+                ColorPrinter.info("No variables defined. Use: varname = value")
             return
-        key = args[0]
-        raw_val = " ".join(args[1:])
-        # Deprecation warning for variable assignment via 'set'
-        ColorPrinter.warning(f"'set' is deprecated for assignment — use '{key} = {raw_val}' instead.")
-        self._assign_var(key, raw_val)
+        ColorPrinter.error(
+            f"Unknown: set {arg}. Use 'var = expr' for assignment, 'set -e' / 'set +e' for error control."
+        )
 
     def do_unset(self, arg: str) -> None:
         """unset <varname> — delete a script variable."""

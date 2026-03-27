@@ -145,9 +145,6 @@ class ScopeCommand(BaseCommand):
                 else:
                     ColorPrinter.warning("meas_clear not supported on this oscilloscope model")
 
-            elif cmd_name == "meas_store" and len(args) >= 4:
-                self._handle_meas_store(args, dev)
-
             elif cmd_name == "meas_delay" and len(args) >= 3:
                 self._handle_meas_delay(args, dev)
 
@@ -282,7 +279,6 @@ class ScopeCommand(BaseCommand):
                 "  - types: RISE, FALL, AMPLITUDE, HIGH, LOW, PWIDTH, NWIDTH, CRMS",
                 "  - example: scope meas 1 FREQUENCY",
                 "  - example: scope meas all PK2PK",
-                "scope meas_store <1-4|all> <type> <label> [unit=]",
                 "scope meas_delay <ch1> <ch2> [edge1=RISE] [edge2=RISE] [direction=FORWARDS]",
                 "scope meas_delay_store <ch1> <ch2> <label> [edge1=RISE] [edge2=RISE] [direction=FORWARDS] [unit=]",
                 "",
@@ -458,34 +454,6 @@ class ScopeCommand(BaseCommand):
             ColorPrinter.info("Measurement DSP forced (display refresh complete)")
         except AttributeError:
             ColorPrinter.warning("meas_force not supported on this oscilloscope model")
-
-    def _handle_meas_store(self, args, dev) -> None:
-        ColorPrinter.warning("'meas_store' is deprecated — use 'varname = scope read' instead.")
-        channels = self.parse_channels(args[1], max_ch=4)
-        measure_type = args[2]
-        label = args[3]
-        unit = ""
-        for token in args[4:]:
-            if token.lower().startswith("unit="):
-                unit = token.split("=", 1)[1]
-        if hasattr(dev, "get_trigger_status"):
-            trig_status = dev.get_trigger_status()
-            if trig_status == "WAIT":
-                ColorPrinter.warning(
-                    "Scope trigger status is WAIT \u2014 scope has not fired yet. "
-                    "Use 'scope wait_stop' before meas_store. Measurement may return 9.9e+37."
-                )
-        for channel in channels:
-            stored_label = f"{label}_ch{channel}" if len(channels) > 1 else label
-            # Retry up to 6x (3s total) while scope DSP finishes computing the measurement
-            val = 9.9e37
-            for _attempt in range(7):
-                val = dev.measure_bnf(channel, measure_type)
-                if val < 9.9e36 or _attempt == 6:
-                    break
-                time.sleep(0.5)
-            self.measurements.record(stored_label, val, unit, f"scope.meas.{measure_type}")
-            ColorPrinter.success(f"CH{channel} {measure_type}: {val} -> stored as '{stored_label}'")
 
     def _handle_meas_delay(self, args, dev) -> None:
         ch1 = int(args[1])

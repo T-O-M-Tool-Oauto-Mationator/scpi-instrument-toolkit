@@ -130,7 +130,7 @@ class TestPsuSingleChannelMeas:
 
 
 class TestPsuNoReadback:
-    """Cover SUPPORTS_READBACK = False path in meas and meas_store."""
+    """Cover SUPPORTS_READBACK = False path in meas."""
 
     def test_meas_no_readback(self, make_repl, capsys):
         dev = MockMPS6010H()
@@ -139,46 +139,6 @@ class TestPsuNoReadback:
         repl.onecmd("psu meas v")
         out = capsys.readouterr().out
         assert "no readback" in out.lower()
-
-    def test_meas_store_no_readback(self, make_repl, capsys):
-        dev = MockMPS6010H()
-        dev.SUPPORTS_READBACK = False
-        repl = make_repl({"psu1": dev})
-        repl.onecmd("psu meas_store v my_v unit=V")
-        out = capsys.readouterr().out
-        assert "no readback" in out.lower()
-
-
-class TestPsuSingleChannelMeasStore:
-    """Cover psu meas_store for single-channel PSU."""
-
-    def test_meas_store_voltage(self, make_repl):
-        dev = MockMPS6010H()
-        repl = make_repl({"psu1": dev})
-        repl.onecmd("psu meas_store v my_v unit=V")
-        assert len(repl.measurements) == 1
-        assert repl.measurements[0]["label"] == "my_v"
-
-    def test_meas_store_current(self, make_repl):
-        dev = MockMPS6010H()
-        repl = make_repl({"psu1": dev})
-        repl.onecmd("psu meas_store i my_i unit=A")
-        assert len(repl.measurements) == 1
-        assert repl.measurements[0]["label"] == "my_i"
-
-    def test_meas_store_bad_mode(self, make_repl, capsys):
-        dev = MockMPS6010H()
-        repl = make_repl({"psu1": dev})
-        repl.onecmd("psu meas_store x my_x")
-        out = capsys.readouterr().out
-        assert "meas_store" in out.lower()
-
-    def test_meas_store_missing_args(self, make_repl, capsys):
-        dev = MockMPS6010H()
-        repl = make_repl({"psu1": dev})
-        repl.onecmd("psu meas_store v")
-        out = capsys.readouterr().out
-        assert "Usage" in out or "meas_store" in out.lower()
 
 
 class TestPsuSingleChannelGet:
@@ -262,43 +222,6 @@ class TestPsuMultiChannelMeas:
         dev = MockMultiChannelPSU()
         repl = make_repl({"psu1": dev})
         repl.onecmd("psu meas 9 v")
-        out = capsys.readouterr().out
-        assert "Invalid" in out or "channel" in out.lower()
-
-
-class TestPsuMultiChannelMeasStore:
-    """Cover multi-channel psu meas_store <ch> v|i <label>."""
-
-    def test_meas_store_ch_voltage(self, make_repl):
-        dev = MockMultiChannelPSU()
-        repl = make_repl({"psu1": dev})
-        repl.onecmd("psu meas_store 1 v ch1_v unit=V")
-        assert len(repl.measurements) == 1
-
-    def test_meas_store_ch_current(self, make_repl):
-        dev = MockMultiChannelPSU()
-        repl = make_repl({"psu1": dev})
-        repl.onecmd("psu meas_store 1 i ch1_i unit=A")
-        assert len(repl.measurements) == 1
-
-    def test_meas_store_ch_bad_mode(self, make_repl, capsys):
-        dev = MockMultiChannelPSU()
-        repl = make_repl({"psu1": dev})
-        repl.onecmd("psu meas_store 1 x my_x")
-        out = capsys.readouterr().out
-        assert "meas_store" in out.lower()
-
-    def test_meas_store_ch_missing_args(self, make_repl, capsys):
-        dev = MockMultiChannelPSU()
-        repl = make_repl({"psu1": dev})
-        repl.onecmd("psu meas_store 1 v")
-        out = capsys.readouterr().out
-        assert "Usage" in out or "meas_store" in out.lower()
-
-    def test_meas_store_ch_invalid_channel(self, make_repl, capsys):
-        dev = MockMultiChannelPSU()
-        repl = make_repl({"psu1": dev})
-        repl.onecmd("psu meas_store 9 v my_v")
         out = capsys.readouterr().out
         assert "Invalid" in out or "channel" in out.lower()
 
@@ -429,16 +352,6 @@ class TestDmmHpRead:
         repl.onecmd("dmm read")
         out = capsys.readouterr().out
         assert any(c.isdigit() for c in out)
-
-
-class TestDmmHpMeasStore:
-    """Cover dmm meas_store with scale and unit."""
-
-    def test_meas_store_with_scale(self, make_repl):
-        dev = MockHP_34401A()
-        repl = make_repl({"dmm1": dev})
-        repl.onecmd("dmm meas_store my_v scale=1000 unit=mV")
-        assert len(repl.measurements) == 1
 
 
 class TestDmmHpFetch:

@@ -134,8 +134,8 @@ class LoggingCommands(BaseCommand):
                     "# CALC (short for calculator)",
                     "",
                     "calc <label> = <expr> [unit=]",
-                    "  - expr can use $label, $last, and functions abs, min, max, round",
-                    "  - example: calc power = $psu_v * $psu_i unit=W",
+                    "  - expr can use {label}, {last}, and functions abs, min, max, round",
+                    "  - example: calc power = {psu_v} * {psu_i} unit=W",
                 ]
             )
             return
@@ -158,18 +158,14 @@ class LoggingCommands(BaseCommand):
         if not expr:
             ColorPrinter.warning("calc expects an expression.")
             return
-        # Substitute $name variables in expr
+        # Substitute {name} and $name variables in expr
         expr = substitute_vars(expr, self.ctx.script_vars, self.ctx.measurements)
-        # Deprecation warning for m["label"] syntax
-        if 'm["' in expr or "m['" in expr or "m[" in expr:
-            ColorPrinter.warning('m["label"] syntax is deprecated in calc — use {label} instead.')
         if not self.measurements:
             ColorPrinter.warning("No measurements recorded. Use 'value = <instrument> read' to take measurements.")
             return
-        m = self.measurements.as_value_dict()
         last_entry = self.measurements.get_last()
         last = last_entry["value"] if last_entry else 0
-        names = {"m": m, "last": last}
+        names = {"last": last}
         try:
             value = safe_eval(expr, names)
             self.measurements.record(label, value, unit, "calc")

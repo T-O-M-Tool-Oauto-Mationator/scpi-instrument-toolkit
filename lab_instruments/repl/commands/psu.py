@@ -68,10 +68,6 @@ class PsuCommand(BaseCommand):
             elif cmd_name == "meas":
                 self._handle_meas(args, dev, psu_name, is_single_channel)
 
-            # MEAS_STORE COMMAND - unified for both single and multi-channel
-            elif cmd_name == "meas_store":
-                self._handle_meas_store(args, dev, psu_name, is_single_channel)
-
             # GET COMMAND (single-channel only)
             elif cmd_name == "get":
                 if is_single_channel:
@@ -143,7 +139,7 @@ class PsuCommand(BaseCommand):
                     "  - voltage: 0-60V, current: 0-10A",
                     "  - example: psu set 5.0 1.0",
                     "psu meas v|i",
-                    "psu meas_store v|i <label> [unit=]",
+                    "  - or assign: value = psu read [unit=]",
                     "psu get  (show setpoints)",
                     "psu state on|off|safe|reset",
                 ]
@@ -160,7 +156,7 @@ class PsuCommand(BaseCommand):
                     "  - example: psu set 2 12.0 0.5",
                     "psu meas <channel> v|i",
                     "  - example: psu meas 1 v",
-                    "psu meas_store <channel> v|i <label> [unit=]",
+                    "  - or assign: value = psu read [unit=]",
                     "psu track on|off",
                     "psu save <1-3>",
                     "psu recall <1-3>",
@@ -244,57 +240,3 @@ class PsuCommand(BaseCommand):
                 ColorPrinter.cyan(str(dev.measure_current(channel)))
             else:
                 ColorPrinter.warning("psu meas <channel> v|i")
-
-    def _handle_meas_store(self, args, dev, psu_name, is_single_channel) -> None:
-        ColorPrinter.warning("'meas_store' is deprecated — use 'varname = psu read' instead.")
-        if getattr(dev, "SUPPORTS_READBACK", True) is False:
-            ColorPrinter.warning(
-                f"{psu_name}: this device has no readback support — cannot store measurements. Use an external DMM."
-            )
-            return
-        unit = ""
-        if is_single_channel:
-            # Single-channel: psu meas_store v|i <label> [unit=]
-            if len(args) < 3:
-                ColorPrinter.warning("Usage: psu meas_store v|i <label> [unit=]")
-                return
-            mode = args[1].lower()
-            label = args[2]
-            for token in args[3:]:
-                if token.lower().startswith("unit="):
-                    unit = token.split("=", 1)[1]
-            if mode in ("v", "volt", "voltage"):
-                value = dev.measure_voltage()
-                unit = unit or "V"
-            elif mode in ("i", "curr", "current"):
-                value = dev.measure_current()
-                unit = unit or "A"
-            else:
-                ColorPrinter.warning("psu meas_store v|i <label>")
-                return
-            self.measurements.record(label, value, unit, "psu.meas")
-            ColorPrinter.cyan(str(value))
-        else:
-            # Multi-channel: psu meas_store <channel> v|i <label> [unit=]
-            if len(args) < 4:
-                ColorPrinter.warning("Usage: psu meas_store <channel> v|i <label> [unit=]")
-                return
-            channel = PSU_CHANNEL_ALIASES.get(args[1].lower())
-            mode = args[2].lower()
-            label = args[3]
-            for token in args[4:]:
-                token_lower = token.lower()
-                if token_lower.startswith("unit="):
-                    unit = token.split("=", 1)[1]
-            if not channel:
-                ColorPrinter.warning("Invalid channel. Use 1, 2, or 3")
-                return
-            if mode in ("v", "volt", "voltage"):
-                value = dev.measure_voltage(channel)
-            elif mode in ("i", "curr", "current"):
-                value = dev.measure_current(channel)
-            else:
-                ColorPrinter.warning("psu meas_store <channel> v|i <label>")
-                return
-            self.measurements.record(label, value, unit, "psu.meas")
-            ColorPrinter.cyan(str(value))

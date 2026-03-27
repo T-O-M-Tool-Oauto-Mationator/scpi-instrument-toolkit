@@ -77,10 +77,6 @@ class TestPsuMeasure:
     def test_meas_i(self, repl):
         repl.onecmd("psu meas i")
 
-    def test_meas_store(self, repl):
-        repl.onecmd("psu meas_store v test_v unit=V")
-        assert len(repl.measurements) == 1
-
 
 class TestPsuMeasureMultiChannel:
     def test_meas_channel_v(self, repl_multi):
@@ -88,14 +84,6 @@ class TestPsuMeasureMultiChannel:
 
     def test_meas_channel_i(self, repl_multi):
         repl_multi.onecmd("psu meas 2 i")
-
-    def test_meas_store_channel(self, repl_multi):
-        repl_multi.onecmd("psu meas_store 1 v ch1_v unit=V")
-        assert len(repl_multi.measurements) == 1
-
-    def test_meas_store_channel_current(self, repl_multi):
-        repl_multi.onecmd("psu meas_store 2 i ch2_i unit=A")
-        assert len(repl_multi.measurements) == 1
 
 
 class TestPsuGet:

@@ -91,32 +91,6 @@ class TestSmuMeas:
         assert out != ""
 
 
-class TestSmuMeasStore:
-    def test_meas_store_voltage(self, repl):
-        repl.onecmd("smu meas_store v vout")
-        assert len(repl.measurements) == 1
-        assert repl.measurements[0]["label"] == "vout"
-
-    def test_meas_store_current(self, repl):
-        repl.onecmd("smu meas_store i iout")
-        assert len(repl.measurements) == 1
-        assert repl.measurements[0]["label"] == "iout"
-
-    def test_meas_store_with_unit(self, repl):
-        repl.onecmd("smu meas_store v vout unit=mV")
-        assert len(repl.measurements) == 1
-
-    def test_meas_store_missing_args(self, repl, capsys):
-        repl.onecmd("smu meas_store v")
-        out = capsys.readouterr().out
-        assert out != ""
-
-    def test_meas_store_unknown_mode(self, repl, capsys):
-        repl.onecmd("smu meas_store x label")
-        out = capsys.readouterr().out
-        assert out != ""
-
-
 class TestSmuGet:
     def test_get(self, repl):
         repl.onecmd("smu get")
