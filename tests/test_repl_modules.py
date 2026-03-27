@@ -505,6 +505,7 @@ class TestReplContext:
     def _fail_makedirs(target_path):
         """Return a makedirs replacement that fails for *target_path*."""
         import os as _os
+
         _real = _os.makedirs
 
         def _mock(path, *args, **kwargs):

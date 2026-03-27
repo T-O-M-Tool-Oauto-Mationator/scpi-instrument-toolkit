@@ -162,9 +162,7 @@ class LoggingCommands(BaseCommand):
         expr = substitute_vars(expr, self.ctx.script_vars, self.ctx.measurements)
         # Deprecation warning for m["label"] syntax
         if 'm["' in expr or "m['" in expr or "m[" in expr:
-            ColorPrinter.warning(
-                'm["label"] syntax is deprecated in calc — use {label} instead.'
-            )
+            ColorPrinter.warning('m["label"] syntax is deprecated in calc — use {label} instead.')
         if not self.measurements:
             ColorPrinter.warning("No measurements recorded. Use 'value = <instrument> read' to take measurements.")
             return

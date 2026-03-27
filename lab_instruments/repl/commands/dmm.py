@@ -255,9 +255,7 @@ class DmmCommand(BaseCommand):
             ColorPrinter.success(f"Configured for {mode}")
 
     def _handle_meas_store(self, args, dev) -> None:
-        ColorPrinter.warning(
-            f"'meas_store' is deprecated — use '{args[1]} = dmm read' instead."
-        )
+        ColorPrinter.warning(f"'meas_store' is deprecated — use '{args[1]} = dmm read' instead.")
         label = args[1]
         scale = 1.0
         unit = ""

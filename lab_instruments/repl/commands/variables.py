@@ -34,9 +34,7 @@ _MODE_UNIT_MAP = {
 }
 
 # Pattern: <instrument_alias> read [unit=<override>]
-_INSTR_READ_RE = re.compile(
-    r"^([A-Za-z_][A-Za-z0-9_]*)\s+read(?:\s+(.*))?$"
-)
+_INSTR_READ_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*)\s+read(?:\s+(.*))?$")
 
 
 class VariableCommands(BaseCommand):

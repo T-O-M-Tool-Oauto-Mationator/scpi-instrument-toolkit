@@ -146,9 +146,7 @@ class SmuCommand(BaseCommand):
             ColorPrinter.warning("smu meas [v|i|vi]")
 
     def _handle_meas_store(self, args, dev) -> None:
-        ColorPrinter.warning(
-            "'meas_store' is deprecated — use 'varname = smu read' instead."
-        )
+        ColorPrinter.warning("'meas_store' is deprecated — use 'varname = smu read' instead.")
         if len(args) < 3:
             ColorPrinter.warning("Usage: smu meas_store v|i <label> [unit=]")
             return

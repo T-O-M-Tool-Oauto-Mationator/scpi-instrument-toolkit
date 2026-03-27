@@ -246,9 +246,7 @@ class PsuCommand(BaseCommand):
                 ColorPrinter.warning("psu meas <channel> v|i")
 
     def _handle_meas_store(self, args, dev, psu_name, is_single_channel) -> None:
-        ColorPrinter.warning(
-            "'meas_store' is deprecated — use 'varname = psu read' instead."
-        )
+        ColorPrinter.warning("'meas_store' is deprecated — use 'varname = psu read' instead.")
         if getattr(dev, "SUPPORTS_READBACK", True) is False:
             ColorPrinter.warning(
                 f"{psu_name}: this device has no readback support — cannot store measurements. Use an external DMM."
