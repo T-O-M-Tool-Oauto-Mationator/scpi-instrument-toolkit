@@ -79,6 +79,33 @@ if ($gitForWindowsInstalled) {
     }
 }
 
+# Add Git for Windows to user PATH (winget --scope user installs to %LOCALAPPDATA%\Programs\Git)
+$gitWinRoot = Join-Path $env:LOCALAPPDATA "Programs\Git"
+$gitWinCmd  = Join-Path $gitWinRoot "cmd"
+if (Test-Path (Join-Path $gitWinCmd "git.exe")) {
+    $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+    $parts = if ($userPath) { $userPath -split ";" | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne "" } } else { @() }
+
+    foreach ($addPath in @($gitWinCmd, $gitWinRoot)) {
+        $already = $parts | Where-Object { $_.TrimEnd('\').ToLowerInvariant() -eq $addPath.TrimEnd('\').ToLowerInvariant() }
+        if ($already) {
+            Write-Host "Already on PATH: $addPath" -ForegroundColor Yellow
+        } else {
+            $cur = [Environment]::GetEnvironmentVariable("Path", "User")
+            [Environment]::SetEnvironmentVariable("Path", (if ([string]::IsNullOrWhiteSpace($cur)) { $addPath } else { "$cur;$addPath" }), "User")
+            $parts += $addPath
+            Write-Host "Added to user PATH: $addPath" -ForegroundColor Green
+        }
+    }
+
+    $gitBash = Join-Path $gitWinRoot "git-bash.exe"
+    if (Test-Path $gitBash) {
+        Write-Host "Git Bash available — open a new terminal and type: git-bash" -ForegroundColor Cyan
+    }
+} else {
+    Write-Host "Git for Windows not found at $gitWinRoot — will fall back to GitHub Desktop git." -ForegroundColor Yellow
+}
+
 # ---------------------------------------------------------------------------
 # Step 3: Add GitHub Desktop's bundled git to user PATH (fallback)
 # ---------------------------------------------------------------------------
