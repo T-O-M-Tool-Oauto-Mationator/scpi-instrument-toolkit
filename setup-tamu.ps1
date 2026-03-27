@@ -106,30 +106,40 @@ if (-not $gitExe) {
     Write-Host "git.exe not found inside GitHub Desktop." -ForegroundColor Yellow
     Write-Host "Open GitHub Desktop once to finish its setup, then re-run this script." -ForegroundColor Yellow
 } else {
-    $gitCmdPath = $gitExe.DirectoryName
+    $gitCmdPath = $gitExe.DirectoryName          # …\git\cmd
+    $gitRootPath = Split-Path $gitCmdPath -Parent # …\git  (contains git-bash.exe)
     $userPath   = [Environment]::GetEnvironmentVariable("Path", "User")
     $parts = @()
     if ($userPath) {
         $parts = $userPath -split ";" | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne "" }
     }
 
-    $alreadyPresent = $false
-    foreach ($p in $parts) {
-        if ($p.TrimEnd('\').ToLowerInvariant() -eq $gitCmdPath.TrimEnd('\').ToLowerInvariant()) {
-            $alreadyPresent = $true; break
+    foreach ($addPath in @($gitCmdPath, $gitRootPath)) {
+        $alreadyPresent = $false
+        foreach ($p in $parts) {
+            if ($p.TrimEnd('\').ToLowerInvariant() -eq $addPath.TrimEnd('\').ToLowerInvariant()) {
+                $alreadyPresent = $true; break
+            }
         }
-    }
-
-    if ($alreadyPresent) {
-        Write-Host "git is already on your user PATH." -ForegroundColor Yellow
-    } else {
-        $newPath = if ([string]::IsNullOrWhiteSpace($userPath)) { $gitCmdPath } else { "$userPath;$gitCmdPath" }
-        [Environment]::SetEnvironmentVariable("Path", $newPath, "User")
-        Write-Host "Added git to user PATH: $gitCmdPath" -ForegroundColor Green
+        if ($alreadyPresent) {
+            Write-Host "Already on user PATH: $addPath" -ForegroundColor Yellow
+        } else {
+            $currentPath = [Environment]::GetEnvironmentVariable("Path", "User")
+            $newPath = if ([string]::IsNullOrWhiteSpace($currentPath)) { $addPath } else { "$currentPath;$addPath" }
+            [Environment]::SetEnvironmentVariable("Path", $newPath, "User")
+            $parts += $addPath
+            Write-Host "Added to user PATH: $addPath" -ForegroundColor Green
+        }
     }
 
     $gitVersion = & "$($gitExe.FullName)" --version 2>$null
     if ($gitVersion) { Write-Host "Detected: $gitVersion" -ForegroundColor Cyan }
+
+    $gitBashExe = Join-Path $gitRootPath "git-bash.exe"
+    if (Test-Path $gitBashExe) {
+        Write-Host "Git Bash available at: $gitBashExe" -ForegroundColor Cyan
+        Write-Host "(Now on PATH — open a new terminal and type: git-bash)" -ForegroundColor Cyan
+    }
 }
 
 # ---------------------------------------------------------------------------
@@ -201,6 +211,29 @@ if (-not $pipCmd) {
 }
 
 # ---------------------------------------------------------------------------
+# Step 7: Explicitly install nidcpower (Python bindings, no admin needed)
+# ---------------------------------------------------------------------------
+Write-Step 7 "Installing nidcpower Python bindings..."
+
+if (-not $pipCmd) {
+    Write-Host "pip not found — open a NEW terminal and run:" -ForegroundColor Yellow
+    Write-Host "  pip install nidcpower" -ForegroundColor White
+} else {
+    if ($pipCmd -eq "python -m pip") {
+        & python -m pip install "nidcpower>=1.5.0"
+    } else {
+        & $pipCmd install "nidcpower>=1.5.0"
+    }
+
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "nidcpower installed." -ForegroundColor Green
+    } else {
+        Write-Host "nidcpower install failed. Try in a new terminal:" -ForegroundColor Red
+        Write-Host "  pip install nidcpower" -ForegroundColor White
+    }
+}
+
+# ---------------------------------------------------------------------------
 # Done
 # ---------------------------------------------------------------------------
 Write-Host ""
@@ -213,8 +246,9 @@ Write-Host "  git --version"
 Write-Host "  python --version"
 Write-Host "  scpi-repl --mock"
 Write-Host ""
-Write-Host "NOTE: For real instruments you also need NI-VISA (requires admin)." -ForegroundColor Yellow
-Write-Host "      Download from: https://www.ni.com/en/support/downloads/drivers/download.ni-visa.html" -ForegroundColor Yellow
+Write-Host "NOTE: For real instruments you also need NI-VISA and NI-DCPower system drivers (require admin)." -ForegroundColor Yellow
+Write-Host "      NI-VISA:    https://www.ni.com/en/support/downloads/drivers/download.ni-visa.html" -ForegroundColor Yellow
+Write-Host "      NI-DCPower: https://www.ni.com/en/support/downloads/drivers/download.ni-dcpower.html" -ForegroundColor Yellow
 Write-Host ""
 
 Wait-IfNeeded
