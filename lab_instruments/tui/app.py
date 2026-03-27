@@ -7,11 +7,13 @@ from rich.ansi import AnsiDecoder
 from textual import work
 from textual.app import App, ComposeResult
 from textual.binding import Binding
+from textual.events import Key
 from textual.widgets import Footer, Header, Input, RichLog
 from textual.worker import Worker, WorkerState
 
 from .completer import ReplSuggester
 from .dispatcher import CommandDispatcher, LocalDispatcher
+from .history import CommandHistory
 
 # ANSI decoder for color escape sequences from command output
 _ANSI_DECODER = AnsiDecoder()
@@ -45,6 +47,7 @@ class SCPIApp(App):
         """Initialize the app and dispatcher."""
         super().__init__()
         self._dispatcher: CommandDispatcher = dispatcher if dispatcher is not None else LocalDispatcher()
+        self._history: CommandHistory = CommandHistory()
 
     def compose(self) -> ComposeResult:
         """Build widget tree."""
@@ -57,11 +60,29 @@ class SCPIApp(App):
         """Focus input on startup."""
         self.query_one("#cmd_input", Input).focus()
 
+    def on_key(self, event: Key) -> None:
+        """Intercept up/down arrows when the command input is focused."""
+        inp = self.query_one("#cmd_input", Input)
+        if self.focused is not inp:
+            return
+        if event.key == "up":
+            result = self._history.up()
+            if result is not None:
+                inp.value = result
+                inp.cursor_position = len(result)
+            event.stop()
+        elif event.key == "down":
+            result = self._history.down()
+            inp.value = result if result is not None else ""
+            inp.cursor_position = len(inp.value)
+            event.stop()
+
     def on_input_submitted(self, event: Input.Submitted) -> None:
         """Handle user enter on input line."""
         cmd = event.value.strip()
         if not cmd:
             return
+        self._history.push(cmd)
         event.input.clear()
         self.query_one("#output", RichLog).write(f"[bold cyan]> {cmd}[/bold cyan]")
         self._dispatch_command(cmd)
