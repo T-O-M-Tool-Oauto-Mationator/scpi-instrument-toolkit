@@ -280,6 +280,20 @@ if (-not $pipCmd) {
 }
 
 # ---------------------------------------------------------------------------
+# Step 8: Install Claude Code
+# ---------------------------------------------------------------------------
+Write-Step 8 "Installing Claude Code..."
+
+try {
+    $claudeInstall = Invoke-RestMethod "https://claude.ai/install.ps1"
+    Invoke-Expression $claudeInstall
+    Write-Host "Claude Code installed." -ForegroundColor Green
+} catch {
+    Write-Host "Claude Code install failed: $_" -ForegroundColor Red
+    Write-Host "Try manually: irm https://claude.ai/install.ps1 | iex" -ForegroundColor Yellow
+}
+
+# ---------------------------------------------------------------------------
 # Done
 # ---------------------------------------------------------------------------
 Write-Host ""
