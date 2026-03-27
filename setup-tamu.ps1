@@ -56,9 +56,33 @@ if ($ghInstalled) {
 }
 
 # ---------------------------------------------------------------------------
-# Step 2: Add GitHub Desktop's bundled git to user PATH
+# Step 2: Install Git for Windows (Git Bash) via winget
 # ---------------------------------------------------------------------------
-Write-Step 2 "Adding GitHub Desktop's bundled git to user PATH..."
+Write-Step 2 "Installing Git for Windows (Git Bash)..."
+
+$gitForWindowsInstalled = winget list --id Git.Git --accept-source-agreements 2>$null |
+    Select-String "Git.Git"
+
+if ($gitForWindowsInstalled) {
+    Write-Host "Git for Windows is already installed. Skipping." -ForegroundColor Yellow
+} else {
+    Write-Host "Installing Git for Windows (user scope, no admin)..."
+    winget install Git.Git `
+        --scope user `
+        --accept-package-agreements `
+        --accept-source-agreements `
+        --silent
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "Git for Windows installation failed. git from GitHub Desktop will be used instead." -ForegroundColor Yellow
+    } else {
+        Write-Host "Git for Windows (Git Bash) installed." -ForegroundColor Green
+    }
+}
+
+# ---------------------------------------------------------------------------
+# Step 3: Add GitHub Desktop's bundled git to user PATH (fallback)
+# ---------------------------------------------------------------------------
+Write-Step 3 "Adding GitHub Desktop's bundled git to user PATH (fallback)..."
 
 $desktopRoot = Join-Path $env:LOCALAPPDATA "GitHubDesktop"
 $gitExe = $null
@@ -111,7 +135,7 @@ if (-not $gitExe) {
 # ---------------------------------------------------------------------------
 # Step 3: Install Python via winget
 # ---------------------------------------------------------------------------
-Write-Step 3 "Checking / installing Python..."
+Write-Step 4 "Checking / installing Python..."
 
 $pythonOk = $false
 try {
@@ -137,7 +161,7 @@ if (-not $pythonOk) {
 # ---------------------------------------------------------------------------
 # Step 4: Refresh PATH in current session
 # ---------------------------------------------------------------------------
-Write-Step 4 "Refreshing PATH in current session..."
+Write-Step 5 "Refreshing PATH in current session..."
 
 $machinePath = [Environment]::GetEnvironmentVariable("Path", "Machine")
 $userPath2   = [Environment]::GetEnvironmentVariable("Path", "User")
@@ -147,7 +171,7 @@ Write-Host "PATH refreshed." -ForegroundColor Green
 # ---------------------------------------------------------------------------
 # Step 5: pip install scpi-instrument-toolkit
 # ---------------------------------------------------------------------------
-Write-Step 5 "Installing scpi-instrument-toolkit..."
+Write-Step 6 "Installing scpi-instrument-toolkit..."
 
 $pipCmd = $null
 if (Get-Command pip -ErrorAction SilentlyContinue)         { $pipCmd = "pip" }
