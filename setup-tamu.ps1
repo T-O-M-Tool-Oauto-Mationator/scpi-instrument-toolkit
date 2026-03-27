@@ -116,6 +116,7 @@ if (Test-Path (Join-Path $gitWinCmd "git.exe")) {
     }
     if (Test-Path $bashExe) {
         [Environment]::SetEnvironmentVariable("CLAUDE_CODE_GIT_BASH_PATH", $bashExe, "User")
+        $env:CLAUDE_CODE_GIT_BASH_PATH = $bashExe
         Write-Host "Set CLAUDE_CODE_GIT_BASH_PATH=$bashExe" -ForegroundColor Green
     }
 } else {
