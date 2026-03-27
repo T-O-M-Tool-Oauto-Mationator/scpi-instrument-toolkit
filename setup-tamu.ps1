@@ -87,7 +87,9 @@ if (Test-Path (Join-Path $gitWinCmd "git.exe")) {
     $parts = @()
     if ($userPath) { $parts = $userPath -split ";" | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne "" } }
 
-    foreach ($addPath in @($gitWinCmd, $gitWinRoot)) {
+    # Include usr\bin so bash.exe is on PATH directly (required by Claude Code)
+    $gitUsrBin = Join-Path $gitWinRoot "usr\bin"
+    foreach ($addPath in @($gitWinCmd, $gitWinRoot, $gitUsrBin)) {
         $already = $parts | Where-Object { $_.TrimEnd('\').ToLowerInvariant() -eq $addPath.TrimEnd('\').ToLowerInvariant() }
         if ($already) {
             Write-Host "Already on PATH: $addPath" -ForegroundColor Yellow
@@ -98,6 +100,7 @@ if (Test-Path (Join-Path $gitWinCmd "git.exe")) {
             } else {
                 [Environment]::SetEnvironmentVariable("Path", "$cur;$addPath", "User")
             }
+            $env:Path = "$env:Path;$addPath"
             $parts += $addPath
             Write-Host "Added to user PATH: $addPath" -ForegroundColor Green
         }
@@ -108,16 +111,17 @@ if (Test-Path (Join-Path $gitWinCmd "git.exe")) {
         Write-Host "Git Bash available — open a new terminal and type: git-bash" -ForegroundColor Cyan
     }
 
-    # Set CLAUDE_CODE_GIT_BASH_PATH so Claude Code can find bash.exe
-    # Claude Code needs the actual shell (bin\bash.exe), not the GUI launcher (git-bash.exe)
-    $bashExe = Join-Path $gitWinRoot "bin\bash.exe"
+    # Set CLAUDE_CODE_GIT_BASH_PATH — try usr\bin\bash.exe first, then bin\bash.exe
+    $bashExe = Join-Path $gitWinRoot "usr\bin\bash.exe"
     if (-not (Test-Path $bashExe)) {
-        $bashExe = Join-Path $gitWinRoot "usr\bin\bash.exe"
+        $bashExe = Join-Path $gitWinRoot "bin\bash.exe"
     }
     if (Test-Path $bashExe) {
         [Environment]::SetEnvironmentVariable("CLAUDE_CODE_GIT_BASH_PATH", $bashExe, "User")
         $env:CLAUDE_CODE_GIT_BASH_PATH = $bashExe
         Write-Host "Set CLAUDE_CODE_GIT_BASH_PATH=$bashExe" -ForegroundColor Green
+    } else {
+        Write-Host "bash.exe not found under $gitWinRoot — Claude Code may not work" -ForegroundColor Yellow
     }
 } else {
     Write-Host "Git for Windows not found at $gitWinRoot — will fall back to GitHub Desktop git." -ForegroundColor Yellow
