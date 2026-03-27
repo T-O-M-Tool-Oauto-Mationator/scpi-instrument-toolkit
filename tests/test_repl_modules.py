@@ -709,30 +709,25 @@ class TestVariableCommands:
         # Empty print outputs a blank line (print is now plain text, no ANSI codes)
         assert out == "\n"
 
-    def test_do_set_math_eval(self, capsys):
+    def test_do_set_assignment_prints_error(self, capsys):
         vc, ctx = self._make()
         vc.do_set("x 2 + 3")
-        assert ctx.script_vars["x"] == "5"
         out = capsys.readouterr().out
-        assert "x = 5" in out
+        assert "var = expr" in out.lower() or "unknown" in out.lower()
+        assert "x" not in ctx.script_vars
 
-    def test_do_set_string_fallback(self, capsys):
+    def test_do_set_string_prints_error(self, capsys):
         vc, ctx = self._make()
         vc.do_set("greeting hello_world")
-        assert ctx.script_vars["greeting"] == "hello_world"
-
-    def test_do_set_var_substitution(self, capsys):
-        vc, ctx = self._make()
-        ctx.script_vars["a"] = "10"
-        vc.do_set("b $a + 5")
-        # safe_eval parses 10 + 5 as int, producing 15 (not 15.0)
-        assert float(ctx.script_vars["b"]) == 15.0
+        out = capsys.readouterr().out
+        assert "var = expr" in out.lower() or "unknown" in out.lower()
+        assert "greeting" not in ctx.script_vars
 
     def test_do_set_no_args(self, capsys):
         vc, ctx = self._make()
         vc.do_set("")
         out = capsys.readouterr().out
-        assert "Usage" in out
+        assert "No variables" in out or "variables" in out.lower()
 
     def test_do_set_shows_current_vars(self, capsys):
         vc, ctx = self._make()
@@ -741,11 +736,11 @@ class TestVariableCommands:
         out = capsys.readouterr().out
         assert "x = 42" in out
 
-    def test_do_set_one_arg_only(self, capsys):
+    def test_do_set_one_arg_only_prints_error(self, capsys):
         vc, ctx = self._make()
         vc.do_set("x")
         out = capsys.readouterr().out
-        assert "Usage" in out
+        assert "var = expr" in out.lower() or "unknown" in out.lower()
 
     def test_do_sleep_with_suffix_ms(self, capsys):
         vc, ctx = self._make()
@@ -2426,7 +2421,9 @@ class TestShellIntegration:
     def test_do_set_via_shell(self, make_repl, capsys):
         repl = make_repl({})
         repl.onecmd("set x 42")
-        assert repl.ctx.script_vars["x"] == "42"
+        out = capsys.readouterr().out
+        assert "var = expr" in out.lower() or "unknown" in out.lower()
+        assert "x" not in repl.ctx.script_vars
 
     def test_do_sleep_via_shell(self, make_repl, capsys):
         repl = make_repl({})

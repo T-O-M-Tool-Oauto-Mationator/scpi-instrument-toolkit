@@ -67,10 +67,6 @@ class DmmCommand(BaseCommand):
             elif cmd_name == "read":
                 ColorPrinter.cyan(str(dev.read()))
 
-            # MEAS_STORE COMMAND
-            elif cmd_name == "meas_store" and len(args) >= 2:
-                self._handle_meas_store(args, dev)
-
             # FETCH COMMAND
             elif cmd_name == "fetch":
                 if has_fetch and hasattr(dev, "fetch"):
@@ -156,7 +152,6 @@ class DmmCommand(BaseCommand):
                 "",
                 "dmm read",
                 "  - or assign: value = dmm read [unit=]",
-                "dmm meas_store <label> [scale=] [unit=]  (deprecated)",
                 "dmm fetch",
                 "dmm meas <mode> [range] [res]",
                 "dmm beep",
@@ -253,22 +248,6 @@ class DmmCommand(BaseCommand):
             else:
                 func(range_val, resolution)
             ColorPrinter.success(f"Configured for {mode}")
-
-    def _handle_meas_store(self, args, dev) -> None:
-        ColorPrinter.warning(f"'meas_store' is deprecated — use '{args[1]} = dmm read' instead.")
-        label = args[1]
-        scale = 1.0
-        unit = ""
-        for token in args[2:]:
-            token_lower = token.lower()
-            if token_lower.startswith("scale="):
-                scale = float(token.split("=", 1)[1])
-            elif token_lower.startswith("unit="):
-                unit = token.split("=", 1)[1]
-        value = dev.read()
-        scaled = value * scale
-        self.measurements.record(label, scaled, unit, "dmm.read")
-        ColorPrinter.cyan(str(scaled))
 
     def _handle_meas(self, args, dev, is_basic: bool) -> None:
         mode_arg = args[1].lower()

@@ -19,17 +19,19 @@ pytestmark = pytest.mark.integration
 
 
 class TestFullWorkflow_PSU:
-    def test_set_measure_store_check_pass(self, make_repl):
+    def test_set_measure_read_check_pass(self, make_repl):
         devices = {"psu1": MockHP_E3631A()}
         repl = make_repl(devices)
         repl.onecmd("psu set 5.0 0.1")
-        repl.onecmd("psu meas_store v vout unit=V")
+        repl.onecmd("psu meas v")
+        repl.onecmd("vout = psu read unit=V")
         assert len(repl.measurements) == 1
 
     def test_check_passes(self, make_repl):
         devices = {"psu1": MockHP_E3631A()}
         repl = make_repl(devices)
-        repl.onecmd("psu meas_store v vout unit=V")
+        repl.onecmd("psu meas v")
+        repl.onecmd("vout = psu read unit=V")
         repl.onecmd("check vout 4.9 5.1")
         assert len(repl.test_results) == 1
         assert repl.test_results[-1]["passed"] is True
@@ -58,16 +60,16 @@ class TestFullWorkflow_AWGScope:
         devices = {"awg1": MockEDU33212A(), "scope1": MockDHO804()}
         repl = make_repl(devices)
         repl.onecmd("awg wave 1 sine freq=1000 amp=2.0")
-        repl.onecmd("scope meas_store 1 FREQUENCY freq_out unit=Hz")
-        assert len(repl.measurements) == 1
+        repl.onecmd("scope meas 1 FREQUENCY")
+        assert not repl._command_had_error
 
 
 class TestFullWorkflow_DMM:
-    def test_meas_store_and_check(self, make_repl):
+    def test_read_and_check(self, make_repl):
         devices = {"dmm1": MockHP_34401A()}
         repl = make_repl(devices)
         repl.onecmd("dmm config vdc")
-        repl.onecmd("dmm meas_store label unit=V")
+        repl.onecmd("label = dmm read unit=V")
         repl.onecmd("check label 4.9 5.1")
         assert len(repl.test_results) >= 1
         assert repl.test_results[-1]["passed"] is True
@@ -110,8 +112,10 @@ class TestFullWorkflow_MultiDevice:
             "psu2": MockMPS6010H(),
         }
         repl = make_repl(devices)
-        repl.onecmd("psu1 meas_store v p1 unit=V")
-        repl.onecmd("psu2 meas_store v p2 unit=V")
+        repl.onecmd("psu1 meas v")
+        repl.onecmd("p1 = psu1 read unit=V")
+        repl.onecmd("psu2 meas v")
+        repl.onecmd("p2 = psu2 read unit=V")
         labels = [m["label"] for m in repl.measurements]
         assert "p1" in labels
         assert "p2" in labels
@@ -138,6 +142,6 @@ class TestFullWorkflow_AllMocks:
         repl.onecmd("psu1 set 5.0")
         repl.onecmd("awg1 wave 1 sine freq=1000 amp=2.0")
         repl.onecmd("dmm1 config vdc")
-        repl.onecmd("dmm1 meas_store reading unit=V")
-        repl.onecmd("scope1 meas_store 1 FREQUENCY f_out unit=Hz")
-        assert len(repl.measurements) >= 2
+        repl.onecmd("reading = dmm1 read unit=V")
+        repl.onecmd("scope1 meas 1 FREQUENCY")
+        assert len(repl.measurements) >= 1

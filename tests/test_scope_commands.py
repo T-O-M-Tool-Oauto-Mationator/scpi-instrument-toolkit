@@ -142,11 +142,6 @@ class TestScopeMeasurements:
     def test_meas_all(self, repl):
         repl.onecmd("scope meas all RMS")
 
-    def test_meas_store(self, repl):
-        repl.onecmd("scope meas_store 1 FREQUENCY test_freq unit=Hz")
-        assert len(repl.measurements) == 1
-        assert repl.measurements[0]["label"] == "test_freq"
-
     def test_meas_delay(self, repl):
         repl.onecmd("scope meas_delay 1 2")
 
