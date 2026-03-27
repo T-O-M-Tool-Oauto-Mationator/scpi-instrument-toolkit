@@ -84,7 +84,8 @@ $gitWinRoot = Join-Path $env:LOCALAPPDATA "Programs\Git"
 $gitWinCmd  = Join-Path $gitWinRoot "cmd"
 if (Test-Path (Join-Path $gitWinCmd "git.exe")) {
     $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
-    $parts = if ($userPath) { $userPath -split ";" | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne "" } } else { @() }
+    $parts = @()
+    if ($userPath) { $parts = $userPath -split ";" | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne "" } }
 
     foreach ($addPath in @($gitWinCmd, $gitWinRoot)) {
         $already = $parts | Where-Object { $_.TrimEnd('\').ToLowerInvariant() -eq $addPath.TrimEnd('\').ToLowerInvariant() }
@@ -92,7 +93,8 @@ if (Test-Path (Join-Path $gitWinCmd "git.exe")) {
             Write-Host "Already on PATH: $addPath" -ForegroundColor Yellow
         } else {
             $cur = [Environment]::GetEnvironmentVariable("Path", "User")
-            [Environment]::SetEnvironmentVariable("Path", (if ([string]::IsNullOrWhiteSpace($cur)) { $addPath } else { "$cur;$addPath" }), "User")
+            $newVal = if ([string]::IsNullOrWhiteSpace($cur)) { $addPath } else { "$cur;$addPath" }
+            [Environment]::SetEnvironmentVariable("Path", $newVal, "User")
             $parts += $addPath
             Write-Host "Added to user PATH: $addPath" -ForegroundColor Green
         }
