@@ -1,5 +1,7 @@
 """Tests for MeasurementTable widget and app integration - CP4."""
 
+from __future__ import annotations
+
 import asyncio
 import csv
 

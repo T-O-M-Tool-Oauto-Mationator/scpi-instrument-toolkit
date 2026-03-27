@@ -3,16 +3,18 @@
 Currently using InstrumentREPL, but in the future we can use a gRPC Dispatcher.
 """
 
+from __future__ import annotations
+
 import contextlib
 import io
-from typing import Callable, Optional, Protocol, runtime_checkable
+from typing import Callable, Protocol, runtime_checkable
 
 
 @runtime_checkable
 class CommandDispatcher(Protocol):
     """Protocol for a command dispatcher."""
 
-    def handle_command(self, command: str, line_callback: Optional[Callable[[str], None]] = None) -> str:
+    def handle_command(self, command: str, line_callback: Callable[[str], None] | None = None) -> str:
         """Handle a command and return the response.
 
         If *line_callback* is provided, each chunk of output is forwarded to it
@@ -74,7 +76,7 @@ class LocalDispatcher:
 
         self.repl = InstrumentRepl()
 
-    def handle_command(self, command: str, line_callback: Optional[Callable[[str], None]] = None) -> str:
+    def handle_command(self, command: str, line_callback: Callable[[str], None] | None = None) -> str:
         """Handle a command and return the response."""
         if line_callback is not None:
             stream = _StreamingWriter(line_callback)

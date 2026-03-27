@@ -1,5 +1,7 @@
 """Tests for DeviceSidebar widget and app integration - CP3."""
 
+from __future__ import annotations
+
 import asyncio
 
 from textual.widgets import Label, ListItem, ListView

@@ -1,5 +1,7 @@
 """Unit and integration tests for CommandHistory - CP2."""
 
+from __future__ import annotations
+
 import asyncio
 
 from lab_instruments.tui.history import CommandHistory

@@ -1,5 +1,7 @@
 """Variable inspector widget - shows current script variable bindings."""
 
+from __future__ import annotations
+
 from textual.app import ComposeResult
 from textual.reactive import reactive
 from textual.widget import Widget

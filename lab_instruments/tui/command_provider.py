@@ -4,6 +4,8 @@ Exposes all REPL command completions in the Textual command palette (Ctrl+P).
 Selecting a command dispatches it directly into the log view.
 """
 
+from __future__ import annotations
+
 from textual.command import DiscoveryHit, Hit, Hits, Provider
 
 

@@ -1,5 +1,7 @@
 """Command history for the SCPI TUI input field."""
 
+from __future__ import annotations
+
 
 class CommandHistory:
     """Ordered command history with arrow-key navigation.

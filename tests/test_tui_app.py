@@ -1,5 +1,7 @@
 """Smoke tests for SCPIApp - CP1: test harness + tab completion."""
 
+from __future__ import annotations
+
 import asyncio
 
 from textual.widgets import Input, RichLog

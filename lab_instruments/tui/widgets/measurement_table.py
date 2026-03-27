@@ -1,5 +1,7 @@
 """Measurement table widget with CSV export."""
 
+from __future__ import annotations
+
 import csv
 import time
 from pathlib import Path

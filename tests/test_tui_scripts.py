@@ -1,5 +1,7 @@
 """Tests for ScriptBrowser, VarInspector, SafetyBar widgets and app integration - CP5."""
 
+from __future__ import annotations
+
 import asyncio
 
 from textual.widgets import ContentSwitcher, DataTable, Label

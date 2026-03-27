@@ -1,5 +1,7 @@
 """Tests for SCPICommandProvider and command palette integration - CP6."""
 
+from __future__ import annotations
+
 import asyncio
 from unittest.mock import MagicMock
 
