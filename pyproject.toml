@@ -7,7 +7,7 @@ name = "scpi-instrument-toolkit"
 version = "0.1.142"
 description = "Python drivers and interactive REPL for SCPI test and measurement instruments"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 license = {text = "MIT"}
 authors = [
     {name = "Brighton Sikarskie"},
