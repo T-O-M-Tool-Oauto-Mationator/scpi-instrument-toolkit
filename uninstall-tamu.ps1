@@ -114,19 +114,20 @@ if (-not $claudeExe) {
 }
 
 if ($claudeExe) {
+    $claudeDir = Split-Path $claudeExe -Parent
     try {
-        & $claudeExe uninstall 2>$null
-        Write-Host "Claude Code uninstalled." -ForegroundColor Green
+        Remove-Item -Force $claudeExe -ErrorAction Stop
+        Write-Host "Removed $claudeExe" -ForegroundColor Green
     } catch {
-        Write-Host "claude uninstall command failed: $_" -ForegroundColor Yellow
+        Write-Host "Could not remove $claudeExe`: $_" -ForegroundColor Yellow
     }
     # Remove claude dir from user PATH
-    $claudeDir = Split-Path $claudeExe -Parent
     $userPath2 = [Environment]::GetEnvironmentVariable("Path", "User")
     if ($userPath2) {
         $parts2 = $userPath2 -split ";" | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne "" }
         $filtered2 = $parts2 | Where-Object { $_.TrimEnd("\").ToLowerInvariant() -ne $claudeDir.TrimEnd("\").ToLowerInvariant() }
         [Environment]::SetEnvironmentVariable("Path", ($filtered2 -join ";"), "User")
+        Write-Host "Removed $claudeDir from user PATH." -ForegroundColor Green
     }
 } else {
     Write-Host "Claude Code not found — skipping." -ForegroundColor Yellow
