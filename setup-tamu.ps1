@@ -298,6 +298,44 @@ try {
     Write-Host "Try manually: irm https://claude.ai/install.ps1 | iex" -ForegroundColor Yellow
 }
 
+# Find claude.cmd / claude.exe and add its directory to user PATH
+$claudeCandidates = @(
+    (Join-Path $env:APPDATA "npm"),
+    (Join-Path $env:LOCALAPPDATA "AnthropicClaude\bin"),
+    (Join-Path $env:USERPROFILE ".claude\local\bin"),
+    (Join-Path $env:LOCALAPPDATA "Programs\claude")
+)
+$claudeDir = $null
+foreach ($dir in $claudeCandidates) {
+    if ((Test-Path (Join-Path $dir "claude.cmd")) -or (Test-Path (Join-Path $dir "claude.exe"))) {
+        $claudeDir = $dir
+        break
+    }
+}
+if (-not $claudeDir) {
+    $found = Get-ChildItem -Path $env:APPDATA, $env:LOCALAPPDATA, $env:USERPROFILE `
+        -Filter "claude.cmd" -Recurse -ErrorAction SilentlyContinue -Depth 5 |
+        Select-Object -First 1
+    if ($found) { $claudeDir = $found.DirectoryName }
+}
+if ($claudeDir) {
+    $curPath = [Environment]::GetEnvironmentVariable("Path", "User")
+    $already = ($curPath -split ";") | Where-Object { $_.TrimEnd("\").ToLowerInvariant() -eq $claudeDir.TrimEnd("\").ToLowerInvariant() }
+    if (-not $already) {
+        if ([string]::IsNullOrWhiteSpace($curPath)) {
+            [Environment]::SetEnvironmentVariable("Path", $claudeDir, "User")
+        } else {
+            [Environment]::SetEnvironmentVariable("Path", "$curPath;$claudeDir", "User")
+        }
+        $env:Path = "$env:Path;$claudeDir"
+        Write-Host "Added claude to user PATH: $claudeDir" -ForegroundColor Green
+    } else {
+        Write-Host "claude already on PATH: $claudeDir" -ForegroundColor Yellow
+    }
+} else {
+    Write-Host "Could not find claude install dir — open a new terminal and run: claude" -ForegroundColor Yellow
+}
+
 # ---------------------------------------------------------------------------
 # Done
 # ---------------------------------------------------------------------------
