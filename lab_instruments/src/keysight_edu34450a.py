@@ -14,7 +14,6 @@ NOTE: This instrument does NOT support NPLC (Number of Power Line Cycles).
       It supports capacitance and temperature modes unlike the HP 34401A.
 """
 
-
 from .device_manager import DeviceManager
 
 

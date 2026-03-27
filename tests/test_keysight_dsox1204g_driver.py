@@ -1,6 +1,5 @@
 """tests/test_keysight_dsox1204g_driver.py — Driver-level unit tests for Keysight DSOX1204G oscilloscope."""
 
-
 import pytest
 
 
@@ -423,9 +422,7 @@ class TestDisplay:
         dev, mi = scope
         mi.query_binary_values.return_value = b"\x89PNG_DATA"
         dev.get_screenshot()
-        mi.query_binary_values.assert_called_once_with(
-            ":DISPlay:DATA? PNG,COLor", datatype="B", container=bytes
-        )
+        mi.query_binary_values.assert_called_once_with(":DISPlay:DATA? PNG,COLor", datatype="B", container=bytes)
 
     def test_clear_display(self, scope):
         dev, mi = scope

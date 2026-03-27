@@ -360,9 +360,7 @@ class InstrumentDiscovery:
                 if wip_key in idn:
                     inst.close()
                     if verbose:
-                        self._safe_print(
-                            f"Checking {resource}... {ColorPrinter.GREEN}Found: {idn}{ColorPrinter.RESET}"
-                        )
+                        self._safe_print(f"Checking {resource}... {ColorPrinter.GREEN}Found: {idn}{ColorPrinter.RESET}")
                         self._safe_print(
                             f"{ColorPrinter.YELLOW}  -> {wip_desc} — not yet supported.{ColorPrinter.RESET}"
                         )

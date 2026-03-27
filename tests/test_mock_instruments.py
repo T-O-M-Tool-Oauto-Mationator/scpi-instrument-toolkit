@@ -211,8 +211,18 @@ class TestGetMockDevices:
     def test_expected_keys(self):
         devices = get_mock_devices(verbose=False)
         for key in (
-            "psu1", "psu2", "psu3", "smu", "awg1", "awg2",
-            "dmm1", "dmm2", "dmm3", "scope1", "scope2", "scope3",
+            "psu1",
+            "psu2",
+            "psu3",
+            "smu",
+            "awg1",
+            "awg2",
+            "dmm1",
+            "dmm2",
+            "dmm3",
+            "scope1",
+            "scope2",
+            "scope3",
         ):
             assert key in devices
 

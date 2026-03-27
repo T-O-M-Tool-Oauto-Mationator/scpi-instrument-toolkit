@@ -361,9 +361,7 @@ class TestCP5AppNav:
 
     def test_refresh_safety_updates_bar(self):
         async def inner():
-            app, stub = self._make_app(
-                safety={"limit_count": 2, "active_script": False, "exit_on_error": True}
-            )
+            app, stub = self._make_app(safety={"limit_count": 2, "active_script": False, "exit_on_error": True})
             async with app.run_test(size=(80, 24)) as pilot:
                 app._refresh_safety()
                 await pilot.pause(0.1)

@@ -209,9 +209,7 @@ class Keysight_DSOX1204G(DeviceManager):
         self._validate_channel(channel)
         coupling = coupling.upper()
         if coupling == "GND":
-            raise ValueError(
-                "Keysight DSOX1204G does not support GND coupling. Use DC or AC."
-            )
+            raise ValueError("Keysight DSOX1204G does not support GND coupling. Use DC or AC.")
         if coupling not in ("DC", "AC"):
             raise ValueError("Coupling must be 'DC' or 'AC'")
 
@@ -336,9 +334,7 @@ class Keysight_DSOX1204G(DeviceManager):
     # Trigger Control
     # ========================================
 
-    def configure_trigger(
-        self, channel: int, level: float, slope: str = "RISE", mode: str = "AUTO"
-    ) -> None:
+    def configure_trigger(self, channel: int, level: float, slope: str = "RISE", mode: str = "AUTO") -> None:
         """
         Configure edge trigger.
 
@@ -452,9 +448,7 @@ class Keysight_DSOX1204G(DeviceManager):
         meas_type = self._resolve_meas_type(measurement_type)
 
         try:
-            response = self.instrument.query(
-                f":MEASure:{meas_type}? CHANnel{channel}"
-            )
+            response = self.instrument.query(f":MEASure:{meas_type}? CHANnel{channel}")
             value = float(response.strip())
             return value
         except (ValueError, TypeError):
@@ -506,9 +500,7 @@ class Keysight_DSOX1204G(DeviceManager):
         self._validate_channel(ch2)
 
         try:
-            response = self.instrument.query(
-                f":MEASure:DELay? CHANnel{ch1},CHANnel{ch2}"
-            )
+            response = self.instrument.query(f":MEASure:DELay? CHANnel{ch1},CHANnel{ch2}")
             return float(response.strip())
         except (ValueError, TypeError):
             return float("nan")
@@ -599,23 +591,14 @@ class Keysight_DSOX1204G(DeviceManager):
         raw_data = np.array(raw_data)
 
         # Convert to voltage
-        voltage = (
-            (raw_data.astype(float) - preamble["yreference"])
-            * preamble["yincrement"]
-            + preamble["yorigin"]
-        )
+        voltage = (raw_data.astype(float) - preamble["yreference"]) * preamble["yincrement"] + preamble["yorigin"]
 
         # Generate time axis
         indices = np.arange(len(raw_data))
-        time_arr = (
-            preamble["xorigin"]
-            + (indices - preamble["xreference"]) * preamble["xincrement"]
-        )
+        time_arr = preamble["xorigin"] + (indices - preamble["xreference"]) * preamble["xincrement"]
 
         # Calculate sample rate
-        sample_rate = (
-            1.0 / preamble["xincrement"] if preamble["xincrement"] > 0 else 0.0
-        )
+        sample_rate = 1.0 / preamble["xincrement"] if preamble["xincrement"] > 0 else 0.0
 
         waveform = WaveformData(
             time=time_arr,
@@ -664,9 +647,7 @@ class Keysight_DSOX1204G(DeviceManager):
             times = times[-max_points:]
             volts = volts[-max_points:]
             actual_time = times[-1] - times[0]
-            print(
-                f"Saving {max_points} points ({actual_time:.6f} seconds) - most recent data"
-            )
+            print(f"Saving {max_points} points ({actual_time:.6f} seconds) - most recent data")
 
         with open(filename, "w", newline="") as csvfile:
             writer = csv.writer(csvfile)
@@ -724,15 +705,11 @@ class Keysight_DSOX1204G(DeviceManager):
             for ch in channel_data:
                 channel_data[ch] = channel_data[ch][-max_points:]
             actual_time = times[-1] - times[0]
-            print(
-                f"Saving {max_points} points ({actual_time:.6f} seconds) - most recent data"
-            )
+            print(f"Saving {max_points} points ({actual_time:.6f} seconds) - most recent data")
 
         with open(filename, "w", newline="") as csvfile:
             writer = csv.writer(csvfile)
-            header = ["Time (s)"] + [
-                f"CH{ch} Voltage (V)" for ch in sorted(channel_data.keys())
-            ]
+            header = ["Time (s)"] + [f"CH{ch} Voltage (V)" for ch in sorted(channel_data.keys())]
             writer.writerow(header)
 
             for i in range(len(times)):
@@ -756,9 +733,7 @@ class Keysight_DSOX1204G(DeviceManager):
             bytes: PNG image data
         """
         print("Capturing screenshot (this may take several seconds)...")
-        screenshot_data = self.instrument.query_binary_values(
-            ":DISPlay:DATA? PNG,COLor", datatype="B", container=bytes
-        )
+        screenshot_data = self.instrument.query_binary_values(":DISPlay:DATA? PNG,COLor", datatype="B", container=bytes)
         print(f"Screenshot captured ({len(screenshot_data)} bytes)")
         return screenshot_data
 
@@ -814,9 +789,7 @@ class Keysight_DSOX1204G(DeviceManager):
         acq_type = acq_type.upper()
         valid_types = ["NORMAL", "AVERAGE", "HRESOLUTION", "PEAK"]
         if acq_type not in valid_types:
-            raise ValueError(
-                f"Acquisition type must be one of {valid_types}, got {acq_type}"
-            )
+            raise ValueError(f"Acquisition type must be one of {valid_types}, got {acq_type}")
 
         self.instrument.write(f":ACQuire:TYPE {acq_type}")
         print(f"Acquisition type set to {acq_type}")
@@ -867,9 +840,7 @@ class Keysight_DSOX1204G(DeviceManager):
         """
         valid_functions = ["SINusoid", "SQUare", "RAMP", "PULSe", "DC", "NOISe"]
         if function not in valid_functions:
-            raise ValueError(
-                f"Function must be one of {valid_functions}, got '{function}'"
-            )
+            raise ValueError(f"Function must be one of {valid_functions}, got '{function}'")
 
         self.instrument.write(f":WGEN:FUNCtion {function}")
         print(f"AWG function set to {function}")
@@ -1026,9 +997,7 @@ class Keysight_DSOX1204G(DeviceManager):
         self.instrument.write(f":FUNCtion:DISPlay {state}")
         print(f"Math channel {'enabled' if enable else 'disabled'}")
 
-    def configure_math_operation(
-        self, math_ch: int, operation: str, source1: str, source2: str = None
-    ) -> None:
+    def configure_math_operation(self, math_ch: int, operation: str, source1: str, source2: str = None) -> None:
         """
         Configure math channel for arithmetic operation.
 
@@ -1058,9 +1027,7 @@ class Keysight_DSOX1204G(DeviceManager):
 
         print(f"Math configured: {source1} {operation} {source2 if source2 else ''}")
 
-    def configure_math_function(
-        self, math_ch: int, function: str, source: str
-    ) -> None:
+    def configure_math_function(self, math_ch: int, function: str, source: str) -> None:
         """
         Configure math channel for a function operation.
 
@@ -1074,9 +1041,7 @@ class Keysight_DSOX1204G(DeviceManager):
         self.instrument.write(f":FUNCtion:SOURce1 {scpi_source}")
         print(f"Math configured: {function}({source})")
 
-    def configure_fft(
-        self, math_ch: int, source: str, window: str = "RECT"
-    ) -> None:
+    def configure_fft(self, math_ch: int, source: str, window: str = "RECT") -> None:
         """
         Configure math channel for FFT analysis.
 
@@ -1100,9 +1065,7 @@ class Keysight_DSOX1204G(DeviceManager):
         self.instrument.write(f":FUNCtion:FFT:WINDow {scpi_window}")
         print(f"FFT configured: source={source}, window={window}")
 
-    def set_math_scale(
-        self, math_ch: int, scale: float, offset: float = None
-    ) -> None:
+    def set_math_scale(self, math_ch: int, scale: float, offset: float = None) -> None:
         """
         Set vertical scale and offset for math channel.
 
