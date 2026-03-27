@@ -32,11 +32,11 @@ class SCPIApp(App):
 
     BINDINGS = [
         Binding("ctrl+l", "clear_log", "Clear", show=True),
-        Binding("ctrl+d", "toggle_sidebar", "Devices", show=True),
-        Binding("ctrl+m", "toggle_measurements", "Meas", show=True),
-        Binding("ctrl+r", "show_scripts", "Scripts", show=True),
-        Binding("ctrl+v", "show_vars", "Vars", show=True),
-        Binding("q", "quit", "Quit", show=True),
+        Binding("alt+d", "toggle_sidebar", "Devices", show=True),
+        Binding("alt+m", "toggle_measurements", "Meas", show=True),
+        Binding("alt+s", "show_scripts", "Scripts", show=True),
+        Binding("alt+v", "show_vars", "Vars", show=True),
+        Binding("ctrl+q", "quit", "Quit", show=True),
     ]
 
     DEFAULT_CSS = """
@@ -197,27 +197,30 @@ class SCPIApp(App):
         self.query_one("#log-view", RichLog).write(f"[bold cyan]> {cmd}[/bold cyan]")
         self._dispatch_command(cmd)
 
-    @work(thread=True, exit_on_error=False, name="dispatch")
-    def _dispatch_command(self, cmd: str) -> str:
-        """Execute command in background worker."""
-        return self._dispatcher.handle_command(cmd)
-
-    def on_worker_state_changed(self, event: Worker.StateChanged) -> None:
-        """Get called when worker finishes or errors."""
-        if event.worker.name != "dispatch":
-            return
-        if event.state == WorkerState.SUCCESS:
-            self._write_output(event.worker.result or "")
-            self._refresh_measurements()
-            self._refresh_vars()
-        elif event.state == WorkerState.ERROR:
-            self._write_output(f"\033[91m[ERROR] {event.worker.error}\033[0m\n")
-
-    def _write_output(self, raw: str) -> None:
-        """Decode ANSI output and append to log."""
+    def _stream_line(self, raw: str) -> None:
+        """Write a chunk of output to the RichLog (thread-safe via call_from_thread)."""
         log = self.query_one("#log-view", RichLog)
         for line in _ANSI_DECODER.decode(raw):
             log.write(line)
+
+    @work(thread=True, exit_on_error=False, name="dispatch")
+    def _dispatch_command(self, cmd: str) -> str:
+        """Execute command in background worker, streaming output live."""
+
+        def _on_output(chunk: str) -> None:
+            self.call_from_thread(self._stream_line, chunk)
+
+        return self._dispatcher.handle_command(cmd, line_callback=_on_output)
+
+    def on_worker_state_changed(self, event: Worker.StateChanged) -> None:
+        """Handle worker completion — refresh panels or show errors."""
+        if event.worker.name != "dispatch":
+            return
+        if event.state == WorkerState.SUCCESS:
+            self._refresh_measurements()
+            self._refresh_vars()
+        elif event.state == WorkerState.ERROR:
+            self._stream_line(f"\033[91m[ERROR] {event.worker.error}\033[0m\n")
 
     # ------------------------------------------------------------------
     # Actions

@@ -5,15 +5,19 @@ Currently using InstrumentREPL, but in the future we can use a gRPC Dispatcher.
 
 import contextlib
 import io
-from typing import Protocol, runtime_checkable
+from typing import Callable, Optional, Protocol, runtime_checkable
 
 
 @runtime_checkable
 class CommandDispatcher(Protocol):
     """Protocol for a command dispatcher."""
 
-    def handle_command(self, command: str) -> str:
-        """Handle a command and return the response."""
+    def handle_command(self, command: str, line_callback: Optional[Callable[[str], None]] = None) -> str:
+        """Handle a command and return the response.
+
+        If *line_callback* is provided, each chunk of output is forwarded to it
+        in real-time (for streaming to TUI).  The full output is still returned.
+        """
         ...
 
     def get_completions(self, text: str) -> list[str]:
@@ -37,6 +41,24 @@ class CommandDispatcher(Protocol):
         ...
 
 
+class _StreamingWriter(io.TextIOBase):
+    """A writable stream that forwards each write to a callback AND a buffer."""
+
+    def __init__(self, callback: Callable[[str], None]) -> None:
+        super().__init__()
+        self._callback = callback
+        self._buf = io.StringIO()
+
+    def write(self, s: str) -> int:
+        self._buf.write(s)
+        if s:
+            self._callback(s)
+        return len(s)
+
+    def getvalue(self) -> str:
+        return self._buf.getvalue()
+
+
 class LocalDispatcher:
     """Run a command in process. One InstrumentRepl instance is reused to preserve session state."""
 
@@ -52,11 +74,17 @@ class LocalDispatcher:
 
         self.repl = InstrumentRepl()
 
-    def handle_command(self, command: str) -> str:
+    def handle_command(self, command: str, line_callback: Optional[Callable[[str], None]] = None) -> str:
         """Handle a command and return the response."""
-        with contextlib.redirect_stdout(io.StringIO()) as f:
-            self.repl.onecmd(command)
-        return f.getvalue()
+        if line_callback is not None:
+            stream = _StreamingWriter(line_callback)
+            with contextlib.redirect_stdout(stream):  # type: ignore[type-var]
+                self.repl.onecmd(command)
+            return stream.getvalue()
+        else:
+            with contextlib.redirect_stdout(io.StringIO()) as f:
+                self.repl.onecmd(command)
+            return f.getvalue()
 
     def get_device_snapshot(self) -> list[dict]:
         """Return a snapshot of connected devices safe to read from the event loop.
