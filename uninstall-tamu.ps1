@@ -50,17 +50,20 @@ if (-not $pipCmd) {
 # ---------------------------------------------------------------------------
 Write-Step 2 "Uninstalling GitHub CLI (gh)..."
 
-$ghInstalled = winget list --id GitHub.cli --accept-source-agreements 2>$null |
-    Select-String "GitHub.cli"
-if ($ghInstalled) {
-    winget uninstall GitHub.cli --accept-source-agreements 2>$null
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host "GitHub CLI removed." -ForegroundColor Green
-    } else {
-        Write-Host "GitHub CLI removal failed — skip." -ForegroundColor Yellow
+$ghInstallDir = Join-Path $env:LOCALAPPDATA "Programs\gh"
+$ghExe        = Join-Path $ghInstallDir "gh.exe"
+if (Test-Path $ghInstallDir) {
+    Remove-Item -Recurse -Force $ghInstallDir -ErrorAction SilentlyContinue
+    Write-Host "GitHub CLI removed." -ForegroundColor Green
+    # Remove from user PATH
+    $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+    if ($userPath) {
+        $parts = $userPath -split ";" | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne "" }
+        $filtered = $parts | Where-Object { $_.TrimEnd("\").ToLowerInvariant() -ne $ghInstallDir.TrimEnd("\").ToLowerInvariant() }
+        [Environment]::SetEnvironmentVariable("Path", ($filtered -join ";"), "User")
     }
 } else {
-    Write-Host "GitHub CLI not installed. Skipping." -ForegroundColor Yellow
+    Write-Host "GitHub CLI not found. Skipping." -ForegroundColor Yellow
 }
 
 # ---------------------------------------------------------------------------

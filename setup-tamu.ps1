@@ -132,22 +132,49 @@ if (Test-Path (Join-Path $gitWinCmd "git.exe")) {
 # ---------------------------------------------------------------------------
 Write-Step 3 "Installing GitHub CLI (gh)..."
 
-$ghCliInstalled = winget list --id GitHub.cli --accept-source-agreements 2>$null |
-    Select-String "GitHub.cli"
+$ghInstallDir = Join-Path $env:LOCALAPPDATA "Programs\gh"
+$ghExe        = Join-Path $ghInstallDir "gh.exe"
 
-if ($ghCliInstalled) {
-    Write-Host "GitHub CLI is already installed. Skipping." -ForegroundColor Yellow
+if (Test-Path $ghExe) {
+    Write-Host "GitHub CLI already installed at $ghExe. Skipping." -ForegroundColor Yellow
 } else {
-    Write-Host "Installing GitHub CLI (user scope, no admin)..."
-    winget install GitHub.cli `
-        --scope user `
-        --accept-package-agreements `
-        --accept-source-agreements `
-        --silent
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host "GitHub CLI installation failed." -ForegroundColor Yellow
+    # gh winget package is machine-scope only — download portable zip instead
+    Write-Host "Downloading GitHub CLI portable zip (no admin needed)..."
+    try {
+        $ghRelease  = Invoke-RestMethod "https://api.github.com/repos/cli/cli/releases/latest"
+        $ghAsset    = $ghRelease.assets | Where-Object { $_.name -like "*windows_amd64.zip" } | Select-Object -First 1
+        $ghZip      = Join-Path $env:TEMP "gh_windows_amd64.zip"
+        Invoke-WebRequest -Uri $ghAsset.browser_download_url -OutFile $ghZip -UseBasicParsing
+        New-Item -ItemType Directory -Force -Path $ghInstallDir | Out-Null
+        Expand-Archive -Path $ghZip -DestinationPath $ghInstallDir -Force
+        # The zip extracts into a versioned subfolder — move gh.exe up
+        $extracted = Get-ChildItem -Path $ghInstallDir -Filter "gh.exe" -Recurse | Select-Object -First 1
+        if ($extracted -and $extracted.FullName -ne $ghExe) {
+            Copy-Item $extracted.FullName $ghExe -Force
+        }
+        Remove-Item $ghZip -Force -ErrorAction SilentlyContinue
+        Write-Host "GitHub CLI installed." -ForegroundColor Green
+    } catch {
+        Write-Host "GitHub CLI install failed: $_" -ForegroundColor Yellow
+    }
+}
+
+# Add gh to user PATH
+if (Test-Path $ghExe) {
+    $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+    $parts = @()
+    if ($userPath) { $parts = $userPath -split ";" | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne "" } }
+    $already = $parts | Where-Object { $_.TrimEnd("\").ToLowerInvariant() -eq $ghInstallDir.TrimEnd("\").ToLowerInvariant() }
+    if (-not $already) {
+        if ([string]::IsNullOrWhiteSpace($userPath)) {
+            [Environment]::SetEnvironmentVariable("Path", $ghInstallDir, "User")
+        } else {
+            [Environment]::SetEnvironmentVariable("Path", "$userPath;$ghInstallDir", "User")
+        }
+        $env:Path = "$env:Path;$ghInstallDir"
+        Write-Host "Added gh to user PATH: $ghInstallDir" -ForegroundColor Green
     } else {
-        Write-Host "GitHub CLI (gh) installed." -ForegroundColor Green
+        Write-Host "gh already on PATH." -ForegroundColor Yellow
     }
 }
 
