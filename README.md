@@ -19,7 +19,13 @@ Already cloned the repo? Just run:
 .\setup-tamu.ps1
 ```
 
-**What it installs:** GitHub Desktop (includes git) · Git for Windows (Git Bash) · Python 3.12 · scpi-instrument-toolkit
+**What it installs:** GitHub Desktop (includes git) · Git for Windows (Git Bash) · Python 3.12 · scpi-instrument-toolkit · Claude Code
+
+To uninstall everything the setup script installed:
+
+```powershell
+irm "https://raw.githubusercontent.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit/main/uninstall-tamu.ps1" | iex
+```
 
 > **NI-VISA** (needed for real hardware) requires admin rights and must be installed separately by IT or via the [NI download page](https://www.ni.com/en/support/downloads/drivers/download.ni-visa.html). Use `--mock` mode until then.
 

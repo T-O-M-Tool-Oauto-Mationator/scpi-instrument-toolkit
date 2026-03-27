@@ -275,23 +275,32 @@ try {
     Write-Host "Try manually: irm https://claude.ai/install.ps1 | iex" -ForegroundColor Yellow
 }
 
-# Find claude.cmd / claude.exe and add its directory to user PATH
+# Find claude.exe and add its directory to user PATH
+# The installer self-extracts under $env:USERPROFILE\.claude\
 $claudeCandidates = @(
-    (Join-Path $env:APPDATA "npm"),
-    (Join-Path $env:LOCALAPPDATA "AnthropicClaude\bin"),
     (Join-Path $env:USERPROFILE ".claude\local\bin"),
+    (Join-Path $env:USERPROFILE ".claude\bin"),
+    (Join-Path $env:LOCALAPPDATA "AnthropicClaude\bin"),
+    (Join-Path $env:APPDATA "npm"),
     (Join-Path $env:LOCALAPPDATA "Programs\claude")
 )
 $claudeDir = $null
 foreach ($dir in $claudeCandidates) {
-    if ((Test-Path (Join-Path $dir "claude.cmd")) -or (Test-Path (Join-Path $dir "claude.exe"))) {
+    if ((Test-Path (Join-Path $dir "claude.exe")) -or (Test-Path (Join-Path $dir "claude.cmd"))) {
         $claudeDir = $dir
         break
     }
 }
 if (-not $claudeDir) {
-    $found = Get-ChildItem -Path $env:APPDATA, $env:LOCALAPPDATA, $env:USERPROFILE `
-        -Filter "claude.cmd" -Recurse -ErrorAction SilentlyContinue -Depth 5 |
+    $found = Get-ChildItem -Path (Join-Path $env:USERPROFILE ".claude") `
+        -Filter "claude.exe" -Recurse -ErrorAction SilentlyContinue |
+        Select-Object -First 1
+    if ($found) { $claudeDir = $found.DirectoryName }
+}
+if (-not $claudeDir) {
+    $found = Get-ChildItem -Path $env:LOCALAPPDATA, $env:APPDATA `
+        -Filter "claude.exe" -Recurse -ErrorAction SilentlyContinue -Depth 6 |
+        Where-Object { $_.Name -eq "claude.exe" } |
         Select-Object -First 1
     if ($found) { $claudeDir = $found.DirectoryName }
 }
