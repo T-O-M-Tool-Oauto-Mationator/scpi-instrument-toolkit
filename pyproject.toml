@@ -18,11 +18,19 @@ dependencies = [
     "PyVISA>=1.14.0",
     "pyvisa-py>=0.7.0",
     "pyserial>=3.5",
+    "pyserial-asyncio>=0.6",
     "psutil>=5.9.0",
     "zeroconf>=0.131.0",
-    "numpy>=1.21.0",
+    "numpy>=1.24.0",
+    "pandas>=2.0.0",
+    "scipy>=1.10.0",
+    "matplotlib>=3.7.0",
+    "openpyxl>=3.1.0",
     "fpdf2>=2.7.0",
+    "pyfunctional>=1.4.0",
+    "requests>=2.31.0",
     "textual>=1.8.0",
+    "nidcpower>=1.5.0",
 ]
 
 [project.optional-dependencies]
