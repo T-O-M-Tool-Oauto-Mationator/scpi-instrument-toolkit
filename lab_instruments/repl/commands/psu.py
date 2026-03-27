@@ -201,6 +201,11 @@ class PsuCommand(BaseCommand):
             ColorPrinter.success(f"Set {args[1].upper()}: {voltage}V" + (f" @ {current}A" if current else ""))
 
     def _handle_meas(self, args, dev, psu_name, is_single_channel) -> None:
+        # Track the last measurement mode for unit auto-detection
+        if is_single_channel and len(args) >= 2:
+            self.ctx.last_instrument_mode[psu_name] = args[1].lower()
+        elif not is_single_channel and len(args) >= 3:
+            self.ctx.last_instrument_mode[psu_name] = args[2].lower()
         no_readback = getattr(dev, "SUPPORTS_READBACK", True) is False
         if no_readback:
             ColorPrinter.warning(
@@ -241,6 +246,9 @@ class PsuCommand(BaseCommand):
                 ColorPrinter.warning("psu meas <channel> v|i")
 
     def _handle_meas_store(self, args, dev, psu_name, is_single_channel) -> None:
+        ColorPrinter.warning(
+            "'meas_store' is deprecated — use 'varname = psu read' instead."
+        )
         if getattr(dev, "SUPPORTS_READBACK", True) is False:
             ColorPrinter.warning(
                 f"{psu_name}: this device has no readback support — cannot store measurements. Use an external DMM."

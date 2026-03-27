@@ -61,7 +61,7 @@ class DmmCommand(BaseCommand):
         try:
             # CONFIG COMMAND - unified for all DMM types
             if cmd_name in ("config", "mode") and len(args) >= 2:
-                self._handle_config(args, dev, is_basic)
+                self._handle_config(args, dev, dev_name, is_basic)
 
             # READ COMMAND
             elif cmd_name == "read":
@@ -155,7 +155,8 @@ class DmmCommand(BaseCommand):
                 "  - example: dmm config vdc 10 0.001 nplc=10",
                 "",
                 "dmm read",
-                "dmm meas_store <label> [scale=] [unit=]",
+                "  - or assign: value = dmm read [unit=]",
+                "dmm meas_store <label> [scale=] [unit=]  (deprecated)",
                 "dmm fetch",
                 "dmm meas <mode> [range] [res]",
                 "dmm beep",
@@ -196,9 +197,12 @@ class DmmCommand(BaseCommand):
         else:
             ColorPrinter.info("Owon DMM auto-configures ranges. No manual range specification needed.")
 
-    def _handle_config(self, args, dev, is_basic: bool) -> None:
+    def _handle_config(self, args, dev, dev_name: str, is_basic: bool) -> None:
         mode_arg = args[1].lower()
         mode = DMM_MODE_ALIASES.get(mode_arg, mode_arg)
+
+        # Track last configured mode for unit auto-detection
+        self.ctx.last_instrument_mode[dev_name] = mode_arg
 
         if is_basic:
             # Basic DMM: Simple mode setting only
@@ -251,6 +255,9 @@ class DmmCommand(BaseCommand):
             ColorPrinter.success(f"Configured for {mode}")
 
     def _handle_meas_store(self, args, dev) -> None:
+        ColorPrinter.warning(
+            f"'meas_store' is deprecated — use '{args[1]} = dmm read' instead."
+        )
         label = args[1]
         scale = 1.0
         unit = ""

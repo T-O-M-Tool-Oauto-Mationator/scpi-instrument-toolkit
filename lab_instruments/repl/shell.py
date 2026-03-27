@@ -430,9 +430,15 @@ class InstrumentRepl(cmd.Cmd):
                 return
 
         # Python-style assignment: voltage = 5.0  /  label = "mytest"
+        # Also handles: value = dmm read  /  value = psu1 read unit=V
         m = self._ASSIGN_RE.match(line.strip())
         if m:
-            self._var_cmd._assign_var(m.group(1), m.group(2).strip())
+            varname = m.group(1)
+            rhs = m.group(2).strip()
+            # Try instrument read first; fall through to plain assignment
+            if self._var_cmd.try_instrument_read(varname, rhs):
+                return
+            self._var_cmd._assign_var(varname, rhs)
             return
 
         self.ctx.command_had_error = True

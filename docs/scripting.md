@@ -249,7 +249,19 @@ doubled = voltage * 2     # arithmetic works — doubled = 10.0
 offset = voltage - 0.5    # offset = 4.5
 ```
 
-Variables are evaluated at **script expansion time** (before execution begins), so you can use one variable in another's expression.
+#### Instrument read assignment
+
+You can read directly from an instrument into a variable:
+
+```
+dmm config vdc
+output_v = dmm read            # reads DMM, stores in variable AND measurement log
+supply_i = psu read unit=A     # optional unit= override
+```
+
+The result is stored in **both** the script variable (`{output_v}`) and the measurement store, so it appears in `log print` and `log save` automatically. The unit is auto-detected from the instrument's last configured mode.
+
+Variables are evaluated at **script expansion time** (before execution begins), so you can use one variable in another's expression. Instrument reads are evaluated at **runtime**.
 
 | Part         | Description                                               |
 | ------------ | --------------------------------------------------------- |
@@ -356,17 +368,18 @@ Use `var = value` for new scripts.
 
 ## Measurements in scripts
 
-Scripts use the same `meas_store`, `calc`, and `log` commands as the interactive REPL. Understanding how they fit together is key to writing useful test scripts.
+Scripts use instrument read assignments and `calc` to take and process measurements. Results appear in the measurement log automatically.
 
-### How meas_store works in a script
+### Reading instruments into variables
 
-`meas_store` saves a measurement to the **measurement log** with a name (the label) so you can retrieve it later. The label is just a string you choose — it becomes the row name in the log table.
+Use `varname = <instrument> read` to take a measurement. The value is stored in **both** the script variable and the measurement log:
 
 ```
-psu1 meas_store v output_v unit=V   # measure voltage, save as "output_v"
+psu1 meas v
+output_v = psu1 read               # measure voltage, save as "output_v"
 dmm1 config vdc                     # set DMM to DC voltage mode
-dmm1 meas_store dmm_v unit=V        # measure DMM, save as "dmm_v"
-calc error m["output_v"] - m["dmm_v"] unit=V   # subtract them
+dmm_v = dmm1 read                   # measure DMM, save as "dmm_v"
+calc error {output_v} - {dmm_v} unit=V   # subtract them
 log print                           # show the full table
 ```
 
@@ -374,37 +387,29 @@ After running this, `log print` shows:
 
 ```
 Label       Value       Unit   Source
-output_v    4.9987      V      psu.meas
+output_v    4.9987      V      psu.read
 dmm_v       4.9992      V      dmm.read
 error      -0.0005      V      calc
 ```
 
+The unit is auto-detected from the instrument's last configured mode (e.g., `vdc` → `V`, `idc` → `A`). Override with `unit=`:
+
+```
+resist = dmm read unit=kohms
+```
+
 See [Log & Calc](logging.md) for the full reference.
 
-### Using variables as log labels
+### Using variables as dynamic labels
 
-Script variables and log labels are **two separate things**:
-
-- **Script variable** (`{var}`) — substituted into command text before the command runs
-- **Log label** — the name given to a stored measurement row
-
-You can use a script variable _as_ the log label — this is how you make labels dynamic:
-
-```
-meas_name = output_v         # script variable: meas_name = "output_v"
-psu1 meas_store v {meas_name} unit=V
-#                  └─ expands to: psu1 meas_store v output_v unit=V
-#                     log label = "output_v"
-```
-
-This is especially useful in loops — each iteration gets a different label:
+Since `varname = <instrument> read` uses the variable name as the measurement label, you can make labels dynamic by using variables in loop contexts:
 
 ```
 dmm1 config vdc
 for v 3.3 5.0 12.0
   psu1 set {v}
   sleep 0.5
-  dmm1 meas_store dmm_{v} unit=V   # labels: dmm_3.3, dmm_5.0, dmm_12.0
+  dmm_{v} = dmm1 read   # labels: dmm_3.3, dmm_5.0, dmm_12.0
 end
 log print    # all three rows appear in the log
 ```
@@ -421,12 +426,12 @@ psu1 chan 1 on
 psu1 set {voltage}
 sleep 0.5
 
-psu1 meas_store v psu_v unit=V         # save PSU reading as "psu_v"
+psu_v = psu1 read                     # save PSU reading as "psu_v"
 dmm1 config vdc                        # set DMM to DC voltage mode
-dmm1 meas_store dmm_v unit=V           # save DMM reading as "dmm_v"
+dmm_v = dmm1 read                     # save DMM reading as "dmm_v"
 
-calc error     m["dmm_v"] - m["psu_v"] unit=V
-calc error_pct m["error"] / m["psu_v"] * 100 unit=%
+calc error     {dmm_v} - {psu_v} unit=V
+calc error_pct {error} / {psu_v} * 100 unit=%
 
 log print
 log save {test_name}.csv

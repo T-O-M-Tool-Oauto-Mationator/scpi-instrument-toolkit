@@ -42,7 +42,7 @@ class SmuCommand(BaseCommand):
                 self._handle_set_mode(args, dev, smu_name)
 
             elif cmd_name == "meas":
-                self._handle_meas(args, dev)
+                self._handle_meas(args, dev, smu_name)
 
             elif cmd_name == "meas_store":
                 self._handle_meas_store(args, dev)
@@ -126,7 +126,10 @@ class SmuCommand(BaseCommand):
             dev.set_current_limit(current)
         ColorPrinter.success(f"Set: {voltage}V @ {current if current else dev.get_current_limit()}A")
 
-    def _handle_meas(self, args, dev) -> None:
+    def _handle_meas(self, args, dev, smu_name: str = "") -> None:
+        # Track the last measurement mode for unit auto-detection
+        if smu_name and len(args) >= 2:
+            self.ctx.last_instrument_mode[smu_name] = args[1].lower()
         if len(args) < 2 or args[1].lower() in ("vi", "both", "all"):
             result = dev.measure_vi()
             compliance_str = " [COMPLIANCE]" if result["in_compliance"] else ""
@@ -143,6 +146,9 @@ class SmuCommand(BaseCommand):
             ColorPrinter.warning("smu meas [v|i|vi]")
 
     def _handle_meas_store(self, args, dev) -> None:
+        ColorPrinter.warning(
+            "'meas_store' is deprecated — use 'varname = smu read' instead."
+        )
         if len(args) < 3:
             ColorPrinter.warning("Usage: smu meas_store v|i <label> [unit=]")
             return
