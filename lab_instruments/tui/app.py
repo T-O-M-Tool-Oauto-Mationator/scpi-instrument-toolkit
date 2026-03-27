@@ -1,5 +1,6 @@
 """SCPI Instrument Toolkit - Textual TUI application."""
 
+import contextlib
 import sys
 from typing import Optional
 
@@ -139,7 +140,8 @@ class SCPIApp(App):
     def _refresh_measurements(self) -> None:
         if not hasattr(self._dispatcher, "get_measurement_snapshot"):
             return
-        self.query_one(MeasurementTable).measurements = self._dispatcher.get_measurement_snapshot()
+        with contextlib.suppress(Exception):
+            self.query_one(MeasurementTable).measurements = self._dispatcher.get_measurement_snapshot()
 
     def _refresh_scripts(self) -> None:
         if not hasattr(self._dispatcher, "get_script_names"):

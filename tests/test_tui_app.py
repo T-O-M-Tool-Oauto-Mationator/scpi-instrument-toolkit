@@ -14,7 +14,7 @@ class _StubDispatcher:
         self._commands: list[str] = []
         self._completions: dict[str, list[str]] = {}
 
-    def handle_command(self, cmd: str) -> str:
+    def handle_command(self, cmd: str, line_callback=None) -> str:
         self._commands.append(cmd)
         return f"OK: {cmd}"
 
