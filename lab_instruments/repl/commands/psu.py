@@ -10,15 +10,52 @@ from .base import BaseCommand
 from .safety import SafetySystem
 
 PSU_CHANNEL_ALIASES = {
-    # Unified channel numbers
+    # Numeric fallback (used when device has no CHANNEL_MAP, e.g. mocks)
     "1": "positive_6_volts_channel",
     "2": "positive_25_volts_channel",
     "3": "negative_25_volts_channel",
-    # Internal names
+    # Internal names (E3631A)
     "positive_6_volts_channel": "positive_6_volts_channel",
     "positive_25_volts_channel": "positive_25_volts_channel",
     "negative_25_volts_channel": "negative_25_volts_channel",
+    # Internal names (EDU36311A)
+    "p6v_channel": "p6v_channel",
+    "p30v_channel": "p30v_channel",
+    "n30v_channel": "n30v_channel",
 }
+
+
+def _resolve_channel(dev, ch_str):
+    """Resolve a channel string to the device's internal channel key.
+
+    Supports numeric channels (1, 2, 3) by indexing into the device's
+    CHANNEL_MAP, and named aliases via PSU_CHANNEL_ALIASES.
+    Falls back to the static alias table for devices without CHANNEL_MAP
+    (e.g. mock instruments).
+    """
+    ch_lower = ch_str.lower()
+    channel_map = getattr(dev, "CHANNEL_MAP", None)
+
+    if channel_map:
+        # Device has a CHANNEL_MAP — use it for resolution
+        # Try named alias first — only accept if the device actually has that key
+        alias = PSU_CHANNEL_ALIASES.get(ch_lower)
+        if alias and alias in channel_map:
+            return alias
+
+        # Try numeric: "1" → first key in device's CHANNEL_MAP, etc.
+        if ch_str.isdigit():
+            keys = list(channel_map.keys())
+            idx = int(ch_str) - 1
+            if 0 <= idx < len(keys):
+                return keys[idx]
+    else:
+        # No CHANNEL_MAP (mock instruments) — fall back to static aliases
+        alias = PSU_CHANNEL_ALIASES.get(ch_lower)
+        if alias:
+            return alias
+
+    return None
 
 
 class PsuCommand(BaseCommand):
@@ -184,9 +221,10 @@ class PsuCommand(BaseCommand):
                 ColorPrinter.warning("Usage: psu set <channel> <voltage> [current]")
                 ColorPrinter.warning("Channels: 1 (6V), 2 (25V+), 3 (25V-)")
                 return
-            channel = PSU_CHANNEL_ALIASES.get(args[1].lower())
+            channel = _resolve_channel(dev, args[1])
             if not channel:
-                ColorPrinter.warning("Invalid channel. Use 1, 2, or 3")
+                ch_count = len(getattr(dev, "CHANNEL_MAP", {}))
+                ColorPrinter.warning(f"Invalid channel. Use 1-{ch_count}")
                 return
             voltage = float(args[2])
             current = float(args[3]) if len(args) >= 4 else None
@@ -229,10 +267,11 @@ class PsuCommand(BaseCommand):
             if len(args) < 3:
                 ColorPrinter.warning("Usage: psu meas <channel> v|i")
                 return
-            channel = PSU_CHANNEL_ALIASES.get(args[1].lower())
+            channel = _resolve_channel(dev, args[1])
             mode = args[2].lower()
             if not channel:
-                ColorPrinter.warning("Invalid channel. Use 1, 2, or 3")
+                ch_count = len(getattr(dev, "CHANNEL_MAP", {}))
+                ColorPrinter.warning(f"Invalid channel. Use 1-{ch_count}")
                 return
             if mode in ("v", "volt", "voltage"):
                 ColorPrinter.cyan(str(dev.measure_voltage(channel)))

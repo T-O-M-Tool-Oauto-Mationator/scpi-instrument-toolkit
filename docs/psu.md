@@ -11,6 +11,9 @@ Address a specific PSU directly: `psu1 set 5.0` — or use `use psu1` then `psu 
 === "HP E3631A"
     Triple-output power supply. Channels: 1 (0–6 V), 2 (0–25 V), 3 (0– −25 V). Supports tracking mode for ±supply configurations.
 
+=== "Keysight EDU36311A"
+    Triple-output power supply. Channels: 1 (0–6 V / 5 A), 2 (0–30 V / 1 A), 3 (0–30 V / 1 A). USB/LAN interface. Supports tracking mode, OVP/OCP protection, save/recall (5 slots).
+
 === "Matrix MPS-6010H"
     Single-channel programmable PSU with serial interface. Supports remote mode control.
 

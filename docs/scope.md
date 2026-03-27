@@ -5,6 +5,15 @@ Controls oscilloscopes over VISA.
 - Channels are numbered `1`–`4`. Use `all` to affect every channel at once.
 - Multiple scopes are named `scope1`, `scope2`, etc.
 
+=== "Rigol DHO804"
+    4-channel oscilloscope with USB interface. Full feature set including counter, DVM, cursors, recording, mask test, and built-in AWG.
+
+=== "Keysight DSOX1204G"
+    4-channel InfiniiVision 1000 X-Series oscilloscope with USB/LAN interface. Supports screenshot, display, acquire, math, mask test, labels, invert, bwlimit, built-in AWG (WGEN), and DVM. No counter, cursor, or recording support.
+
+=== "Tektronix MSO2024"
+    4-channel oscilloscope with USB/GPIB interface. Basic scope commands only.
+
 ---
 
 ## Acquisition Control

@@ -7,13 +7,16 @@
 | Rigol DHO804 | Oscilloscope | USB | Screenshot, display, acquire, cursor, math, record, mask, label, invert, bwlimit, built-in AWG/counter/DVM |
 | Tektronix MSO2024 | Oscilloscope | USB / GPIB | Basic scope commands |
 | HP E3631A | Power Supply | GPIB | Triple-output, tracking |
+| Keysight EDU36311A | Power Supply | USB / LAN | Triple-output (6V/5A, 30V/1A, 30V/1A), tracking, OVP/OCP |
 | Matrix MPS-6010H-1C | Power Supply | Serial | Remote mode |
 | HP 34401A | Multimeter | GPIB | Display text, NPLC control |
+| Keysight EDU34450A | Multimeter | USB / LAN | 5½-digit, capacitance, temperature, dual display |
 | OWON XDM1041 | Multimeter | USB / Serial | Basic DMM commands |
 | BK Precision 4063 | Function Generator | USB | Basic AWG commands |
 | Keysight EDU33212A | Function Generator | USB | Dual-channel |
 | JDS6600 (Seesii DDS) | Function Generator | Serial | DDS waveform codes |
 | NI PXIe-4139 | SMU | PXIe (nidcpower) | ±60 V / 1 A four-quadrant, voltage/current source and measure |
+| Keysight DSOX1204G | Oscilloscope | USB / LAN | Screenshot, display, acquire, math, mask, label, invert, bwlimit, built-in AWG (WGEN), DVM |
 
 ---
 
@@ -70,4 +73,4 @@ Use `--mock` to run the REPL with simulated instruments:
 scpi-repl --mock
 ```
 
-Mock mode injects: `psu1`, `psu2`, `awg1`, `awg2`, `dmm1`, `dmm2`, `scope1`, `scope2` — two of each type. Measurements return realistic random values. Useful for testing scripts before connecting real hardware.
+Mock mode injects: `psu1`, `psu2`, `psu3`, `awg1`, `awg2`, `dmm1`, `dmm2`, `dmm3`, `smu`, `scope1`, `scope2`, `scope3`. Measurements return realistic random values. Useful for testing scripts before connecting real hardware.

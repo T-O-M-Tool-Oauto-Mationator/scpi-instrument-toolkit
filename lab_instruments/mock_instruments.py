@@ -566,6 +566,149 @@ class MockDHO804(MockScope):
         return {"passed": passed, "failed": total - passed, "total": total}
 
 
+class MockDSOX1204G(MockScope):
+    """Mock Keysight DSOX1204G oscilloscope."""
+
+    def get_screenshot(self):
+        """Return dummy PNG bytes."""
+        import base64
+
+        return base64.b64decode(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVQI12NgAAIABQABNl7BcQAAAABJRU5ErkJggg=="
+        )
+
+    def set_channel_label(self, channel, label, show=True):
+        pass
+
+    def invert_channel(self, channel, enable):
+        pass
+
+    def set_bandwidth_limit(self, channel, limit):
+        pass
+
+    def force_trigger(self):
+        pass
+
+    def clear_display(self):
+        pass
+
+    def set_waveform_brightness(self, brightness):
+        pass
+
+    def set_persistence(self, time):
+        pass
+
+    def set_display_type(self, display_type):
+        pass
+
+    def set_acquisition_type(self, acq_type):
+        pass
+
+    def set_average_count(self, count):
+        pass
+
+    def get_sample_rate(self):
+        return 1e9
+
+    def enable_math_channel(self, math_ch, enable=True):
+        pass
+
+    def configure_math_operation(self, math_ch, operation, source1, source2=None):
+        pass
+
+    def configure_math_function(self, math_ch, function, source):
+        pass
+
+    def configure_fft(self, math_ch, source, window="RECT"):
+        pass
+
+    def set_math_scale(self, math_ch, scale, offset=None):
+        pass
+
+    def set_mask_enable(self, enable):
+        pass
+
+    def get_mask_enable(self):
+        return False
+
+    def set_mask_source(self, channel):
+        pass
+
+    def get_mask_source(self):
+        return 1
+
+    def set_mask_tolerance_x(self, tolerance):
+        pass
+
+    def set_mask_tolerance_y(self, tolerance):
+        pass
+
+    def create_mask(self):
+        pass
+
+    def start_mask_test(self):
+        pass
+
+    def stop_mask_test(self):
+        pass
+
+    def get_mask_test_status(self):
+        return "STOP"
+
+    def reset_mask_statistics(self):
+        pass
+
+    def get_mask_failed_count(self):
+        return 0
+
+    def get_mask_passed_count(self):
+        return random.randint(90, 100)
+
+    def get_mask_total_count(self):
+        return 100
+
+    def get_mask_statistics(self):
+        passed = random.randint(90, 100)
+        total = 100
+        return {"passed": passed, "failed": total - passed, "total": total}
+
+    def clear_measurements(self):
+        pass
+
+    def awg_set_output_enable(self, on):
+        pass
+
+    def awg_configure_simple(self, func, freq, amp, offset, enable=True):
+        pass
+
+    def awg_set_function(self, func):
+        pass
+
+    def awg_set_frequency(self, freq):
+        pass
+
+    def awg_set_amplitude(self, amp):
+        pass
+
+    def awg_set_offset(self, offset):
+        pass
+
+    def awg_set_square_duty(self, duty):
+        pass
+
+    def awg_set_ramp_symmetry(self, sym):
+        pass
+
+    def set_dvm_enable(self, on):
+        pass
+
+    def get_dvm_current(self):
+        return round(random.uniform(4.997, 5.003), 4)
+
+    def set_dvm_source(self, ch):
+        pass
+
+
 class MockMSO2024(MockScope):
     """Mock Tektronix MSO2024 oscilloscope."""
 
@@ -664,6 +807,12 @@ class MockHP_E3631A(MockPSU):
     pass
 
 
+class MockEDU36311A(MockPSU):
+    """Mock Keysight EDU36311A triple-output power supply."""
+
+    pass
+
+
 class MockJDS6600(MockAWG):
     """Mock JDS6600 DDS function generator."""
 
@@ -682,6 +831,22 @@ class MockHP_34401A(MockDMM):
     pass
 
 
+class MockEDU34450A(MockDMM):
+    """Mock Keysight EDU34450A digital multimeter."""
+
+    def configure_capacitance(self, range_val="DEF"):
+        pass
+
+    def configure_temperature(self):
+        pass
+
+    def measure_capacitance(self, range_val="DEF"):
+        return round(random.uniform(99e-9, 101e-9), 12)
+
+    def measure_temperature(self):
+        return round(random.uniform(22.0, 26.0), 1)
+
+
 class MockXDM1041(MockDMM):
     """Mock OWON XDM1041 digital multimeter."""
 
@@ -694,18 +859,23 @@ def get_mock_devices(verbose=True):
     if verbose:
         ColorPrinter.warning("Mock mode — no real instruments connected")
         ColorPrinter.info(
-            "Injecting: psu1 (MockHP_E3631A), psu2 (MockMPS6010H), smu (MockNI_PXIe_4139), "
-            "awg1 (MockEDU33212A), awg2 (MockJDS6600), dmm1 (MockHP_34401A), dmm2 (MockXDM1041), "
-            "scope1 (MockDHO804), scope2 (MockMSO2024)"
+            "Injecting: psu1 (MockHP_E3631A), psu2 (MockMPS6010H), psu3 (MockEDU36311A), "
+            "smu (MockNI_PXIe_4139), "
+            "awg1 (MockEDU33212A), awg2 (MockJDS6600), "
+            "dmm1 (MockHP_34401A), dmm2 (MockXDM1041), dmm3 (MockEDU34450A), "
+            "scope1 (MockDHO804), scope2 (MockMSO2024), scope3 (MockDSOX1204G)"
         )
     return {
         "psu1": MockHP_E3631A(),
         "psu2": MockMPS6010H(),
+        "psu3": MockEDU36311A(),
         "smu": MockNI_PXIe_4139(),
         "awg1": MockEDU33212A(),
         "awg2": MockJDS6600(),
         "dmm1": MockHP_34401A(),
         "dmm2": MockXDM1041(),
+        "dmm3": MockEDU34450A(),
         "scope1": MockDHO804(),
         "scope2": MockMSO2024(),
+        "scope3": MockDSOX1204G(),
     }

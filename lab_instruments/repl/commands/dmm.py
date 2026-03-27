@@ -20,6 +20,8 @@ DMM_MODE_ALIASES = {
     "per": "period",
     "cont": "continuity",
     "diode": "diode",
+    "cap": "capacitance",
+    "temp": "temperature",
 }
 
 
@@ -215,7 +217,7 @@ class DmmCommand(BaseCommand):
                 return
 
             # Handle modes that don't take parameters
-            if mode in ("continuity", "diode"):
+            if mode in ("continuity", "diode", "temperature"):
                 func()
                 ColorPrinter.success(f"Configured for {mode}")
                 return
@@ -271,8 +273,10 @@ class DmmCommand(BaseCommand):
             range_val = args[2] if len(args) >= 3 else "DEF"
             resolution = args[3] if len(args) >= 4 else "DEF"
 
-            if "continuity" in mode or "diode" in mode:
+            if "continuity" in mode or "diode" in mode or "temperature" in mode:
                 ColorPrinter.cyan(str(func()))
+            elif "capacitance" in mode:
+                ColorPrinter.cyan(str(func(range_val)))
             else:
                 ColorPrinter.cyan(str(func(range_val, resolution)))
 

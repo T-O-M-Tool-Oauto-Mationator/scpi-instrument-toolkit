@@ -9,6 +9,9 @@ Controls digital multimeters.
 === "HP 34401A"
     6½-digit multimeter with GPIB interface. Supports NPLC control, display text, fetch, and high-accuracy measurements.
 
+=== "Keysight EDU34450A"
+    5½-digit multimeter with USB/LAN interface. Supports capacitance, temperature, dual display, and resolution speed control (SLOW/MEDIUM/FAST). Does not support NPLC.
+
 === "OWON XDM1041"
     4½-digit multimeter with USB/serial interface. Supports basic DMM commands.
 

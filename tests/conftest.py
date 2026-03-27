@@ -120,6 +120,28 @@ def keysight_edu33212a(mock_visa_rm):
 
 
 @pytest.fixture
+def keysight_edu36311a(mock_visa_rm):
+    mock_rm, mock_instrument = mock_visa_rm
+    from lab_instruments.src.keysight_edu36311a import Keysight_EDU36311A
+
+    psu = Keysight_EDU36311A("USB::0x2A8D::0x9201::INSTR")
+    psu.instrument = mock_instrument
+    mock_instrument.reset_mock()
+    return psu, mock_instrument
+
+
+@pytest.fixture
+def keysight_edu34450a(mock_visa_rm):
+    mock_rm, mock_instrument = mock_visa_rm
+    from lab_instruments.src.keysight_edu34450a import Keysight_EDU34450A
+
+    dmm = Keysight_EDU34450A("USB::0x2A8D::0x8E01::INSTR")
+    dmm.instrument = mock_instrument
+    mock_instrument.reset_mock()
+    return dmm, mock_instrument
+
+
+@pytest.fixture
 def bk_4063(mock_visa_rm):
     mock_rm, mock_instrument = mock_visa_rm
     from lab_instruments.src.bk_4063 import BK_4063
@@ -143,6 +165,17 @@ def jds6600_generator(mock_visa_rm, monkeypatch):
     gen.instrument = mock_instrument
     mock_instrument.reset_mock()
     return gen, mock_instrument
+
+
+@pytest.fixture
+def keysight_dsox1204g(mock_visa_rm):
+    mock_rm, mock_instrument = mock_visa_rm
+    from lab_instruments.src.keysight_dsox1204g import Keysight_DSOX1204G
+
+    scope = Keysight_DSOX1204G("USB::0x2A8D::0x0396::CN63347188::INSTR")
+    scope.instrument = mock_instrument
+    mock_instrument.reset_mock()
+    return scope, mock_instrument
 
 
 @pytest.fixture

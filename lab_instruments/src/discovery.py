@@ -15,6 +15,9 @@ from .hp_34401a import HP_34401A
 from .hp_e3631a import HP_E3631A
 from .jds6600_generator import JDS6600_Generator
 from .keysight_edu33212a import Keysight_EDU33212A
+from .keysight_dsox1204g import Keysight_DSOX1204G
+from .keysight_edu34450a import Keysight_EDU34450A
+from .keysight_edu36311a import Keysight_EDU36311A
 from .matrix_mps6010h import MATRIX_MPS6010H
 
 try:
@@ -46,6 +49,9 @@ class InstrumentDiscovery:
         "XDM1041": Owon_XDM1041,
         "JDS6600": JDS6600_Generator,
         "EDU33212A": Keysight_EDU33212A,
+        "EDU36311A": Keysight_EDU36311A,
+        "EDU34450A": Keysight_EDU34450A,
+        "DSOX1204G": Keysight_DSOX1204G,
         **({"PXIe-4139": NI_PXIe_4139} if _NI_PXIE_AVAILABLE else {}),
     }
 
@@ -60,8 +66,14 @@ class InstrumentDiscovery:
         "XDM1041": "dmm",  # Generic name
         "JDS6600": "awg",
         "EDU33212A": "awg",
+        "EDU36311A": "psu",
+        "EDU34450A": "dmm",
+        "DSOX1204G": "scope",
         "PXIe-4139": "smu",
     }
+
+    # Models recognized during scan but not yet supported (driver under development)
+    WIP_MODELS = {}
 
     # PXI slot range to scan for NI-DCPower devices
     PXI_SLOT_RANGE = range(2, 19)
@@ -269,7 +281,7 @@ class InstrumentDiscovery:
         Probe a single resource and return (generic_name, driver_instance, model_key, idn) if successful.
         """
         # Skip Bluetooth and other virtual serial ports that often hang
-        if any(skip in resource for skip in ["Bluetooth", "BTHENUM", "BT"]):
+        if any(skip in resource for skip in ["Bluetooth", "BTHENUM"]):
             if verbose:
                 self._safe_print(f"Skipping {resource} (virtual port)")
             return None
@@ -342,6 +354,19 @@ class InstrumentDiscovery:
                                 f"{ColorPrinter.RED}  -> Failed to initialize driver: {e}{ColorPrinter.RESET}"
                             )
                         return None
+
+            # Check for WIP models (recognized but driver not yet implemented)
+            for wip_key, wip_desc in self.WIP_MODELS.items():
+                if wip_key in idn:
+                    inst.close()
+                    if verbose:
+                        self._safe_print(
+                            f"Checking {resource}... {ColorPrinter.GREEN}Found: {idn}{ColorPrinter.RESET}"
+                        )
+                        self._safe_print(
+                            f"{ColorPrinter.YELLOW}  -> {wip_desc} — not yet supported.{ColorPrinter.RESET}"
+                        )
+                    return None
 
             # No match found
             inst.close()
