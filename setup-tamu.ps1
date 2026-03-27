@@ -262,32 +262,9 @@ if (-not $pipCmd) {
 }
 
 # ---------------------------------------------------------------------------
-# Step 7: Explicitly install nidcpower (Python bindings, no admin needed)
+# Step 7: Install Claude Code
 # ---------------------------------------------------------------------------
-Write-Step 7 "Installing nidcpower Python bindings..."
-
-if (-not $pipCmd) {
-    Write-Host "pip not found — open a NEW terminal and run:" -ForegroundColor Yellow
-    Write-Host "  pip install nidcpower" -ForegroundColor White
-} else {
-    if ($pipCmd -eq "python -m pip") {
-        & python -m pip install "nidcpower>=1.5.0"
-    } else {
-        & $pipCmd install "nidcpower>=1.5.0"
-    }
-
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host "nidcpower installed." -ForegroundColor Green
-    } else {
-        Write-Host "nidcpower install failed. Try in a new terminal:" -ForegroundColor Red
-        Write-Host "  pip install nidcpower" -ForegroundColor White
-    }
-}
-
-# ---------------------------------------------------------------------------
-# Step 8: Install Claude Code
-# ---------------------------------------------------------------------------
-Write-Step 8 "Installing Claude Code..."
+Write-Step 7 "Installing Claude Code..."
 
 try {
     $claudeInstall = Invoke-RestMethod "https://claude.ai/install.ps1"
