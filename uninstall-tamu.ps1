@@ -46,9 +46,27 @@ if (-not $pipCmd) {
 }
 
 # ---------------------------------------------------------------------------
-# Step 2: Remove PATH entries added by setup-tamu.ps1
+# Step 2: Uninstall GitHub CLI (gh)
 # ---------------------------------------------------------------------------
-Write-Step 2 "Cleaning up user PATH entries..."
+Write-Step 2 "Uninstalling GitHub CLI (gh)..."
+
+$ghInstalled = winget list --id GitHub.cli --accept-source-agreements 2>$null |
+    Select-String "GitHub.cli"
+if ($ghInstalled) {
+    winget uninstall GitHub.cli --accept-source-agreements 2>$null
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "GitHub CLI removed." -ForegroundColor Green
+    } else {
+        Write-Host "GitHub CLI removal failed — skip." -ForegroundColor Yellow
+    }
+} else {
+    Write-Host "GitHub CLI not installed. Skipping." -ForegroundColor Yellow
+}
+
+# ---------------------------------------------------------------------------
+# Step 3: Remove PATH entries added by setup-tamu.ps1
+# ---------------------------------------------------------------------------
+Write-Step 3 "Cleaning up user PATH entries..."
 
 $pathsToRemove = @(
     (Join-Path $env:LOCALAPPDATA "Programs\Git\cmd"),
@@ -86,7 +104,7 @@ if ($userPath) {
 # ---------------------------------------------------------------------------
 # Step 3: Remove CLAUDE_CODE_GIT_BASH_PATH env var
 # ---------------------------------------------------------------------------
-Write-Step 3 "Removing CLAUDE_CODE_GIT_BASH_PATH environment variable..."
+Write-Step 4 "Removing CLAUDE_CODE_GIT_BASH_PATH environment variable..."
 
 [Environment]::SetEnvironmentVariable("CLAUDE_CODE_GIT_BASH_PATH", $null, "User")
 Write-Host "Done." -ForegroundColor Green
@@ -94,7 +112,7 @@ Write-Host "Done." -ForegroundColor Green
 # ---------------------------------------------------------------------------
 # Step 4: Uninstall Claude Code
 # ---------------------------------------------------------------------------
-Write-Step 4 "Uninstalling Claude Code..."
+Write-Step 5 "Uninstalling Claude Code..."
 
 $claudeExe = $null
 $claudeCandidates = @(

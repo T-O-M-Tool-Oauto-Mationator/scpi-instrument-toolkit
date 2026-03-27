@@ -19,7 +19,7 @@ Already cloned the repo? Just run:
 .\setup-tamu.ps1
 ```
 
-**What it installs:** GitHub Desktop (includes git) · Git for Windows (Git Bash) · Python 3.12 · scpi-instrument-toolkit · Claude Code
+**What it installs:** GitHub Desktop (includes git) · Git for Windows (Git Bash) · GitHub CLI (gh) · Python 3.12 · scpi-instrument-toolkit · Claude Code
 
 To uninstall everything the setup script installed:
 

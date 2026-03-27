@@ -128,9 +128,33 @@ if (Test-Path (Join-Path $gitWinCmd "git.exe")) {
 }
 
 # ---------------------------------------------------------------------------
-# Step 3: Add GitHub Desktop's bundled git to user PATH (fallback)
+# Step 3: Install GitHub CLI (gh) via winget
 # ---------------------------------------------------------------------------
-Write-Step 3 "Adding GitHub Desktop's bundled git to user PATH (fallback)..."
+Write-Step 3 "Installing GitHub CLI (gh)..."
+
+$ghCliInstalled = winget list --id GitHub.cli --accept-source-agreements 2>$null |
+    Select-String "GitHub.cli"
+
+if ($ghCliInstalled) {
+    Write-Host "GitHub CLI is already installed. Skipping." -ForegroundColor Yellow
+} else {
+    Write-Host "Installing GitHub CLI (user scope, no admin)..."
+    winget install GitHub.cli `
+        --scope user `
+        --accept-package-agreements `
+        --accept-source-agreements `
+        --silent
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "GitHub CLI installation failed." -ForegroundColor Yellow
+    } else {
+        Write-Host "GitHub CLI (gh) installed." -ForegroundColor Green
+    }
+}
+
+# ---------------------------------------------------------------------------
+# Step 4: Add GitHub Desktop's bundled git to user PATH (fallback)
+# ---------------------------------------------------------------------------
+Write-Step 4 "Adding GitHub Desktop's bundled git to user PATH (fallback)..."
 
 $desktopRoot = Join-Path $env:LOCALAPPDATA "GitHubDesktop"
 $gitExe = $null
@@ -194,9 +218,9 @@ if (-not $gitExe) {
 }
 
 # ---------------------------------------------------------------------------
-# Step 3: Install Python via winget
+# Step 5: Install Python via winget
 # ---------------------------------------------------------------------------
-Write-Step 4 "Checking / installing Python..."
+Write-Step 5 "Checking / installing Python..."
 
 $pythonOk = $false
 try {
@@ -220,9 +244,9 @@ if (-not $pythonOk) {
 }
 
 # ---------------------------------------------------------------------------
-# Step 4: Refresh PATH in current session
+# Step 6: Refresh PATH in current session
 # ---------------------------------------------------------------------------
-Write-Step 5 "Refreshing PATH in current session..."
+Write-Step 6 "Refreshing PATH in current session..."
 
 $machinePath = [Environment]::GetEnvironmentVariable("Path", "Machine")
 $userPath2   = [Environment]::GetEnvironmentVariable("Path", "User")
@@ -230,9 +254,9 @@ $env:Path    = "$machinePath;$userPath2"
 Write-Host "PATH refreshed." -ForegroundColor Green
 
 # ---------------------------------------------------------------------------
-# Step 5: pip install scpi-instrument-toolkit
+# Step 7: pip install scpi-instrument-toolkit
 # ---------------------------------------------------------------------------
-Write-Step 6 "Installing scpi-instrument-toolkit..."
+Write-Step 7 "Installing scpi-instrument-toolkit..."
 
 $pipCmd = $null
 if (Get-Command pip -ErrorAction SilentlyContinue)         { $pipCmd = "pip" }
@@ -262,9 +286,9 @@ if (-not $pipCmd) {
 }
 
 # ---------------------------------------------------------------------------
-# Step 7: Install Claude Code
+# Step 8: Install Claude Code
 # ---------------------------------------------------------------------------
-Write-Step 7 "Installing Claude Code..."
+Write-Step 8 "Installing Claude Code..."
 
 $claudeDir = $null
 try {
