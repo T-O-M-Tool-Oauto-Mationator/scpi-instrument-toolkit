@@ -93,8 +93,11 @@ if (Test-Path (Join-Path $gitWinCmd "git.exe")) {
             Write-Host "Already on PATH: $addPath" -ForegroundColor Yellow
         } else {
             $cur = [Environment]::GetEnvironmentVariable("Path", "User")
-            $newVal = if ([string]::IsNullOrWhiteSpace($cur)) { $addPath } else { "$cur;$addPath" }
-            [Environment]::SetEnvironmentVariable("Path", $newVal, "User")
+            if ([string]::IsNullOrWhiteSpace($cur)) {
+                [Environment]::SetEnvironmentVariable("Path", $addPath, "User")
+            } else {
+                [Environment]::SetEnvironmentVariable("Path", "$cur;$addPath", "User")
+            }
             $parts += $addPath
             Write-Host "Added to user PATH: $addPath" -ForegroundColor Green
         }
@@ -154,8 +157,11 @@ if (-not $gitExe) {
             Write-Host "Already on user PATH: $addPath" -ForegroundColor Yellow
         } else {
             $currentPath = [Environment]::GetEnvironmentVariable("Path", "User")
-            $newPath = if ([string]::IsNullOrWhiteSpace($currentPath)) { $addPath } else { "$currentPath;$addPath" }
-            [Environment]::SetEnvironmentVariable("Path", $newPath, "User")
+            if ([string]::IsNullOrWhiteSpace($currentPath)) {
+                [Environment]::SetEnvironmentVariable("Path", $addPath, "User")
+            } else {
+                [Environment]::SetEnvironmentVariable("Path", "$currentPath;$addPath", "User")
+            }
             $parts += $addPath
             Write-Host "Added to user PATH: $addPath" -ForegroundColor Green
         }
