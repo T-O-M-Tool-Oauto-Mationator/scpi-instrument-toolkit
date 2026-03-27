@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools>=61.0.0", "wheel", "setuptools-scm"]
+requires = ["setuptools>=61.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "scpi-instrument-toolkit"
-dynamic = ["version"]
+version = "0.1.142"
 description = "Python drivers and interactive REPL for SCPI test and measurement instruments"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -103,6 +103,3 @@ lab_instruments = [
     "site/search/*.json",
 ]
 
-[tool.setuptools_scm]
-version_scheme = "post-release"
-local_scheme = "dirty-tag"
