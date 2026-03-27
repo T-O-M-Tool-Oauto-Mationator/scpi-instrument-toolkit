@@ -9,13 +9,13 @@ from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 from textual.events import Key
-from textual.widgets import Footer, Header, Input, RichLog
+from textual.widgets import ContentSwitcher, Footer, Header, Input, RichLog
 from textual.worker import Worker, WorkerState
 
 from .completer import ReplSuggester
 from .dispatcher import CommandDispatcher, LocalDispatcher
 from .history import CommandHistory
-from .widgets import DeviceSidebar
+from .widgets import DeviceSidebar, MeasurementTable
 
 # ANSI decoder for color escape sequences from command output
 _ANSI_DECODER = AnsiDecoder()
@@ -30,6 +30,7 @@ class SCPIApp(App):
     BINDINGS = [
         Binding("ctrl+l", "clear_log", "Clear", show=True),
         Binding("ctrl+d", "toggle_sidebar", "Devices", show=True),
+        Binding("ctrl+m", "toggle_measurements", "Measurements", show=True),
         Binding("q", "quit", "Quit", show=True),
     ]
 
@@ -41,14 +42,20 @@ class SCPIApp(App):
         width: 22;
         border-right: solid $primary-darken-2;
     }
+    #log-area {
+        height: 1fr;
+    }
+    ContentSwitcher {
+        height: 1fr;
+    }
     RichLog {
         height: 1fr;
         border: solid $primary-darken-2;
         padding: 0 1;
     }
-    #input-area {
-        height: auto;
-        dock: bottom;
+    MeasurementTable {
+        height: 1fr;
+        border: solid $primary-darken-2;
     }
     Input {
         dock: bottom;
@@ -59,39 +66,59 @@ class SCPIApp(App):
         self,
         dispatcher: Optional[CommandDispatcher] = None,
         device_poll_interval: float = 2.0,
+        meas_poll_interval: float = 5.0,
     ) -> None:
         """Initialize the app and dispatcher.
 
         Args:
             dispatcher: Command dispatcher to use. Defaults to LocalDispatcher.
             device_poll_interval: Seconds between device list refreshes.
+            meas_poll_interval: Seconds between measurement table refreshes.
         """
         super().__init__()
         self._dispatcher: CommandDispatcher = dispatcher if dispatcher is not None else LocalDispatcher()
         self._history: CommandHistory = CommandHistory()
         self._device_poll_interval: float = device_poll_interval
+        self._meas_poll_interval: float = meas_poll_interval
 
     def compose(self) -> ComposeResult:
         """Build widget tree."""
         yield Header()
         with Horizontal(id="main-row"):
             yield DeviceSidebar(id="device-sidebar")
-            with Vertical(id="log-area"):
-                yield RichLog(id="output", wrap=True, auto_scroll=True, markup=True)
+            with Vertical(id="log-area"):  # noqa: SIM117
+                with ContentSwitcher(initial="log-view", id="main-content"):
+                    yield RichLog(id="log-view", wrap=True, auto_scroll=True, markup=True)
+                    yield MeasurementTable(
+                        id="meas-view",
+                        data_dir_getter=self._get_data_dir,
+                    )
         yield Input(placeholder="Enter command...", id="cmd_input", suggester=ReplSuggester(self._dispatcher))
         yield Footer()
 
+    def _get_data_dir(self) -> str:
+        """Return data directory for CSV exports."""
+        if hasattr(self._dispatcher, "repl"):
+            return str(self._dispatcher.repl.ctx.get_data_dir())
+        return str(__import__("pathlib").Path.home())
+
     def on_mount(self) -> None:
-        """Focus input and start device polling."""
+        """Focus input and start polling intervals."""
         self.query_one("#cmd_input", Input).focus()
         self.set_interval(self._device_poll_interval, self._refresh_devices)
+        self.set_interval(self._meas_poll_interval, self._refresh_measurements)
 
     def _refresh_devices(self) -> None:
         """Pull a device snapshot and update the sidebar reactive."""
         if not hasattr(self._dispatcher, "get_device_snapshot"):
             return
-        snapshot = self._dispatcher.get_device_snapshot()
-        self.query_one(DeviceSidebar).devices = snapshot
+        self.query_one(DeviceSidebar).devices = self._dispatcher.get_device_snapshot()
+
+    def _refresh_measurements(self) -> None:
+        """Pull a measurement snapshot and update the table reactive."""
+        if not hasattr(self._dispatcher, "get_measurement_snapshot"):
+            return
+        self.query_one(MeasurementTable).measurements = self._dispatcher.get_measurement_snapshot()
 
     def on_key(self, event: Key) -> None:
         """Intercept up/down arrows when the command input is focused."""
@@ -117,7 +144,11 @@ class SCPIApp(App):
             return
         self._history.push(cmd)
         event.input.clear()
-        self.query_one("#output", RichLog).write(f"[bold cyan]> {cmd}[/bold cyan]")
+        # Output only visible in log-view; switch there automatically
+        switcher = self.query_one("#main-content", ContentSwitcher)
+        if switcher.current != "log-view":
+            switcher.current = "log-view"
+        self.query_one("#log-view", RichLog).write(f"[bold cyan]> {cmd}[/bold cyan]")
         self._dispatch_command(cmd)
 
     @work(thread=True, exit_on_error=False, name="dispatch")
@@ -131,23 +162,29 @@ class SCPIApp(App):
             return
         if event.state == WorkerState.SUCCESS:
             self._write_output(event.worker.result or "")
+            self._refresh_measurements()
         elif event.state == WorkerState.ERROR:
             self._write_output(f"\033[91m[ERROR] {event.worker.error}\033[0m\n")
 
     def _write_output(self, raw: str) -> None:
         """Decode ANSI output and append to log."""
-        log = self.query_one("#output", RichLog)
+        log = self.query_one("#log-view", RichLog)
         for line in _ANSI_DECODER.decode(raw):
             log.write(line)
 
     def action_clear_log(self) -> None:
         """Clear output log."""
-        self.query_one("#output", RichLog).clear()
+        self.query_one("#log-view", RichLog).clear()
 
     def action_toggle_sidebar(self) -> None:
         """Toggle the device sidebar visibility."""
         sidebar = self.query_one(DeviceSidebar)
         sidebar.display = not sidebar.display
+
+    def action_toggle_measurements(self) -> None:
+        """Toggle between log view and measurement table."""
+        switcher = self.query_one("#main-content", ContentSwitcher)
+        switcher.current = "meas-view" if switcher.current != "meas-view" else "log-view"
 
     def action_quit(self) -> None:
         """Exit app."""

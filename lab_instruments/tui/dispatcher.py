@@ -20,6 +20,10 @@ class CommandDispatcher(Protocol):
         """Return sorted completion candidates for the given text prefix."""
         ...
 
+    def get_measurement_snapshot(self) -> list[dict]:
+        """Return a copy of all recorded measurements safe to read from the event loop."""
+        ...
+
 
 class LocalDispatcher:
     """Run a command in process. One InstrumentRepl instance is reused to preserve session state."""
@@ -58,6 +62,14 @@ class LocalDispatcher:
             }
             for name in sorted(registry.devices)
         ]
+
+    def get_measurement_snapshot(self) -> list[dict]:
+        """Return a copy of all recorded measurements safe to read from the event loop.
+
+        Each dict has: label, value, unit, source.
+        Returns copies - never live references into MeasurementStore.
+        """
+        return [dict(e) for e in self.repl.ctx.measurements.entries]
 
     def get_completions(self, text: str) -> list[str]:
         """Return sorted, deduplicated completion candidates for text.
