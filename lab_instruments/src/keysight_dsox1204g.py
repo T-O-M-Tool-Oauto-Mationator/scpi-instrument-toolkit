@@ -10,7 +10,6 @@ import time
 from typing import Optional
 
 import numpy as np
-import pyvisa
 
 from .device_manager import DeviceManager
 from .rigol_dho804 import WaveformData

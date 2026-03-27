@@ -1,7 +1,7 @@
 """tests/test_keysight_dsox1204g_driver.py — Driver-level unit tests for Keysight DSOX1204G oscilloscope."""
 
+
 import pytest
-from unittest.mock import call
 
 
 def _writes(mock_inst):

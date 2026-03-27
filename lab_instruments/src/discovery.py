@@ -14,8 +14,8 @@ from .bk_4063 import BK_4063
 from .hp_34401a import HP_34401A
 from .hp_e3631a import HP_E3631A
 from .jds6600_generator import JDS6600_Generator
-from .keysight_edu33212a import Keysight_EDU33212A
 from .keysight_dsox1204g import Keysight_DSOX1204G
+from .keysight_edu33212a import Keysight_EDU33212A
 from .keysight_edu34450a import Keysight_EDU34450A
 from .keysight_edu36311a import Keysight_EDU36311A
 from .matrix_mps6010h import MATRIX_MPS6010H
