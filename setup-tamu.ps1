@@ -107,6 +107,17 @@ if (Test-Path (Join-Path $gitWinCmd "git.exe")) {
     if (Test-Path $gitBash) {
         Write-Host "Git Bash available — open a new terminal and type: git-bash" -ForegroundColor Cyan
     }
+
+    # Set CLAUDE_CODE_GIT_BASH_PATH so Claude Code can find bash.exe
+    # Claude Code needs the actual shell (bin\bash.exe), not the GUI launcher (git-bash.exe)
+    $bashExe = Join-Path $gitWinRoot "bin\bash.exe"
+    if (-not (Test-Path $bashExe)) {
+        $bashExe = Join-Path $gitWinRoot "usr\bin\bash.exe"
+    }
+    if (Test-Path $bashExe) {
+        [Environment]::SetEnvironmentVariable("CLAUDE_CODE_GIT_BASH_PATH", $bashExe, "User")
+        Write-Host "Set CLAUDE_CODE_GIT_BASH_PATH=$bashExe" -ForegroundColor Green
+    }
 } else {
     Write-Host "Git for Windows not found at $gitWinRoot — will fall back to GitHub Desktop git." -ForegroundColor Yellow
 }
