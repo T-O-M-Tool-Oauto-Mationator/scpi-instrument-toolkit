@@ -11,10 +11,10 @@
       
       
       
-        <link rel="prev" href="scope.html">
+        <link rel="prev" href="smu.html">
       
       
-        <link rel="next" href="ni_pxie.html">
+        <link rel="next" href="scripting.html">
       
       
         
@@ -25,7 +25,7 @@
     
     
       
-        <title>Source Measure Unit (SMU) - SCPI Instrument Toolkit</title>
+        <title>NI PXIe-4139 Setup - SCPI Instrument Toolkit</title>
       
     
     
@@ -76,7 +76,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#smu-source-measure-unit" class="md-skip">
+        <a href="#ni-pxie-4139-setup" class="md-skip">
           Skip to content
         </a>
       
@@ -110,7 +110,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Source Measure Unit (SMU)
+              NI PXIe-4139 Setup
             
           </span>
         </div>
@@ -672,6 +672,34 @@
                 
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="smu.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Source Measure Unit (SMU)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
     
   
   
@@ -691,7 +719,7 @@
   <span class="md-ellipsis">
     
   
-    Source Measure Unit (SMU)
+    NI PXIe-4139 Setup
   
 
     
@@ -702,14 +730,14 @@
           <span class="md-nav__icon md-icon"></span>
         </label>
       
-      <a href="smu.html" class="md-nav__link md-nav__link--active">
+      <a href="ni_pxie.html" class="md-nav__link md-nav__link--active">
         
   
   
   <span class="md-ellipsis">
     
   
-    Source Measure Unit (SMU)
+    NI PXIe-4139 Setup
   
 
     
@@ -735,10 +763,60 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#smu-on-smu-off" class="md-nav__link">
+  <a href="#prerequisites" class="md-nav__link">
     <span class="md-ellipsis">
       
-        smu on / smu off
+        Prerequisites
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Prerequisites">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-ni-daqmx-runtime" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1 — NI-DAQmx runtime
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-nidcpower-python-package" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2 — nidcpower Python package
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-verify-the-dll-is-found" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3 — Verify the DLL is found
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#hardware-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hardware setup
       
     </span>
   </a>
@@ -746,10 +824,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#smu-set" class="md-nav__link">
+  <a href="#repl-auto-detection" class="md-nav__link">
     <span class="md-ellipsis">
       
-        smu set
+        REPL auto-detection
       
     </span>
   </a>
@@ -757,10 +835,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#smu-meas" class="md-nav__link">
+  <a href="#minimal-working-example" class="md-nav__link">
     <span class="md-ellipsis">
       
-        smu meas
+        Minimal working example
       
     </span>
   </a>
@@ -768,10 +846,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#smu-set_mode" class="md-nav__link">
+  <a href="#repl-usage" class="md-nav__link">
     <span class="md-ellipsis">
       
-        smu set_mode
+        REPL usage
       
     </span>
   </a>
@@ -779,98 +857,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#smu-meas_store" class="md-nav__link">
+  <a href="#troubleshooting" class="md-nav__link">
     <span class="md-ellipsis">
       
-        smu meas_store
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#smu-compliance" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        smu compliance
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#smu-source_delay" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        smu source_delay
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#smu-avg" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        smu avg
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#smu-temp" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        smu temp
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#smu-get" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        smu get
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#smu-state" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        smu state
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#safety-limits" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Safety limits
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#typical-workflow" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Typical workflow
+        Troubleshooting
       
     </span>
   </a>
@@ -881,34 +871,6 @@
   
 </nav>
       
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="ni_pxie.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    NI PXIe-4139 Setup
-  
-
-    
-  </span>
-  
-  
-
-      </a>
     </li>
   
 
@@ -1146,10 +1108,60 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#smu-on-smu-off" class="md-nav__link">
+  <a href="#prerequisites" class="md-nav__link">
     <span class="md-ellipsis">
       
-        smu on / smu off
+        Prerequisites
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Prerequisites">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-ni-daqmx-runtime" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1 — NI-DAQmx runtime
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-nidcpower-python-package" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2 — nidcpower Python package
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-verify-the-dll-is-found" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3 — Verify the DLL is found
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#hardware-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hardware setup
       
     </span>
   </a>
@@ -1157,10 +1169,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#smu-set" class="md-nav__link">
+  <a href="#repl-auto-detection" class="md-nav__link">
     <span class="md-ellipsis">
       
-        smu set
+        REPL auto-detection
       
     </span>
   </a>
@@ -1168,10 +1180,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#smu-meas" class="md-nav__link">
+  <a href="#minimal-working-example" class="md-nav__link">
     <span class="md-ellipsis">
       
-        smu meas
+        Minimal working example
       
     </span>
   </a>
@@ -1179,10 +1191,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#smu-set_mode" class="md-nav__link">
+  <a href="#repl-usage" class="md-nav__link">
     <span class="md-ellipsis">
       
-        smu set_mode
+        REPL usage
       
     </span>
   </a>
@@ -1190,98 +1202,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#smu-meas_store" class="md-nav__link">
+  <a href="#troubleshooting" class="md-nav__link">
     <span class="md-ellipsis">
       
-        smu meas_store
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#smu-compliance" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        smu compliance
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#smu-source_delay" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        smu source_delay
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#smu-avg" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        smu avg
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#smu-temp" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        smu temp
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#smu-get" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        smu get
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#smu-state" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        smu state
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#safety-limits" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Safety limits
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#typical-workflow" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Typical workflow
+        Troubleshooting
       
     </span>
   </a>
@@ -1308,277 +1232,106 @@
   
 
 
-<h1 id="smu-source-measure-unit">SMU — Source Measure Unit<a class="headerlink" href="#smu-source-measure-unit" title="Permanent link">&para;</a></h1>
-<p>Controls source measure units (SMUs) that can both source a precise voltage and simultaneously measure current (or vice versa).</p>
+<h1 id="ni-pxie-4139-setup">NI PXIe-4139 Setup<a class="headerlink" href="#ni-pxie-4139-setup" title="Permanent link">&para;</a></h1>
+<p>The NI PXIe-4139 is a ±60 V / 1 A four-quadrant Source Measure Unit (SMU). It uses the <strong>NI-DCPower</strong> driver — not VISA/SCPI — so it requires its own driver stack.</p>
+<hr />
+<h2 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h2>
+<h3 id="1-ni-daqmx-runtime">1 — NI-DAQmx runtime<a class="headerlink" href="#1-ni-daqmx-runtime" title="Permanent link">&para;</a></h3>
+<p>Download and install from:
+<a href="https://www.ni.com/en/support/downloads/drivers/download.ni-daqmx.html">NI-DAQmx Downloads</a></p>
+<p>This installs the NI instrument driver runtime that the <code>nidcpower</code> Python package calls into.</p>
+<div class="admonition note">
+<p class="admonition-title">Windows only</p>
+<p>The <code>nidcpower</code> package and NI-DAQmx runtime are only supported on Windows at this time. The REPL loads the NI PXIe-4139 driver conditionally — on Linux/macOS the instrument is silently skipped.</p>
+</div>
+<h3 id="2-nidcpower-python-package">2 — nidcpower Python package<a class="headerlink" href="#2-nidcpower-python-package" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip<span class="w"> </span>install<span class="w"> </span>nidcpower
+</code></pre></div>
+<h3 id="3-verify-the-dll-is-found">3 — Verify the DLL is found<a class="headerlink" href="#3-verify-the-dll-is-found" title="Permanent link">&para;</a></h3>
+<p>After installing NI-DAQmx, the required DLL (<code>nidcpower_64.dll</code> or <code>nidcpower.dll</code>) should be in one of:</p>
 <ul>
-<li>Multiple SMUs are named <code>smu1</code>, <code>smu2</code>, etc.</li>
-<li>Address a specific SMU directly: <code>smu1 set 5.0</code> — or use <code>use smu1</code> then <code>smu set 5.0</code></li>
+<li><code>C:\Program Files\IVI Foundation\IVI\Bin\</code></li>
+<li><code>C:\Program Files (x86)\IVI Foundation\IVI\Bin\</code></li>
 </ul>
-<div class="tabbed-set tabbed-alternate" data-tabs="1:1"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">NI PXIe-4139</label></div>
-<div class="tabbed-content">
-<div class="tabbed-block">
-<p>±60 V / 1 A four-quadrant SMU. Uses the <strong>nidcpower</strong> Python package (not VISA/SCPI). Install with: <code>pip install nidcpower</code>. Output range: −60 V to +60 V, 0 A to 1 A.</p>
-</div>
-</div>
-</div>
+<p>If Python can't find the DLL, add the IVI Bin directory to your system PATH.</p>
 <hr />
-<h2 id="smu-on-smu-off">smu on / smu off<a class="headerlink" href="#smu-on-smu-off" title="Permanent link">&para;</a></h2>
-<p>Enable or disable the SMU output.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>smu<span class="w"> </span>on<span class="w">     </span><span class="c1"># enable output</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>smu<span class="w"> </span>off<span class="w">    </span><span class="c1"># disable output</span>
-</code></pre></div>
-<p>Safety limits set with <code>upper_limit</code> / <code>lower_limit</code> are enforced before enabling.</p>
+<h2 id="hardware-setup">Hardware setup<a class="headerlink" href="#hardware-setup" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Seat the PXIe-4139 card in the PXIe chassis.</li>
+<li>Connect the chassis to the host PC via MXI-Express or Thunderbolt.</li>
+<li>Open <strong>NI MAX</strong> (Measurement &amp; Automation Explorer) and verify the card appears under <code>My System &gt; Devices and Interfaces</code>.</li>
+<li>Note the <strong>resource name</strong> shown in NI MAX (e.g., <code>PXI1Slot2</code>). This name is needed for manual Python scripts (see the example below). The REPL typically auto-discovers the card without requiring manual resource specification; the resource name is only needed as a fallback if auto-detection fails or you need to force a specific device.</li>
+</ol>
 <hr />
-<h2 id="smu-set">smu set<a class="headerlink" href="#smu-set" title="Permanent link">&para;</a></h2>
-<p>Set output voltage and optional current limit.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>smu<span class="w"> </span><span class="nb">set</span><span class="w"> </span>&lt;voltage&gt;<span class="w"> </span><span class="o">[</span>current_limit<span class="o">]</span>
+<h2 id="repl-auto-detection">REPL auto-detection<a class="headerlink" href="#repl-auto-detection" title="Permanent link">&para;</a></h2>
+<p>When <code>nidcpower</code> is installed and the card is present, the REPL assigns the SMU as <code>smu1</code> automatically on startup (or on <code>scan</code>).</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>eset&gt; scan
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>[scpi] Found: smu1  (NI PXIe-4139)
 </code></pre></div>
+<p>If the card is not found, run <code>scan</code> after the chassis is powered and the MXI link is established.</p>
+<hr />
+<h2 id="minimal-working-example">Minimal working example<a class="headerlink" href="#minimal-working-example" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># Verify nidcpower works outside the REPL</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">nidcpower</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="k">with</span> <span class="n">nidcpower</span><span class="o">.</span><span class="n">Session</span><span class="p">(</span><span class="s2">&quot;PXI1Slot2&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">session</span><span class="p">:</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    <span class="n">session</span><span class="o">.</span><span class="n">output_function</span> <span class="o">=</span> <span class="n">nidcpower</span><span class="o">.</span><span class="n">OutputFunction</span><span class="o">.</span><span class="n">DC_VOLTAGE</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    <span class="n">session</span><span class="o">.</span><span class="n">voltage_level</span> <span class="o">=</span> <span class="mf">5.0</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    <span class="n">session</span><span class="o">.</span><span class="n">current_limit</span> <span class="o">=</span> <span class="mf">0.01</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>    <span class="n">session</span><span class="o">.</span><span class="n">output_enabled</span> <span class="o">=</span> <span class="kc">True</span>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>    <span class="n">session</span><span class="o">.</span><span class="n">initiate</span><span class="p">()</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>    <span class="n">v</span> <span class="o">=</span> <span class="n">session</span><span class="o">.</span><span class="n">measure</span><span class="p">(</span><span class="n">nidcpower</span><span class="o">.</span><span class="n">MeasurementTypes</span><span class="o">.</span><span class="n">VOLTAGE</span><span class="p">)</span>
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>    <span class="n">i</span> <span class="o">=</span> <span class="n">session</span><span class="o">.</span><span class="n">measure</span><span class="p">(</span><span class="n">nidcpower</span><span class="o">.</span><span class="n">MeasurementTypes</span><span class="o">.</span><span class="n">CURRENT</span><span class="p">)</span>
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;V = </span><span class="si">{</span><span class="n">v</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2"> V   I = </span><span class="si">{</span><span class="n">i</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2"> A&quot;</span><span class="p">)</span>
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>    <span class="n">session</span><span class="o">.</span><span class="n">output_enabled</span> <span class="o">=</span> <span class="kc">False</span>
+</code></pre></div>
+<hr />
+<h2 id="repl-usage">REPL usage<a class="headerlink" href="#repl-usage" title="Permanent link">&para;</a></h2>
+<p>Once detected as <code>smu1</code>, use the standard SMU commands:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>upper_limit<span class="w"> </span>smu<span class="w"> </span>voltage<span class="w"> </span><span class="m">6</span>.0
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>upper_limit<span class="w"> </span>smu<span class="w"> </span>current<span class="w"> </span><span class="m">0</span>.05
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>smu<span class="w"> </span><span class="nb">set</span><span class="w"> </span><span class="m">5</span>.0<span class="w"> </span><span class="m">0</span>.02
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>smu<span class="w"> </span>on
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>sleep<span class="w"> </span><span class="m">0</span>.5
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>smu<span class="w"> </span>meas<span class="w"> </span>v
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>smu<span class="w"> </span>meas<span class="w"> </span>i
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>smu<span class="w"> </span>off
+</code></pre></div>
+<p>See <a href="smu.html">Source Measure Unit (SMU)</a> for the full command reference.</p>
+<hr />
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th>Parameter</th>
-<th>Required</th>
-<th>Values</th>
-<th>Description</th>
+<th>Symptom</th>
+<th>Likely cause</th>
+<th>Fix</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>voltage</code></td>
-<td>required</td>
-<td>−60.0 – 60.0 (V)</td>
-<td>Target output voltage.</td>
+<td><code>ImportError: No module named 'nidcpower'</code></td>
+<td>Package not installed</td>
+<td><code>pip install nidcpower</code></td>
 </tr>
 <tr>
-<td><code>current_limit</code></td>
-<td>optional</td>
-<td>0.0 – 1.0 (A)</td>
-<td>Current compliance limit. If omitted, the existing limit is kept.</td>
+<td><code>nidcpower</code> imports but <code>smu1</code> not found</td>
+<td>Card not visible to driver</td>
+<td>Check NI MAX; re-seat card; power-cycle chassis</td>
+</tr>
+<tr>
+<td><code>DLL load failed</code></td>
+<td>NI-DAQmx not installed or DLL not on PATH</td>
+<td>Install NI-DAQmx runtime; add IVI Bin dir to PATH</td>
+</tr>
+<tr>
+<td><code>Resource not found</code></td>
+<td>Wrong resource name</td>
+<td>Open NI MAX and confirm the resource name shown there</td>
 </tr>
 </tbody>
 </table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>smu<span class="w"> </span><span class="nb">set</span><span class="w"> </span><span class="m">5</span>.0<span class="w">          </span><span class="c1"># set 5 V, keep existing current limit</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>smu<span class="w"> </span><span class="nb">set</span><span class="w"> </span><span class="m">5</span>.0<span class="w"> </span><span class="m">0</span>.01<span class="w">     </span><span class="c1"># set 5 V with 10 mA current limit</span>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>smu<span class="w"> </span><span class="nb">set</span><span class="w"> </span>-12.0<span class="w"> </span><span class="m">0</span>.1<span class="w">    </span><span class="c1"># negative voltage for four-quadrant operation</span>
-</code></pre></div>
-<div class="admonition warning">
-<p class="admonition-title">Warning</p>
-<p>Setting a voltage without a current limit uses whatever limit was set previously (default: 10 mA). Always specify the limit when powering an unknown DUT.</p>
-</div>
-<hr />
-<h2 id="smu-meas">smu meas<a class="headerlink" href="#smu-meas" title="Permanent link">&para;</a></h2>
-<p>Take a single measurement and print the result.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>smu<span class="w"> </span>meas<span class="w"> </span><span class="o">[</span>v<span class="p">|</span>i<span class="p">|</span>vi<span class="o">]</span>
-</code></pre></div>
-<table>
-<thead>
-<tr>
-<th>Mode</th>
-<th>Alias</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><em>(no arg)</em> or <code>vi</code></td>
-<td><code>both</code>, <code>all</code></td>
-<td>Atomic V+I+compliance read in one call (default)</td>
-</tr>
-<tr>
-<td><code>v</code></td>
-<td><code>volt</code>, <code>voltage</code></td>
-<td>Measure actual output voltage only</td>
-</tr>
-<tr>
-<td><code>i</code></td>
-<td><code>curr</code>, <code>current</code></td>
-<td>Measure actual output current only</td>
-</tr>
-</tbody>
-</table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>smu<span class="w"> </span>meas<span class="w">       </span><span class="c1"># prints e.g.  V=5.000012V  I=0.009987A</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>smu<span class="w"> </span>meas<span class="w"> </span>vi<span class="w">    </span><span class="c1"># same as above; appends [COMPLIANCE] if current-limited</span>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>smu<span class="w"> </span>meas<span class="w"> </span>v<span class="w">     </span><span class="c1"># prints e.g.  5.000012V</span>
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>smu<span class="w"> </span>meas<span class="w"> </span>i<span class="w">     </span><span class="c1"># prints e.g.  0.009987A</span>
-</code></pre></div>
-<div class="admonition tip">
-<p class="admonition-title">Tip</p>
-<p><code>smu meas</code> / <code>smu meas vi</code> performs an atomic measurement that reads voltage, current, and compliance state in a single driver call — use this instead of separate <code>v</code> and <code>i</code> calls when you need a consistent snapshot.</p>
-</div>
-<hr />
-<h2 id="smu-set_mode">smu set_mode<a class="headerlink" href="#smu-set_mode" title="Permanent link">&para;</a></h2>
-<p>Switch the SMU between voltage-source and current-source modes.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>smu<span class="w"> </span>set_mode<span class="w"> </span>voltage<span class="w"> </span>&lt;v&gt;<span class="w"> </span><span class="o">[</span>current_limit<span class="o">]</span>
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>smu<span class="w"> </span>set_mode<span class="w"> </span>current<span class="w"> </span>&lt;i&gt;<span class="w"> </span><span class="o">[</span>voltage_limit<span class="o">]</span>
-</code></pre></div>
-<table>
-<thead>
-<tr>
-<th>Parameter</th>
-<th>Required</th>
-<th>Values</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>voltage</code> / <code>current</code></td>
-<td>required</td>
-<td>mode keyword</td>
-<td>Select sourcing mode. Alias: <code>v</code> / <code>i</code>.</td>
-</tr>
-<tr>
-<td>second arg</td>
-<td>required</td>
-<td>float</td>
-<td>Setpoint in volts (voltage mode) or amps (current mode).</td>
-</tr>
-<tr>
-<td>third arg</td>
-<td>optional</td>
-<td>float</td>
-<td>Compliance limit for the opposing quantity.</td>
-</tr>
-</tbody>
-</table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>smu<span class="w"> </span>set_mode<span class="w"> </span>voltage<span class="w"> </span><span class="m">3</span>.3<span class="w"> </span><span class="m">0</span>.1<span class="w">    </span><span class="c1"># source 3.3 V with 100 mA current limit</span>
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>smu<span class="w"> </span>set_mode<span class="w"> </span>current<span class="w"> </span><span class="m">0</span>.05<span class="w"> </span><span class="m">5</span>.0<span class="w">   </span><span class="c1"># source 50 mA with 5 V voltage limit</span>
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>smu<span class="w"> </span>set_mode<span class="w"> </span>current<span class="w"> </span><span class="m">0</span>.01<span class="w">       </span><span class="c1"># source 10 mA, no explicit voltage limit</span>
-</code></pre></div>
-<p>Safety limits (<code>upper_limit</code> / <code>lower_limit</code>) are enforced before the mode switch is applied.</p>
-<hr />
-<h2 id="smu-meas_store">smu meas_store<a class="headerlink" href="#smu-meas_store" title="Permanent link">&para;</a></h2>
-<p>Measure and record the result to the measurement log.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>smu<span class="w"> </span>meas_store<span class="w"> </span>&lt;v<span class="p">|</span>i&gt;<span class="w"> </span>&lt;label&gt;<span class="w"> </span><span class="o">[</span><span class="nv">unit</span><span class="o">=</span>&lt;str&gt;<span class="o">]</span>
-</code></pre></div>
-<table>
-<thead>
-<tr>
-<th>Parameter</th>
-<th>Required</th>
-<th>Values</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>v\|i</code></td>
-<td>required</td>
-<td><code>v</code>, <code>i</code></td>
-<td>What to measure.</td>
-</tr>
-<tr>
-<td><code>label</code></td>
-<td>required</td>
-<td>string, no spaces</td>
-<td>Name for this entry in the log.</td>
-</tr>
-<tr>
-<td><code>unit=</code></td>
-<td>optional</td>
-<td>string</td>
-<td>Unit shown in <code>log print</code>. Defaults to <code>V</code> or <code>A</code>.</td>
-</tr>
-</tbody>
-</table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>smu<span class="w"> </span>meas_store<span class="w"> </span>v<span class="w"> </span>smu_vout<span class="w"> </span><span class="nv">unit</span><span class="o">=</span>V
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>smu<span class="w"> </span>meas_store<span class="w"> </span>i<span class="w"> </span>smu_iout<span class="w"> </span><span class="nv">unit</span><span class="o">=</span>A
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>calc<span class="w"> </span>power<span class="w"> </span>m<span class="o">[</span><span class="s2">&quot;smu_vout&quot;</span><span class="o">]</span><span class="w"> </span>*<span class="w"> </span>m<span class="o">[</span><span class="s2">&quot;smu_iout&quot;</span><span class="o">]</span><span class="w"> </span><span class="nv">unit</span><span class="o">=</span>W
-</code></pre></div>
-<p>See <a href="logging.html">Log &amp; Calc</a> for full details.</p>
-<hr />
-<h2 id="smu-compliance">smu compliance<a class="headerlink" href="#smu-compliance" title="Permanent link">&para;</a></h2>
-<p>Query whether the SMU is currently in compliance (i.e. the output is being current- or voltage-limited by the instrument's protection circuit).</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>smu<span class="w"> </span>compliance
-</code></pre></div>
-<p>Prints <code>Not in compliance</code> when the DUT is drawing within limits, or a warning banner <code>IN COMPLIANCE - output is current-limited</code> when the limit has been hit. Use <code>smu meas vi</code> to see the compliance flag alongside a measurement.</p>
-<hr />
-<h2 id="smu-source_delay">smu source_delay<a class="headerlink" href="#smu-source_delay" title="Permanent link">&para;</a></h2>
-<p>Get or set the settling delay the SMU inserts between applying a new source value and taking a measurement.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>smu<span class="w"> </span>source_delay<span class="w">           </span><span class="c1"># read current delay</span>
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>smu<span class="w"> </span>source_delay<span class="w"> </span>&lt;seconds&gt;<span class="w"> </span><span class="c1"># set delay (0 – 167 s)</span>
-</code></pre></div>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>smu<span class="w"> </span>source_delay<span class="w">           </span><span class="c1"># prints e.g.  source_delay = 0.0020 s</span>
-<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>smu<span class="w"> </span>source_delay<span class="w"> </span><span class="m">0</span>.05<span class="w">      </span><span class="c1"># set 50 ms settle time</span>
-<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>smu<span class="w"> </span>source_delay<span class="w"> </span><span class="m">0</span><span class="w">         </span><span class="c1"># disable delay</span>
-</code></pre></div>
-<hr />
-<h2 id="smu-avg">smu avg<a class="headerlink" href="#smu-avg" title="Permanent link">&para;</a></h2>
-<p>Get or set the number of samples averaged per measurement.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>smu<span class="w"> </span>avg<span class="w">        </span><span class="c1"># read current value</span>
-<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>smu<span class="w"> </span>avg<span class="w"> </span>&lt;N&gt;<span class="w">    </span><span class="c1"># set to N samples (integer ≥ 1)</span>
-</code></pre></div>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>smu<span class="w"> </span>avg<span class="w">        </span><span class="c1"># prints e.g.  samples_to_average = 1</span>
-<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>smu<span class="w"> </span>avg<span class="w"> </span><span class="m">10</span><span class="w">     </span><span class="c1"># average 10 readings per measurement call</span>
-<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>smu<span class="w"> </span>avg<span class="w"> </span><span class="m">1</span><span class="w">      </span><span class="c1"># back to single-sample mode</span>
-</code></pre></div>
-<p>Higher values reduce noise but increase measurement time proportionally.</p>
-<hr />
-<h2 id="smu-temp">smu temp<a class="headerlink" href="#smu-temp" title="Permanent link">&para;</a></h2>
-<p>Read the internal temperature sensor of the instrument.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>smu<span class="w"> </span>temp
-</code></pre></div>
-<p>Prints the temperature in degrees Celsius, e.g. <code>34.5 degrees C</code>. Useful for confirming the unit has warmed up to a stable operating temperature before precision measurements. Expected range for a powered-on PXIe-4139 is approximately 20 – 60 °C.</p>
-<hr />
-<h2 id="smu-get">smu get<a class="headerlink" href="#smu-get" title="Permanent link">&para;</a></h2>
-<p>Show the current voltage setpoint, current limit, and output state.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>smu<span class="w"> </span>get
-</code></pre></div>
-<p>Prints: <code>Setpoint: &lt;V&gt;V @ &lt;A&gt;A, Output: ON|OFF</code></p>
-<hr />
-<h2 id="smu-state">smu state<a class="headerlink" href="#smu-state" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>smu<span class="w"> </span>state<span class="w"> </span>&lt;on<span class="p">|</span>off<span class="p">|</span>safe<span class="p">|</span>reset&gt;
-</code></pre></div>
-<table>
-<thead>
-<tr>
-<th>Value</th>
-<th>Effect</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>on</code></td>
-<td>Enable output</td>
-</tr>
-<tr>
-<td><code>off</code></td>
-<td>Disable output</td>
-</tr>
-<tr>
-<td><code>safe</code></td>
-<td>Disable output</td>
-</tr>
-<tr>
-<td><code>reset</code></td>
-<td>Disconnect and re-initialize the session</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h2 id="safety-limits">Safety limits<a class="headerlink" href="#safety-limits" title="Permanent link">&para;</a></h2>
-<p><code>upper_limit</code> and <code>lower_limit</code> work with SMUs using the same <code>voltage</code> and <code>current</code> parameters as PSUs:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>upper_limit<span class="w"> </span>smu<span class="w"> </span>voltage<span class="w"> </span><span class="m">5</span>.5<span class="w">     </span><span class="c1"># SMU output ≤ 5.5 V</span>
-<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>upper_limit<span class="w"> </span>smu<span class="w"> </span>current<span class="w"> </span><span class="m">0</span>.1<span class="w">     </span><span class="c1"># current limit ≤ 100 mA</span>
-<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>lower_limit<span class="w"> </span>smu<span class="w"> </span>voltage<span class="w"> </span>-0.3<span class="w">    </span><span class="c1"># SMU output ≥ −0.3 V</span>
-</code></pre></div>
-<p>See <a href="scripting.html#safety-limits">Safety Limits</a> for the full reference.</p>
-<hr />
-<h2 id="typical-workflow">Typical workflow<a class="headerlink" href="#typical-workflow" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>upper_limit<span class="w"> </span>smu1<span class="w"> </span>voltage<span class="w"> </span><span class="m">6</span>.0
-<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>upper_limit<span class="w"> </span>smu1<span class="w"> </span>current<span class="w"> </span><span class="m">0</span>.05
-<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>
-<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a>smu1<span class="w"> </span><span class="nb">set</span><span class="w"> </span><span class="m">5</span>.0<span class="w"> </span><span class="m">0</span>.02<span class="w">     </span><span class="c1"># 5 V, 20 mA limit</span>
-<a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a>smu1<span class="w"> </span>on
-<a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a>sleep<span class="w"> </span><span class="m">0</span>.5
-<a id="__codelineno-18-7" name="__codelineno-18-7" href="#__codelineno-18-7"></a>
-<a id="__codelineno-18-8" name="__codelineno-18-8" href="#__codelineno-18-8"></a>smu1<span class="w"> </span>meas_store<span class="w"> </span>v<span class="w"> </span>vout<span class="w"> </span><span class="nv">unit</span><span class="o">=</span>V
-<a id="__codelineno-18-9" name="__codelineno-18-9" href="#__codelineno-18-9"></a>smu1<span class="w"> </span>meas_store<span class="w"> </span>i<span class="w"> </span>iout<span class="w"> </span><span class="nv">unit</span><span class="o">=</span>A
-<a id="__codelineno-18-10" name="__codelineno-18-10" href="#__codelineno-18-10"></a>calc<span class="w"> </span>power<span class="w"> </span>m<span class="o">[</span><span class="s2">&quot;vout&quot;</span><span class="o">]</span><span class="w"> </span>*<span class="w"> </span>m<span class="o">[</span><span class="s2">&quot;iout&quot;</span><span class="o">]</span><span class="w"> </span><span class="nv">unit</span><span class="o">=</span>W
-<a id="__codelineno-18-11" name="__codelineno-18-11" href="#__codelineno-18-11"></a>
-<a id="__codelineno-18-12" name="__codelineno-18-12" href="#__codelineno-18-12"></a>log<span class="w"> </span>print
-<a id="__codelineno-18-13" name="__codelineno-18-13" href="#__codelineno-18-13"></a>smu1<span class="w"> </span>off
-</code></pre></div>
 
 
 

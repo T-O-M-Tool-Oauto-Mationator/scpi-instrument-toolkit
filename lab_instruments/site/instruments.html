@@ -242,6 +242,25 @@
   
   
     <li class="md-tabs__item">
+      <a href="install.html" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Installation
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
       <a href="general.html" class="md-tabs__link">
         
   
@@ -433,6 +452,33 @@
   
   
     <li class="md-nav__item">
+      <a href="install.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="general.html" class="md-nav__link">
         
   
@@ -475,10 +521,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
         
           
-          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
             
   
   
@@ -496,8 +542,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -647,6 +693,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="ni_pxie.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    NI PXIe-4139 Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -676,10 +750,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
         
           
-          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
             
   
   
@@ -697,8 +771,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1194,10 +1268,18 @@
 <li>Launch <code>scpi-repl</code> — it will auto-detect the instrument</li>
 </ol>
 <h3 id="ni-pxie-instruments-ni-pxie-4139-smu">NI PXIe instruments (NI PXIe-4139 SMU)<a class="headerlink" href="#ni-pxie-instruments-ni-pxie-4139-smu" title="Permanent link">&para;</a></h3>
-<p>The NI PXIe-4139 uses the NI-DCPower driver, <strong>not</strong> VISA/SCPI. It is auto-detected by the REPL when the <code>nidcpower</code> Python package and NI-DAQmx runtime are installed:</p>
+<p>The NI PXIe-4139 uses the NI-DCPower driver, <strong>not</strong> VISA/SCPI. It is auto-detected by the REPL when the <code>nidcpower</code> Python package and NI-DCPower runtime are installed:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip<span class="w"> </span>install<span class="w"> </span>nidcpower
 </code></pre></div>
 <p>The instrument appears as <code>smu1</code> in the REPL. See <a href="smu.html">Source Measure Unit (SMU)</a> for commands.</p>
+<p><strong>Prerequisites and limitations:</strong></p>
+<ul>
+<li>Requires a PXIe chassis with a compatible controller slot connected to the host PC via MXI-Express or Thunderbolt.</li>
+<li>NI-DCPower runtime and <code>nidcpower</code> Python package must be installed (Windows only; Linux support is limited).</li>
+<li>The REPL auto-detects the first available device as <code>smu1</code>. Multiple cards are not currently supported.</li>
+<li>Not compatible with VISA/SCPI — VISA-based commands (<code>*IDN?</code>, etc.) do not apply.</li>
+<li>Remote PXI controllers are not supported.</li>
+</ul>
 <h3 id="serial-instruments-matrix-mps-jds6600">Serial instruments (Matrix MPS, JDS6600)<a class="headerlink" href="#serial-instruments-matrix-mps-jds6600" title="Permanent link">&para;</a></h3>
 <p>Serial instruments are probed automatically at multiple baud rates. No manual configuration is needed. Connect via USB-to-serial adapter, then launch <code>scpi-repl</code>.</p>
 <hr />

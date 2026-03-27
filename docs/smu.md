@@ -52,19 +52,49 @@ smu set -12.0 0.1    # negative voltage for four-quadrant operation
 Take a single measurement and print the result.
 
 ```bash
-smu meas v    # measure output voltage
-smu meas i    # measure output current
+smu meas [v|i|vi]
 ```
 
 | Mode | Alias | Description |
 |------|-------|-------------|
-| `v` | `volt`, `voltage` | Measure actual output voltage |
-| `i` | `curr`, `current` | Measure actual output current |
+| *(no arg)* or `vi` | `both`, `all` | Atomic V+I+compliance read in one call (default) |
+| `v` | `volt`, `voltage` | Measure actual output voltage only |
+| `i` | `curr`, `current` | Measure actual output current only |
 
 ```bash
-smu meas v    # prints e.g.  5.000012V
-smu meas i    # prints e.g.  0.009987A
+smu meas       # prints e.g.  V=5.000012V  I=0.009987A
+smu meas vi    # same as above; appends [COMPLIANCE] if current-limited
+smu meas v     # prints e.g.  5.000012V
+smu meas i     # prints e.g.  0.009987A
 ```
+
+!!! tip
+    `smu meas` / `smu meas vi` performs an atomic measurement that reads voltage, current, and compliance state in a single driver call — use this instead of separate `v` and `i` calls when you need a consistent snapshot.
+
+---
+
+## smu set_mode
+
+Switch the SMU between voltage-source and current-source modes.
+
+```bash
+smu set_mode voltage <v> [current_limit]
+smu set_mode current <i> [voltage_limit]
+```
+
+| Parameter | Required | Values | Description |
+|-----------|----------|--------|-------------|
+| `voltage` / `current` | required | mode keyword | Select sourcing mode. Alias: `v` / `i`. |
+| second arg | required | float | Setpoint in volts (voltage mode) or amps (current mode). |
+| third arg | optional | float | Compliance limit for the opposing quantity. |
+
+```bash
+smu set_mode voltage 3.3 0.1    # source 3.3 V with 100 mA current limit
+smu set_mode current 0.05 5.0   # source 50 mA with 5 V voltage limit
+smu set_mode current 0.01       # source 10 mA, no explicit voltage limit
+```
+
+Safety limits (`upper_limit` / `lower_limit`) are enforced before the mode switch is applied.
 
 ---
 
@@ -89,6 +119,66 @@ calc power m["smu_vout"] * m["smu_iout"] unit=W
 ```
 
 See [Log & Calc](logging.md) for full details.
+
+---
+
+## smu compliance
+
+Query whether the SMU is currently in compliance (i.e. the output is being current- or voltage-limited by the instrument's protection circuit).
+
+```bash
+smu compliance
+```
+
+Prints `Not in compliance` when the DUT is drawing within limits, or a warning banner `IN COMPLIANCE - output is current-limited` when the limit has been hit. Use `smu meas vi` to see the compliance flag alongside a measurement.
+
+---
+
+## smu source_delay
+
+Get or set the settling delay the SMU inserts between applying a new source value and taking a measurement.
+
+```bash
+smu source_delay           # read current delay
+smu source_delay <seconds> # set delay (0 – 167 s)
+```
+
+```bash
+smu source_delay           # prints e.g.  source_delay = 0.0020 s
+smu source_delay 0.05      # set 50 ms settle time
+smu source_delay 0         # disable delay
+```
+
+---
+
+## smu avg
+
+Get or set the number of samples averaged per measurement.
+
+```bash
+smu avg        # read current value
+smu avg <N>    # set to N samples (integer ≥ 1)
+```
+
+```bash
+smu avg        # prints e.g.  samples_to_average = 1
+smu avg 10     # average 10 readings per measurement call
+smu avg 1      # back to single-sample mode
+```
+
+Higher values reduce noise but increase measurement time proportionally.
+
+---
+
+## smu temp
+
+Read the internal temperature sensor of the instrument.
+
+```bash
+smu temp
+```
+
+Prints the temperature in degrees Celsius, e.g. `34.5 degrees C`. Useful for confirming the unit has warmed up to a stable operating temperature before precision measurements. Expected range for a powered-on PXIe-4139 is approximately 20 – 60 °C.
 
 ---
 
