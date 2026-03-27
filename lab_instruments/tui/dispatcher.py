@@ -16,11 +16,22 @@ class CommandDispatcher(Protocol):
         """Handle a command and return the response."""
         ...
 
+    def get_completions(self, text: str) -> list[str]:
+        """Return sorted completion candidates for the given text prefix."""
+        ...
+
 
 class LocalDispatcher:
-    """Run a command in process. One InstrumentRepl isntance is resued to preserver session state."""
+    """Run a command in process. One InstrumentRepl instance is reused to preserve session state."""
 
-    def __init__(self) -> None:
+    def __init__(self, mock: bool = False) -> None:
+        if mock:
+            from lab_instruments import mock_instruments
+            from lab_instruments.src import discovery as _disc
+
+            _disc.InstrumentDiscovery.__init__ = lambda self: None
+            _disc.InstrumentDiscovery.scan = lambda self, verbose=True: mock_instruments.get_mock_devices(verbose)
+
         from lab_instruments.repl.shell import InstrumentRepl
 
         self.repl = InstrumentRepl()
@@ -30,3 +41,24 @@ class LocalDispatcher:
         with contextlib.redirect_stdout(io.StringIO()) as f:
             self.repl.onecmd(command)
         return f.getvalue()
+
+    def get_completions(self, text: str) -> list[str]:
+        """Return sorted, deduplicated completion candidates for text.
+
+        Calls both completenames (top-level verbs) and completedefault
+        (sub-command arguments) to cover the full REPL command space.
+        Safe to call from any thread - reads only REPL method names and
+        context state, no I/O.
+        """
+        results: list[str] = []
+        with contextlib.suppress(Exception):
+            results.extend(self.repl.completenames(text, text, 0, len(text)))
+        with contextlib.suppress(Exception):
+            results.extend(self.repl.completedefault(text, text, 0, len(text)))
+        seen: set[str] = set()
+        deduped: list[str] = []
+        for r in results:
+            if r not in seen:
+                seen.add(r)
+                deduped.append(r)
+        return sorted(deduped)

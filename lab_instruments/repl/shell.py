@@ -647,64 +647,64 @@ class InstrumentRepl(cmd.Cmd):
     # Command dispatch — delegates to command handler objects
     # ------------------------------------------------------------------
     def do_scan(self, arg):
-        "scan: discover and connect to instruments"
+        """scan: discover and connect to instruments"""
         self._wait_for_scan()
         self._general.do_scan(arg, self.discovery, self._scan_done)
 
     def do_list(self, arg):
-        "list: show connected instruments"
+        """list: show connected instruments"""
         self._general.do_list(arg)
 
     def do_use(self, arg):
-        "use <name>: set active instrument"
+        """use <name>: set active instrument"""
         self._general.do_use(arg)
 
     def do_status(self, arg):
-        "status: show current selection"
+        """status: show current selection"""
         self._general.do_status(arg)
 
     def do_idn(self, arg):
-        "idn [name]: query *IDN?"
+        """idn [name]: query *IDN?"""
         self._wait_for_scan()
         self._general.do_idn(arg)
 
     def do_raw(self, arg):
-        "raw [name] <scpi>: send raw SCPI command"
+        """raw [name] <scpi>: send raw SCPI command"""
         self._wait_for_scan()
         self._general.do_raw(arg)
 
     def do_state(self, arg):
-        "state [safe|reset|on|off] or state <device> <state>"
+        """state [safe|reset|on|off] or state <device> <state>"""
         self._wait_for_scan()
         self._general.do_state(arg)
 
     def do_close(self, arg):
-        "close: disconnect all instruments"
+        """close: disconnect all instruments"""
         self._general.do_close(arg)
 
     def do_docs(self, arg):
-        "docs: open full HTML documentation in your browser"
+        """docs: open full HTML documentation in your browser"""
         self._general.do_docs(arg)
 
     def do_version(self, arg):
-        "version: show version"
+        """version: show version"""
         self._general.do_version(arg, _REPL_VERSION)
 
     def do_clear(self, arg):
-        "clear: clear terminal"
+        """clear: clear terminal"""
         self._general.do_clear(arg)
 
     def do_reload(self, arg):
-        "reload: restart REPL process"
+        """reload: restart REPL process"""
         self._general.do_reload(arg)
 
     def do_all(self, arg):
-        "all <on|off|safe|reset>: apply state to all instruments"
+        """all <on|off|safe|reset>: apply state to all instruments"""
         self._wait_for_scan()
         self._general.do_all(arg)
 
     def do_exit(self, arg):
-        "exit: quit the REPL"
+        """exit: quit the REPL"""
         return True
 
     def do_EOF(self, arg):
@@ -713,7 +713,7 @@ class InstrumentRepl(cmd.Cmd):
 
     # Instrument commands
     def do_psu(self, arg):
-        "psu <cmd>: control the power supply"
+        """psu <cmd>: control the power supply"""
         self._wait_for_scan()
         psu_name = self.ctx.registry.resolve_type("psu")
         if not psu_name:
@@ -730,7 +730,7 @@ class InstrumentRepl(cmd.Cmd):
         self._psu_cmd.execute(arg, dev, psu_name)
 
     def do_awg(self, arg):
-        "awg <cmd>: control the function generator"
+        """awg <cmd>: control the function generator"""
         self._wait_for_scan()
         awg_name = self.ctx.registry.resolve_type("awg")
         if not awg_name:
@@ -747,7 +747,7 @@ class InstrumentRepl(cmd.Cmd):
         self._awg_cmd.execute(arg, dev, awg_name)
 
     def do_dmm(self, arg):
-        "dmm <cmd>: control the multimeter"
+        """dmm <cmd>: control the multimeter"""
         self._wait_for_scan()
         dmm_name = self.ctx.registry.resolve_type("dmm")
         if not dmm_name:
@@ -764,7 +764,7 @@ class InstrumentRepl(cmd.Cmd):
         self._dmm_cmd.execute(arg, dev, dmm_name)
 
     def do_scope(self, arg):
-        "scope <cmd>: control the oscilloscope"
+        """scope <cmd>: control the oscilloscope"""
         self._wait_for_scan()
         scope_name = self.ctx.registry.resolve_type("scope")
         if not scope_name:
@@ -781,7 +781,7 @@ class InstrumentRepl(cmd.Cmd):
         self._scope_cmd.execute(arg, dev, scope_name)
 
     def do_smu(self, arg):
-        "smu <cmd>: control the source measure unit"
+        """smu <cmd>: control the source measure unit"""
         self._wait_for_scan()
         smu_name = self.ctx.registry.resolve_type("smu")
         if not smu_name:
@@ -799,74 +799,74 @@ class InstrumentRepl(cmd.Cmd):
 
     # Variable/IO commands
     def do_print(self, arg):
-        "print <message>: display a message"
+        """print <message>: display a message"""
         self._var_cmd.do_print(arg)
 
     def do_pause(self, arg):
-        "pause [message]: wait for Enter"
+        """pause [message]: wait for Enter"""
         self._var_cmd.do_pause(arg)
 
     def do_input(self, arg):
-        "input <varname> [prompt]: read a value from user"
+        """input <varname> [prompt]: read a value from user"""
         self._var_cmd.do_input(arg)
 
     def do_set(self, arg):
-        "set <varname> <expr>: define a variable"
+        """set <varname> <expr>: define a variable"""
         self._var_cmd.do_set(arg)
 
     def do_unset(self, arg):
-        "unset <varname>: delete a script variable"
+        """unset <varname>: delete a script variable"""
         self._var_cmd.do_unset(arg)
 
     def do_sleep(self, arg):
-        "sleep <duration>[us|ms|s|m]: pause execution"
+        """sleep <duration>[us|ms|s|m]: pause execution"""
         self._var_cmd.do_sleep(arg)
 
     # Logging commands
     def do_data(self, arg):
-        "data dir [path|reset]: manage data directory"
+        """data dir [path|reset]: manage data directory"""
         self._log_cmd.do_data(arg)
 
     def do_log(self, arg):
-        "log <print|save|clear>: manage measurements"
+        """log <print|save|clear>: manage measurements"""
         self._log_cmd.do_log(arg)
 
     def do_calc(self, arg):
-        "calc <label> = <expr> [unit=]: compute from measurements"
+        """calc <label> = <expr> [unit=]: compute from measurements"""
         self._log_cmd.do_calc(arg)
 
     def do_check(self, arg):
-        "check <label> <min> <max>: pass/fail assertion"
+        """check <label> <min> <max>: pass/fail assertion"""
         self._log_cmd.do_check(arg)
 
     def do_report(self, arg):
-        "report <print|save|clear|title|operator>: manage reports"
+        """report <print|save|clear|title|operator>: manage reports"""
         self._log_cmd.do_report(arg)
 
     # Scripting commands
     def do_script(self, arg):
-        "script <new|run|debug|edit|list|rm|show|dir|import|load|save>: manage scripts"
+        """script <new|run|debug|edit|list|rm|show|dir|import|load|save>: manage scripts"""
         self._script_cmd.do_script(arg)
 
     def do_record(self, arg):
-        "record <start|stop|status>: record commands to a script"
+        """record <start|stop|status>: record commands to a script"""
         self._script_cmd.do_record(arg)
 
     def do_examples(self, arg):
-        "examples [load <name|all>]: list or load example scripts"
+        """examples [load <name|all>]: list or load example scripts"""
         self._script_cmd.do_examples(arg)
 
     def do_python(self, arg):
-        "python <file.py>: execute external Python script"
+        """python <file.py>: execute external Python script"""
         self._script_cmd.do_python(arg)
 
     def do_upper_limit(self, arg):
-        "upper_limit <device> [chan <N>] <param> <value>: set upper safety limit"
+        """upper_limit <device> [chan <N>] <param> <value>: set upper safety limit"""
         self._wait_for_scan()
         self._script_cmd.do_upper_limit(arg)
 
     def do_lower_limit(self, arg):
-        "lower_limit <device> [chan <N>] <param> <value>: set lower safety limit"
+        """lower_limit <device> [chan <N>] <param> <value>: set lower safety limit"""
         self._wait_for_scan()
         self._script_cmd.do_lower_limit(arg)
 
@@ -874,7 +874,7 @@ class InstrumentRepl(cmd.Cmd):
     # Help system
     # ------------------------------------------------------------------
     def do_help(self, arg):
-        "help [command|all]: show help"
+        """help [command|all]: show help"""
         if arg:
             if arg.strip().lower() == "all":
                 for cmd_name in [
