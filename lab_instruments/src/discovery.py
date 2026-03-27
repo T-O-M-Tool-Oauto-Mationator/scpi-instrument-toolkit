@@ -274,6 +274,10 @@ class InstrumentDiscovery:
                 self._safe_print(f"Skipping {resource} (virtual port)")
             return None
 
+        # PXI resources are register-based (no query()) and are handled by _probe_nidcpower()
+        if resource.upper().startswith("PXI"):
+            return None
+
         try:
             # Open resource with a short timeout for identification
             inst = self.rm.open_resource(resource, timeout=2000)
