@@ -30,7 +30,8 @@ dependencies = [
     "pyfunctional>=1.4.0",
     "requests>=2.31.0",
     "textual>=1.8.0",
-    "nidcpower>=1.5.0",
+    "nidcpower>=1.5.0; python_version>='3.9'",
+    "nidcpower>=1.4.0; python_version<'3.9'",
 ]
 
 [project.optional-dependencies]

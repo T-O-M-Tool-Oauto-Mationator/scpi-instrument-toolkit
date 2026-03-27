@@ -45,6 +45,10 @@ class ReplContext:
         self._data_dir_override: Optional[str] = None
         self._scripts_dir_override: Optional[str] = None
 
+        # Last configured instrument mode (for unit auto-detection)
+        # Keyed by device name, e.g. {"dmm": "vdc", "psu": "v"}
+        self.last_instrument_mode: Dict[str, str] = {}
+
         # DMM text loop state
         self.dmm_text_loop_active: bool = False
         self.dmm_text_frames: list = []

@@ -55,10 +55,10 @@ psu1 chan 1 on
 psu1 set {voltage}
 sleep 0.5
 
-psu1 meas_store v psu_v unit=V
+psu_v = psu1 read
 
 dmm1 config vdc
-dmm1 meas_store {label} unit=V
+{label} = dmm1 read
 
 print "=== Test complete ==="
 log print
@@ -70,15 +70,15 @@ After running, `log print` shows:
 
 ```text
 Label      Value      Unit   Source
-psu_v      4.9987     V      psu.meas
+psu_v      4.9987     V      psu.read
 vtest      4.9992     V      dmm.read
 ```
 
 Compute the error between PSU setpoint and DMM reading:
 
 ```text
-calc error m["vtest"] - 5.0 unit=V
-calc error_pct (m["vtest"] - 5.0) / 5.0 * 100 unit=%
+calc error {vtest} - 5.0 unit=V
+calc error_pct ({vtest} - 5.0) / 5.0 * 100 unit=%
 ```
 
 ---
@@ -120,7 +120,7 @@ for v 1.0 2.0 3.3 5.0 9.0 12.0
   print Setting {v}V...
   psu1 set {v}
   sleep 0.5
-  dmm1 meas_store v_{v} unit=V
+  v_{v} = dmm1 read
 end
 
 psu1 chan 1 off
@@ -134,7 +134,7 @@ log save voltage_sweep.csv
 After running, each voltage step is recorded as `v_1.0`, `v_2.0`, `v_3.3`, etc. You can compute differences:
 
 ```text
-calc delta_3v3_5v m["v_5.0"] - m["v_3.3"] unit=V
+calc delta_3v3_5v {v_5.0} - {v_3.3} unit=V
 ```
 
 ---
@@ -197,8 +197,8 @@ log print
 **Check accuracy:**
 
 ```text
-calc freq_error (m["meas_freq"] - 1000) / 1000 * 100 unit=%
-calc amp_error (m["meas_pk2pk"] - 2.0) / 2.0 * 100 unit=%
+calc freq_error ({meas_freq} - 1000) / 1000 * 100 unit=%
+calc amp_error ({meas_pk2pk} - 2.0) / 2.0 * 100 unit=%
 ```
 
 ---
@@ -259,7 +259,7 @@ for f 100 500 1000 5000 10000 50000
   sleep 0.4
   scope1 meas_store 1 PK2PK in_{f} unit=V
   scope1 meas_store 2 PK2PK out_{f} unit=V
-  calc gain_{f} m["out_{f}"] / m["in_{f}"]
+  calc gain_{f} {out_{f}} / {in_{f}}
 end
 ```
 
@@ -305,7 +305,7 @@ for v {v_start} 2.0 4.0 6.0 8.0 10.0 {v_end}
   print Ramping to {v}V
   psu1 set {v}
   sleep {delay}
-  psu1 meas_store v ramp_{v} unit=V
+  ramp_{v} = psu1 read
 end
 
 print "=== Ramp complete ==="
@@ -337,12 +337,12 @@ psu1 set {voltage}
 sleep {delay}
 
 # 4. Measure and store
-psu1 meas_store v psu_out unit=V
+psu_out = psu1 read
 dmm1 config vdc
-dmm1 meas_store dmm_out unit=V
+dmm_out = dmm1 read
 
 # 5. Derived calculations
-calc error m["dmm_out"] - m["psu_out"] unit=V
+calc error {dmm_out} - {psu_out} unit=V
 
 # 6. Export
 log print

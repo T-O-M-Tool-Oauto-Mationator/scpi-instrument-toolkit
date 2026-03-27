@@ -1,5 +1,6 @@
 """Base class for REPL command handlers."""
 
+import os
 import shlex
 from typing import List
 
@@ -27,6 +28,11 @@ class BaseCommand:
 
     def parse_args(self, arg: str) -> List[str]:
         try:
+            if os.name == "nt":
+                # On Windows, use posix=False to preserve backslashes in paths,
+                # then strip surrounding quotes that posix=False retains.
+                tokens = shlex.split(arg, posix=False)
+                return [t[1:-1] if len(t) >= 2 and t[0] in ('"', "'") and t[-1] == t[0] else t for t in tokens]
             return shlex.split(arg)
         except ValueError as exc:
             ColorPrinter.error(f"Parse error: {exc}")

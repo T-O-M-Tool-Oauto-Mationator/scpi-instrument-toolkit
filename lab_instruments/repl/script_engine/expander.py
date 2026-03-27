@@ -12,6 +12,9 @@ from ..syntax import safe_eval, substitute_legacy
 # Matches Python-style assignment: identifier = expression
 _ASSIGN_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.+)$")
 
+# Matches instrument read RHS: <instrument> read [unit=X]
+_INSTR_READ_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*)\s+read(?:\s+(.*))?$")
+
 
 def expand_script_lines(
     lines: List[str],
@@ -200,6 +203,12 @@ def expand_script_lines(
         if _assign_match:
             key = _assign_match.group(1)
             raw_val = substitute_legacy(_assign_match.group(2).strip(), variables)
+            # Instrument read assignment: value = dmm read [unit=X]
+            # Emit the full line as a command so the shell handles it at runtime
+            instr_read_match = _INSTR_READ_RE.match(raw_val)
+            if instr_read_match:
+                expanded.append((raw_line, _loop_ctx + raw_line))
+                continue
             try:
                 num_vars = {}
                 for k, v in variables.items():

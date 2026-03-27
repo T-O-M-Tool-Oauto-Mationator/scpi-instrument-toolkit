@@ -460,6 +460,7 @@ class ScopeCommand(BaseCommand):
             ColorPrinter.warning("meas_force not supported on this oscilloscope model")
 
     def _handle_meas_store(self, args, dev) -> None:
+        ColorPrinter.warning("'meas_store' is deprecated — use 'varname = scope read' instead.")
         channels = self.parse_channels(args[1], max_ch=4)
         measure_type = args[2]
         label = args[3]

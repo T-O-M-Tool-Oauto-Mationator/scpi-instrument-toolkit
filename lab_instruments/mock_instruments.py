@@ -294,6 +294,40 @@ class MockScope(MockBase):
     def configure_measurement(self, channel, measurement_type):
         pass
 
+    # Measurement shorthands (match Tektronix driver API)
+    def measure_frequency(self, ch):
+        return self.measure_bnf(ch, "FREQUENCY")
+
+    def measure_peak_to_peak(self, ch):
+        return self.measure_bnf(ch, "PK2PK")
+
+    def measure_rms(self, ch):
+        return self.measure_bnf(ch, "RMS")
+
+    def measure_mean(self, ch):
+        return self.measure_bnf(ch, "MEAN")
+
+    def measure_max(self, ch):
+        return self.measure_bnf(ch, "MAXIMUM")
+
+    def measure_min(self, ch):
+        return self.measure_bnf(ch, "MINIMUM")
+
+    def measure_period(self, ch):
+        return self.measure_bnf(ch, "PERIOD")
+
+    def get_waveform_data(self, ch):
+        return [random.randint(0, 255) for _ in range(1000)]
+
+    def get_waveform_scaled(self, ch):
+        n = 1000
+        dt = 1e-6
+        time_vals = [i * dt for i in range(n)]
+        import math
+
+        volt_vals = [math.sin(2 * math.pi * 1000 * t) for t in time_vals]
+        return time_vals, volt_vals
+
     def measure_delay(self, ch1, ch2, edge1="RISE", edge2="RISE", direction="FORWARDS"):
         return round(random.uniform(-1e-6, 1e-6), 9)
 

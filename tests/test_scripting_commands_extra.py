@@ -146,9 +146,15 @@ class TestOpenFileNonblocking:
         with open(path, "w") as f:
             f.write("test\n")
 
-        with patch.dict(os.environ, {"EDITOR": "echo"}), patch("subprocess.Popen") as mock_popen:
-            ScriptingCommands._open_file_nonblocking(path)
-            mock_popen.assert_called()
+        if os.name == "nt":
+            # On Windows, _open_file_nonblocking calls os.startfile and returns
+            with patch("os.startfile") as mock_startfile:
+                ScriptingCommands._open_file_nonblocking(path)
+                mock_startfile.assert_called_once_with(path)
+        else:
+            with patch.dict(os.environ, {"EDITOR": "echo"}), patch("subprocess.Popen") as mock_popen:
+                ScriptingCommands._open_file_nonblocking(path)
+                mock_popen.assert_called()
 
     def test_open_file_without_editor_env(self, tmp_path):
         """Test _open_file_nonblocking without EDITOR set (uses xdg-open)."""
@@ -158,10 +164,16 @@ class TestOpenFileNonblocking:
         with open(path, "w") as f:
             f.write("test\n")
 
-        env_without_editor = {k: v for k, v in os.environ.items() if k != "EDITOR"}
-        with patch.dict(os.environ, env_without_editor, clear=True), patch("subprocess.Popen") as mock_popen:
-            ScriptingCommands._open_file_nonblocking(path)
-            mock_popen.assert_called()
+        if os.name == "nt":
+            # On Windows, _open_file_nonblocking calls os.startfile and returns
+            with patch("os.startfile") as mock_startfile:
+                ScriptingCommands._open_file_nonblocking(path)
+                mock_startfile.assert_called_once_with(path)
+        else:
+            env_without_editor = {k: v for k, v in os.environ.items() if k != "EDITOR"}
+            with patch.dict(os.environ, env_without_editor, clear=True), patch("subprocess.Popen") as mock_popen:
+                ScriptingCommands._open_file_nonblocking(path)
+                mock_popen.assert_called()
 
 
 # ---------------------------------------------------------------------------

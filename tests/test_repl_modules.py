@@ -494,10 +494,26 @@ class TestReplContext:
 
     def test_get_scripts_dir_env_bad_path(self, monkeypatch):
         ctx = ReplContext()
-        # Use a path that will fail os.makedirs but is a valid env var string
-        monkeypatch.setenv("SCPI_SCRIPTS_DIR", "/dev/null/impossible/path")
+        # Use a path that will fail os.makedirs on all platforms
+        bad_path = "/dev/null/impossible/path"
+        monkeypatch.setenv("SCPI_SCRIPTS_DIR", bad_path)
+        monkeypatch.setattr("os.makedirs", self._fail_makedirs(bad_path))
         with pytest.raises(RuntimeError, match="cannot be created"):
             ctx.get_scripts_dir()
+
+    @staticmethod
+    def _fail_makedirs(target_path):
+        """Return a makedirs replacement that fails for *target_path*."""
+        import os as _os
+
+        _real = _os.makedirs
+
+        def _mock(path, *args, **kwargs):
+            if _os.path.normpath(path) == _os.path.normpath(target_path):
+                raise OSError(f"Cannot create '{path}'")
+            return _real(path, *args, **kwargs)
+
+        return _mock
 
     def test_script_file(self):
         ctx = ReplContext()
@@ -521,7 +537,9 @@ class TestReplContext:
 
     def test_get_data_dir_env_bad_path(self, monkeypatch):
         ctx = ReplContext()
-        monkeypatch.setenv("SCPI_DATA_DIR", "/dev/null/impossible/path")
+        bad_path = "/dev/null/impossible/path"
+        monkeypatch.setenv("SCPI_DATA_DIR", bad_path)
+        monkeypatch.setattr("os.makedirs", self._fail_makedirs(bad_path))
         with pytest.raises(RuntimeError, match="cannot be created"):
             ctx.get_data_dir()
 
