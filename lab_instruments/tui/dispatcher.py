@@ -24,6 +24,18 @@ class CommandDispatcher(Protocol):
         """Return a copy of all recorded measurements safe to read from the event loop."""
         ...
 
+    def get_script_names(self) -> list[str]:
+        """Return sorted list of loaded script names."""
+        ...
+
+    def get_vars_snapshot(self) -> dict[str, str]:
+        """Return a copy of current script variable bindings."""
+        ...
+
+    def get_safety_snapshot(self) -> dict:
+        """Return a summary of current safety state."""
+        ...
+
 
 class LocalDispatcher:
     """Run a command in process. One InstrumentRepl instance is reused to preserve session state."""
@@ -70,6 +82,26 @@ class LocalDispatcher:
         Returns copies - never live references into MeasurementStore.
         """
         return [dict(e) for e in self.repl.ctx.measurements.entries]
+
+    def get_script_names(self) -> list[str]:
+        """Return sorted list of loaded script names."""
+        return sorted(self.repl.ctx.scripts.keys())
+
+    def get_vars_snapshot(self) -> dict[str, str]:
+        """Return a copy of current script variable bindings."""
+        return dict(self.repl.ctx.script_vars)
+
+    def get_safety_snapshot(self) -> dict:
+        """Return a summary of current safety state.
+
+        Keys: limit_count (int), active_script (bool), exit_on_error (bool).
+        """
+        ctx = self.repl.ctx
+        return {
+            "limit_count": len(ctx.safety_limits),
+            "active_script": ctx.in_script,
+            "exit_on_error": ctx.exit_on_error,
+        }
 
     def get_completions(self, text: str) -> list[str]:
         """Return sorted, deduplicated completion candidates for text.

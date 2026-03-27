@@ -12,10 +12,11 @@ from textual.events import Key
 from textual.widgets import ContentSwitcher, Footer, Header, Input, RichLog
 from textual.worker import Worker, WorkerState
 
+from .command_provider import SCPICommandProvider
 from .completer import ReplSuggester
 from .dispatcher import CommandDispatcher, LocalDispatcher
 from .history import CommandHistory
-from .widgets import DeviceSidebar, MeasurementTable
+from .widgets import DeviceSidebar, MeasurementTable, SafetyBar, ScriptBrowser, VarInspector
 
 # ANSI decoder for color escape sequences from command output
 _ANSI_DECODER = AnsiDecoder()
@@ -27,10 +28,14 @@ class SCPIApp(App):
     TITLE = "SCPI Instrument Toolkit"
     SUB_TITLE = "lab_instruments"
 
+    COMMANDS = App.COMMANDS | {SCPICommandProvider}
+
     BINDINGS = [
         Binding("ctrl+l", "clear_log", "Clear", show=True),
         Binding("ctrl+d", "toggle_sidebar", "Devices", show=True),
-        Binding("ctrl+m", "toggle_measurements", "Measurements", show=True),
+        Binding("ctrl+m", "toggle_measurements", "Meas", show=True),
+        Binding("ctrl+r", "show_scripts", "Scripts", show=True),
+        Binding("ctrl+v", "show_vars", "Vars", show=True),
         Binding("q", "quit", "Quit", show=True),
     ]
 
@@ -57,7 +62,18 @@ class SCPIApp(App):
         height: 1fr;
         border: solid $primary-darken-2;
     }
+    ScriptBrowser {
+        height: 1fr;
+        border: solid $primary-darken-2;
+    }
+    VarInspector {
+        height: 1fr;
+        border: solid $primary-darken-2;
+    }
     Input {
+        dock: bottom;
+    }
+    SafetyBar {
         dock: bottom;
     }
     """
@@ -67,19 +83,16 @@ class SCPIApp(App):
         dispatcher: Optional[CommandDispatcher] = None,
         device_poll_interval: float = 2.0,
         meas_poll_interval: float = 5.0,
+        script_poll_interval: float = 2.0,
+        safety_poll_interval: float = 1.0,
     ) -> None:
-        """Initialize the app and dispatcher.
-
-        Args:
-            dispatcher: Command dispatcher to use. Defaults to LocalDispatcher.
-            device_poll_interval: Seconds between device list refreshes.
-            meas_poll_interval: Seconds between measurement table refreshes.
-        """
         super().__init__()
         self._dispatcher: CommandDispatcher = dispatcher if dispatcher is not None else LocalDispatcher()
         self._history: CommandHistory = CommandHistory()
         self._device_poll_interval: float = device_poll_interval
         self._meas_poll_interval: float = meas_poll_interval
+        self._script_poll_interval: float = script_poll_interval
+        self._safety_poll_interval: float = safety_poll_interval
 
     def compose(self) -> ComposeResult:
         """Build widget tree."""
@@ -93,7 +106,10 @@ class SCPIApp(App):
                         id="meas-view",
                         data_dir_getter=self._get_data_dir,
                     )
+                    yield ScriptBrowser(id="script-view")
+                    yield VarInspector(id="vars-view")
         yield Input(placeholder="Enter command...", id="cmd_input", suggester=ReplSuggester(self._dispatcher))
+        yield SafetyBar(id="safety-bar")
         yield Footer()
 
     def _get_data_dir(self) -> str:
@@ -107,18 +123,42 @@ class SCPIApp(App):
         self.query_one("#cmd_input", Input).focus()
         self.set_interval(self._device_poll_interval, self._refresh_devices)
         self.set_interval(self._meas_poll_interval, self._refresh_measurements)
+        self.set_interval(self._script_poll_interval, self._refresh_scripts)
+        self.set_interval(self._script_poll_interval, self._refresh_vars)
+        self.set_interval(self._safety_poll_interval, self._refresh_safety)
+
+    # ------------------------------------------------------------------
+    # Refresh helpers
+    # ------------------------------------------------------------------
 
     def _refresh_devices(self) -> None:
-        """Pull a device snapshot and update the sidebar reactive."""
         if not hasattr(self._dispatcher, "get_device_snapshot"):
             return
         self.query_one(DeviceSidebar).devices = self._dispatcher.get_device_snapshot()
 
     def _refresh_measurements(self) -> None:
-        """Pull a measurement snapshot and update the table reactive."""
         if not hasattr(self._dispatcher, "get_measurement_snapshot"):
             return
         self.query_one(MeasurementTable).measurements = self._dispatcher.get_measurement_snapshot()
+
+    def _refresh_scripts(self) -> None:
+        if not hasattr(self._dispatcher, "get_script_names"):
+            return
+        self.query_one(ScriptBrowser).scripts = self._dispatcher.get_script_names()
+
+    def _refresh_vars(self) -> None:
+        if not hasattr(self._dispatcher, "get_vars_snapshot"):
+            return
+        self.query_one(VarInspector).variables = self._dispatcher.get_vars_snapshot()
+
+    def _refresh_safety(self) -> None:
+        if not hasattr(self._dispatcher, "get_safety_snapshot"):
+            return
+        self.query_one(SafetyBar).safety_info = self._dispatcher.get_safety_snapshot()
+
+    # ------------------------------------------------------------------
+    # Event handlers
+    # ------------------------------------------------------------------
 
     def on_key(self, event: Key) -> None:
         """Intercept up/down arrows when the command input is focused."""
@@ -144,10 +184,16 @@ class SCPIApp(App):
             return
         self._history.push(cmd)
         event.input.clear()
-        # Output only visible in log-view; switch there automatically
-        switcher = self.query_one("#main-content", ContentSwitcher)
-        if switcher.current != "log-view":
-            switcher.current = "log-view"
+        # Always switch to log-view when a command is submitted
+        self.query_one("#main-content", ContentSwitcher).current = "log-view"
+        self.query_one("#log-view", RichLog).write(f"[bold cyan]> {cmd}[/bold cyan]")
+        self._dispatch_command(cmd)
+
+    def on_script_browser_script_selected(self, event: ScriptBrowser.ScriptSelected) -> None:
+        """Run a script when selected from the browser."""
+        event.stop()
+        self.query_one("#main-content", ContentSwitcher).current = "log-view"
+        cmd = f"run_script {event.script_name}"
         self.query_one("#log-view", RichLog).write(f"[bold cyan]> {cmd}[/bold cyan]")
         self._dispatch_command(cmd)
 
@@ -163,6 +209,7 @@ class SCPIApp(App):
         if event.state == WorkerState.SUCCESS:
             self._write_output(event.worker.result or "")
             self._refresh_measurements()
+            self._refresh_vars()
         elif event.state == WorkerState.ERROR:
             self._write_output(f"\033[91m[ERROR] {event.worker.error}\033[0m\n")
 
@@ -171,6 +218,10 @@ class SCPIApp(App):
         log = self.query_one("#log-view", RichLog)
         for line in _ANSI_DECODER.decode(raw):
             log.write(line)
+
+    # ------------------------------------------------------------------
+    # Actions
+    # ------------------------------------------------------------------
 
     def action_clear_log(self) -> None:
         """Clear output log."""
@@ -185,6 +236,14 @@ class SCPIApp(App):
         """Toggle between log view and measurement table."""
         switcher = self.query_one("#main-content", ContentSwitcher)
         switcher.current = "meas-view" if switcher.current != "meas-view" else "log-view"
+
+    def action_show_scripts(self) -> None:
+        """Switch to script browser panel."""
+        self.query_one("#main-content", ContentSwitcher).current = "script-view"
+
+    def action_show_vars(self) -> None:
+        """Switch to variable inspector panel."""
+        self.query_one("#main-content", ContentSwitcher).current = "vars-view"
 
     def action_quit(self) -> None:
         """Exit app."""
