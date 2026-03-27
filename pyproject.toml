@@ -22,6 +22,7 @@ dependencies = [
     "zeroconf>=0.131.0",
     "numpy>=1.21.0",
     "fpdf2>=2.7.0",
+    "textual>=1.8.0",
 ]
 
 [project.optional-dependencies]
@@ -32,6 +33,7 @@ lint = ["ruff>=0.4.0"]
 
 [project.scripts]
 scpi-repl = "lab_instruments.repl:main"
+scpi-tui = "lab_instruments.tui.app:main"
 
 [project.urls]
 Homepage = "https://github.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit"
