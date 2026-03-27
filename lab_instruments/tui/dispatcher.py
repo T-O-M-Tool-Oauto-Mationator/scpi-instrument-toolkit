@@ -42,6 +42,23 @@ class LocalDispatcher:
             self.repl.onecmd(command)
         return f.getvalue()
 
+    def get_device_snapshot(self) -> list[dict]:
+        """Return a snapshot of connected devices safe to read from the event loop.
+
+        Each dict has: name, display_name, selected (bool), base_type.
+        Returns copies of primitive values - never a live reference.
+        """
+        registry = self.repl.ctx.registry
+        return [
+            {
+                "name": name,
+                "display_name": registry.display_name(name),
+                "selected": name == registry.selected,
+                "base_type": registry.base_type(name),
+            }
+            for name in sorted(registry.devices)
+        ]
+
     def get_completions(self, text: str) -> list[str]:
         """Return sorted, deduplicated completion candidates for text.
 

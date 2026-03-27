@@ -7,6 +7,7 @@ from rich.ansi import AnsiDecoder
 from textual import work
 from textual.app import App, ComposeResult
 from textual.binding import Binding
+from textual.containers import Horizontal, Vertical
 from textual.events import Key
 from textual.widgets import Footer, Header, Input, RichLog
 from textual.worker import Worker, WorkerState
@@ -14,6 +15,7 @@ from textual.worker import Worker, WorkerState
 from .completer import ReplSuggester
 from .dispatcher import CommandDispatcher, LocalDispatcher
 from .history import CommandHistory
+from .widgets import DeviceSidebar
 
 # ANSI decoder for color escape sequences from command output
 _ANSI_DECODER = AnsiDecoder()
@@ -25,40 +27,71 @@ class SCPIApp(App):
     TITLE = "SCPI Instrument Toolkit"
     SUB_TITLE = "lab_instruments"
 
-    # keyboard shortcuts shown in footer
     BINDINGS = [
         Binding("ctrl+l", "clear_log", "Clear", show=True),
+        Binding("ctrl+d", "toggle_sidebar", "Devices", show=True),
         Binding("q", "quit", "Quit", show=True),
     ]
 
-    # layout CSS for Textual widgets
     DEFAULT_CSS = """
+    #main-row {
+        height: 1fr;
+    }
+    DeviceSidebar {
+        width: 22;
+        border-right: solid $primary-darken-2;
+    }
     RichLog {
         height: 1fr;
         border: solid $primary-darken-2;
         padding: 0 1;
+    }
+    #input-area {
+        height: auto;
+        dock: bottom;
     }
     Input {
         dock: bottom;
     }
     """
 
-    def __init__(self, dispatcher: Optional[CommandDispatcher] = None) -> None:
-        """Initialize the app and dispatcher."""
+    def __init__(
+        self,
+        dispatcher: Optional[CommandDispatcher] = None,
+        device_poll_interval: float = 2.0,
+    ) -> None:
+        """Initialize the app and dispatcher.
+
+        Args:
+            dispatcher: Command dispatcher to use. Defaults to LocalDispatcher.
+            device_poll_interval: Seconds between device list refreshes.
+        """
         super().__init__()
         self._dispatcher: CommandDispatcher = dispatcher if dispatcher is not None else LocalDispatcher()
         self._history: CommandHistory = CommandHistory()
+        self._device_poll_interval: float = device_poll_interval
 
     def compose(self) -> ComposeResult:
         """Build widget tree."""
         yield Header()
-        yield RichLog(id="output", wrap=True, auto_scroll=True, markup=True)
+        with Horizontal(id="main-row"):
+            yield DeviceSidebar(id="device-sidebar")
+            with Vertical(id="log-area"):
+                yield RichLog(id="output", wrap=True, auto_scroll=True, markup=True)
         yield Input(placeholder="Enter command...", id="cmd_input", suggester=ReplSuggester(self._dispatcher))
         yield Footer()
 
     def on_mount(self) -> None:
-        """Focus input on startup."""
+        """Focus input and start device polling."""
         self.query_one("#cmd_input", Input).focus()
+        self.set_interval(self._device_poll_interval, self._refresh_devices)
+
+    def _refresh_devices(self) -> None:
+        """Pull a device snapshot and update the sidebar reactive."""
+        if not hasattr(self._dispatcher, "get_device_snapshot"):
+            return
+        snapshot = self._dispatcher.get_device_snapshot()
+        self.query_one(DeviceSidebar).devices = snapshot
 
     def on_key(self, event: Key) -> None:
         """Intercept up/down arrows when the command input is focused."""
@@ -110,6 +143,11 @@ class SCPIApp(App):
     def action_clear_log(self) -> None:
         """Clear output log."""
         self.query_one("#output", RichLog).clear()
+
+    def action_toggle_sidebar(self) -> None:
+        """Toggle the device sidebar visibility."""
+        sidebar = self.query_one(DeviceSidebar)
+        sidebar.display = not sidebar.display
 
     def action_quit(self) -> None:
         """Exit app."""
