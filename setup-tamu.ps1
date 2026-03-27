@@ -266,45 +266,39 @@ if (-not $pipCmd) {
 # ---------------------------------------------------------------------------
 Write-Step 7 "Installing Claude Code..."
 
+$claudeDir = $null
 try {
     $claudeInstall = Invoke-RestMethod "https://claude.ai/install.ps1"
-    Invoke-Expression $claudeInstall
+    # Capture install output to parse the install location
+    $installOutput = Invoke-Expression $claudeInstall | Out-String
+    Write-Host $installOutput
+    # Parse "Location: <path>" from the installer output
+    if ($installOutput -match "Location:\s*(.+\.exe)") {
+        $claudeExePath = $matches[1].Trim()
+        $claudeDir = Split-Path $claudeExePath -Parent
+    }
     Write-Host "Claude Code installed." -ForegroundColor Green
 } catch {
     Write-Host "Claude Code install failed: $_" -ForegroundColor Red
     Write-Host "Try manually: irm https://claude.ai/install.ps1 | iex" -ForegroundColor Yellow
 }
 
-# Find claude.exe and add its directory to user PATH
-# The installer self-extracts under $env:USERPROFILE\.claude\
-$claudeCandidates = @(
-    (Join-Path $env:USERPROFILE ".local\bin"),
-    (Join-Path $env:USERPROFILE ".claude\local\bin"),
-    (Join-Path $env:USERPROFILE ".claude\bin"),
-    (Join-Path $env:LOCALAPPDATA "AnthropicClaude\bin"),
-    (Join-Path $env:APPDATA "npm"),
-    (Join-Path $env:LOCALAPPDATA "Programs\claude")
-)
-$claudeDir = $null
-foreach ($dir in $claudeCandidates) {
-    if ((Test-Path (Join-Path $dir "claude.exe")) -or (Test-Path (Join-Path $dir "claude.cmd"))) {
-        $claudeDir = $dir
-        break
+# Fall back to known locations if output parsing missed it
+if (-not $claudeDir) {
+    $claudeCandidates = @(
+        (Join-Path $env:USERPROFILE ".local\bin"),
+        (Join-Path $env:USERPROFILE ".claude\local\bin"),
+        (Join-Path $env:USERPROFILE ".claude\bin"),
+        (Join-Path $env:LOCALAPPDATA "AnthropicClaude\bin"),
+        (Join-Path $env:APPDATA "npm")
+    )
+    foreach ($dir in $claudeCandidates) {
+        if ((Test-Path (Join-Path $dir "claude.exe")) -or (Test-Path (Join-Path $dir "claude.cmd"))) {
+            $claudeDir = $dir; break
+        }
     }
 }
-if (-not $claudeDir) {
-    $found = Get-ChildItem -Path (Join-Path $env:USERPROFILE ".claude") `
-        -Filter "claude.exe" -Recurse -ErrorAction SilentlyContinue |
-        Select-Object -First 1
-    if ($found) { $claudeDir = $found.DirectoryName }
-}
-if (-not $claudeDir) {
-    $found = Get-ChildItem -Path $env:LOCALAPPDATA, $env:APPDATA `
-        -Filter "claude.exe" -Recurse -ErrorAction SilentlyContinue -Depth 6 |
-        Where-Object { $_.Name -eq "claude.exe" } |
-        Select-Object -First 1
-    if ($found) { $claudeDir = $found.DirectoryName }
-}
+
 if ($claudeDir) {
     $curPath = [Environment]::GetEnvironmentVariable("Path", "User")
     $already = ($curPath -split ";") | Where-Object { $_.TrimEnd("\").ToLowerInvariant() -eq $claudeDir.TrimEnd("\").ToLowerInvariant() }
@@ -320,7 +314,7 @@ if ($claudeDir) {
         Write-Host "claude already on PATH: $claudeDir" -ForegroundColor Yellow
     }
 } else {
-    Write-Host "Could not find claude install dir — open a new terminal and run: claude" -ForegroundColor Yellow
+    Write-Host "Could not detect claude install dir — open a new terminal and run: claude" -ForegroundColor Yellow
 }
 
 # ---------------------------------------------------------------------------
