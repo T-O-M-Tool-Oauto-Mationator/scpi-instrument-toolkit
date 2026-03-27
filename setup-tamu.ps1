@@ -278,6 +278,7 @@ try {
 # Find claude.exe and add its directory to user PATH
 # The installer self-extracts under $env:USERPROFILE\.claude\
 $claudeCandidates = @(
+    (Join-Path $env:USERPROFILE ".local\bin"),
     (Join-Path $env:USERPROFILE ".claude\local\bin"),
     (Join-Path $env:USERPROFILE ".claude\bin"),
     (Join-Path $env:LOCALAPPDATA "AnthropicClaude\bin"),

@@ -98,6 +98,7 @@ Write-Step 4 "Uninstalling Claude Code..."
 
 $claudeExe = $null
 $claudeCandidates = @(
+    (Join-Path $env:USERPROFILE ".local\bin\claude.exe"),
     (Join-Path $env:USERPROFILE ".claude\local\bin\claude.exe"),
     (Join-Path $env:USERPROFILE ".claude\bin\claude.exe"),
     (Join-Path $env:LOCALAPPDATA "AnthropicClaude\bin\claude.exe")
