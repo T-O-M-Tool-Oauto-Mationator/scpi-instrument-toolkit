@@ -2,7 +2,7 @@
 
 Scripts are named sequences of REPL commands stored in the session. They support variables, loops, sub-scripts, and operator interaction — letting you automate full test sequences.
 
-Script directives (`set`, `array`, `print`, `pause`, `input`, `sleep`, `repeat`, `for`, `call`, `import`, `export`, `breakpoint`, `upper_limit`, `lower_limit`) are also valid as **interactive REPL commands** — you can test them at the prompt before putting them in a script.
+Script directives (`set`, `array`, `linspace`, `print`, `pause`, `sleep`, `repeat`, `for`, `call`, `import`, `export`, `breakpoint`, `upper_limit`, `lower_limit`) are also valid as **interactive REPL commands** — you can test them at the prompt before putting them in a script. `input` and `linspace` use assignment syntax: `var = input [prompt]`, `var = linspace start stop [count]`.
 
 ---
 
@@ -494,7 +494,7 @@ pause Swap DUT before continuing
 ### input — prompt for a value
 
 ```
-input <varname> [prompt text]
+<varname> = input [prompt text]
 ```
 
 Prompts the operator to type a value at runtime. The entered text is stored as `{varname}` and substituted into all subsequent lines.
@@ -505,15 +505,15 @@ Prompts the operator to type a value at runtime. The entered text is stored as `
 | `prompt text` | optional | Text shown to operator. Default: the variable name.                                                 |
 
 ```
-input voltage Enter target voltage (V):
-input dut_id DUT serial number:
-input operator_name Operator name:
+voltage = input Enter target voltage (V):
+dut_id = input DUT serial number:
+operator_name = input Operator name:
 ```
 
-After `input voltage`, you can use `{voltage}` anywhere:
+After the prompt, you can use `{voltage}` anywhere:
 
 ```
-input voltage Enter target voltage (V):
+voltage = input Enter target voltage (V):
 psu1 set {voltage}
 print "Voltage set to {voltage}V"
 dmm1 config vdc
@@ -521,7 +521,7 @@ dmm1 meas_store output_{voltage} unit=V
 ```
 
 !!! note
-Unlike `set`, values captured by `input` **cannot** be overridden from the command line at `script run` time. They are always prompted interactively.
+    Values captured by `input` **cannot** be overridden from the command line at `script run` time. They are always prompted interactively.
 
 ---
 

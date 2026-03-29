@@ -209,6 +209,12 @@ def expand_script_lines(
             if instr_read_match:
                 expanded.append((raw_line, _loop_ctx + raw_line))
                 continue
+            # input assignment: VAR = input [prompt]
+            # Must run at runtime (user interaction), so emit as command
+            inp_parts = raw_val.split(None, 1)
+            if inp_parts and inp_parts[0] == "input":
+                expanded.append((raw_line, _loop_ctx + raw_line))
+                continue
             # linspace assignment: VAR = linspace start stop [count]
             ls_parts = raw_val.split()
             if ls_parts and ls_parts[0] == "linspace" and len(ls_parts) >= 3:

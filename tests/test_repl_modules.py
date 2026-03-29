@@ -808,23 +808,23 @@ class TestVariableCommands:
         out = capsys.readouterr().out
         assert "Sleeping" in out
 
-    def test_do_input(self, capsys, monkeypatch):
+    def test_input_via_assignment(self, capsys, monkeypatch):
         vc, ctx = self._make()
         monkeypatch.setattr("builtins.input", lambda prompt: "42")
-        vc.do_input("myvar Enter a value")
+        vc._assign_var("myvar", "input Enter a value")
         assert ctx.script_vars["myvar"] == "42"
 
-    def test_do_input_no_args(self, capsys):
-        vc, ctx = self._make()
-        vc.do_input("")
-        out = capsys.readouterr().out
-        assert "Usage" in out
-
-    def test_do_input_default_prompt(self, capsys, monkeypatch):
+    def test_input_default_prompt(self, capsys, monkeypatch):
         vc, ctx = self._make()
         monkeypatch.setattr("builtins.input", lambda prompt: "val")
-        vc.do_input("x")
+        vc._assign_var("x", "input")
         assert ctx.script_vars["x"] == "val"
+
+    def test_do_input_legacy_shows_error(self, capsys):
+        vc, ctx = self._make()
+        vc.do_input("myvar prompt")
+        out = capsys.readouterr().out
+        assert "var = input" in out.lower() or "varname = input" in out.lower()
 
     def test_do_pause(self, capsys, monkeypatch):
         vc, ctx = self._make()

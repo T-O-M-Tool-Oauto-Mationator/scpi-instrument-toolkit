@@ -61,15 +61,8 @@ class VariableCommands(BaseCommand):
         builtins.input(f"{ColorPrinter.YELLOW}{prompt}{ColorPrinter.RESET} ")
 
     def do_input(self, arg: str) -> None:
-        args = self.parse_args(arg)
-        if not args:
-            ColorPrinter.warning("Usage: input <varname> [prompt]")
-            return
-        varname = args[0]
-        prompt = " ".join(args[1:]) if len(args) > 1 else f"{varname}: "
-        value = builtins.input(f"{ColorPrinter.YELLOW}{prompt}{ColorPrinter.RESET} ")
-        self.ctx.script_vars[varname] = value
-        ColorPrinter.success(f"{varname} = {value!r}")
+        """Legacy input command — redirects to var = input syntax."""
+        ColorPrinter.error("Use: varname = input [prompt]")
 
     def try_instrument_read(self, varname: str, rhs: str) -> bool:
         """Attempt to handle ``varname = <instrument> read [unit=X]``.
@@ -162,6 +155,14 @@ class VariableCommands(BaseCommand):
     def _assign_var(self, key: str, raw_val: str) -> None:
         """Core variable assignment — shared by 'var = expr' and 'set var expr'."""
         raw_val = substitute_vars(raw_val, self.ctx.script_vars, self.ctx.measurements)
+        # input: VAR = input [prompt]
+        inp_parts = raw_val.split(None, 1)
+        if inp_parts and inp_parts[0] == "input":
+            prompt = inp_parts[1] if len(inp_parts) > 1 else f"{key}: "
+            value = builtins.input(f"{ColorPrinter.YELLOW}{prompt}{ColorPrinter.RESET} ")
+            self.ctx.script_vars[key] = value
+            ColorPrinter.success(f"{key} = {value!r}")
+            return
         # linspace: VAR = linspace start stop [count]
         ls_parts = raw_val.split()
         if ls_parts and ls_parts[0] == "linspace" and len(ls_parts) >= 3:
