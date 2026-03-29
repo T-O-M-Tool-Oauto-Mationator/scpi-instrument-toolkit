@@ -125,10 +125,10 @@ class NI_PXIe_4139:
         self._session.commit()
 
     def set_current_limit(self, current: float):
-        """Set the current limit."""
+        """Set the current limit (compliance magnitude, always positive)."""
         self._check_session()
-        if not -self.MAX_CURRENT <= current <= self.MAX_CURRENT:
-            raise ValueError(f"Current limit must be between -{self.MAX_CURRENT} and {self.MAX_CURRENT} A")
+        if not 0 <= current <= self.MAX_CURRENT:
+            raise ValueError(f"Current limit must be between 0 and {self.MAX_CURRENT} A")
         self._session.current_limit = current
         self._session.commit()
 
@@ -219,8 +219,8 @@ class NI_PXIe_4139:
         self._check_session()
         if not -self.MAX_VOLTAGE <= voltage <= self.MAX_VOLTAGE:
             raise ValueError(f"Voltage must be between -{self.MAX_VOLTAGE} and {self.MAX_VOLTAGE} V")
-        if current_limit is not None and not -self.MAX_CURRENT <= current_limit <= self.MAX_CURRENT:
-            raise ValueError(f"Current limit must be between -{self.MAX_CURRENT} and {self.MAX_CURRENT} A")
+        if current_limit is not None and not 0 <= current_limit <= self.MAX_CURRENT:
+            raise ValueError(f"Current limit must be between 0 and {self.MAX_CURRENT} A")
         self._session.output_function = nidcpower.OutputFunction.DC_VOLTAGE
         self._session.voltage_level = voltage
         if current_limit is not None:

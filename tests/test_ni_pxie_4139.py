@@ -83,15 +83,10 @@ class TestNIPXIe4139_SetCurrentLimit:
         with pytest.raises(ValueError):
             smu.set_current_limit(5.0)
 
-    def test_current_limit_negative_accepted(self, ni_pxie_4139):
-        smu, ms = ni_pxie_4139
-        smu.set_current_limit(-0.5)
-        assert ms.current_limit == -0.5
-
-    def test_current_limit_too_negative_raises(self, ni_pxie_4139):
+    def test_current_limit_negative_raises(self, ni_pxie_4139):
         smu, _ms = ni_pxie_4139
         with pytest.raises(ValueError):
-            smu.set_current_limit(-3.5)
+            smu.set_current_limit(-0.1)
 
 
 # ===========================================================================
@@ -355,6 +350,11 @@ class TestNIPXIe4139_CurrentMode:
         smu, ms = ni_pxie_4139
         smu.set_current_mode(0.01)
         assert ms.voltage_limit == pytest.approx(smu.DEFAULT_VOLTAGE_LIMIT)
+
+    def test_set_current_mode_negative(self, ni_pxie_4139):
+        smu, ms = ni_pxie_4139
+        smu.set_current_mode(-0.5, 5.0)
+        assert ms.current_level == -0.5
 
     def test_set_current_mode_too_high_raises(self, ni_pxie_4139):
         smu, _ms = ni_pxie_4139

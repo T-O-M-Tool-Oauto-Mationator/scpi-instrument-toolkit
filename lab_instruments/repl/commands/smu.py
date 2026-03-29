@@ -93,7 +93,7 @@ class SmuCommand(BaseCommand):
                 "",
                 "smu on|off",
                 "smu set <voltage> [current_limit]",
-                "  - voltage: -60 to 60V, current_limit: -3 to 3A",
+                "  - voltage: -60 to 60V, current_limit: 0 to 3A",
                 "  - example: smu set 5.0 0.01",
                 "smu set_mode voltage <v> [current_limit]",
                 "smu set_mode current <i> [voltage_limit]",
