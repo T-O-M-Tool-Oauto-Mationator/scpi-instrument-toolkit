@@ -853,6 +853,84 @@ class MockXDM1041(MockDMM):
     pass
 
 
+class MockEV2300(MockBase):
+    """Mock TI EV2300 USB-to-I2C adapter."""
+
+    def __init__(self):
+        self.resource_name = "mock-ev2300"
+        self._is_open = False
+
+    def connect(self):
+        self._is_open = True
+
+    def disconnect(self):
+        self._is_open = False
+
+    @property
+    def is_open(self):
+        return self._is_open
+
+    def read_word(self, i2c_addr: int, register: int) -> dict:
+        return {"ok": True, "cmd": 0x41, "value": random.randint(0, 0xFFFF), "crc_ok": True, "error": False}
+
+    def write_word(self, i2c_addr: int, register: int, value: int) -> dict:
+        return {"ok": True, "cmd": 0x44, "crc_ok": True, "error": False}
+
+    def read_byte(self, i2c_addr: int, register: int) -> dict:
+        return {"ok": True, "cmd": 0x43, "value": random.randint(0, 0xFF), "crc_ok": True, "error": False}
+
+    def write_byte(self, i2c_addr: int, register: int, value: int) -> dict:
+        return {"ok": True, "cmd": 0x47, "crc_ok": True, "error": False}
+
+    def read_block(self, i2c_addr: int, register: int) -> dict:
+        block = bytes(random.randint(0, 0xFF) for _ in range(4))
+        return {"ok": True, "cmd": 0x42, "block": block, "crc_ok": True, "error": False}
+
+    def write_block(self, i2c_addr: int, register: int, data: bytes) -> dict:
+        return {"ok": True, "cmd": 0x45, "crc_ok": True, "error": False}
+
+    def send_byte(self, i2c_addr: int, command: int) -> dict:
+        return {"ok": True, "cmd": 0x46, "crc_ok": True, "error": False}
+
+    def get_device_info(self) -> dict:
+        return {
+            "ok": True,
+            "vid": "0x0451",
+            "pid": "0x0036",
+            "serial": "MOCK001",
+            "product": "EV2300A",
+            "manufacturer": "Texas Inst",
+            "version": "0x0200",
+        }
+
+    def i2c_power(self, enabled: int = 1) -> dict:
+        return {"ok": True, "status": 0, "enabled": int(enabled)}
+
+    def open_device(self, adapter: str = "auto") -> dict:
+        self.connect()
+        return {"ok": True, "status": 0}
+
+    def close_device(self) -> int:
+        self.disconnect()
+        return 0
+
+    def read_smbus_word(self, i2c_addr: int, register_addr: int, pec: int = 0) -> dict:
+        r = self.read_word(i2c_addr, register_addr)
+        return {"ok": True, "status": 0, "value": r["value"]}
+
+    def write_smbus_byte(self, i2c_addr: int, register_addr: int, value: int, pec: int = 0) -> dict:
+        return {"ok": True, "status": 0, "register": register_addr, "value": value & 0xFF}
+
+    def clear_status(self):
+        pass
+
+    def query(self, cmd, **kwargs):
+        return "Texas Instruments,EV2300A,MOCK001,mock"
+
+    def probe_command(self, cmd, i2c_addr=0x08, register=0x00, data=b"", write_submit=False):
+        return {"ok": True, "cmd": cmd | 0x40, "probe_cmd": cmd, "error": False}
+
+
 def get_mock_devices(verbose=True):
     from lab_instruments import ColorPrinter
 
@@ -863,7 +941,8 @@ def get_mock_devices(verbose=True):
             "smu (MockNI_PXIe_4139), "
             "awg1 (MockEDU33212A), awg2 (MockJDS6600), "
             "dmm1 (MockHP_34401A), dmm2 (MockXDM1041), dmm3 (MockEDU34450A), "
-            "scope1 (MockDHO804), scope2 (MockMSO2024), scope3 (MockDSOX1204G)"
+            "scope1 (MockDHO804), scope2 (MockMSO2024), scope3 (MockDSOX1204G), "
+            "ev2300 (MockEV2300)"
         )
     return {
         "psu1": MockHP_E3631A(),
@@ -878,4 +957,5 @@ def get_mock_devices(verbose=True):
         "scope1": MockDHO804(),
         "scope2": MockMSO2024(),
         "scope3": MockDSOX1204G(),
+        "ev2300": MockEV2300(),
     }

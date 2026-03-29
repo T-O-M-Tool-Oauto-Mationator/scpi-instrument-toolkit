@@ -262,6 +262,8 @@ class GeneralCommands(BaseCommand):
         try:
             if name.startswith("psu"):
                 self._state_psu(name, dev, state)
+            elif name.startswith("ev2300"):
+                self._state_ev2300(name, dev, state)
             elif name.startswith("smu"):
                 self._state_smu(name, dev, state)
             elif name.startswith("awg"):
@@ -378,6 +380,16 @@ class GeneralCommands(BaseCommand):
         else:
             ColorPrinter.warning("SMU states: on, off, safe, reset")
 
+    def _state_ev2300(self, name, dev, state):
+        if state in ("safe", "off", "reset"):
+            if hasattr(dev, "reset"):
+                dev.reset()
+            ColorPrinter.success(f"{name}: reset")
+        elif state == "on":
+            ColorPrinter.info(f"{name}: adapter is always on when connected")
+        else:
+            ColorPrinter.warning("EV2300 states: on, off, safe, reset")
+
     def _state_dmm(self, name, dev, state):
         if state in ("safe", "reset"):
             dev.reset()
@@ -489,6 +501,8 @@ class GeneralCommands(BaseCommand):
                 elif name.startswith("smu"):
                     if hasattr(dev, "disable_all_channels"):
                         dev.disable_all_channels()
+                elif name.startswith("ev2300"):
+                    pass  # Bus adapter — no dangerous output state
                 elif name.startswith("dmm") and hasattr(dev, "reset"):
                     dev.reset()
                 ColorPrinter.success(f"{name}: safe state applied")
@@ -540,6 +554,8 @@ class GeneralCommands(BaseCommand):
                     elif hasattr(dev, "enable_output"):
                         dev.enable_output(False)
                     ColorPrinter.success(f"{name}: output disabled")
+                elif name.startswith("ev2300"):
+                    pass  # Bus adapter — no output to disable
                 elif name.startswith("dmm") and hasattr(dev, "reset"):
                     dev.reset()
                     ColorPrinter.success(f"{name}: reset")
@@ -576,6 +592,8 @@ class GeneralCommands(BaseCommand):
                             continue
                         dev.enable_output(True)
                         ColorPrinter.success(f"{name}: output enabled")
+                elif name.startswith("ev2300"):
+                    pass  # Bus adapter — always on when connected
                 elif name.startswith("scope") and hasattr(dev, "enable_all_channels"):
                     dev.enable_all_channels()
                     ColorPrinter.success(f"{name}: channels enabled")

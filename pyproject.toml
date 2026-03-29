@@ -36,6 +36,7 @@ dependencies = [
 
 [project.optional-dependencies]
 sim = []
+hid = ["hidapi>=0.14.0"]
 docs = ["mkdocs-material"]
 test = ["pytest>=7.0", "pytest-cov>=4.0"]
 lint = ["ruff>=0.4.0"]
@@ -55,7 +56,7 @@ markers = [
 ]
 
 [tool.ruff]
-target-version = "py38"
+target-version = "py310"
 line-length = 120
 
 [tool.ruff.lint]

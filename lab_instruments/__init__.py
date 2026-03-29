@@ -17,6 +17,10 @@ try:
     from .src.ni_pxie_4139 import NI_PXIe_4139
 except ImportError:
     NI_PXIe_4139 = None  # type: ignore[assignment,misc]
+try:
+    from .src.ev2300 import TI_EV2300
+except (ImportError, OSError):
+    TI_EV2300 = None  # type: ignore[assignment,misc]
 from .src.owon_xdm1041 import Owon_XDM1041
 from .src.rigol_dho804 import Rigol_DHO804
 from .src.tektronix_mso2024 import Tektronix_MSO2024
@@ -31,6 +35,7 @@ __all__ = [
     "Rigol_DHO804",
     "MATRIX_MPS6010H",
     "NI_PXIe_4139",
+    "TI_EV2300",
     "Owon_XDM1041",
     "JDS6600_Generator",
     "Keysight_EDU33212A",

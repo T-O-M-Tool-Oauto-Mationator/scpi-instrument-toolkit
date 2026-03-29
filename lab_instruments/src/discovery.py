@@ -27,6 +27,13 @@ try:
 except ImportError:
     NI_PXIe_4139 = None  # type: ignore[assignment,misc]
     _NI_PXIE_AVAILABLE = False
+try:
+    from .ev2300 import TI_EV2300
+
+    _EV2300_AVAILABLE = True
+except (ImportError, OSError):
+    TI_EV2300 = None  # type: ignore[assignment,misc]
+    _EV2300_AVAILABLE = False
 from .owon_xdm1041 import Owon_XDM1041
 from .rigol_dho804 import Rigol_DHO804
 from .tektronix_mso2024 import Tektronix_MSO2024
@@ -53,6 +60,7 @@ class InstrumentDiscovery:
         "EDU34450A": Keysight_EDU34450A,
         "DSOX1204G": Keysight_DSOX1204G,
         **({"PXIe-4139": NI_PXIe_4139} if _NI_PXIE_AVAILABLE else {}),
+        **({"EV2300": TI_EV2300} if _EV2300_AVAILABLE else {}),
     }
 
     # Friendly names for the instruments (use generic names)
@@ -70,6 +78,7 @@ class InstrumentDiscovery:
         "EDU34450A": "dmm",
         "DSOX1204G": "scope",
         "PXIe-4139": "smu",
+        "EV2300": "ev2300",
     }
 
     # Models recognized during scan but not yet supported (driver under development)
@@ -276,6 +285,43 @@ class InstrumentDiscovery:
 
         return results
 
+    def _probe_ev2300(self, verbose: bool) -> list:
+        """Probe USB HID for TI EV2300 adapters.
+
+        Returns a list of (generic_name, driver_instance, model_key, idn) tuples.
+        """
+        if not _EV2300_AVAILABLE:
+            return []
+
+        if verbose:
+            self._safe_print("Scanning USB HID for EV2300 adapters...", flush=True)
+
+        results = []
+        try:
+            devices = TI_EV2300.enumerate_devices()
+            for dev_info in devices:
+                try:
+                    path = dev_info["path"]
+                    driver = TI_EV2300(path if isinstance(path, str) else str(path))
+                    driver.connect()
+                    serial = dev_info.get("serial", "unknown")
+                    idn = f"Texas Instruments,EV2300A,{serial},pure-python-hid"
+
+                    if verbose:
+                        self._safe_print(
+                            f"Checking USB HID... {ColorPrinter.GREEN}Found: {idn}{ColorPrinter.RESET}"
+                        )
+                        self._safe_print("  -> Identified as EV2300 (USB-to-I2C adapter)")
+
+                    results.append(("ev2300", driver, "EV2300", idn))
+                except Exception:
+                    continue
+        except Exception:
+            if verbose:
+                self._safe_print("EV2300 HID scan failed (permissions?)")
+
+        return results
+
     def _probe_resource(self, resource: str, verbose: bool) -> Optional[Tuple[str, Any, str, str]]:
         """
         Probe a single resource and return (generic_name, driver_instance, model_key, idn) if successful.
@@ -430,6 +476,10 @@ class InstrumentDiscovery:
         # Probe PXI slots for NI-DCPower devices (SMUs)
         nidcpower_results = self._probe_nidcpower(verbose)
         results.extend(nidcpower_results)
+
+        # Probe USB HID for EV2300 adapters
+        ev2300_results = self._probe_ev2300(verbose)
+        results.extend(ev2300_results)
 
         # Post-process: handle naming and type counts
         # Sort results by resource name to ensure deterministic naming (e.g. ASRL1 is psu1, ASRL4 is psu2)

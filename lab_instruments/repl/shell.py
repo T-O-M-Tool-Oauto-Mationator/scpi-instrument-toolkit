@@ -21,6 +21,7 @@ from .commands.psu import PsuCommand
 from .commands.safety import SafetySystem
 from .commands.scope import ScopeCommand
 from .commands.scripting import ScriptingCommands
+from .commands.ev2300 import Ev2300Command
 from .commands.smu import SmuCommand
 from .commands.variables import VariableCommands
 from .context import ReplContext
@@ -80,6 +81,7 @@ class InstrumentRepl(cmd.Cmd):
         self._dmm_cmd = DmmCommand(self.ctx)
         self._scope_cmd = ScopeCommand(self.ctx)
         self._smu_cmd = SmuCommand(self.ctx)
+        self._ev2300_cmd = Ev2300Command(self.ctx)
         self._var_cmd = VariableCommands(self.ctx)
         self._log_cmd = LoggingCommands(self.ctx)
         self._script_cmd = ScriptingCommands(self.ctx, self._safety, shell=self)
@@ -90,6 +92,7 @@ class InstrumentRepl(cmd.Cmd):
         self._dmm_cmd.set_state_callback(lambda name, st: self.do_state(f"{name} {st}"))
         self._scope_cmd.set_state_callback(lambda name, st: self.do_state(f"{name} {st}"))
         self._smu_cmd.set_state_callback(lambda name, st: self.do_state(f"{name} {st}"))
+        self._ev2300_cmd.set_state_callback(lambda name, st: self.do_state(f"{name} {st}"))
 
         # Multi-line loop support
         self._in_loop = False
@@ -796,6 +799,23 @@ class InstrumentRepl(cmd.Cmd):
             self.ctx.command_had_error = True
             return
         self._smu_cmd.execute(arg, dev, smu_name)
+
+    def do_ev2300(self, arg):
+        """ev2300 <cmd>: control the EV2300 USB-to-I2C adapter"""
+        self._wait_for_scan()
+        ev_name = self.ctx.registry.resolve_type("ev2300")
+        if not ev_name:
+            self.ctx.command_had_error = True
+            if not self.ctx.registry.devices:
+                ColorPrinter.warning("No instruments connected. Run 'scan' first.")
+            else:
+                self._error("No EV2300 found. Run 'scan' first.")
+            return
+        dev = self.ctx.registry.get_device(ev_name)
+        if not dev:
+            self.ctx.command_had_error = True
+            return
+        self._ev2300_cmd.execute(arg, dev, ev_name)
 
     # Variable/IO commands
     def do_print(self, arg):

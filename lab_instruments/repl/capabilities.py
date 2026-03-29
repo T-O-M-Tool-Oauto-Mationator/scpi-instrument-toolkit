@@ -46,6 +46,16 @@ class Capability(Flag):
     SCOPE_MEAS_FORCE = auto()
     SCOPE_MEAS_CLEAR = auto()
 
+    # EV2300 / I2C adapter capabilities
+    EV2300_READ_WORD = auto()
+    EV2300_WRITE_WORD = auto()
+    EV2300_READ_BYTE = auto()
+    EV2300_WRITE_BYTE = auto()
+    EV2300_READ_BLOCK = auto()
+    EV2300_WRITE_BLOCK = auto()
+    EV2300_SEND_BYTE = auto()
+    EV2300_DEVICE_INFO = auto()
+
 
 # Per-driver capability declarations
 # Maps class name to its capabilities
@@ -177,6 +187,27 @@ DRIVER_CAPABILITIES = {
     ),
     "Tektronix_MSO2024": Capability.SCOPE_WAIT_STOP,
     "MockMSO2024": Capability.SCOPE_WAIT_STOP,
+    # EV2300
+    "TI_EV2300": (
+        Capability.EV2300_READ_WORD
+        | Capability.EV2300_WRITE_WORD
+        | Capability.EV2300_READ_BYTE
+        | Capability.EV2300_WRITE_BYTE
+        | Capability.EV2300_READ_BLOCK
+        | Capability.EV2300_WRITE_BLOCK
+        | Capability.EV2300_SEND_BYTE
+        | Capability.EV2300_DEVICE_INFO
+    ),
+    "MockEV2300": (
+        Capability.EV2300_READ_WORD
+        | Capability.EV2300_WRITE_WORD
+        | Capability.EV2300_READ_BYTE
+        | Capability.EV2300_WRITE_BYTE
+        | Capability.EV2300_READ_BLOCK
+        | Capability.EV2300_WRITE_BLOCK
+        | Capability.EV2300_SEND_BYTE
+        | Capability.EV2300_DEVICE_INFO
+    ),
 }
 
 # Display names for known instrument classes
@@ -206,4 +237,6 @@ DISPLAY_NAMES = {
     "MockEDU34450A": "Keysight EDU34450A (Mock)",
     "Tektronix_MSO2024": "Tektronix MSO2024",
     "MockMSO2024": "Tektronix MSO2024 (Mock)",
+    "TI_EV2300": "TI EV2300A USB-to-I2C",
+    "MockEV2300": "TI EV2300A USB-to-I2C (Mock)",
 }
