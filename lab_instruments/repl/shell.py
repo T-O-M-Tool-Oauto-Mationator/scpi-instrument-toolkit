@@ -415,7 +415,7 @@ class InstrumentRepl(cmd.Cmd):
                 pass
         return stop
 
-    _ASSIGN_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.+)$")
+    _ASSIGN_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_.]*)\s*=\s*(.+)$")
 
     def default(self, line):
         """Handle numbered device names ('awg1', 'scope2') and var = expr assignment."""

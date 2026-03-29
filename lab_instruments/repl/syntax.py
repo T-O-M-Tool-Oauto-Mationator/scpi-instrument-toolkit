@@ -10,7 +10,7 @@ from typing import Any
 from .measurement_store import MeasurementStore
 
 # Pattern: matches {varname}
-_SUBST_RE = re.compile(r"\{([A-Za-z_][A-Za-z0-9_]*)\}")
+_SUBST_RE = re.compile(r"\{([A-Za-z_][A-Za-z0-9_.]*)\}")
 
 # Identifiers that cannot be used as variable/label names
 _RESERVED = frozenset({"last"})

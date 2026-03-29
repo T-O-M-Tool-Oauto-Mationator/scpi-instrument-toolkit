@@ -10,7 +10,7 @@ from lab_instruments.src.terminal import ColorPrinter
 from ..syntax import safe_eval, substitute_expand
 
 # Matches Python-style assignment: identifier = expression
-_ASSIGN_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.+)$")
+_ASSIGN_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_.]*)\s*=\s*(.+)$")
 
 # Matches instrument read RHS: <instrument> read [unit=X]
 _INSTR_READ_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*)\s+(?:read|meas)(?:\s+(.*))?$")
