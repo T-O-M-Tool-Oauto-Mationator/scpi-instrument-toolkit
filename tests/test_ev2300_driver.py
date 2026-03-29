@@ -135,7 +135,6 @@ class TestParseResponse:
         resp = _EV2300Core.parse_response(buf)
         assert resp["ok"] is True
         assert resp["cmd"] == CMD_READ_WORD | RESP_FLAG
-        assert resp["crc_ok"] is True
         assert resp["error"] is False
 
     def test_short_response(self):
@@ -165,10 +164,15 @@ class TestParseResponse:
         assert resp["ok"] is False
         assert resp["error"] is True
 
-    def test_crc_mismatch(self):
-        buf = self._make_response(CMD_READ_WORD | RESP_FLAG, b"\x10\x00", ok=False)
+    def test_success_flag_determines_ok(self):
+        # Command with RESP_FLAG set = success
+        buf = self._make_response(CMD_READ_WORD | RESP_FLAG, b"\x10\x00")
         resp = _EV2300Core.parse_response(buf)
-        assert resp["crc_ok"] is False
+        assert resp["ok"] is True
+        # Command without RESP_FLAG = not ok
+        buf2 = self._make_response(CMD_READ_WORD, b"\x10\x00")
+        resp2 = _EV2300Core.parse_response(buf2)
+        assert resp2["ok"] is False
 
 
 # =========================================================================

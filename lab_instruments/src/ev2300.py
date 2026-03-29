@@ -786,20 +786,18 @@ class _EV2300Core:
                 "status_text": "Device error (0x46)",
             }
 
-        crc_ok = False
-        if 3 <= length <= BUF_SIZE:
-            crc_ok = raw[length - 1] == crc8(raw[2 : length - 1])
+        # Response is valid if the command byte has the success flag (bit 6 set)
+        success = bool(cmd & RESP_FLAG) and cmd != CMD_ERROR
 
         plen = raw[6] if length > 6 else 0
         payload = bytes(raw[7 : 7 + plen]) if plen > 0 else b""
 
         return {
-            "ok": crc_ok,
+            "ok": success,
             "cmd": cmd,
             "length": length,
             "payload_len": plen,
             "payload": payload,
-            "crc_ok": crc_ok,
             "error": False,
             "raw": bytes(raw),
         }
@@ -809,14 +807,25 @@ class _EV2300Core:
     # ------------------------------------------------------------------
 
     def _request(self, packet: bytearray, write_submit: bool = False) -> dict:
+        import time
+
+        # Flush stale responses left by previous commands
+        self.flush_input()
+        time.sleep(0.01)
+
         if not self.write_report(packet):
             return {"ok": False, "status_text": "Write failed"}
 
         if write_submit:
+            # Read and discard the write-command response
+            time.sleep(0.01)
+            self.read_report()
+
             submit = self.build_packet(CMD_SUBMIT)
             if not self.write_report(submit):
                 return {"ok": False, "status_text": "Submit write failed"}
 
+        time.sleep(0.01)
         raw = self.read_report()
         if raw is None:
             return {"ok": False, "status_text": "Read timeout"}
