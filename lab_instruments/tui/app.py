@@ -2,7 +2,6 @@
 
 import contextlib
 import sys
-from typing import Optional
 
 from rich.ansi import AnsiDecoder
 from textual import work
@@ -81,7 +80,7 @@ class SCPIApp(App):
 
     def __init__(
         self,
-        dispatcher: Optional[CommandDispatcher] = None,
+        dispatcher: CommandDispatcher | None = None,
         device_poll_interval: float = 2.0,
         meas_poll_interval: float = 5.0,
         script_poll_interval: float = 2.0,

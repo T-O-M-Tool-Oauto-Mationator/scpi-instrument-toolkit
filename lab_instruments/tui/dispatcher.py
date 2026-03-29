@@ -7,7 +7,8 @@ from __future__ import annotations
 
 import contextlib
 import io
-from typing import Callable, Protocol, runtime_checkable
+from collections.abc import Callable
+from typing import Protocol, runtime_checkable
 
 
 @runtime_checkable

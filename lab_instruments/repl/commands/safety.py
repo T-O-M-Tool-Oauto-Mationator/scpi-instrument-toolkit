@@ -2,7 +2,7 @@
 
 import contextlib
 import re
-from typing import Any, Dict, Optional
+from typing import Any
 
 from lab_instruments.src.terminal import ColorPrinter
 
@@ -15,7 +15,7 @@ class SafetySystem:
     def __init__(self, ctx: ReplContext) -> None:
         self.ctx = ctx
 
-    def collect_limits(self, device_name: str, device_type: str, channel: Optional[int]) -> Dict[str, float]:
+    def collect_limits(self, device_name: str, device_type: str, channel: int | None) -> dict[str, float]:
         lookup_keys = [
             (device_name, channel),
             (device_name, None),
@@ -23,7 +23,7 @@ class SafetySystem:
             (device_type, None),
         ]
         seen: set = set()
-        merged: Dict[str, float] = {}
+        merged: dict[str, float] = {}
         for k in lookup_keys:
             if k in seen:
                 continue
@@ -36,7 +36,7 @@ class SafetySystem:
                     merged[param_key] = val
         return merged
 
-    def check_psu_limits(self, device_name: str, channel: Optional[int], voltage=None, current=None) -> bool:
+    def check_psu_limits(self, device_name: str, channel: int | None, voltage=None, current=None) -> bool:
         device_type = re.sub(r"\d+$", "", device_name)
         limits = self.collect_limits(device_name, device_type, channel)
         if not limits:
@@ -66,7 +66,7 @@ class SafetySystem:
                 return False
         return True
 
-    def query_awg_state(self, device_name: str, channel: int) -> Dict[str, Any]:
+    def query_awg_state(self, device_name: str, channel: int) -> dict[str, Any]:
         dev = self.ctx.registry.devices.get(device_name)
         if dev is None:
             return {"vpp": None, "offset": None, "freq": None}
@@ -93,7 +93,7 @@ class SafetySystem:
             offset = cached.get("offset")
         return {"vpp": vpp, "offset": offset, "freq": freq}
 
-    def query_psu_state(self, device_name: str) -> Dict[str, Any]:
+    def query_psu_state(self, device_name: str) -> dict[str, Any]:
         dev = self.ctx.registry.devices.get(device_name)
         if dev is None:
             return {"voltage": None, "current": None}

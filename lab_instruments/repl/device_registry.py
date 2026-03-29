@@ -1,7 +1,7 @@
 """Device resolution, selection, and capability queries."""
 
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from lab_instruments.src.terminal import ColorPrinter
 
@@ -12,11 +12,11 @@ class DeviceRegistry:
     """Manages connected devices and resolves device references."""
 
     def __init__(self) -> None:
-        self.devices: Dict[str, Any] = {}
-        self.selected: Optional[str] = None
-        self._device_override: Optional[str] = None
+        self.devices: dict[str, Any] = {}
+        self.selected: str | None = None
+        self._device_override: str | None = None
 
-    def get_device(self, name: Optional[str]) -> Optional[Any]:
+    def get_device(self, name: str | None) -> Any | None:
         """Return a device by name, or the selected device if name is None."""
         if not self.devices:
             ColorPrinter.warning("No instruments connected. Run 'scan' first.")
@@ -33,7 +33,7 @@ class DeviceRegistry:
             return None
         return self.devices.get(name)
 
-    def resolve_type(self, device_type: str) -> Optional[str]:
+    def resolve_type(self, device_type: str) -> str | None:
         """Resolve a generic device type (e.g. 'psu') to a specific name (e.g. 'psu1').
 
         Uses _device_override if set (from numbered-device routing like 'psu1 set 5').
@@ -84,7 +84,7 @@ class DeviceRegistry:
         class_name = type(dev).__name__
         return DISPLAY_NAMES.get(class_name, class_name)
 
-    def channels_for(self, dev: Any, base_type: str) -> Optional[List[int]]:
+    def channels_for(self, dev: Any, base_type: str) -> list[int] | None:
         """Return the list of channel numbers for a device."""
         if hasattr(dev, "CHANNEL_MAP"):
             return sorted(dev.CHANNEL_MAP.keys())

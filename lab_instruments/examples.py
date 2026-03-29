@@ -10,9 +10,7 @@ Load all at once with:                    examples load all
 Then run with:                            script run <name> [params]
 """
 
-from typing import Dict
-
-EXAMPLES: Dict[str, Dict] = {
+EXAMPLES: dict[str, dict] = {
     # ------------------------------------------------------------------
     "psu_dmm_test": {
         "description": "Set PSU to a voltage, measure with DMM, log result",

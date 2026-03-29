@@ -6,7 +6,7 @@ import concurrent.futures
 import contextlib
 import threading
 import time
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 import pyvisa
 
@@ -89,7 +89,7 @@ class InstrumentDiscovery:
 
     def __init__(self):
         self.rm = pyvisa.ResourceManager()
-        self.found_devices: Dict[str, Any] = {}
+        self.found_devices: dict[str, Any] = {}
         self._print_lock = threading.Lock()
 
     def _safe_print(self, msg, end="\n", flush=False):
@@ -97,7 +97,7 @@ class InstrumentDiscovery:
         with self._print_lock:
             print(msg, end=end, flush=flush)
 
-    def _try_serial_idn(self, inst) -> Optional[str]:
+    def _try_serial_idn(self, inst) -> str | None:
         """
         Try common serial configurations to query *IDN?.
 
@@ -141,7 +141,7 @@ class InstrumentDiscovery:
 
         return None
 
-    def _try_matrix_idn(self, inst) -> Optional[str]:
+    def _try_matrix_idn(self, inst) -> str | None:
         """
         Try MATRIX MPS-6010H-1C identification.
         This device requires REM:ON before *IDN? will work.
@@ -189,7 +189,7 @@ class InstrumentDiscovery:
 
         return None
 
-    def _try_jds6600_idn(self, inst) -> Optional[str]:
+    def _try_jds6600_idn(self, inst) -> str | None:
         """
         Try JDS6600/Seesii DDS generator identification.
         JDS6600 doesn't respond to *IDN?, uses its own protocol.
@@ -308,9 +308,7 @@ class InstrumentDiscovery:
                     idn = f"Texas Instruments,EV2300A,{serial},pure-python-hid"
 
                     if verbose:
-                        self._safe_print(
-                            f"Checking USB HID... {ColorPrinter.GREEN}Found: {idn}{ColorPrinter.RESET}"
-                        )
+                        self._safe_print(f"Checking USB HID... {ColorPrinter.GREEN}Found: {idn}{ColorPrinter.RESET}")
                         self._safe_print("  -> Identified as EV2300 (USB-to-I2C adapter)")
 
                     results.append(("ev2300", driver, "EV2300", idn))
@@ -322,7 +320,7 @@ class InstrumentDiscovery:
 
         return results
 
-    def _probe_resource(self, resource: str, verbose: bool) -> Optional[Tuple[str, Any, str, str]]:
+    def _probe_resource(self, resource: str, verbose: bool) -> tuple[str, Any, str, str] | None:
         """
         Probe a single resource and return (generic_name, driver_instance, model_key, idn) if successful.
         """
@@ -429,7 +427,7 @@ class InstrumentDiscovery:
                     self._safe_print(f"Checking {resource}... {ColorPrinter.RED}No response{ColorPrinter.RESET}")
             return None
 
-    def scan(self, verbose=True) -> Dict[str, Any]:
+    def scan(self, verbose=True) -> dict[str, Any]:
         """Scans all available VISA resources and attempts to identify supported instruments.
 
         This scan is performed in parallel for improved performance.
@@ -486,11 +484,11 @@ class InstrumentDiscovery:
         # Result format: (generic, driver, model_key, idn)
         results.sort(key=lambda x: x[1].resource_name)
 
-        final_drivers: Dict[str, Any] = {}
-        type_counts: Dict[str, int] = {}
+        final_drivers: dict[str, Any] = {}
+        type_counts: dict[str, int] = {}
 
         # Calculate totals for naming
-        type_totals: Dict[str, int] = {}
+        type_totals: dict[str, int] = {}
         for generic, _, _, _ in results:
             type_totals[generic] = type_totals.get(generic, 0) + 1
 
@@ -519,7 +517,7 @@ class InstrumentDiscovery:
 
         return final_drivers
 
-    def get(self, name: str) -> Optional[Any]:
+    def get(self, name: str) -> Any | None:
         """Get an initialized driver by its assigned name.
 
         Valid names are whatever was assigned during scan() — e.g. 'awg', 'awg1',
@@ -531,7 +529,7 @@ class InstrumentDiscovery:
             raise ValueError(f"No instrument named '{name}'. Available: {available}")
         return self.found_devices[name]
 
-    def list_devices(self) -> Dict[str, Any]:
+    def list_devices(self) -> dict[str, Any]:
         """Return all discovered instruments as a dict of name → driver instance."""
         return dict(self.found_devices)
 
@@ -553,7 +551,7 @@ class InstrumentDiscovery:
         self.found_devices[new_name] = self.found_devices.pop(old_name)
 
 
-def find_all(verbose=True) -> Dict[str, Any]:
+def find_all(verbose=True) -> dict[str, Any]:
     """Shortcut function to scan and return all instruments."""
     scanner = InstrumentDiscovery()
     return scanner.scan(verbose)

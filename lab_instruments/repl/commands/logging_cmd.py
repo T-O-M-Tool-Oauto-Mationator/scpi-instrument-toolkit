@@ -381,7 +381,7 @@ class LoggingCommands(BaseCommand):
             headers = ["Label", "Value", "Unit", "Limits", "Status"]
             pdf.set_font("Helvetica", "B", 10)
             pdf.set_fill_color(220, 220, 220)
-            for w, h in zip(col_w, headers):
+            for w, h in zip(col_w, headers, strict=False):
                 pdf.cell(w, 7, h, border=1, fill=True)
             pdf.ln()
             pdf.set_font("Helvetica", "", 10)
@@ -414,7 +414,7 @@ class LoggingCommands(BaseCommand):
             headers2 = ["Label", "Value", "Unit", "Source"]
             pdf.set_font("Helvetica", "B", 10)
             pdf.set_fill_color(220, 220, 220)
-            for w, h in zip(col_w2, headers2):
+            for w, h in zip(col_w2, headers2, strict=False):
                 pdf.cell(w, 7, h, border=1, fill=True)
             pdf.ln()
             pdf.set_font("Helvetica", "", 10)

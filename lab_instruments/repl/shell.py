@@ -9,19 +9,19 @@ import sys
 import threading
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as _pkg_version
-from typing import Any, Dict
+from typing import Any
 
 from lab_instruments import ColorPrinter, InstrumentDiscovery
 
 from .commands.awg import AwgCommand
 from .commands.dmm import DmmCommand
+from .commands.ev2300 import Ev2300Command
 from .commands.general import GeneralCommands
 from .commands.logging_cmd import LoggingCommands
 from .commands.psu import PsuCommand
 from .commands.safety import SafetySystem
 from .commands.scope import ScopeCommand
 from .commands.scripting import ScriptingCommands
-from .commands.ev2300 import Ev2300Command
 from .commands.smu import SmuCommand
 from .commands.variables import VariableCommands
 from .context import ReplContext
@@ -132,11 +132,11 @@ class InstrumentRepl(cmd.Cmd):
     # Backward-compatibility properties
     # ------------------------------------------------------------------
     @property
-    def devices(self) -> Dict[str, Any]:
+    def devices(self) -> dict[str, Any]:
         return self.ctx.registry.devices
 
     @devices.setter
-    def devices(self, value: Dict[str, Any]):
+    def devices(self, value: dict[str, Any]):
         self.ctx.registry.devices = value
 
     @property

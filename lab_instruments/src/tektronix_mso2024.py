@@ -512,7 +512,7 @@ class Tektronix_MSO2024(DeviceManager):
         with open(filename, "w", newline="") as csvfile:
             writer = csv.writer(csvfile)
             writer.writerow(["Time (s)", f"Channel {channel} Voltage (V)"])
-            for t, v in zip(times, volts):
+            for t, v in zip(times, volts, strict=False):
                 writer.writerow([t, v])
         print(f"Waveform from Channel {channel} saved to {filename}")
 

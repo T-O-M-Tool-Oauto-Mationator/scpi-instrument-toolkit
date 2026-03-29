@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import csv
 import time
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 from textual.app import ComposeResult
 from textual.reactive import reactive

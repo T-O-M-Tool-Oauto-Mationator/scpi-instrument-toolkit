@@ -7,7 +7,7 @@ Variable syntax supported in script files:
 
 import ast
 import re
-from typing import Any, Dict, Optional
+from typing import Any
 
 from .measurement_store import MeasurementStore
 
@@ -21,7 +21,7 @@ _VAR_RE = re.compile(r"\$([A-Za-z_][A-Za-z0-9_]*)")
 _RESERVED = frozenset({"last"})
 
 
-def validate_name(name: str) -> Optional[str]:
+def validate_name(name: str) -> str | None:
     """Return an error message if *name* is not a valid variable/label identifier, else None."""
     if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name):
         return f"Invalid name '{name}': must be alphanumeric + underscore, starting with a letter or underscore."
@@ -32,8 +32,8 @@ def validate_name(name: str) -> Optional[str]:
 
 def substitute_vars(
     text: str,
-    script_vars: Dict[str, str],
-    measurements: Optional[MeasurementStore] = None,
+    script_vars: dict[str, str],
+    measurements: MeasurementStore | None = None,
 ) -> str:
     """Replace $name and {name} references in *text*.
 
@@ -68,7 +68,7 @@ def substitute_vars(
     return _SUBST_RE.sub(_replace, text)
 
 
-def substitute_legacy(text: str, variables: Dict[str, str]) -> str:
+def substitute_legacy(text: str, variables: dict[str, str]) -> str:
     """Legacy ${name} substitution for backward compat during migration."""
     result = text
     for name, value in variables.items():
@@ -76,7 +76,7 @@ def substitute_legacy(text: str, variables: Dict[str, str]) -> str:
     return result
 
 
-def safe_eval(expr: str, names: Dict[str, Any]) -> Any:
+def safe_eval(expr: str, names: dict[str, Any]) -> Any:
     """Evaluate a math expression safely using AST walking.
 
     Supports: +, -, *, /, **, %, unary +/-, parentheses,

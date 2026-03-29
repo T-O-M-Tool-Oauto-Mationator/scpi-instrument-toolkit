@@ -7,7 +7,6 @@ Based on InfiniiVision 1000 X-Series Programmer's Guide
 """
 
 import time
-from typing import Optional
 
 import numpy as np
 
@@ -615,8 +614,8 @@ class Keysight_DSOX1204G(DeviceManager):
         self,
         channel: int,
         filename: str,
-        max_points: Optional[int] = None,
-        time_window: Optional[float] = None,
+        max_points: int | None = None,
+        time_window: float | None = None,
     ) -> None:
         """
         Save waveform from a single channel to a CSV file.
@@ -652,7 +651,7 @@ class Keysight_DSOX1204G(DeviceManager):
         with open(filename, "w", newline="") as csvfile:
             writer = csv.writer(csvfile)
             writer.writerow(["Time (s)", f"CH{channel} Voltage (V)"])
-            for t, v in zip(times, volts):
+            for t, v in zip(times, volts, strict=False):
                 writer.writerow([t, v])
 
         print(f"Waveform from CH{channel} saved to {filename}")
@@ -661,8 +660,8 @@ class Keysight_DSOX1204G(DeviceManager):
         self,
         channels: list,
         filename: str,
-        max_points: Optional[int] = None,
-        time_window: Optional[float] = None,
+        max_points: int | None = None,
+        time_window: float | None = None,
     ) -> None:
         """
         Save waveforms from multiple channels to a single CSV file.

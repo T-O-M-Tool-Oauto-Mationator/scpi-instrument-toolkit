@@ -1,18 +1,18 @@
 """Script execution and interactive debugger."""
 
-from typing import Any, List, Set, Tuple
+from typing import Any
 
 from lab_instruments.src.terminal import ColorPrinter
 
 
-def run_expanded(expanded: List[Tuple[str, str]], shell: Any, ctx: Any, debug: bool = False) -> bool:
+def run_expanded(expanded: list[tuple[str, str]], shell: Any, ctx: Any, debug: bool = False) -> bool:
     """Execute a pre-expanded command list, optionally with an interactive debugger.
 
     Returns True if the script requests REPL exit.
     """
     lines = []
     source_lines = []
-    breakpoints: Set[int] = set()
+    breakpoints: set[int] = set()
     for item in expanded:
         cmd, src = item if isinstance(item, tuple) else (item, item)
         cmd = cmd.strip()
@@ -202,7 +202,7 @@ def _debug_show_context(
     lines: list,
     source_lines: list,
     idx: int,
-    breakpoints: Set[int],
+    breakpoints: set[int],
     window: int = 3,
     show_all: bool = False,
 ) -> None:

@@ -289,9 +289,7 @@ def ev2300():
         buf[7] = 0x10  # i2c_addr byte
         buf[8] = 0x34  # low byte of value
         buf[9] = 0x12  # high byte of value (value = 0x1234)
-        crc_end = 7 + 2  # 7 + payload_len
-        # CRC is over buf[2:crc_end]
-        # But for parse_response, CRC is at buf[length-1] over buf[2:length-1]
+        # parse_response checks: raw[length-1] == crc8(raw[2:length-1])
         buf[11] = crc8(buf[2:11])
         buf[10] = 0x55  # not used in this position for this length
         # Correct: length=12, so CRC at buf[11], FRAME_END... actually parse uses length
@@ -307,6 +305,6 @@ def ev2300():
     dev = TI_EV2300("/dev/hidraw_mock")
     # Manually create core with our mock backend
     core = _EV2300Core(backend=mock_backend)
-    result = core.open("/dev/hidraw_mock")
+    core.open("/dev/hidraw_mock")
     dev._core = core
     yield dev, mock_backend

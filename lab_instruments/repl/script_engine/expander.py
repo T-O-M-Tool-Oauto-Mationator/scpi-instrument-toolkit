@@ -3,7 +3,7 @@
 import contextlib
 import re
 import shlex
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from lab_instruments.src.terminal import ColorPrinter
 
@@ -17,14 +17,14 @@ _INSTR_READ_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*)\s+read(?:\s+(.*))?$")
 
 
 def expand_script_lines(
-    lines: List[str],
-    variables: Dict[str, str],
+    lines: list[str],
+    variables: dict[str, str],
     ctx: Any,
     depth: int = 0,
-    parent_vars: Optional[Dict[str, str]] = None,
-    exports: Optional[Dict[str, str]] = None,
+    parent_vars: dict[str, str] | None = None,
+    exports: dict[str, str] | None = None,
     _loop_ctx: str = "",
-) -> List[Tuple[str, str]]:
+) -> list[tuple[str, str]]:
     """Expand script lines into (command, source_display) tuples.
 
     Handles: import, export, breakpoint, set, call, repeat, array, for,
@@ -37,7 +37,7 @@ def expand_script_lines(
     if depth == 0:
         ctx.safety_limits = {}
         ctx.awg_channel_state = {}
-    expanded: List[Tuple[str, str]] = []
+    expanded: list[tuple[str, str]] = []
     idx = 0
     while idx < len(lines):
         raw_line = lines[idx].strip()
@@ -110,7 +110,7 @@ def expand_script_lines(
                 if "=" in token:
                     k, v = token.split("=", 1)
                     call_params[k] = substitute_legacy(v, variables)
-            call_exports: Dict[str, str] = {}
+            call_exports: dict[str, str] = {}
             expanded.extend(
                 expand_script_lines(
                     ctx.scripts[script_name],
@@ -140,7 +140,7 @@ def expand_script_lines(
 
         if head == "array" and len(tokens) >= 2:
             varname = tokens[1]
-            elements: List[str] = []
+            elements: list[str] = []
             while idx < len(lines):
                 line = lines[idx].strip()
                 idx += 1
@@ -158,7 +158,7 @@ def expand_script_lines(
 
         if head == "for" and len(tokens) >= 3:
             key = tokens[1]
-            values: List[str] = []
+            values: list[str] = []
             for _rv in tokens[2:]:
                 _subst = substitute_legacy(_rv, variables)
                 try:
@@ -174,9 +174,9 @@ def expand_script_lines(
                         ColorPrinter.error("for: var list and value list length mismatch.")
                         break
                     local_vars = dict(variables)
-                    for name, val in zip(keys, parts):
+                    for name, val in zip(keys, parts, strict=False):
                         local_vars[name] = substitute_legacy(val, variables)
-                    iter_ctx = " ".join(f"{k}={v}" for k, v in zip(keys, parts))
+                    iter_ctx = " ".join(f"{k}={v}" for k, v in zip(keys, parts, strict=False))
                     expanded.append(("__NOP__", f"{_loop_ctx}{raw_line}  →  {iter_ctx}"))
                     expanded.extend(
                         expand_script_lines(block, local_vars, ctx, depth, _loop_ctx=_loop_ctx + f"[{iter_ctx}] ")
@@ -225,9 +225,9 @@ def expand_script_lines(
     return expanded
 
 
-def _collect_block(lines: List[str], idx: int) -> Tuple[List[str], int]:
+def _collect_block(lines: list[str], idx: int) -> tuple[list[str], int]:
     """Collect lines until a matching 'end', tracking nested depth."""
-    block: List[str] = []
+    block: list[str] = []
     depth_inner = 1
     while idx < len(lines):
         line = lines[idx].strip()
@@ -252,9 +252,9 @@ def _collect_block(lines: List[str], idx: int) -> Tuple[List[str], int]:
 
 def _parse_limit(
     head: str,
-    tokens: List[str],
+    tokens: list[str],
     ctx: Any,
-    expanded: List[Tuple[str, str]],
+    expanded: list[tuple[str, str]],
     _loop_ctx: str,
     raw_line: str,
 ) -> None:
