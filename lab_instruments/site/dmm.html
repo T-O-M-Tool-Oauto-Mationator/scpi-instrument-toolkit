@@ -701,17 +701,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#dmm-meas_store" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        dmm meas_store
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#dmm-meas" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1213,17 +1202,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#dmm-meas_store" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        dmm meas_store
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#dmm-meas" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1511,14 +1489,57 @@
 <p>Take a reading using the currently configured mode.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>dmm read
 </code></pre></div>
-<p>Call <code>dmm config</code> first to set the mode. <code>dmm read</code> does not store the result — use <a href="#dmm-meas_store"><code>dmm meas_store</code></a> to record it.</p>
+<p>Call <code>dmm config</code> first to set the mode. <code>dmm read</code> does not store the result — use the assignment syntax (<code>label = dmm meas unit=V</code>) to record it.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>dmm config vdc
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>dmm read       # take one DC voltage reading
 </code></pre></div>
 <hr />
-<h2 id="dmm-meas_store">dmm meas_store<a class="headerlink" href="#dmm-meas_store" title="Permanent link">&para;</a></h2>
-<p>Read and record the result to the measurement log.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>dmm meas_store &lt;label&gt; [scale=&lt;factor&gt;] [unit=&lt;str&gt;]
+<h2 id="dmm-meas">dmm meas<a class="headerlink" href="#dmm-meas" title="Permanent link">&para;</a></h2>
+<p>One-shot measurement — configure and read in a single command.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>dmm meas &lt;mode&gt; [range] [resolution]
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Required</th>
+<th>Values</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>mode</code></td>
+<td>required</td>
+<td>same as <code>dmm config</code></td>
+<td>Measurement mode.</td>
+</tr>
+<tr>
+<td><code>range</code></td>
+<td>optional</td>
+<td>float or <code>DEF</code></td>
+<td>Measurement range. Default: auto-range.</td>
+</tr>
+<tr>
+<td><code>resolution</code></td>
+<td>optional</td>
+<td>float or <code>DEF</code></td>
+<td>Resolution. Default: default.</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>dmm meas vdc        # quick DC voltage reading
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>dmm meas res        # quick resistance reading
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>dmm meas freq       # quick frequency reading
+</code></pre></div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><code>dmm meas</code> does not support <code>nplc=</code> or storing results. For high-accuracy or repeated measurements, use <code>dmm config</code> + <code>dmm read</code> or the assignment syntax (<code>label = dmm meas unit=V</code>).</p>
+</div>
+<div class="admonition tip">
+<p class="admonition-title">Recording measurements</p>
+<p>Use assignment syntax to measure <strong>and</strong> store the result to the measurement log in one step:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>&lt;label&gt; = dmm meas [scale=&lt;factor&gt;] [unit=&lt;str&gt;]
 </code></pre></div>
 <table>
 <thead>
@@ -1552,70 +1573,28 @@
 </table>
 <div class="admonition warning">
 <p class="admonition-title">Requires dmm config first</p>
-<p>Call <code>dmm config &lt;mode&gt;</code> before using <code>meas_store</code>. The DMM must be in the correct mode.</p>
+<p>Call <code>dmm config &lt;mode&gt;</code> before using the assignment syntax. The DMM must be in the correct mode.</p>
 </div>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>dmm config vdc
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>dmm meas_store vout unit=V                  # store as &#39;vout&#39;, access as m[&quot;vout&quot;]
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>
-<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>dmm config res
-<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>dmm meas_store r_load unit=Ω               # store resistance
-<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>
-<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>dmm config vdc
-<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>dmm meas_store vout_mv scale=1000 unit=mV  # convert V → mV before storing
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>dmm config vdc
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>vout = dmm meas unit=V                  # store as &#39;vout&#39;, access as m[&quot;vout&quot;]
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>dmm config res
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>r_load = dmm meas unit=Ω               # store resistance
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>dmm config vdc
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>vout_mv = dmm meas scale=1000 unit=mV  # convert V → mV before storing
 </code></pre></div>
 <p><strong>Using stored values in calculations:</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>dmm config vdc
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>dmm meas_store voltage unit=V
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>
-<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>dmm config idc
-<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>dmm meas_store current unit=A
-<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>
-<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>calc power m[&quot;voltage&quot;] * m[&quot;current&quot;] unit=W    # compute power
-<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>log print
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>dmm config vdc
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>voltage = dmm meas unit=V
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>dmm config idc
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>current = dmm meas unit=A
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>calc power m[&quot;voltage&quot;] * m[&quot;current&quot;] unit=W    # compute power
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>log print
 </code></pre></div>
 <p>See <a href="logging.html">Log &amp; Calc</a> for full details.</p>
-<hr />
-<h2 id="dmm-meas">dmm meas<a class="headerlink" href="#dmm-meas" title="Permanent link">&para;</a></h2>
-<p>One-shot measurement — configure and read in a single command.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>dmm meas &lt;mode&gt; [range] [resolution]
-</code></pre></div>
-<table>
-<thead>
-<tr>
-<th>Parameter</th>
-<th>Required</th>
-<th>Values</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>mode</code></td>
-<td>required</td>
-<td>same as <code>dmm config</code></td>
-<td>Measurement mode.</td>
-</tr>
-<tr>
-<td><code>range</code></td>
-<td>optional</td>
-<td>float or <code>DEF</code></td>
-<td>Measurement range. Default: auto-range.</td>
-</tr>
-<tr>
-<td><code>resolution</code></td>
-<td>optional</td>
-<td>float or <code>DEF</code></td>
-<td>Resolution. Default: default.</td>
-</tr>
-</tbody>
-</table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>dmm meas vdc        # quick DC voltage reading
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>dmm meas res        # quick resistance reading
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>dmm meas freq       # quick frequency reading
-</code></pre></div>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p><code>dmm meas</code> does not support <code>nplc=</code> or storing results. For high-accuracy or repeated measurements, use <code>dmm config</code> + <code>dmm read</code> / <code>dmm meas_store</code>.</p>
 </div>
 <hr />
 <h2 id="dmm-fetch">dmm fetch<a class="headerlink" href="#dmm-fetch" title="Permanent link">&para;</a></h2>

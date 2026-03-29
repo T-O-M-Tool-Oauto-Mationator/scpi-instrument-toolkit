@@ -779,17 +779,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#smu-meas_store" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        smu meas_store
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#smu-compliance" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1218,17 +1207,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#smu-meas_store" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        smu meas_store
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#smu-compliance" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1345,7 +1323,7 @@
 <div class="tabbed-set tabbed-alternate" data-tabs="1:1"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">NI PXIe-4139</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<p>±60 V / 1 A four-quadrant SMU. Uses the <strong>nidcpower</strong> Python package (not VISA/SCPI). Install with: <code>pip install nidcpower</code>. Output range: −60 V to +60 V, 0 A to 1 A.</p>
+<p>±60 V / 3 A four-quadrant SMU (20 W source, 12 W sink). Uses the <strong>nidcpower</strong> Python package (not VISA/SCPI). Install with: <code>pip install nidcpower</code>. Output range: −60 V to +60 V, −3 A to +3 A DC (10 A pulse).</p>
 </div>
 </div>
 </div>
@@ -1380,8 +1358,8 @@
 <tr>
 <td><code>current_limit</code></td>
 <td>optional</td>
-<td>0.0 – 1.0 (A)</td>
-<td>Current compliance limit. If omitted, the existing limit is kept.</td>
+<td>0.0 – 3.0 (A)</td>
+<td>Current compliance limit (always positive). If omitted, the existing limit is kept.</td>
 </tr>
 </tbody>
 </table>
@@ -1391,7 +1369,11 @@
 </code></pre></div>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
-<p>Setting a voltage without a current limit uses whatever limit was set previously (default: 10 mA). Always specify the limit when powering an unknown DUT.</p>
+<p>Setting a voltage without a current limit uses whatever limit was set previously (default: 10 mA). Always specify the limit when powering an unknown DUT. DC source power is capped at 20 W and sink power at 12 W by the hardware.</p>
+</div>
+<div class="admonition tip">
+<p class="admonition-title">How to sink current</p>
+<p>Use <code>smu set_mode current</code> instead of <code>smu set</code>. In current mode, the SMU acts as a programmable electronic load — positive current = sink from DUT, negative current = source into DUT. See <a href="#smu-set_mode">smu set_mode</a> below.</p>
 </div>
 <hr />
 <h2 id="smu-meas">smu meas<a class="headerlink" href="#smu-meas" title="Permanent link">&para;</a></h2>
@@ -1459,25 +1441,30 @@
 <td>second arg</td>
 <td>required</td>
 <td>float</td>
-<td>Setpoint in volts (voltage mode) or amps (current mode).</td>
+<td>Setpoint in volts (voltage mode) or amps (current mode, −3.0 to 3.0).</td>
 </tr>
 <tr>
 <td>third arg</td>
 <td>optional</td>
 <td>float</td>
-<td>Compliance limit for the opposing quantity.</td>
+<td>Compliance limit for the opposing quantity (always positive).</td>
 </tr>
 </tbody>
 </table>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>smu<span class="w"> </span>set_mode<span class="w"> </span>voltage<span class="w"> </span><span class="m">3</span>.3<span class="w"> </span><span class="m">0</span>.1<span class="w">    </span><span class="c1"># source 3.3 V with 100 mA current limit</span>
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>smu<span class="w"> </span>set_mode<span class="w"> </span>current<span class="w"> </span><span class="m">0</span>.05<span class="w"> </span><span class="m">5</span>.0<span class="w">   </span><span class="c1"># source 50 mA with 5 V voltage limit</span>
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>smu<span class="w"> </span>set_mode<span class="w"> </span>current<span class="w"> </span><span class="m">0</span>.01<span class="w">       </span><span class="c1"># source 10 mA, no explicit voltage limit</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>smu<span class="w"> </span>set_mode<span class="w"> </span>current<span class="w"> </span><span class="m">0</span>.010<span class="w"> </span><span class="m">3</span>.0<span class="w">  </span><span class="c1"># sink 10 mA from DUT (electronic load), 3 V compliance</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>smu<span class="w"> </span>set_mode<span class="w"> </span>current<span class="w"> </span>-0.5<span class="w"> </span><span class="m">5</span>.0<span class="w">   </span><span class="c1"># source 0.5 A into DUT, 5 V compliance</span>
 </code></pre></div>
+<div class="admonition note">
+<p class="admonition-title">Current mode polarity</p>
+<p>In current mode, <strong>positive current = sink</strong> (draw current from the DUT, acting as a load) and <strong>negative current = source</strong> (push current into the DUT). This is the standard four-quadrant SMU convention. Use positive values when the SMU is loading an LDO, regulator, or other voltage source.</p>
+</div>
 <p>Safety limits (<code>upper_limit</code> / <code>lower_limit</code>) are enforced before the mode switch is applied.</p>
 <hr />
-<h2 id="smu-meas_store">smu meas_store<a class="headerlink" href="#smu-meas_store" title="Permanent link">&para;</a></h2>
-<p>Measure and record the result to the measurement log.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>smu<span class="w"> </span>meas_store<span class="w"> </span>&lt;v<span class="p">|</span>i&gt;<span class="w"> </span>&lt;label&gt;<span class="w"> </span><span class="o">[</span><span class="nv">unit</span><span class="o">=</span>&lt;str&gt;<span class="o">]</span>
+<div class="admonition tip">
+<p class="admonition-title">Recording measurements</p>
+<p>Use assignment syntax to measure <strong>and</strong> store the result to the measurement log in one step:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>&lt;label&gt;<span class="w"> </span><span class="o">=</span><span class="w"> </span>smu<span class="w"> </span>meas<span class="w"> </span>&lt;v<span class="p">|</span>i&gt;<span class="w"> </span><span class="o">[</span><span class="nv">unit</span><span class="o">=</span>&lt;str&gt;<span class="o">]</span>
 </code></pre></div>
 <table>
 <thead>
@@ -1490,16 +1477,16 @@
 </thead>
 <tbody>
 <tr>
-<td><code>v\|i</code></td>
-<td>required</td>
-<td><code>v</code>, <code>i</code></td>
-<td>What to measure.</td>
-</tr>
-<tr>
 <td><code>label</code></td>
 <td>required</td>
 <td>string, no spaces</td>
 <td>Name for this entry in the log.</td>
+</tr>
+<tr>
+<td><code>v\|i</code></td>
+<td>required</td>
+<td><code>v</code>, <code>i</code></td>
+<td>What to measure.</td>
 </tr>
 <tr>
 <td><code>unit=</code></td>
@@ -1509,11 +1496,12 @@
 </tr>
 </tbody>
 </table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>smu<span class="w"> </span>meas_store<span class="w"> </span>v<span class="w"> </span>smu_vout<span class="w"> </span><span class="nv">unit</span><span class="o">=</span>V
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>smu<span class="w"> </span>meas_store<span class="w"> </span>i<span class="w"> </span>smu_iout<span class="w"> </span><span class="nv">unit</span><span class="o">=</span>A
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="nv">smu_vout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>smu<span class="w"> </span>meas<span class="w"> </span>v<span class="w"> </span><span class="nv">unit</span><span class="o">=</span>V
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="nv">smu_iout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>smu<span class="w"> </span>meas<span class="w"> </span>i<span class="w"> </span><span class="nv">unit</span><span class="o">=</span>A
 <a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>calc<span class="w"> </span>power<span class="w"> </span>m<span class="o">[</span><span class="s2">&quot;smu_vout&quot;</span><span class="o">]</span><span class="w"> </span>*<span class="w"> </span>m<span class="o">[</span><span class="s2">&quot;smu_iout&quot;</span><span class="o">]</span><span class="w"> </span><span class="nv">unit</span><span class="o">=</span>W
 </code></pre></div>
 <p>See <a href="logging.html">Log &amp; Calc</a> for full details.</p>
+</div>
 <hr />
 <h2 id="smu-compliance">smu compliance<a class="headerlink" href="#smu-compliance" title="Permanent link">&para;</a></h2>
 <p>Query whether the SMU is currently in compliance (i.e. the output is being current- or voltage-limited by the instrument's protection circuit).</p>
@@ -1600,8 +1588,8 @@
 <a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a>smu1<span class="w"> </span>on
 <a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a>sleep<span class="w"> </span><span class="m">0</span>.5
 <a id="__codelineno-18-7" name="__codelineno-18-7" href="#__codelineno-18-7"></a>
-<a id="__codelineno-18-8" name="__codelineno-18-8" href="#__codelineno-18-8"></a>smu1<span class="w"> </span>meas_store<span class="w"> </span>v<span class="w"> </span>vout<span class="w"> </span><span class="nv">unit</span><span class="o">=</span>V
-<a id="__codelineno-18-9" name="__codelineno-18-9" href="#__codelineno-18-9"></a>smu1<span class="w"> </span>meas_store<span class="w"> </span>i<span class="w"> </span>iout<span class="w"> </span><span class="nv">unit</span><span class="o">=</span>A
+<a id="__codelineno-18-8" name="__codelineno-18-8" href="#__codelineno-18-8"></a><span class="nv">vout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>smu1<span class="w"> </span>meas<span class="w"> </span>v<span class="w"> </span><span class="nv">unit</span><span class="o">=</span>V
+<a id="__codelineno-18-9" name="__codelineno-18-9" href="#__codelineno-18-9"></a><span class="nv">iout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>smu1<span class="w"> </span>meas<span class="w"> </span>i<span class="w"> </span><span class="nv">unit</span><span class="o">=</span>A
 <a id="__codelineno-18-10" name="__codelineno-18-10" href="#__codelineno-18-10"></a>calc<span class="w"> </span>power<span class="w"> </span>m<span class="o">[</span><span class="s2">&quot;vout&quot;</span><span class="o">]</span><span class="w"> </span>*<span class="w"> </span>m<span class="o">[</span><span class="s2">&quot;iout&quot;</span><span class="o">]</span><span class="w"> </span><span class="nv">unit</span><span class="o">=</span>W
 <a id="__codelineno-18-11" name="__codelineno-18-11" href="#__codelineno-18-11"></a>
 <a id="__codelineno-18-12" name="__codelineno-18-12" href="#__codelineno-18-12"></a>log<span class="w"> </span>print

@@ -4,19 +4,20 @@
 
 ## The measurement log — what it is and why you need it
 
-Every time you run a `meas_store` command, the REPL saves the result to a persistent **measurement log** — a table that accumulates all your readings for the current session.
+Every time you use the assignment syntax (`label = instrument meas ...`), the REPL saves the result to a persistent **measurement log** — a table that accumulates all your readings for the current session.
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  psu meas_store v    output_v  unit=V                   │
+│  output_v = psu meas v unit=V                           │
 │       │               │                                 │
-│       │               └─ label: the name you choose     │
-│       │                   for this row in the table     │
-│       └─ what to measure (voltage)                      │
+│       │               └─ what to measure (voltage)      │
+│       │                                                 │
+│       └─ label: the name you choose                     │
+│           for this row in the table                     │
 └─────────────────────────────────────────────────────────┘
 ```
 
-After running a few `meas_store` commands, the log looks like:
+After recording a few measurements, the log looks like:
 
 ```
 Label       Value       Unit   Source
@@ -39,14 +40,14 @@ A **label** is the name you give a stored measurement — the row key in the tab
 - Must be unique per session — storing twice with the same label **overwrites** the earlier value
 - You reference it in `calc` as `m["label"]`
 
-**Why labels matter:** without a name, you can't retrieve the value later. `psu meas v` just prints to the screen and is gone. `psu meas_store v output_v` saves it so you can compute `calc error m["output_v"] - 5.0` afterwards.
+**Why labels matter:** without a name, you can't retrieve the value later. `psu meas v` just prints to the screen and is gone. `output_v = psu meas v` saves it so you can compute `calc error m["output_v"] - 5.0` afterwards.
 
 ```
 # meas = print only (nothing saved):
 psu meas v          # prints 4.9987, then forgotten
 
-# meas_store = save with a name:
-psu meas_store v output_v unit=V    # saves 4.9987 as "output_v"
+# assignment syntax = save with a name:
+output_v = psu meas v unit=V    # saves 4.9987 as "output_v"
 calc error m["output_v"] - 5.0      # retrieves it: 4.9987 - 5.0 = -0.0013
 log print                            # shows the full table
 ```
@@ -128,8 +129,8 @@ calc <label> <expression> [unit=<str>]
 Use `m["label"]` to reference any value previously stored in the log:
 
 ```
-psu1 meas_store v psu_v unit=V
-psu1 meas_store i psu_i unit=A
+psu_v = psu1 meas v unit=V
+psu_i = psu1 meas i unit=A
 calc power m["psu_v"] * m["psu_i"] unit=W
 ```
 
@@ -137,7 +138,7 @@ Use `last` to reference the most recently stored value:
 
 ```
 dmm1 config vdc
-dmm1 meas_store my_reading unit=V
+my_reading = dmm1 meas unit=V
 calc doubled last * 2 unit=V
 ```
 
@@ -161,10 +162,10 @@ calc doubled last * 2 unit=V
 The result of `calc` is stored in the log, so you can chain calculations:
 
 ```
-psu1 meas_store v v_in unit=V
-psu1 meas_store i i_in unit=A
+v_in = psu1 meas v unit=V
+i_in = psu1 meas i unit=A
 dmm1 config vdc
-dmm1 meas_store v_out unit=V
+v_out = dmm1 meas unit=V
 
 calc power_in  m["v_in"] * m["i_in"] unit=W
 calc power_out m["v_out"] * m["i_in"] unit=W      # assume same current
@@ -177,15 +178,15 @@ calc efficiency m["power_out"] / m["power_in"] * 100 unit=%
 
 ```
 dmm1 config vdc
-dmm1 meas_store measured unit=V
+measured = dmm1 meas unit=V
 calc error_pct (m["measured"] - 5.0) / 5.0 * 100 unit=%
 ```
 
 **Voltage ratio (gain):**
 
 ```
-scope1 meas_store 1 PK2PK v_in unit=V
-scope1 meas_store 2 PK2PK v_out unit=V
+v_in = scope1 meas 1 PK2PK unit=V
+v_out = scope1 meas 2 PK2PK unit=V
 calc gain m["v_out"] / m["v_in"]
 calc gain_db 20 * log10(m["gain"]) unit=dB
 ```
@@ -193,16 +194,17 @@ calc gain_db 20 * log10(m["gain"]) unit=dB
 **Resistance from V and I:**
 
 ```
-psu1 meas_store v v_supply unit=V
-dmm1 meas_store idc i_load unit=A
+v_supply = psu1 meas v unit=V
+dmm1 config idc
+i_load = dmm1 meas unit=A
 calc resistance m["v_supply"] / m["i_load"] unit=Ω
 ```
 
 **Crest factor:**
 
 ```
-scope1 meas_store 1 PK2PK pk2pk unit=V
-scope1 meas_store 1 RMS rms unit=V
+pk2pk = scope1 meas 1 PK2PK unit=V
+rms = scope1 meas 1 RMS unit=V
 calc crest_factor m["pk2pk"] / (2 * m["rms"])
 ```
 
@@ -229,7 +231,7 @@ Prints `[PASS]` or `[FAIL]` with the measured value and limits. A failed check s
 
 ```bash
 dmm1 config vdc
-dmm1 meas_store vout unit=V
+vout = dmm1 meas unit=V
 
 check vout 4.75 5.25          # pass if 4.75 V ≤ vout ≤ 5.25 V
 check vout 5.0 tol=0.25       # pass if |vout − 5.0| ≤ 0.25 V
@@ -333,10 +335,10 @@ psu1 chan 1 on
 psu1 set 5.0
 sleep 0.5
 
-psu1 meas_store v psu_v unit=V     # save as "psu_v"
-psu1 meas_store i psu_i unit=A     # save as "psu_i"
+psu_v = psu1 meas v unit=V     # save as "psu_v"
+psu_i = psu1 meas i unit=A     # save as "psu_i"
 dmm1 config vdc
-dmm1 meas_store dmm_v unit=V       # save as "dmm_v"
+dmm_v = dmm1 meas unit=V       # save as "dmm_v"
 
 # 3. Derive values
 calc power       m["psu_v"] * m["psu_i"] unit=W

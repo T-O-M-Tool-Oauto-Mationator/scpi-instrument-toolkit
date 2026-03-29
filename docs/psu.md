@@ -102,47 +102,44 @@ psu meas 2 v       # multi-channel: channel 2 voltage
 ```
 
 !!! note
-    `psu meas` prints the value but does not record it. To record for export or calculations, use [`psu meas_store`](#psu-meas_store).
+    `psu meas` prints the value but does not record it. To record for export or calculations, use the assignment syntax: `label = psu meas v unit=V`.
 
----
+!!! tip "Recording measurements"
+    Use assignment syntax to measure **and** store the result to the measurement log in one step:
 
-## psu meas_store
+    === "Single-channel PSU"
+        ```
+        <label> = psu meas <v|i> [unit=<str>]
+        ```
 
-Measure and record to the measurement log.
+    === "Multi-channel PSU"
+        ```
+        <label> = psu meas <channel> <v|i> [unit=<str>]
+        ```
 
-=== "Single-channel PSU"
+    | Parameter | Required | Values | Description |
+    |-----------|----------|--------|-------------|
+    | `label` | required | string, no spaces | **Name for this entry in the log.** Appears as the row identifier in `log print` output. Also used as the dictionary key in `calc` expressions: `m["label"]`. Use underscores instead of spaces — e.g. `ch1_voltage`. |
+    | `channel` | multi-ch only | `1`, `2`, `3` | Channel to measure. Required for multi-channel PSUs; omit for single-channel. |
+    | `v\|i` | required | `v`, `i` | Quantity to measure: `v` = voltage, `i` = current. |
+    | `unit=` | optional | string | Unit label shown in `log print` output (e.g. `V`, `A`). **Display-only** — does not affect the stored numeric value or any calculation. |
+
     ```
-    psu meas_store <v|i> <label> [unit=<str>]
+    psu_out = psu meas v unit=V        # store as 'psu_out', access as m["psu_out"]
+    psu_i = psu meas i unit=A          # store current
+    ch2_v = psu meas 2 v unit=V       # multi-channel: channel 2 voltage
     ```
 
-=== "Multi-channel PSU"
+    After storing, view with `log print` or compute derived values with `calc`:
+
     ```
-    psu meas_store <channel> <v|i> <label> [unit=<str>]
+    psu_v = psu meas v unit=V
+    psu_i = psu meas i unit=A
+    calc power m["psu_v"] * m["psu_i"] unit=W    # compute power
+    log print
     ```
 
-| Parameter | Required | Values | Description |
-|-----------|----------|--------|-------------|
-| `channel` | multi-ch only | `1`, `2`, `3` | Channel to measure. Required for multi-channel PSUs; omit for single-channel. |
-| `v\|i` | required | `v`, `i` | Quantity to measure: `v` = voltage, `i` = current. |
-| `label` | required | string, no spaces | **Name for this entry in the log.** Appears as the row identifier in `log print` output. Also used as the dictionary key in `calc` expressions: `m["label"]`. Use underscores instead of spaces — e.g. `ch1_voltage`. |
-| `unit=` | optional | string | Unit label shown in `log print` output (e.g. `V`, `A`). **Display-only** — does not affect the stored numeric value or any calculation. |
-
-```
-psu meas_store v psu_out unit=V        # store as 'psu_out', access as m["psu_out"]
-psu meas_store i psu_i unit=A          # store current
-psu meas_store 2 v ch2_v unit=V       # multi-channel: channel 2 voltage
-```
-
-After storing, view with `log print` or compute derived values with `calc`:
-
-```
-psu meas_store v psu_v unit=V
-psu meas_store i psu_i unit=A
-calc power m["psu_v"] * m["psu_i"] unit=W    # compute power
-log print
-```
-
-See [Log & Calc](logging.md) for full details.
+    See [Log & Calc](logging.md) for full details.
 
 ---
 

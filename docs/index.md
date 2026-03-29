@@ -51,12 +51,12 @@ psu meas v        # measure output voltage
 
 ### 5. Log results and export
 
-`meas_store` saves a reading to the log with a **label** (name you choose). `calc` retrieves it by that label. `log print` shows the table. `log save` exports it.
+The assignment syntax (`label = instrument meas ...`) saves a reading to the log with a **label** (name you choose). `calc` retrieves it by that label. `log print` shows the table. `log save` exports it.
 
 ```
-psu meas_store v output unit=V     # save voltage — label is "output"
+output = psu meas v unit=V         # save voltage — label is "output"
 dmm config vdc                     # set DMM to DC voltage mode
-dmm meas_store dmm_v unit=V        # save DMM reading — label is "dmm_v"
+dmm_v = dmm meas unit=V            # save DMM reading — label is "dmm_v"
 calc error m["dmm_v"] - m["output"] unit=V   # reference labels in math
 log print                           # show the full results table
 log save results.csv                # export to CSV

@@ -174,7 +174,7 @@ record start my_psu_test    # start recording
 psu1 set 5.0
 sleep 0.5
 dmm1 config vdc
-dmm1 meas_store vout unit=V
+vout = dmm1 meas unit=V
 log print
 record stop                  # saves as my_psu_test.scpi in scripts dir
 script run my_psu_test       # run the recorded script
@@ -280,7 +280,7 @@ voltage = 5.0
 label = my_run
 
 psu1 set {voltage}               # → psu1 set 5.0
-dmm1 meas_store {label} unit=V   # → dmm1 meas_store my_run unit=V
+{label} = dmm1 meas unit=V   # → my_run = dmm1 meas unit=V
 print "Setting {voltage}V"       # → prints  Setting 5.0V
 ```
 
@@ -517,7 +517,7 @@ voltage = input Enter target voltage (V):
 psu1 set {voltage}
 print "Voltage set to {voltage}V"
 dmm1 config vdc
-dmm1 meas_store output_{voltage} unit=V
+output_{voltage} = dmm1 meas unit=V
 ```
 
 !!! note
@@ -563,7 +563,7 @@ Executes the enclosed commands exactly N times.
 
 ```
 repeat 5
-  psu1 meas_store v sample unit=V
+  sample = psu1 meas v unit=V
   sleep 0.2
 end
 ```
@@ -598,7 +598,7 @@ for v 1.0 2.0 3.3 5.0 9.0 12.0
   print Setting {v}V...
   psu1 set {v}
   sleep 0.5
-  dmm1 meas_store v_{v} unit=V
+  v_{v} = dmm1 meas unit=V
 end
 ```
 
@@ -616,8 +616,8 @@ end
 for f 100 500 1000 5000 10000 50000
   awg1 freq 1 {f}
   sleep 0.4
-  scope1 meas_store 1 FREQUENCY freq_{f} unit=Hz
-  scope1 meas_store 1 PK2PK pk2pk_{f} unit=V
+  freq_{f} = scope1 meas 1 FREQUENCY unit=Hz
+  pk2pk_{f} = scope1 meas 1 PK2PK unit=V
 end
 ```
 
@@ -725,7 +725,7 @@ VSWEEP = linspace 6 25 20
 for VIN {VSWEEP}
   psu set 2 {VIN} 0.5
   sleep 0.5
-  smu meas_store v linereg_{VIN}V unit=V
+  linereg_{VIN}V = smu meas v unit=V
 end
 ```
 
@@ -737,7 +737,7 @@ for I {ISWEEP}
   smu set_mode current {I} 3.0
   smu on
   sleep 0.3
-  smu meas_store v ilim_{I}A unit=V
+  ilim_{I}A = smu meas v unit=V
   smu off
 end
 ```
@@ -794,7 +794,7 @@ export result    # {result} becomes available in the REPL after the script runs
 ```
 # measure_vout — measures PSU output, exports result
 VOUT = 0.0
-psu meas_store v psu_reading unit=V
+psu_reading = psu meas v unit=V
 VOUT = m["psu_reading"]
 export VOUT
 ```
@@ -836,7 +836,7 @@ label = psu_out
 psu1 chan 1 on
 psu1 set {voltage}
 sleep 0.5
-psu1 meas_store v {label} unit=V
+{label} = psu1 meas v unit=V
 ```
 
 Call it from another script:
@@ -846,7 +846,7 @@ Call it from another script:
 dmm1 config vdc
 for v 3.3 5.0 12.0
   call set_psu voltage={v} label=psu_{v}
-  dmm1 meas_store dmm_{v} unit=V
+  dmm_{v} = dmm1 meas unit=V
 end
 log print
 ```
@@ -1062,8 +1062,8 @@ for v 1.0 2.0 3.3 5.0 9.0 12.0
   print Testing {v}V...
   psu1 set {v}
   sleep {delay}
-  psu1 meas_store v psu_{v} unit=V
-  dmm1 meas_store dmm_{v} unit=V
+  psu_{v} = psu1 meas v unit=V
+  dmm_{v} = dmm1 meas unit=V
   calc err_{v} (m["dmm_{v}"] - m["psu_{v}"]) / m["psu_{v}"] * 100 unit=%
 end
 

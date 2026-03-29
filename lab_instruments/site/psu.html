@@ -656,17 +656,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#psu-meas_store" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        psu meas_store
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#psu-get" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1152,17 +1141,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#psu-meas_store" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        psu meas_store
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#psu-get" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1386,19 +1364,19 @@
 </code></pre></div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p><code>psu meas</code> prints the value but does not record it. To record for export or calculations, use <a href="#psu-meas_store"><code>psu meas_store</code></a>.</p>
+<p><code>psu meas</code> prints the value but does not record it. To record for export or calculations, use the assignment syntax: <code>label = psu meas v unit=V</code>.</p>
 </div>
-<hr />
-<h2 id="psu-meas_store">psu meas_store<a class="headerlink" href="#psu-meas_store" title="Permanent link">&para;</a></h2>
-<p>Measure and record to the measurement log.</p>
+<div class="admonition tip">
+<p class="admonition-title">Recording measurements</p>
+<p>Use assignment syntax to measure <strong>and</strong> store the result to the measurement log in one step:</p>
 <div class="tabbed-set tabbed-alternate" data-tabs="5:2"><input checked="checked" id="__tabbed_5_1" name="__tabbed_5" type="radio" /><input id="__tabbed_5_2" name="__tabbed_5" type="radio" /><div class="tabbed-labels"><label for="__tabbed_5_1">Single-channel PSU</label><label for="__tabbed_5_2">Multi-channel PSU</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>psu meas_store &lt;v|i&gt; &lt;label&gt; [unit=&lt;str&gt;]
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>&lt;label&gt; = psu meas &lt;v|i&gt; [unit=&lt;str&gt;]
 </code></pre></div>
 </div>
 <div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>psu meas_store &lt;channel&gt; &lt;v|i&gt; &lt;label&gt; [unit=&lt;str&gt;]
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>&lt;label&gt; = psu meas &lt;channel&gt; &lt;v|i&gt; [unit=&lt;str&gt;]
 </code></pre></div>
 </div>
 </div>
@@ -1414,6 +1392,12 @@
 </thead>
 <tbody>
 <tr>
+<td><code>label</code></td>
+<td>required</td>
+<td>string, no spaces</td>
+<td><strong>Name for this entry in the log.</strong> Appears as the row identifier in <code>log print</code> output. Also used as the dictionary key in <code>calc</code> expressions: <code>m["label"]</code>. Use underscores instead of spaces — e.g. <code>ch1_voltage</code>.</td>
+</tr>
+<tr>
 <td><code>channel</code></td>
 <td>multi-ch only</td>
 <td><code>1</code>, <code>2</code>, <code>3</code></td>
@@ -1426,12 +1410,6 @@
 <td>Quantity to measure: <code>v</code> = voltage, <code>i</code> = current.</td>
 </tr>
 <tr>
-<td><code>label</code></td>
-<td>required</td>
-<td>string, no spaces</td>
-<td><strong>Name for this entry in the log.</strong> Appears as the row identifier in <code>log print</code> output. Also used as the dictionary key in <code>calc</code> expressions: <code>m["label"]</code>. Use underscores instead of spaces — e.g. <code>ch1_voltage</code>.</td>
-</tr>
-<tr>
 <td><code>unit=</code></td>
 <td>optional</td>
 <td>string</td>
@@ -1439,17 +1417,18 @@
 </tr>
 </tbody>
 </table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>psu meas_store v psu_out unit=V        # store as &#39;psu_out&#39;, access as m[&quot;psu_out&quot;]
-<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>psu meas_store i psu_i unit=A          # store current
-<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>psu meas_store 2 v ch2_v unit=V       # multi-channel: channel 2 voltage
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>psu_out = psu meas v unit=V        # store as &#39;psu_out&#39;, access as m[&quot;psu_out&quot;]
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>psu_i = psu meas i unit=A          # store current
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>ch2_v = psu meas 2 v unit=V       # multi-channel: channel 2 voltage
 </code></pre></div>
 <p>After storing, view with <code>log print</code> or compute derived values with <code>calc</code>:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>psu meas_store v psu_v unit=V
-<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>psu meas_store i psu_i unit=A
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>psu_v = psu meas v unit=V
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>psu_i = psu meas i unit=A
 <a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>calc power m[&quot;psu_v&quot;] * m[&quot;psu_i&quot;] unit=W    # compute power
 <a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>log print
 </code></pre></div>
 <p>See <a href="logging.html">Log &amp; Calc</a> for full details.</p>
+</div>
 <hr />
 <h2 id="psu-get">psu get<a class="headerlink" href="#psu-get" title="Permanent link">&para;</a></h2>
 <p>Show the programmed voltage/current setpoints (not the live measured output).</p>

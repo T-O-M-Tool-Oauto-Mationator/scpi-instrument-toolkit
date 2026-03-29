@@ -267,7 +267,7 @@ class TestMeasurementTableInApp:
     def test_measurements_refresh_after_command_dispatch(self):
         """Measurements table must update immediately after a command completes.
 
-        Regression: with poll-only refresh, running 'dmm meas_store' would not
+        Regression: with poll-only refresh, running 'Vout = dmm meas' would not
         appear in the table until the next poll tick (up to 5 seconds later).
         Now _refresh_measurements() is called in on_worker_state_changed SUCCESS.
         """
@@ -286,7 +286,7 @@ class TestMeasurementTableInApp:
                 stub._measurements.append(_entry("Vout", 5.01))
 
                 await pilot.click("#cmd_input")
-                for ch in "dmm meas_store Vout":
+                for ch in "Vout = dmm meas":
                     await pilot.press(ch)
                 await pilot.press("enter")
                 await pilot.pause(0.3)  # wait for worker + refresh

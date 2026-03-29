@@ -980,17 +980,6 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#scope-meas_store" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        scope meas_store
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#scope-meas_delay" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1831,17 +1820,6 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#scope-meas_store" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        scope meas_store
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#scope-meas_delay" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2179,20 +2157,20 @@
 </tr>
 </tbody>
 </table>
-<p>Use after <code>scope single</code> to ensure the trigger has fired before querying measurements. Without this, <code>scope meas_store</code> may return <code>9.9e+37</code> (the SCPI sentinel for "not yet computed").</p>
+<p>Use after <code>scope single</code> to ensure the trigger has fired before querying measurements. Without this, measurements may return <code>9.9e+37</code> (the SCPI sentinel for "not yet computed").</p>
 <div class="tabbed-set tabbed-alternate" data-tabs="2:2"><input checked="checked" id="__tabbed_2_1" name="__tabbed_2" type="radio" /><input id="__tabbed_2_2" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="__tabbed_2_1">Rigol DHO804</label><label for="__tabbed_2_2">Tektronix MSO2024</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>scope<span class="w"> </span>single
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>scope<span class="w"> </span>wait_stop<span class="w"> </span><span class="nv">timeout</span><span class="o">=</span><span class="m">10</span><span class="w">    </span><span class="c1"># wait up to 10 s for trigger</span>
 <a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>scope<span class="w"> </span>meas_force<span class="w">              </span><span class="c1"># force DSP to finalize values</span>
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>scope<span class="w"> </span>meas_store<span class="w"> </span><span class="m">1</span><span class="w"> </span>FREQUENCY<span class="w"> </span>freq<span class="w"> </span><span class="nv">unit</span><span class="o">=</span>Hz
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="nv">freq</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>scope<span class="w"> </span>meas<span class="w"> </span><span class="m">1</span><span class="w"> </span>FREQUENCY<span class="w"> </span><span class="nv">unit</span><span class="o">=</span>Hz
 </code></pre></div>
 </div>
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>scope<span class="w"> </span>single
 <a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>scope<span class="w"> </span>wait_stop<span class="w">               </span><span class="c1"># default 10 s timeout</span>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>scope<span class="w"> </span>meas_store<span class="w"> </span><span class="m">1</span><span class="w"> </span>FREQUENCY<span class="w"> </span>freq<span class="w"> </span><span class="nv">unit</span><span class="o">=</span>Hz
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="nv">freq</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>scope<span class="w"> </span>meas<span class="w"> </span><span class="m">1</span><span class="w"> </span>FREQUENCY<span class="w"> </span><span class="nv">unit</span><span class="o">=</span>Hz
 </code></pre></div>
 </div>
 </div>
@@ -2796,7 +2774,7 @@
 </div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p><code>scope meas</code> prints the result but does not record it. Use <code>scope meas_store</code> to save to the log.</p>
+<p><code>scope meas</code> prints the result but does not record it. Use the assignment syntax (<code>label = scope meas 1 FREQUENCY unit=Hz</code>) to save to the log.</p>
 </div>
 <h3 id="scope-meas_setup">scope meas_setup<a class="headerlink" href="#scope-meas_setup" title="Permanent link">&para;</a></h3>
 <p>Configure a measurement slot before capturing so the scope computes the value when the trigger fires.</p>
@@ -2834,7 +2812,7 @@
 <a id="__codelineno-25-3" name="__codelineno-25-3" href="#__codelineno-25-3"></a>scope single
 <a id="__codelineno-25-4" name="__codelineno-25-4" href="#__codelineno-25-4"></a>scope wait_stop timeout=10
 <a id="__codelineno-25-5" name="__codelineno-25-5" href="#__codelineno-25-5"></a>scope meas_force            # force DSP computation
-<a id="__codelineno-25-6" name="__codelineno-25-6" href="#__codelineno-25-6"></a>scope meas_store 3 RISE ch3_rise unit=s
+<a id="__codelineno-25-6" name="__codelineno-25-6" href="#__codelineno-25-6"></a>ch3_rise = scope meas 3 RISE unit=s
 </code></pre></div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
@@ -2842,7 +2820,7 @@
 </div>
 </div>
 <div class="tabbed-block">
-<p>Not supported. The MSO2024 computes measurements on demand — use <code>scope meas_store</code> directly after capture without a prior setup step.</p>
+<p>Not supported. The MSO2024 computes measurements on demand — use the assignment syntax (<code>label = scope meas ...</code>) directly after capture without a prior setup step.</p>
 </div>
 </div>
 </div>
@@ -2853,10 +2831,10 @@
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a>scope meas_force
 </code></pre></div>
-<p>The DHO804 computes measurements lazily — values are only finalized when the display refreshes. <code>scope meas_force</code> triggers an internal display refresh (no file written) so that <code>scope meas_store</code> returns valid values immediately after <code>scope wait_stop</code>.</p>
+<p>The DHO804 computes measurements lazily — values are only finalized when the display refreshes. <code>scope meas_force</code> triggers an internal display refresh (no file written) so that measurements return valid values immediately after <code>scope wait_stop</code>.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>Use after <code>scope wait_stop</code> and before <code>scope meas_store</code> when you do not want to save a screenshot first. If you already call <code>scope screenshot</code> before <code>scope meas_store</code>, this step is redundant.</p>
+<p>Use after <code>scope wait_stop</code> and before taking measurements when you do not want to save a screenshot first. If you already call <code>scope screenshot</code> before measuring, this step is redundant.</p>
 </div>
 </div>
 <div class="tabbed-block">
@@ -2873,7 +2851,7 @@
 </code></pre></div>
 <p>Sends <code>:MEASure:CLEar</code> to hide the measurement sidebar. Use before <code>scope screenshot</code> to capture a clean image without the measurement overlay.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-28-1" name="__codelineno-28-1" href="#__codelineno-28-1"></a>scope meas_force
-<a id="__codelineno-28-2" name="__codelineno-28-2" href="#__codelineno-28-2"></a>scope meas_store 3 RISE ch3_rise unit=s
+<a id="__codelineno-28-2" name="__codelineno-28-2" href="#__codelineno-28-2"></a>ch3_rise = scope meas 3 RISE unit=s
 <a id="__codelineno-28-3" name="__codelineno-28-3" href="#__codelineno-28-3"></a>scope meas_clear              # close the panel
 <a id="__codelineno-28-4" name="__codelineno-28-4" href="#__codelineno-28-4"></a>scope screenshot cap.png      # clean screenshot
 </code></pre></div>
@@ -2925,7 +2903,7 @@
 <td><code>label=</code></td>
 <td>optional</td>
 <td>string, no spaces</td>
-<td>If provided, each reading is also stored to the measurement log (same as <code>meas_store</code>).</td>
+<td>If provided, each reading is also stored to the measurement log (same as the assignment syntax).</td>
 </tr>
 <tr>
 <td><code>unit=</code></td>
@@ -2945,9 +2923,10 @@
 <p>Use <code>count=N label=&lt;name&gt;</code> together to collect a fixed number of samples and then pass them to <code>calc</code> for post-processing.</p>
 </div>
 <hr />
-<h3 id="scope-meas_store">scope meas_store<a class="headerlink" href="#scope-meas_store" title="Permanent link">&para;</a></h3>
-<p>Measure and record to the measurement log.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-31-1" name="__codelineno-31-1" href="#__codelineno-31-1"></a>scope meas_store &lt;1-4|all&gt; &lt;type&gt; &lt;label&gt; [unit=&lt;str&gt;]
+<div class="admonition tip">
+<p class="admonition-title">Recording measurements</p>
+<p>Use assignment syntax to measure <strong>and</strong> store the result to the measurement log in one step:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-31-1" name="__codelineno-31-1" href="#__codelineno-31-1"></a>&lt;label&gt; = scope meas &lt;1-4|all&gt; &lt;type&gt; [unit=&lt;str&gt;]
 </code></pre></div>
 <table>
 <thead>
@@ -2959,6 +2938,12 @@
 </tr>
 </thead>
 <tbody>
+<tr>
+<td><code>label</code></td>
+<td>required</td>
+<td>string, no spaces</td>
+<td><strong>Name for this entry in the log.</strong> Appears in <code>log print</code> and used as the dictionary key in <code>calc</code> expressions: <code>m["label"]</code>. Use underscores — e.g. <code>ch1_freq</code>.</td>
+</tr>
 <tr>
 <td><code>1-4\|all</code></td>
 <td>required</td>
@@ -2972,12 +2957,6 @@
 <td>Measurement type.</td>
 </tr>
 <tr>
-<td><code>label</code></td>
-<td>required</td>
-<td>string, no spaces</td>
-<td><strong>Name for this entry in the log.</strong> Appears in <code>log print</code> and used as the dictionary key in <code>calc</code> expressions: <code>m["label"]</code>. Use underscores — e.g. <code>ch1_freq</code>.</td>
-</tr>
-<tr>
 <td><code>unit=</code></td>
 <td>optional</td>
 <td>string</td>
@@ -2988,15 +2967,15 @@
 <div class="tabbed-set tabbed-alternate" data-tabs="7:2"><input checked="checked" id="__tabbed_7_1" name="__tabbed_7" type="radio" /><input id="__tabbed_7_2" name="__tabbed_7" type="radio" /><div class="tabbed-labels"><label for="__tabbed_7_1">Rigol DHO804</label><label for="__tabbed_7_2">Tektronix MSO2024</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><a id="__codelineno-32-1" name="__codelineno-32-1" href="#__codelineno-32-1"></a>scope meas_store 1 FREQUENCY meas_freq unit=Hz
-<a id="__codelineno-32-2" name="__codelineno-32-2" href="#__codelineno-32-2"></a>scope meas_store 1 PK2PK     meas_pk2pk unit=V
-<a id="__codelineno-32-3" name="__codelineno-32-3" href="#__codelineno-32-3"></a>scope meas_store 3 RISE      ch3_rise unit=s
+<div class="highlight"><pre><span></span><code><a id="__codelineno-32-1" name="__codelineno-32-1" href="#__codelineno-32-1"></a>meas_freq = scope meas 1 FREQUENCY unit=Hz
+<a id="__codelineno-32-2" name="__codelineno-32-2" href="#__codelineno-32-2"></a>meas_pk2pk = scope meas 1 PK2PK unit=V
+<a id="__codelineno-32-3" name="__codelineno-32-3" href="#__codelineno-32-3"></a>ch3_rise = scope meas 3 RISE unit=s
 </code></pre></div>
 </div>
 <div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><a id="__codelineno-33-1" name="__codelineno-33-1" href="#__codelineno-33-1"></a>scope meas_store 1 FREQUENCY meas_freq unit=Hz
-<a id="__codelineno-33-2" name="__codelineno-33-2" href="#__codelineno-33-2"></a>scope meas_store 1 PK2PK     meas_pk2pk unit=V
-<a id="__codelineno-33-3" name="__codelineno-33-3" href="#__codelineno-33-3"></a>scope meas_store 2 RISE      ch2_rise unit=s
+<div class="highlight"><pre><span></span><code><a id="__codelineno-33-1" name="__codelineno-33-1" href="#__codelineno-33-1"></a>meas_freq = scope meas 1 FREQUENCY unit=Hz
+<a id="__codelineno-33-2" name="__codelineno-33-2" href="#__codelineno-33-2"></a>meas_pk2pk = scope meas 1 PK2PK unit=V
+<a id="__codelineno-33-3" name="__codelineno-33-3" href="#__codelineno-33-3"></a>ch2_rise = scope meas 2 RISE unit=s
 </code></pre></div>
 </div>
 </div>
@@ -3005,6 +2984,7 @@
 <div class="highlight"><pre><span></span><code><a id="__codelineno-34-1" name="__codelineno-34-1" href="#__codelineno-34-1"></a>calc crest_factor m[&quot;meas_pk2pk&quot;] / m[&quot;meas_rms&quot;]   # compute crest factor
 <a id="__codelineno-34-2" name="__codelineno-34-2" href="#__codelineno-34-2"></a>log print
 </code></pre></div>
+</div>
 <h3 id="scope-meas_delay">scope meas_delay<a class="headerlink" href="#scope-meas_delay" title="Permanent link">&para;</a></h3>
 <p>Measure the time delay between two channels.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-35-1" name="__codelineno-35-1" href="#__codelineno-35-1"></a>scope meas_delay &lt;ch1&gt; &lt;ch2&gt; [edge1=RISE] [edge2=RISE]
@@ -3071,7 +3051,7 @@
 <td><code>label</code></td>
 <td>required</td>
 <td>string</td>
-<td>Log entry name — same rules as <code>meas_store</code>.</td>
+<td>Log entry name — same rules as the assignment syntax.</td>
 </tr>
 <tr>
 <td><code>edge1=</code> / <code>edge2=</code></td>

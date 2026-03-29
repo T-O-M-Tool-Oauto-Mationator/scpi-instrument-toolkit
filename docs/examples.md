@@ -186,9 +186,9 @@ sleep 0.5
 scope1 autoset
 sleep 1.0
 
-scope1 meas_store 1 FREQUENCY meas_freq unit=Hz
-scope1 meas_store 1 PK2PK     meas_pk2pk unit=V
-scope1 meas_store 1 RMS       meas_rms unit=V
+meas_freq = scope1 meas 1 FREQUENCY unit=Hz
+meas_pk2pk = scope1 meas 1 PK2PK unit=V
+meas_rms = scope1 meas 1 RMS unit=V
 
 print "=== Results ==="
 log print
@@ -238,8 +238,8 @@ for f 100 500 1000 5000 10000 50000 100000
   print Testing {f} Hz...
   awg1 freq 1 {f}
   sleep 0.4
-  scope1 meas_store 1 FREQUENCY freq_{f} unit=Hz
-  scope1 meas_store 1 PK2PK     pk2pk_{f} unit=V
+  freq_{f} = scope1 meas 1 FREQUENCY unit=Hz
+  pk2pk_{f} = scope1 meas 1 PK2PK unit=V
 end
 
 awg1 chan 1 off
@@ -257,8 +257,8 @@ If you're testing a filter or amplifier, measure the input and output simultaneo
 for f 100 500 1000 5000 10000 50000
   awg1 freq 1 {f}
   sleep 0.4
-  scope1 meas_store 1 PK2PK in_{f} unit=V
-  scope1 meas_store 2 PK2PK out_{f} unit=V
+  in_{f} = scope1 meas 1 PK2PK unit=V
+  out_{f} = scope1 meas 2 PK2PK unit=V
   calc gain_{f} {out_{f}} / {in_{f}}
 end
 ```

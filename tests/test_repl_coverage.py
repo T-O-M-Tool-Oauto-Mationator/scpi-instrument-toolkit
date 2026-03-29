@@ -1,7 +1,7 @@
 """tests/test_repl_coverage.py -- Additional tests to push project coverage past 80%.
 
 Targets uncovered paths in:
-  - psu.py: single-channel on/off, meas with no readback, multi-channel set/meas/meas_store, get on multi-ch
+  - psu.py: single-channel on/off, meas with no readback, multi-channel set/meas, get on multi-ch
   - dmm.py: Owon (basic) paths, text_loop, cleartext, ranges, meas continuity/diode
   - scope.py: awg sub-handlers, counter source/mode, dvm source, meas_clear, meas_setup, wait_stop, state
   - scripting.py: script run, record start/stop/status, examples load

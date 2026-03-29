@@ -104,27 +104,26 @@ Safety limits (`upper_limit` / `lower_limit`) are enforced before the mode switc
 
 ---
 
-## smu meas_store
+!!! tip "Recording measurements"
+    Use assignment syntax to measure **and** store the result to the measurement log in one step:
 
-Measure and record the result to the measurement log.
+    ```bash
+    <label> = smu meas <v|i> [unit=<str>]
+    ```
 
-```bash
-smu meas_store <v|i> <label> [unit=<str>]
-```
+    | Parameter | Required | Values | Description |
+    |-----------|----------|--------|-------------|
+    | `label` | required | string, no spaces | Name for this entry in the log. |
+    | `v\|i` | required | `v`, `i` | What to measure. |
+    | `unit=` | optional | string | Unit shown in `log print`. Defaults to `V` or `A`. |
 
-| Parameter | Required | Values | Description |
-|-----------|----------|--------|-------------|
-| `v\|i` | required | `v`, `i` | What to measure. |
-| `label` | required | string, no spaces | Name for this entry in the log. |
-| `unit=` | optional | string | Unit shown in `log print`. Defaults to `V` or `A`. |
+    ```bash
+    smu_vout = smu meas v unit=V
+    smu_iout = smu meas i unit=A
+    calc power m["smu_vout"] * m["smu_iout"] unit=W
+    ```
 
-```bash
-smu meas_store v smu_vout unit=V
-smu meas_store i smu_iout unit=A
-calc power m["smu_vout"] * m["smu_iout"] unit=W
-```
-
-See [Log & Calc](logging.md) for full details.
+    See [Log & Calc](logging.md) for full details.
 
 ---
 
@@ -239,8 +238,8 @@ smu1 set 5.0 0.02     # 5 V, 20 mA limit
 smu1 on
 sleep 0.5
 
-smu1 meas_store v vout unit=V
-smu1 meas_store i iout unit=A
+vout = smu1 meas v unit=V
+iout = smu1 meas i unit=A
 calc power m["vout"] * m["iout"] unit=W
 
 log print

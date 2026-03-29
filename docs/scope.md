@@ -54,7 +54,7 @@ scope wait_stop [timeout=<s>]
 |-----------|----------|---------|-------------|
 | `timeout=` | optional | `10` | Maximum seconds to wait. Prints a warning if the scope is still armed after this time. |
 
-Use after `scope single` to ensure the trigger has fired before querying measurements. Without this, `scope meas_store` may return `9.9e+37` (the SCPI sentinel for "not yet computed").
+Use after `scope single` to ensure the trigger has fired before querying measurements. Without this, measurements may return `9.9e+37` (the SCPI sentinel for "not yet computed").
 
 === "Rigol DHO804"
 
@@ -62,7 +62,7 @@ Use after `scope single` to ensure the trigger has fired before querying measure
     scope single
     scope wait_stop timeout=10    # wait up to 10 s for trigger
     scope meas_force              # force DSP to finalize values
-    scope meas_store 1 FREQUENCY freq unit=Hz
+    freq = scope meas 1 FREQUENCY unit=Hz
     ```
 
 === "Tektronix MSO2024"
@@ -70,7 +70,7 @@ Use after `scope single` to ensure the trigger has fired before querying measure
     ```bash
     scope single
     scope wait_stop               # default 10 s timeout
-    scope meas_store 1 FREQUENCY freq unit=Hz
+    freq = scope meas 1 FREQUENCY unit=Hz
     ```
 
 ---
@@ -368,7 +368,7 @@ scope meas <1-4|all> <type>
     ```
 
 !!! note
-    `scope meas` prints the result but does not record it. Use `scope meas_store` to save to the log.
+    `scope meas` prints the result but does not record it. Use the assignment syntax (`label = scope meas 1 FREQUENCY unit=Hz`) to save to the log.
 
 ### scope meas_setup
 
@@ -391,14 +391,14 @@ scope meas_setup <1-4|all> <type>
     scope single
     scope wait_stop timeout=10
     scope meas_force            # force DSP computation
-    scope meas_store 3 RISE ch3_rise unit=s
+    ch3_rise = scope meas 3 RISE unit=s
     ```
 
     !!! note
         Call `scope meas_setup` **before** `scope single`. Use `scope meas_force` after `wait_stop` to ensure computation is complete before querying.
 
 === "Tektronix MSO2024"
-    Not supported. The MSO2024 computes measurements on demand — use `scope meas_store` directly after capture without a prior setup step.
+    Not supported. The MSO2024 computes measurements on demand — use the assignment syntax (`label = scope meas ...`) directly after capture without a prior setup step.
 
 ### scope meas_force
 
@@ -410,10 +410,10 @@ Force the scope's measurement DSP to compute all configured slots.
     scope meas_force
     ```
 
-    The DHO804 computes measurements lazily — values are only finalized when the display refreshes. `scope meas_force` triggers an internal display refresh (no file written) so that `scope meas_store` returns valid values immediately after `scope wait_stop`.
+    The DHO804 computes measurements lazily — values are only finalized when the display refreshes. `scope meas_force` triggers an internal display refresh (no file written) so that measurements return valid values immediately after `scope wait_stop`.
 
     !!! note
-        Use after `scope wait_stop` and before `scope meas_store` when you do not want to save a screenshot first. If you already call `scope screenshot` before `scope meas_store`, this step is redundant.
+        Use after `scope wait_stop` and before taking measurements when you do not want to save a screenshot first. If you already call `scope screenshot` before measuring, this step is redundant.
 
 === "Tektronix MSO2024"
     Not supported. The MSO2024 computes measurements on demand — no force step is needed.
@@ -432,7 +432,7 @@ Remove all measurement items from the on-screen results panel.
 
     ```
     scope meas_force
-    scope meas_store 3 RISE ch3_rise unit=s
+    ch3_rise = scope meas 3 RISE unit=s
     scope meas_clear              # close the panel
     scope screenshot cap.png      # clean screenshot
     ```
@@ -454,7 +454,7 @@ scope meas_loop <1-4|all> <type> [interval=1.0] [count=0] [label=<name>] [unit=<
 | `type` | required | see measurement types above | Measurement type. |
 | `interval=` | optional | seconds (default `1.0`) | Time between measurements. |
 | `count=` | optional | integer (default `0` = unlimited) | Stop after this many samples. `0` runs until Ctrl+C. |
-| `label=` | optional | string, no spaces | If provided, each reading is also stored to the measurement log (same as `meas_store`). |
+| `label=` | optional | string, no spaces | If provided, each reading is also stored to the measurement log (same as the assignment syntax). |
 | `unit=` | optional | string | Unit shown in log (requires `label=`). |
 
 ```bash
@@ -469,43 +469,42 @@ scope meas_loop all PK2PK interval=2.0               # all channels, every 2s
 
 ---
 
-### scope meas_store
-
-Measure and record to the measurement log.
-
-```
-scope meas_store <1-4|all> <type> <label> [unit=<str>]
-```
-
-| Parameter | Required | Values | Description |
-|-----------|----------|--------|-------------|
-| `1-4\|all` | required | `1`–`4`, `all` | Channel to measure. |
-| `type` | required | see measurement types above | Measurement type. |
-| `label` | required | string, no spaces | **Name for this entry in the log.** Appears in `log print` and used as the dictionary key in `calc` expressions: `m["label"]`. Use underscores — e.g. `ch1_freq`. |
-| `unit=` | optional | string | Unit shown in `log print` (e.g. `Hz`, `V`). **Display-only** — does not affect the stored value or calculations. |
-
-=== "Rigol DHO804"
+!!! tip "Recording measurements"
+    Use assignment syntax to measure **and** store the result to the measurement log in one step:
 
     ```
-    scope meas_store 1 FREQUENCY meas_freq unit=Hz
-    scope meas_store 1 PK2PK     meas_pk2pk unit=V
-    scope meas_store 3 RISE      ch3_rise unit=s
+    <label> = scope meas <1-4|all> <type> [unit=<str>]
     ```
 
-=== "Tektronix MSO2024"
+    | Parameter | Required | Values | Description |
+    |-----------|----------|--------|-------------|
+    | `label` | required | string, no spaces | **Name for this entry in the log.** Appears in `log print` and used as the dictionary key in `calc` expressions: `m["label"]`. Use underscores — e.g. `ch1_freq`. |
+    | `1-4\|all` | required | `1`–`4`, `all` | Channel to measure. |
+    | `type` | required | see measurement types above | Measurement type. |
+    | `unit=` | optional | string | Unit shown in `log print` (e.g. `Hz`, `V`). **Display-only** — does not affect the stored value or calculations. |
+
+    === "Rigol DHO804"
+
+        ```
+        meas_freq = scope meas 1 FREQUENCY unit=Hz
+        meas_pk2pk = scope meas 1 PK2PK unit=V
+        ch3_rise = scope meas 3 RISE unit=s
+        ```
+
+    === "Tektronix MSO2024"
+
+        ```
+        meas_freq = scope meas 1 FREQUENCY unit=Hz
+        meas_pk2pk = scope meas 1 PK2PK unit=V
+        ch2_rise = scope meas 2 RISE unit=s
+        ```
+
+    Then use in calculations:
 
     ```
-    scope meas_store 1 FREQUENCY meas_freq unit=Hz
-    scope meas_store 1 PK2PK     meas_pk2pk unit=V
-    scope meas_store 2 RISE      ch2_rise unit=s
+    calc crest_factor m["meas_pk2pk"] / m["meas_rms"]   # compute crest factor
+    log print
     ```
-
-Then use in calculations:
-
-```
-calc crest_factor m["meas_pk2pk"] / m["meas_rms"]   # compute crest factor
-log print
-```
 
 ### scope meas_delay
 
@@ -545,7 +544,7 @@ scope meas_delay_store <ch1> <ch2> <label> [edge1=RISE] [edge2=RISE] [direction=
 | Parameter | Required | Values | Description |
 |-----------|----------|--------|-------------|
 | `ch1` / `ch2` | required | `1`–`4` | Channel numbers. |
-| `label` | required | string | Log entry name — same rules as `meas_store`. |
+| `label` | required | string | Log entry name — same rules as the assignment syntax. |
 | `edge1=` / `edge2=` | optional | `RISE`, `FALL` | Edge selection. Default: `RISE`. |
 | `direction=` | optional | `FORWARDS`, `BACKWARDS` | Search direction. Default: `FORWARDS`. |
 | `unit=` | optional | string | Unit shown in log (e.g. `s`, `ms`). Display-only. |
