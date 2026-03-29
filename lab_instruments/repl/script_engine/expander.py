@@ -13,7 +13,7 @@ from ..syntax import safe_eval, substitute_expand
 _ASSIGN_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.+)$")
 
 # Matches instrument read RHS: <instrument> read [unit=X]
-_INSTR_READ_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*)\s+read(?:\s+(.*))?$")
+_INSTR_READ_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*)\s+(?:read|meas)(?:\s+(.*))?$")
 
 
 def expand_script_lines(

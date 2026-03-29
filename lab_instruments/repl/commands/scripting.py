@@ -57,17 +57,17 @@ class ScriptingCommands(BaseCommand):
                 ColorPrinter.success(f"Script '{name}' created.")
         elif sub == "run" and len(args) >= 2:
             name = args[1]
-            if name not in self.ctx.scripts:
-                ColorPrinter.error(f"Script '{name}' not found.")
+            lines = self._reload_script(name)
+            if lines is None:
                 return
-            expanded = expand_script_lines(self.ctx.scripts[name], {}, self.ctx)
+            expanded = expand_script_lines(lines, {}, self.ctx)
             run_expanded(expanded, self.shell, self.ctx, debug=False)
         elif sub == "debug" and len(args) >= 2:
             name = args[1]
-            if name not in self.ctx.scripts:
-                ColorPrinter.error(f"Script '{name}' not found.")
+            lines = self._reload_script(name)
+            if lines is None:
                 return
-            expanded = expand_script_lines(self.ctx.scripts[name], {}, self.ctx)
+            expanded = expand_script_lines(lines, {}, self.ctx)
             run_expanded(expanded, self.shell, self.ctx, debug=True)
         elif sub == "edit" and len(args) >= 2:
             name = args[1]
@@ -317,6 +317,23 @@ class ScriptingCommands(BaseCommand):
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
+    def _reload_script(self, name: str) -> list[str] | None:
+        """Reload a script from disk, updating the cache. Returns lines or None."""
+        path = self.ctx.script_file(name)
+        if os.path.isfile(path):
+            try:
+                with open(path, encoding="utf-8") as f:
+                    lines = f.read().splitlines()
+                self.ctx.scripts[name] = lines
+                return lines
+            except OSError as exc:
+                ColorPrinter.error(f"Failed to read '{path}': {exc}")
+                return None
+        if name in self.ctx.scripts:
+            return self.ctx.scripts[name]
+        ColorPrinter.error(f"Script '{name}' not found.")
+        return None
+
     def _save_script(self, name: str) -> None:
         try:
             script_path = self.ctx.script_file(name)
