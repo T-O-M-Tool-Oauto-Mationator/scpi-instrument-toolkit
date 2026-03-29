@@ -101,7 +101,9 @@ class LoggingCommands(BaseCommand):
                 ColorPrinter.warning("No measurements recorded.")
                 return
             if not os.path.isabs(path):
-                path = os.path.join(self.ctx.get_data_dir(), path)
+                # Resolve relative to script dir when running a script, else data dir
+                base = self.ctx.get_scripts_dir() if self.ctx.in_script else self.ctx.get_data_dir()
+                path = os.path.join(base, path)
             try:
                 os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
                 with open(path, "w", encoding="utf-8", newline="") as handle:

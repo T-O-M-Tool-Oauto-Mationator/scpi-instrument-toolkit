@@ -82,10 +82,13 @@ log save <filename> [csv|txt]
 | `csv\|txt` | optional | `csv`, `txt` | Format. Defaults to `csv` if the filename ends in `.csv`, otherwise `txt`. |
 
 ```
-log save results.csv          # CSV format (opens in Excel)
-log save results.txt          # formatted text table
-log save sweep_data.csv       # save to named file
+log save results.csv              # CSV format (opens in Excel)
+log save results.txt              # formatted text table
+log save ../results/data.csv      # relative path from script dir
 ```
+
+!!! note "Path resolution"
+    Relative paths are resolved from the **script directory** when running inside a script, or the **data directory** when used interactively. Use absolute paths to override.
 
 CSV files can be opened directly in Excel, LibreOffice Calc, or imported into Python with pandas.
 
