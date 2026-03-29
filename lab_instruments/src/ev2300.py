@@ -1109,9 +1109,10 @@ class TI_EV2300:
 
         if diagnostics:
             logger.info(
-                "EV2300: HID scan found %d total device(s), "
-                "%d flashed EV2300, %d in bootloader mode",
-                len(all_devices), len(flashed), bootloader_count,
+                "EV2300: HID scan found %d total device(s), %d flashed EV2300, %d in bootloader mode",
+                len(all_devices),
+                len(flashed),
+                bootloader_count,
             )
 
         return flashed
@@ -1121,8 +1122,7 @@ class TI_EV2300:
         """Return the number of EV2300 devices in bootloader mode."""
         try:
             be = _get_or_create_backend()
-            return sum(1 for d in be.enumerate()
-                       if d["vid"] == VID and d["pid"] == PID_BOOTLOADER)
+            return sum(1 for d in be.enumerate() if d["vid"] == VID and d["pid"] == PID_BOOTLOADER)
         except (OSError, ImportError):
             return 0
 

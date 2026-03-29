@@ -338,10 +338,7 @@ class InstrumentDiscovery:
                     continue
         except Exception as exc:
             if verbose:
-                self._safe_print(
-                    f"  {ColorPrinter.YELLOW}[WARN] EV2300 HID scan failed: "
-                    f"{exc}{ColorPrinter.RESET}"
-                )
+                self._safe_print(f"  {ColorPrinter.YELLOW}[WARN] EV2300 HID scan failed: {exc}{ColorPrinter.RESET}")
 
         return results
 

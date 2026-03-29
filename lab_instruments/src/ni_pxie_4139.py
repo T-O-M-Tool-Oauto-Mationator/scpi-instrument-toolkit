@@ -25,8 +25,8 @@ class NI_PXIe_4139:
 
     # Hardware limits for the PXIe-4139 (per NI datasheet: ±60 V, 3 A SMU)
     # DC source power capped at 20 W, DC sink power at 12 W (hardware-enforced).
-    MAX_VOLTAGE = 60.0       # ±60 V
-    MAX_CURRENT = 3.0        # ±3 A DC (10 A pulse only)
+    MAX_VOLTAGE = 60.0  # ±60 V
+    MAX_CURRENT = 3.0  # ±3 A DC (10 A pulse only)
     MAX_SOURCE_DELAY = 167.0  # seconds, hardware limit per NI-DCPower spec
     DEFAULT_CURRENT_LIMIT = 0.01  # 10 mA
     DEFAULT_VOLTAGE_LIMIT = 5.0  # V, compliance when in current mode
