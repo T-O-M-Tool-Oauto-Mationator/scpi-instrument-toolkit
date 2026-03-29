@@ -18,6 +18,7 @@ from .commands.dmm import DmmCommand
 from .commands.ev2300 import Ev2300Command
 from .commands.general import GeneralCommands
 from .commands.logging_cmd import LoggingCommands
+from .commands.plot import PlotCommand
 from .commands.psu import PsuCommand
 from .commands.safety import SafetySystem
 from .commands.scope import ScopeCommand
@@ -84,6 +85,7 @@ class InstrumentRepl(cmd.Cmd):
         self._ev2300_cmd = Ev2300Command(self.ctx)
         self._var_cmd = VariableCommands(self.ctx)
         self._log_cmd = LoggingCommands(self.ctx)
+        self._plot_cmd = PlotCommand(self.ctx)
         self._script_cmd = ScriptingCommands(self.ctx, self._safety, shell=self)
 
         # Wire up state callback for instrument commands that delegate to do_state
@@ -863,6 +865,10 @@ class InstrumentRepl(cmd.Cmd):
         """report <print|save|clear|title|operator>: manage reports"""
         self._log_cmd.do_report(arg)
 
+    def do_plot(self, arg):
+        """plot [pattern ...] [--title "text"]: plot measurement log data"""
+        self._plot_cmd.execute(arg)
+
     # Scripting commands
     def do_script(self, arg):
         """script <new|run|debug|edit|list|rm|show|dir|import|load|save>: manage scripts"""
@@ -913,6 +919,7 @@ class InstrumentRepl(cmd.Cmd):
                     "log",
                     "calc",
                     "data",
+                    "plot",
                     "script",
                 ]:
                     fn = getattr(self, f"help_{cmd_name}", None)
@@ -1003,6 +1010,7 @@ class InstrumentRepl(cmd.Cmd):
         cmd_line("calc", "compute a value from logged measurements")
         cmd_line("check", "pass/fail assertion on measurements")
         cmd_line("report", "view or export lab test report  — print, save, clear, title, operator")
+        cmd_line("plot", "plot measurement log data  (plot [pattern] [--title ...])")
         cmd_line("data dir", "get or set the data output directory  (data dir [path|reset])")
 
         print(f"\n  {Y}help <command>{R}  for full documentation   {Y}help all{R}  for everything at once\n")
@@ -1018,6 +1026,9 @@ class InstrumentRepl(cmd.Cmd):
 
     def help_calc(self):
         self.do_calc("")
+
+    def help_plot(self):
+        self._plot_cmd.execute("--help")
 
     def help_script(self):
         self.do_script("")
