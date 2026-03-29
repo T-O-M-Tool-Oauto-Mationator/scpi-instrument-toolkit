@@ -35,6 +35,7 @@ class NI_PXIe_4139:
         self.resource_name = resource_name
         self._session = None
         self._output_mode = "voltage"  # "voltage" or "current"
+        self._output_on = False  # track output state locally (session query fails after abort)
 
     # ------------------------------------------------------------------
     # Connection
@@ -94,11 +95,13 @@ class NI_PXIe_4139:
             self._session.output_enabled = True
             self._session.commit()
             self._session.initiate()
+            self._output_on = True
         else:
             # Set voltage to 0 and disable while session is still running
             self._session.voltage_level = 0.0
             self._session.output_enabled = False
             self._session.abort()
+            self._output_on = False
 
     def disable_all_channels(self):
         """Set output to safe state: 0 V, low current limit, output off."""
@@ -111,6 +114,7 @@ class NI_PXIe_4139:
             self._session.initiate()
         with contextlib.suppress(Exception):
             self._session.abort()
+        self._output_on = False
 
     # ------------------------------------------------------------------
     # Voltage / current configuration
@@ -171,18 +175,19 @@ class NI_PXIe_4139:
 
     def _measure(self):
         """Take a single measurement, initiating the session if needed."""
-        was_running = self._session.output_enabled
-        if not was_running:
+        was_on = self._output_on
+        if not was_on:
             self._session.output_enabled = True
             self._session.commit()
             self._session.initiate()
+            self._output_on = True
         try:
             return self._session.measure_multiple()[0]
         finally:
-            if not was_running:
-                # Disable while running, then abort
+            if not was_on:
                 self._session.output_enabled = False
                 self._session.abort()
+                self._output_on = False
 
     # ------------------------------------------------------------------
     # Compliance
@@ -292,7 +297,7 @@ class NI_PXIe_4139:
     def get_output_state(self) -> bool:
         """Return whether the output is enabled."""
         self._check_session()
-        return self._session.output_enabled
+        return self._output_on
 
     # ------------------------------------------------------------------
     # Reset / SCPI compatibility stubs

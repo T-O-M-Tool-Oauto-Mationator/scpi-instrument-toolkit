@@ -100,7 +100,7 @@ class SmuCommand(BaseCommand):
                 "  - example: smu set_mode current 0.05 5.0",
                 "smu meas [v|i|vi]",
                 "  - no arg or vi: atomic V+I+compliance in one call",
-                "  - or assign: value = smu read [unit=]",
+                "  - assign + log: label = smu meas v [unit=V]",
                 "smu compliance  (query compliance state)",
                 "smu source_delay [<seconds>]  (get/set settle delay)",
                 "smu avg [<N>]  (get/set samples_to_average)",

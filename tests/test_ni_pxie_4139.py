@@ -137,7 +137,7 @@ class TestNIPXIe4139_GetSetpoints:
 
     def test_get_output_state_on(self, ni_pxie_4139):
         smu, ms = ni_pxie_4139
-        ms.output_enabled = True
+        smu.enable_output(True)
         assert smu.get_output_state() is True
 
 

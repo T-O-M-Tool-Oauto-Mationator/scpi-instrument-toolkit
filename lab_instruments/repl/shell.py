@@ -924,9 +924,9 @@ class InstrumentRepl(cmd.Cmd):
                 R = ColorPrinter.RESET
                 print(f"\n{Y}{B}INSTRUMENT COMMANDS{R}  (type the command with no args for full help)")
                 for name, desc in [
-                    ("psu", "power supply  — chan, set, meas, meas_store, track, save, recall, state"),
+                    ("psu", "power supply  — chan, set, meas, track, save, recall, state"),
                     ("awg", "function gen  — chan, wave, freq, amp, offset, duty, phase, sync, state"),
-                    ("dmm", "multimeter    — config, read, fetch, meas, meas_store, beep, display"),
+                    ("dmm", "multimeter    — config, read, fetch, meas, beep, display"),
                     ("scope", "oscilloscope  — chan, meas, save, screenshot, trigger, awg, dvm, counter"),
                 ]:
                     print(f"  {C}{name:<8}{R} {desc}")
@@ -988,7 +988,7 @@ class InstrumentRepl(cmd.Cmd):
         cmd_line("awg", "function generator  — chan, wave, freq, amp, offset, duty, phase")
         cmd_line("dmm", "multimeter  — config, read, fetch, meas, beep, display")
         cmd_line("scope", "oscilloscope  — chan, meas, meas_loop, save, trigger, awg, dvm, counter")
-        cmd_line("smu", "source measure unit  — set, meas, meas_store, get, on, off")
+        cmd_line("smu", "source measure unit  — set, meas, get, on, off")
 
         section("SCRIPTING")
         cmd_line("script", "manage and run named scripts  — new, run, debug, edit, list, rm, show, dir")
