@@ -28,14 +28,13 @@ class TestNIPXIe4139_EnableOutput:
         smu.enable_output(True)
         assert ms.output_enabled is True
         ms.commit.assert_called()
-        ms.initiate.assert_called_once()
 
     def test_enable_off(self, ni_pxie_4139):
         smu, ms = ni_pxie_4139
         smu.enable_output(False)
         assert ms.voltage_level == 0.0
         assert ms.output_enabled is False
-        ms.abort.assert_called_once()
+        ms.commit.assert_called()
 
 
 # ===========================================================================
