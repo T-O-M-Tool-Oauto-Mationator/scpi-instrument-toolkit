@@ -286,6 +286,8 @@ class _WindowsBackend(_HIDBackend):
         return devices
 
     def open(self, path: object) -> object:
+        if isinstance(path, str):
+            path = path.encode("ascii", errors="replace")
         h = self._k32.CreateFileA(path, 0x80000000 | 0x40000000, self._SHARE_RW, None, self._OPEN_EXISTING, 0, None)
         if h == self._INVALID:
             raise OSError(f"CreateFile failed ({self._ct.GetLastError()})")
@@ -340,6 +342,8 @@ class _WindowsBackend(_HIDBackend):
 
     def get_caps(self, path: object) -> dict | None:
         ct = self._ct
+        if isinstance(path, str):
+            path = path.encode("ascii", errors="replace")
         h = self._k32.CreateFileA(path, 0, self._SHARE_RW, None, self._OPEN_EXISTING, 0, None)
         if h == self._INVALID:
             return None
@@ -1068,13 +1072,59 @@ class TI_EV2300:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def enumerate_devices() -> list[dict]:
-        """Return list of all EV2300 devices found on the system."""
+    def enumerate_devices(*, diagnostics: bool = False) -> list[dict]:
+        """Return list of all EV2300 devices found on the system.
+
+        Parameters
+        ----------
+        diagnostics : bool
+            When True, log detailed info about all TI HID devices found
+            (including bootloader-mode units) and any errors encountered.
+        """
         try:
             be = _get_or_create_backend()
-            return [d for d in be.enumerate() if d["vid"] == VID and d["pid"] == PID_FLASHED]
-        except (OSError, ImportError):
+        except (OSError, ImportError) as exc:
+            if diagnostics:
+                logger.warning("EV2300: HID backend init failed: %s", exc)
             return []
+
+        try:
+            all_devices = be.enumerate()
+        except OSError as exc:
+            if diagnostics:
+                logger.warning("EV2300: HID enumerate failed: %s", exc)
+            return []
+
+        flashed = []
+        bootloader_count = 0
+        for d in all_devices:
+            # Normalise path to str so callers never deal with raw bytes
+            p = d.get("path")
+            if isinstance(p, (bytes, bytearray)):
+                d["path"] = p.rstrip(b"\x00").decode("ascii", errors="replace")
+            if d["vid"] == VID and d["pid"] == PID_FLASHED:
+                flashed.append(d)
+            elif d["vid"] == VID and d["pid"] == PID_BOOTLOADER:
+                bootloader_count += 1
+
+        if diagnostics:
+            logger.info(
+                "EV2300: HID scan found %d total device(s), "
+                "%d flashed EV2300, %d in bootloader mode",
+                len(all_devices), len(flashed), bootloader_count,
+            )
+
+        return flashed
+
+    @staticmethod
+    def count_bootloader_devices() -> int:
+        """Return the number of EV2300 devices in bootloader mode."""
+        try:
+            be = _get_or_create_backend()
+            return sum(1 for d in be.enumerate()
+                       if d["vid"] == VID and d["pid"] == PID_BOOTLOADER)
+        except (OSError, ImportError):
+            return 0
 
     @staticmethod
     def is_available() -> bool:

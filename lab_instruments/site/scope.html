@@ -1277,6 +1277,34 @@
   
   
     <li class="md-nav__item">
+      <a href="ev2300.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    USB-to-I2C Adapter (EV2300)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="ni_pxie.html" class="md-nav__link">
         
   
@@ -2082,6 +2110,19 @@
 <li>Channels are numbered <code>1</code>–<code>4</code>. Use <code>all</code> to affect every channel at once.</li>
 <li>Multiple scopes are named <code>scope1</code>, <code>scope2</code>, etc.</li>
 </ul>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:3"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><input id="__tabbed_1_3" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Rigol DHO804</label><label for="__tabbed_1_2">Keysight DSOX1204G</label><label for="__tabbed_1_3">Tektronix MSO2024</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<p>4-channel oscilloscope with USB interface. Full feature set including counter, DVM, cursors, recording, mask test, and built-in AWG.</p>
+</div>
+<div class="tabbed-block">
+<p>4-channel InfiniiVision 1000 X-Series oscilloscope with USB/LAN interface. Supports screenshot, display, acquire, math, mask test, labels, invert, bwlimit, built-in AWG (WGEN), and DVM. No counter, cursor, or recording support.</p>
+</div>
+<div class="tabbed-block">
+<p>4-channel oscilloscope with USB/GPIB interface. Basic scope commands only.</p>
+</div>
+</div>
+</div>
 <hr />
 <h2 id="acquisition-control">Acquisition Control<a class="headerlink" href="#acquisition-control" title="Permanent link">&para;</a></h2>
 <h3 id="scope-autoset">scope autoset<a class="headerlink" href="#scope-autoset" title="Permanent link">&para;</a></h3>
@@ -2139,7 +2180,7 @@
 </tbody>
 </table>
 <p>Use after <code>scope single</code> to ensure the trigger has fired before querying measurements. Without this, <code>scope meas_store</code> may return <code>9.9e+37</code> (the SCPI sentinel for "not yet computed").</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Rigol DHO804</label><label for="__tabbed_1_2">Tektronix MSO2024</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="2:2"><input checked="checked" id="__tabbed_2_1" name="__tabbed_2" type="radio" /><input id="__tabbed_2_2" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="__tabbed_2_1">Rigol DHO804</label><label for="__tabbed_2_2">Tektronix MSO2024</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>scope<span class="w"> </span>single
@@ -2432,7 +2473,7 @@
 </tr>
 </tbody>
 </table>
-<div class="tabbed-set tabbed-alternate" data-tabs="2:2"><input checked="checked" id="__tabbed_2_1" name="__tabbed_2" type="radio" /><input id="__tabbed_2_2" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="__tabbed_2_1">Rigol DHO804</label><label for="__tabbed_2_2">Tektronix MSO2024</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="3:2"><input checked="checked" id="__tabbed_3_1" name="__tabbed_3" type="radio" /><input id="__tabbed_3_2" name="__tabbed_3" type="radio" /><div class="tabbed-labels"><label for="__tabbed_3_1">Rigol DHO804</label><label for="__tabbed_3_2">Tektronix MSO2024</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <p>All types are case-insensitive. Aliases are separated by <code>/</code>.</p>
@@ -2785,7 +2826,7 @@
 </tr>
 </tbody>
 </table>
-<div class="tabbed-set tabbed-alternate" data-tabs="3:2"><input checked="checked" id="__tabbed_3_1" name="__tabbed_3" type="radio" /><input id="__tabbed_3_2" name="__tabbed_3" type="radio" /><div class="tabbed-labels"><label for="__tabbed_3_1">Rigol DHO804</label><label for="__tabbed_3_2">Tektronix MSO2024</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="4:2"><input checked="checked" id="__tabbed_4_1" name="__tabbed_4" type="radio" /><input id="__tabbed_4_2" name="__tabbed_4" type="radio" /><div class="tabbed-labels"><label for="__tabbed_4_1">Rigol DHO804</label><label for="__tabbed_4_2">Tektronix MSO2024</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a>scope meas_setup 3 RISE     # configure CH3 rise time slot
@@ -2807,7 +2848,7 @@
 </div>
 <h3 id="scope-meas_force">scope meas_force<a class="headerlink" href="#scope-meas_force" title="Permanent link">&para;</a></h3>
 <p>Force the scope's measurement DSP to compute all configured slots.</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="4:2"><input checked="checked" id="__tabbed_4_1" name="__tabbed_4" type="radio" /><input id="__tabbed_4_2" name="__tabbed_4" type="radio" /><div class="tabbed-labels"><label for="__tabbed_4_1">Rigol DHO804</label><label for="__tabbed_4_2">Tektronix MSO2024</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="5:2"><input checked="checked" id="__tabbed_5_1" name="__tabbed_5" type="radio" /><input id="__tabbed_5_2" name="__tabbed_5" type="radio" /><div class="tabbed-labels"><label for="__tabbed_5_1">Rigol DHO804</label><label for="__tabbed_5_2">Tektronix MSO2024</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a>scope meas_force
@@ -2825,7 +2866,7 @@
 </div>
 <h3 id="scope-meas_clear">scope meas_clear<a class="headerlink" href="#scope-meas_clear" title="Permanent link">&para;</a></h3>
 <p>Remove all measurement items from the on-screen results panel.</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="5:2"><input checked="checked" id="__tabbed_5_1" name="__tabbed_5" type="radio" /><input id="__tabbed_5_2" name="__tabbed_5" type="radio" /><div class="tabbed-labels"><label for="__tabbed_5_1">Rigol DHO804</label><label for="__tabbed_5_2">Tektronix MSO2024</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="6:2"><input checked="checked" id="__tabbed_6_1" name="__tabbed_6" type="radio" /><input id="__tabbed_6_2" name="__tabbed_6" type="radio" /><div class="tabbed-labels"><label for="__tabbed_6_1">Rigol DHO804</label><label for="__tabbed_6_2">Tektronix MSO2024</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a>scope meas_clear
@@ -2944,7 +2985,7 @@
 </tr>
 </tbody>
 </table>
-<div class="tabbed-set tabbed-alternate" data-tabs="6:2"><input checked="checked" id="__tabbed_6_1" name="__tabbed_6" type="radio" /><input id="__tabbed_6_2" name="__tabbed_6" type="radio" /><div class="tabbed-labels"><label for="__tabbed_6_1">Rigol DHO804</label><label for="__tabbed_6_2">Tektronix MSO2024</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="7:2"><input checked="checked" id="__tabbed_7_1" name="__tabbed_7" type="radio" /><input id="__tabbed_7_2" name="__tabbed_7" type="radio" /><div class="tabbed-labels"><label for="__tabbed_7_1">Rigol DHO804</label><label for="__tabbed_7_2">Tektronix MSO2024</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><a id="__codelineno-32-1" name="__codelineno-32-1" href="#__codelineno-32-1"></a>scope meas_store 1 FREQUENCY meas_freq unit=Hz
@@ -2992,7 +3033,7 @@
 </tr>
 </tbody>
 </table>
-<div class="tabbed-set tabbed-alternate" data-tabs="7:2"><input checked="checked" id="__tabbed_7_1" name="__tabbed_7" type="radio" /><input id="__tabbed_7_2" name="__tabbed_7" type="radio" /><div class="tabbed-labels"><label for="__tabbed_7_1">Rigol DHO804</label><label for="__tabbed_7_2">Tektronix MSO2024</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="8:2"><input checked="checked" id="__tabbed_8_1" name="__tabbed_8" type="radio" /><input id="__tabbed_8_2" name="__tabbed_8" type="radio" /><div class="tabbed-labels"><label for="__tabbed_8_1">Rigol DHO804</label><label for="__tabbed_8_2">Tektronix MSO2024</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><a id="__codelineno-36-1" name="__codelineno-36-1" href="#__codelineno-36-1"></a>scope meas_delay 1 2              # delay from ch1 rising to ch2 rising
@@ -3052,7 +3093,7 @@
 </tr>
 </tbody>
 </table>
-<div class="tabbed-set tabbed-alternate" data-tabs="8:2"><input checked="checked" id="__tabbed_8_1" name="__tabbed_8" type="radio" /><input id="__tabbed_8_2" name="__tabbed_8" type="radio" /><div class="tabbed-labels"><label for="__tabbed_8_1">Rigol DHO804</label><label for="__tabbed_8_2">Tektronix MSO2024</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="9:2"><input checked="checked" id="__tabbed_9_1" name="__tabbed_9" type="radio" /><input id="__tabbed_9_2" name="__tabbed_9" type="radio" /><div class="tabbed-labels"><label for="__tabbed_9_1">Rigol DHO804</label><label for="__tabbed_9_2">Tektronix MSO2024</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><a id="__codelineno-39-1" name="__codelineno-39-1" href="#__codelineno-39-1"></a>scope meas_delay_store 1 2 prop_delay unit=s
@@ -3248,7 +3289,7 @@
 <p>The following commands are available on the Rigol DHO804 and similar Rigol oscilloscopes.</p>
 <h3 id="scope-screenshot">scope screenshot<a class="headerlink" href="#scope-screenshot" title="Permanent link">&para;</a></h3>
 <p>Capture the scope display and save as PNG.</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="9:2"><input checked="checked" id="__tabbed_9_1" name="__tabbed_9" type="radio" /><input id="__tabbed_9_2" name="__tabbed_9" type="radio" /><div class="tabbed-labels"><label for="__tabbed_9_1">Rigol DHO804</label><label for="__tabbed_9_2">Tektronix MSO2024</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="10:2"><input checked="checked" id="__tabbed_10_1" name="__tabbed_10" type="radio" /><input id="__tabbed_10_2" name="__tabbed_10" type="radio" /><div class="tabbed-labels"><label for="__tabbed_10_1">Rigol DHO804</label><label for="__tabbed_10_2">Tektronix MSO2024</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><a id="__codelineno-48-1" name="__codelineno-48-1" href="#__codelineno-48-1"></a>scope screenshot                    # auto-named: screenshot_HHMMSS.png
@@ -3263,7 +3304,7 @@
 </div>
 </div>
 <h3 id="scope-label-invert-bwlimit">scope label / invert / bwlimit<a class="headerlink" href="#scope-label-invert-bwlimit" title="Permanent link">&para;</a></h3>
-<div class="tabbed-set tabbed-alternate" data-tabs="10:2"><input checked="checked" id="__tabbed_10_1" name="__tabbed_10" type="radio" /><input id="__tabbed_10_2" name="__tabbed_10" type="radio" /><div class="tabbed-labels"><label for="__tabbed_10_1">Rigol DHO804</label><label for="__tabbed_10_2">Tektronix MSO2024</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="11:2"><input checked="checked" id="__tabbed_11_1" name="__tabbed_11" type="radio" /><input id="__tabbed_11_2" name="__tabbed_11" type="radio" /><div class="tabbed-labels"><label for="__tabbed_11_1">Rigol DHO804</label><label for="__tabbed_11_2">Tektronix MSO2024</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><a id="__codelineno-49-1" name="__codelineno-49-1" href="#__codelineno-49-1"></a>scope label &lt;1-4&gt; &lt;text&gt;        # set channel label
@@ -3318,7 +3359,7 @@
 <p>Sends <code>*RST</code> to restore factory defaults. Works on all scope models.</p>
 <hr />
 <h3 id="scope-display">scope display<a class="headerlink" href="#scope-display" title="Permanent link">&para;</a></h3>
-<div class="tabbed-set tabbed-alternate" data-tabs="11:2"><input checked="checked" id="__tabbed_11_1" name="__tabbed_11" type="radio" /><input id="__tabbed_11_2" name="__tabbed_11" type="radio" /><div class="tabbed-labels"><label for="__tabbed_11_1">Rigol DHO804</label><label for="__tabbed_11_2">Tektronix MSO2024</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="12:2"><input checked="checked" id="__tabbed_12_1" name="__tabbed_12" type="radio" /><input id="__tabbed_12_2" name="__tabbed_12" type="radio" /><div class="tabbed-labels"><label for="__tabbed_12_1">Rigol DHO804</label><label for="__tabbed_12_2">Tektronix MSO2024</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <p>Control display settings.</p>
@@ -3378,7 +3419,7 @@
 </div>
 <hr />
 <h3 id="scope-acquire">scope acquire<a class="headerlink" href="#scope-acquire" title="Permanent link">&para;</a></h3>
-<div class="tabbed-set tabbed-alternate" data-tabs="12:2"><input checked="checked" id="__tabbed_12_1" name="__tabbed_12" type="radio" /><input id="__tabbed_12_2" name="__tabbed_12" type="radio" /><div class="tabbed-labels"><label for="__tabbed_12_1">Rigol DHO804</label><label for="__tabbed_12_2">Tektronix MSO2024</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="13:2"><input checked="checked" id="__tabbed_13_1" name="__tabbed_13" type="radio" /><input id="__tabbed_13_2" name="__tabbed_13" type="radio" /><div class="tabbed-labels"><label for="__tabbed_13_1">Rigol DHO804</label><label for="__tabbed_13_2">Tektronix MSO2024</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <p>Control acquisition settings.</p>
@@ -3426,7 +3467,7 @@
 </div>
 <hr />
 <h3 id="scope-cursor">scope cursor<a class="headerlink" href="#scope-cursor" title="Permanent link">&para;</a></h3>
-<div class="tabbed-set tabbed-alternate" data-tabs="13:2"><input checked="checked" id="__tabbed_13_1" name="__tabbed_13" type="radio" /><input id="__tabbed_13_2" name="__tabbed_13" type="radio" /><div class="tabbed-labels"><label for="__tabbed_13_1">Rigol DHO804</label><label for="__tabbed_13_2">Tektronix MSO2024</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="14:2"><input checked="checked" id="__tabbed_14_1" name="__tabbed_14" type="radio" /><input id="__tabbed_14_2" name="__tabbed_14" type="radio" /><div class="tabbed-labels"><label for="__tabbed_14_1">Rigol DHO804</label><label for="__tabbed_14_2">Tektronix MSO2024</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <p>Control measurement cursors.</p>
@@ -3478,7 +3519,7 @@
 </div>
 <hr />
 <h3 id="scope-math">scope math<a class="headerlink" href="#scope-math" title="Permanent link">&para;</a></h3>
-<div class="tabbed-set tabbed-alternate" data-tabs="14:2"><input checked="checked" id="__tabbed_14_1" name="__tabbed_14" type="radio" /><input id="__tabbed_14_2" name="__tabbed_14" type="radio" /><div class="tabbed-labels"><label for="__tabbed_14_1">Rigol DHO804</label><label for="__tabbed_14_2">Tektronix MSO2024</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="15:2"><input checked="checked" id="__tabbed_15_1" name="__tabbed_15" type="radio" /><input id="__tabbed_15_2" name="__tabbed_15" type="radio" /><div class="tabbed-labels"><label for="__tabbed_15_1">Rigol DHO804</label><label for="__tabbed_15_2">Tektronix MSO2024</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <p>Control math channels (operations, FFT, filters).</p>
@@ -3536,7 +3577,7 @@
 </div>
 <hr />
 <h3 id="scope-record">scope record<a class="headerlink" href="#scope-record" title="Permanent link">&para;</a></h3>
-<div class="tabbed-set tabbed-alternate" data-tabs="15:2"><input checked="checked" id="__tabbed_15_1" name="__tabbed_15" type="radio" /><input id="__tabbed_15_2" name="__tabbed_15" type="radio" /><div class="tabbed-labels"><label for="__tabbed_15_1">Rigol DHO804</label><label for="__tabbed_15_2">Tektronix MSO2024</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="16:2"><input checked="checked" id="__tabbed_16_1" name="__tabbed_16" type="radio" /><input id="__tabbed_16_2" name="__tabbed_16" type="radio" /><div class="tabbed-labels"><label for="__tabbed_16_1">Rigol DHO804</label><label for="__tabbed_16_2">Tektronix MSO2024</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <p>Control waveform recording and playback.</p>
@@ -3601,7 +3642,7 @@
 </div>
 <hr />
 <h3 id="scope-mask">scope mask<a class="headerlink" href="#scope-mask" title="Permanent link">&para;</a></h3>
-<div class="tabbed-set tabbed-alternate" data-tabs="16:2"><input checked="checked" id="__tabbed_16_1" name="__tabbed_16" type="radio" /><input id="__tabbed_16_2" name="__tabbed_16" type="radio" /><div class="tabbed-labels"><label for="__tabbed_16_1">Rigol DHO804</label><label for="__tabbed_16_2">Tektronix MSO2024</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="17:2"><input checked="checked" id="__tabbed_17_1" name="__tabbed_17" type="radio" /><input id="__tabbed_17_2" name="__tabbed_17" type="radio" /><div class="tabbed-labels"><label for="__tabbed_17_1">Rigol DHO804</label><label for="__tabbed_17_2">Tektronix MSO2024</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <p>Control pass/fail mask testing.</p>

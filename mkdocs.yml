@@ -58,6 +58,7 @@ nav:
     - Multimeter (DMM): dmm.md
     - Oscilloscope (Scope): scope.md
     - Source Measure Unit (SMU): smu.md
+    - USB-to-I2C Adapter (EV2300): ev2300.md
     - NI PXIe-4139 Setup: ni_pxie.md
   - Scripting:
     - Scripts & Directives: scripting.md

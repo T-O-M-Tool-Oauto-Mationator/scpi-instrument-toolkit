@@ -6,7 +6,7 @@ Controls source measure units (SMUs) that can both source a precise voltage and 
 - Address a specific SMU directly: `smu1 set 5.0` — or use `use smu1` then `smu set 5.0`
 
 === "NI PXIe-4139"
-    ±60 V / 1 A four-quadrant SMU. Uses the **nidcpower** Python package (not VISA/SCPI). Install with: `pip install nidcpower`. Output range: −60 V to +60 V, 0 A to 1 A.
+    ±60 V / 3 A four-quadrant SMU (20 W source, 12 W sink). Uses the **nidcpower** Python package (not VISA/SCPI). Install with: `pip install nidcpower`. Output range: −60 V to +60 V, −3 A to +3 A DC (10 A pulse).
 
 ---
 
@@ -34,16 +34,17 @@ smu set <voltage> [current_limit]
 | Parameter | Required | Values | Description |
 |-----------|----------|--------|-------------|
 | `voltage` | required | −60.0 – 60.0 (V) | Target output voltage. |
-| `current_limit` | optional | 0.0 – 1.0 (A) | Current compliance limit. If omitted, the existing limit is kept. |
+| `current_limit` | optional | −3.0 – 3.0 (A) | Current compliance limit (negative = sink). If omitted, the existing limit is kept. |
 
 ```bash
 smu set 5.0          # set 5 V, keep existing current limit
 smu set 5.0 0.01     # set 5 V with 10 mA current limit
 smu set -12.0 0.1    # negative voltage for four-quadrant operation
+smu set 2.5 -0.02    # 2.5 V, sink up to 20 mA
 ```
 
 !!! warning
-    Setting a voltage without a current limit uses whatever limit was set previously (default: 10 mA). Always specify the limit when powering an unknown DUT.
+    Setting a voltage without a current limit uses whatever limit was set previously (default: 10 mA). Always specify the limit when powering an unknown DUT. DC source power is capped at 20 W and sink power at 12 W by the hardware.
 
 ---
 

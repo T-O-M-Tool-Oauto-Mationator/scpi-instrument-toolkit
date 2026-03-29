@@ -700,6 +700,34 @@
   
   
     <li class="md-nav__item">
+      <a href="ev2300.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    USB-to-I2C Adapter (EV2300)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="ni_pxie.html" class="md-nav__link">
         
   
@@ -1213,10 +1241,10 @@
 <a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>psu1 set {voltage}
 <a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>sleep 0.5
 <a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>
-<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>psu1 meas_store v psu_v unit=V
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>psu_v = psu1 read
 <a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>
 <a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>dmm1 config vdc
-<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>dmm1 meas_store {label} unit=V
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>{label} = dmm1 read
 <a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>
 <a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>print &quot;=== Test complete ===&quot;
 <a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>log print
@@ -1224,12 +1252,12 @@
 <p><strong>Interpreting results:</strong></p>
 <p>After running, <code>log print</code> shows:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>Label      Value      Unit   Source
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>psu_v      4.9987     V      psu.meas
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>psu_v      4.9987     V      psu.read
 <a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>vtest      4.9992     V      dmm.read
 </code></pre></div>
 <p>Compute the error between PSU setpoint and DMM reading:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>calc error m[&quot;vtest&quot;] - 5.0 unit=V
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>calc error_pct (m[&quot;vtest&quot;] - 5.0) / 5.0 * 100 unit=%
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>calc error {vtest} - 5.0 unit=V
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>calc error_pct ({vtest} - 5.0) / 5.0 * 100 unit=%
 </code></pre></div>
 <hr />
 <h2 id="voltage_sweep">voltage_sweep<a class="headerlink" href="#voltage_sweep" title="Permanent link">&para;</a></h2>
@@ -1259,7 +1287,7 @@
 <a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>  print Setting {v}V...
 <a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>  psu1 set {v}
 <a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>  sleep 0.5
-<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>  dmm1 meas_store v_{v} unit=V
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>  v_{v} = dmm1 read
 <a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>end
 <a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>
 <a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>psu1 chan 1 off
@@ -1269,7 +1297,7 @@
 </code></pre></div>
 <p><strong>Analyzing results:</strong></p>
 <p>After running, each voltage step is recorded as <code>v_1.0</code>, <code>v_2.0</code>, <code>v_3.3</code>, etc. You can compute differences:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>calc delta_3v3_5v m[&quot;v_5.0&quot;] - m[&quot;v_3.3&quot;] unit=V
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>calc delta_3v3_5v {v_5.0} - {v_3.3} unit=V
 </code></pre></div>
 <hr />
 <h2 id="awg_scope_check">awg_scope_check<a class="headerlink" href="#awg_scope_check" title="Permanent link">&para;</a></h2>
@@ -1334,8 +1362,8 @@
 <a id="__codelineno-9-20" name="__codelineno-9-20" href="#__codelineno-9-20"></a>log print
 </code></pre></div>
 <p><strong>Check accuracy:</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>calc freq_error (m[&quot;meas_freq&quot;] - 1000) / 1000 * 100 unit=%
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>calc amp_error (m[&quot;meas_pk2pk&quot;] - 2.0) / 2.0 * 100 unit=%
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>calc freq_error ({meas_freq} - 1000) / 1000 * 100 unit=%
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>calc amp_error ({meas_pk2pk} - 2.0) / 2.0 * 100 unit=%
 </code></pre></div>
 <hr />
 <h2 id="freq_sweep">freq_sweep<a class="headerlink" href="#freq_sweep" title="Permanent link">&para;</a></h2>
@@ -1381,7 +1409,7 @@
 <a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>  sleep 0.4
 <a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>  scope1 meas_store 1 PK2PK in_{f} unit=V
 <a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>  scope1 meas_store 2 PK2PK out_{f} unit=V
-<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>  calc gain_{f} m[&quot;out_{f}&quot;] / m[&quot;in_{f}&quot;]
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>  calc gain_{f} {out_{f}} / {in_{f}}
 <a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>end
 </code></pre></div>
 <hr />
@@ -1440,7 +1468,7 @@
 <a id="__codelineno-15-13" name="__codelineno-15-13" href="#__codelineno-15-13"></a>  print Ramping to {v}V
 <a id="__codelineno-15-14" name="__codelineno-15-14" href="#__codelineno-15-14"></a>  psu1 set {v}
 <a id="__codelineno-15-15" name="__codelineno-15-15" href="#__codelineno-15-15"></a>  sleep {delay}
-<a id="__codelineno-15-16" name="__codelineno-15-16" href="#__codelineno-15-16"></a>  psu1 meas_store v ramp_{v} unit=V
+<a id="__codelineno-15-16" name="__codelineno-15-16" href="#__codelineno-15-16"></a>  ramp_{v} = psu1 read
 <a id="__codelineno-15-17" name="__codelineno-15-17" href="#__codelineno-15-17"></a>end
 <a id="__codelineno-15-18" name="__codelineno-15-18" href="#__codelineno-15-18"></a>
 <a id="__codelineno-15-19" name="__codelineno-15-19" href="#__codelineno-15-19"></a>print &quot;=== Ramp complete ===&quot;
@@ -1468,12 +1496,12 @@
 <a id="__codelineno-16-13" name="__codelineno-16-13" href="#__codelineno-16-13"></a>sleep {delay}
 <a id="__codelineno-16-14" name="__codelineno-16-14" href="#__codelineno-16-14"></a>
 <a id="__codelineno-16-15" name="__codelineno-16-15" href="#__codelineno-16-15"></a># 4. Measure and store
-<a id="__codelineno-16-16" name="__codelineno-16-16" href="#__codelineno-16-16"></a>psu1 meas_store v psu_out unit=V
+<a id="__codelineno-16-16" name="__codelineno-16-16" href="#__codelineno-16-16"></a>psu_out = psu1 read
 <a id="__codelineno-16-17" name="__codelineno-16-17" href="#__codelineno-16-17"></a>dmm1 config vdc
-<a id="__codelineno-16-18" name="__codelineno-16-18" href="#__codelineno-16-18"></a>dmm1 meas_store dmm_out unit=V
+<a id="__codelineno-16-18" name="__codelineno-16-18" href="#__codelineno-16-18"></a>dmm_out = dmm1 read
 <a id="__codelineno-16-19" name="__codelineno-16-19" href="#__codelineno-16-19"></a>
 <a id="__codelineno-16-20" name="__codelineno-16-20" href="#__codelineno-16-20"></a># 5. Derived calculations
-<a id="__codelineno-16-21" name="__codelineno-16-21" href="#__codelineno-16-21"></a>calc error m[&quot;dmm_out&quot;] - m[&quot;psu_out&quot;] unit=V
+<a id="__codelineno-16-21" name="__codelineno-16-21" href="#__codelineno-16-21"></a>calc error {dmm_out} - {psu_out} unit=V
 <a id="__codelineno-16-22" name="__codelineno-16-22" href="#__codelineno-16-22"></a>
 <a id="__codelineno-16-23" name="__codelineno-16-23" href="#__codelineno-16-23"></a># 6. Export
 <a id="__codelineno-16-24" name="__codelineno-16-24" href="#__codelineno-16-24"></a>log print

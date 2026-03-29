@@ -83,10 +83,15 @@ class TestNIPXIe4139_SetCurrentLimit:
         with pytest.raises(ValueError):
             smu.set_current_limit(5.0)
 
-    def test_current_limit_negative_raises(self, ni_pxie_4139):
+    def test_current_limit_negative_accepted(self, ni_pxie_4139):
+        smu, ms = ni_pxie_4139
+        smu.set_current_limit(-0.5)
+        assert ms.current_limit == -0.5
+
+    def test_current_limit_too_negative_raises(self, ni_pxie_4139):
         smu, _ms = ni_pxie_4139
         with pytest.raises(ValueError):
-            smu.set_current_limit(-0.1)
+            smu.set_current_limit(-3.5)
 
 
 # ===========================================================================

@@ -291,6 +291,9 @@ class InstrumentDiscovery:
         Returns a list of (generic_name, driver_instance, model_key, idn) tuples.
         """
         if not _EV2300_AVAILABLE:
+            if verbose:
+                self._safe_print("Scanning USB HID for EV2300 adapters...")
+                self._safe_print("  [SKIP] EV2300 driver not available (import failed)")
             return []
 
         if verbose:
@@ -298,13 +301,26 @@ class InstrumentDiscovery:
 
         results = []
         try:
-            devices = TI_EV2300.enumerate_devices()
+            devices = TI_EV2300.enumerate_devices(diagnostics=verbose)
+            if not devices and verbose:
+                # Check if any are stuck in bootloader mode
+                bl_count = TI_EV2300.count_bootloader_devices()
+                if bl_count:
+                    self._safe_print(
+                        f"  {ColorPrinter.YELLOW}[WARN] Found {bl_count} EV2300 in "
+                        f"bootloader mode (firmware not loaded). "
+                        f"Flash firmware via TI bqStudio.{ColorPrinter.RESET}"
+                    )
+                else:
+                    self._safe_print("  No EV2300 adapters found")
+
             for dev_info in devices:
                 try:
                     path = dev_info["path"]
-                    driver = TI_EV2300(path if isinstance(path, str) else str(path))
+                    driver = TI_EV2300(path)
                     driver.connect()
-                    serial = dev_info.get("serial", "unknown")
+                    info = driver.get_device_info()
+                    serial = info.get("serial", "unknown") if info.get("ok") else "unknown"
                     idn = f"Texas Instruments,EV2300A,{serial},pure-python-hid"
 
                     if verbose:
@@ -312,11 +328,20 @@ class InstrumentDiscovery:
                         self._safe_print("  -> Identified as EV2300 (USB-to-I2C adapter)")
 
                     results.append(("ev2300", driver, "EV2300", idn))
-                except Exception:
+                except Exception as exc:
+                    if verbose:
+                        path_str = dev_info.get("path_str", dev_info.get("path", "?"))
+                        self._safe_print(
+                            f"  {ColorPrinter.YELLOW}[WARN] EV2300 at {path_str}: "
+                            f"connect failed: {exc}{ColorPrinter.RESET}"
+                        )
                     continue
-        except Exception:
+        except Exception as exc:
             if verbose:
-                self._safe_print("EV2300 HID scan failed (permissions?)")
+                self._safe_print(
+                    f"  {ColorPrinter.YELLOW}[WARN] EV2300 HID scan failed: "
+                    f"{exc}{ColorPrinter.RESET}"
+                )
 
         return results
 

@@ -700,6 +700,34 @@
   
   
     <li class="md-nav__item">
+      <a href="ev2300.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    USB-to-I2C Adapter (EV2300)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="ni_pxie.html" class="md-nav__link">
         
   
@@ -984,6 +1012,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#ti-ev2300a-usb-to-i2c" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TI EV2300A (USB-to-I2C)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#serial-instruments-matrix-mps-jds6600" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1128,6 +1167,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#ti-ev2300a-usb-to-i2c" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TI EV2300A (USB-to-I2C)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#serial-instruments-matrix-mps-jds6600" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1216,6 +1266,12 @@
 <td>Triple-output, tracking</td>
 </tr>
 <tr>
+<td>Keysight EDU36311A</td>
+<td>Power Supply</td>
+<td>USB / LAN</td>
+<td>Triple-output (6V/5A, 30V/1A, 30V/1A), tracking, OVP/OCP</td>
+</tr>
+<tr>
 <td>Matrix MPS-6010H-1C</td>
 <td>Power Supply</td>
 <td>Serial</td>
@@ -1226,6 +1282,12 @@
 <td>Multimeter</td>
 <td>GPIB</td>
 <td>Display text, NPLC control</td>
+</tr>
+<tr>
+<td>Keysight EDU34450A</td>
+<td>Multimeter</td>
+<td>USB / LAN</td>
+<td>5½-digit, capacitance, temperature, dual display</td>
 </tr>
 <tr>
 <td>OWON XDM1041</td>
@@ -1257,6 +1319,18 @@
 <td>PXIe (nidcpower)</td>
 <td>±60 V / 1 A four-quadrant, voltage/current source and measure</td>
 </tr>
+<tr>
+<td>Keysight DSOX1204G</td>
+<td>Oscilloscope</td>
+<td>USB / LAN</td>
+<td>Screenshot, display, acquire, math, mask, label, invert, bwlimit, built-in AWG (WGEN), DVM</td>
+</tr>
+<tr>
+<td>TI EV2300A</td>
+<td>USB-to-I2C Adapter</td>
+<td>USB HID</td>
+<td>SMBus/I2C read/write word/byte/block, register scan, raw probe</td>
+</tr>
 </tbody>
 </table>
 <hr />
@@ -1280,6 +1354,13 @@
 <li>Not compatible with VISA/SCPI — VISA-based commands (<code>*IDN?</code>, etc.) do not apply.</li>
 <li>Remote PXI controllers are not supported.</li>
 </ul>
+<h3 id="ti-ev2300a-usb-to-i2c">TI EV2300A (USB-to-I2C)<a class="headerlink" href="#ti-ev2300a-usb-to-i2c" title="Permanent link">&para;</a></h3>
+<p>The EV2300A is detected automatically via USB HID — no VISA or extra TI drivers needed. It appears as <code>ev2300</code> in the REPL. See <a href="ev2300.html">USB-to-I2C Adapter (EV2300)</a> for commands.</p>
+<p><strong>Prerequisites:</strong></p>
+<ul>
+<li>EV2300A must have firmware loaded (not in bootloader mode). If the REPL reports "bootloader mode", flash firmware via TI bqStudio.</li>
+<li>On Linux, a udev rule is needed for <code>/dev/hidraw</code> access. On macOS, install <code>hidapi</code>.</li>
+</ul>
 <h3 id="serial-instruments-matrix-mps-jds6600">Serial instruments (Matrix MPS, JDS6600)<a class="headerlink" href="#serial-instruments-matrix-mps-jds6600" title="Permanent link">&para;</a></h3>
 <p>Serial instruments are probed automatically at multiple baud rates. No manual configuration is needed. Connect via USB-to-serial adapter, then launch <code>scpi-repl</code>.</p>
 <hr />
@@ -1288,8 +1369,10 @@
 <ol>
 <li>Lists all VISA resources (USB, GPIB, Serial)</li>
 <li>Queries <code>*IDN?</code> on each one</li>
-<li>Matches the response against the known model list</li>
-<li>Assigns a name (<code>psu1</code>, <code>dmm1</code>, <code>scope1</code>, <code>awg1</code>, etc.)</li>
+<li>Scans PXI slots for NI-DCPower devices</li>
+<li>Scans USB HID for EV2300 adapters</li>
+<li>Matches responses against the known model list</li>
+<li>Assigns a name (<code>psu1</code>, <code>dmm1</code>, <code>scope1</code>, <code>awg1</code>, <code>smu1</code>, <code>ev2300</code>, etc.)</li>
 </ol>
 <p>If multiple instruments of the same type are found, they are numbered: <code>psu1</code>, <code>psu2</code>, etc.</p>
 <hr />
@@ -1297,7 +1380,7 @@
 <p>Use <code>--mock</code> to run the REPL with simulated instruments:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>scpi-repl<span class="w"> </span>--mock
 </code></pre></div>
-<p>Mock mode injects: <code>psu1</code>, <code>psu2</code>, <code>awg1</code>, <code>awg2</code>, <code>dmm1</code>, <code>dmm2</code>, <code>scope1</code>, <code>scope2</code> — two of each type. Measurements return realistic random values. Useful for testing scripts before connecting real hardware.</p>
+<p>Mock mode injects: <code>psu1</code>, <code>psu2</code>, <code>psu3</code>, <code>awg1</code>, <code>awg2</code>, <code>dmm1</code>, <code>dmm2</code>, <code>dmm3</code>, <code>smu</code>, <code>scope1</code>, <code>scope2</code>, <code>scope3</code>. Measurements return realistic random values. Useful for testing scripts before connecting real hardware.</p>
 
 
 

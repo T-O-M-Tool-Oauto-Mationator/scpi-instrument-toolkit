@@ -113,6 +113,8 @@ examples          # list bundled example scripts
 | [AWG](awg.md) | Function generator — waveforms, frequency, amplitude |
 | [DMM](dmm.md) | Multimeter — measurement modes, logging |
 | [Scope](scope.md) | Oscilloscope — channels, triggers, measurements, waveform capture |
+| [SMU](smu.md) | Source measure unit — voltage/current sourcing and measurement |
+| [EV2300](ev2300.md) | USB-to-I2C adapter — SMBus register read/write, scan, probe |
 | [Scripting](scripting.md) | Scripts, variables, loops, directives — full reference |
 | [Examples](examples.md) | Bundled example workflows with explanations |
 | [Log & Calc](logging.md) | Measurement log, CSV export, derived calculations |

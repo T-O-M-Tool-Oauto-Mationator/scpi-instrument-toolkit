@@ -23,9 +23,10 @@ class NI_PXIe_4139:
     on-the-fly FIRST, then abort() to stop.
     """
 
-    # Hardware limits for the PXIe-4139
-    MAX_VOLTAGE = 60.0
-    MAX_CURRENT = 1.0
+    # Hardware limits for the PXIe-4139 (per NI datasheet: ±60 V, 3 A SMU)
+    # DC source power capped at 20 W, DC sink power at 12 W (hardware-enforced).
+    MAX_VOLTAGE = 60.0       # ±60 V
+    MAX_CURRENT = 3.0        # ±3 A DC (10 A pulse only)
     MAX_SOURCE_DELAY = 167.0  # seconds, hardware limit per NI-DCPower spec
     DEFAULT_CURRENT_LIMIT = 0.01  # 10 mA
     DEFAULT_VOLTAGE_LIMIT = 5.0  # V, compliance when in current mode
@@ -126,8 +127,8 @@ class NI_PXIe_4139:
     def set_current_limit(self, current: float):
         """Set the current limit."""
         self._check_session()
-        if not 0 <= current <= self.MAX_CURRENT:
-            raise ValueError(f"Current limit must be between 0 and {self.MAX_CURRENT} A")
+        if not -self.MAX_CURRENT <= current <= self.MAX_CURRENT:
+            raise ValueError(f"Current limit must be between -{self.MAX_CURRENT} and {self.MAX_CURRENT} A")
         self._session.current_limit = current
         self._session.commit()
 
@@ -218,8 +219,8 @@ class NI_PXIe_4139:
         self._check_session()
         if not -self.MAX_VOLTAGE <= voltage <= self.MAX_VOLTAGE:
             raise ValueError(f"Voltage must be between -{self.MAX_VOLTAGE} and {self.MAX_VOLTAGE} V")
-        if current_limit is not None and not 0 <= current_limit <= self.MAX_CURRENT:
-            raise ValueError(f"Current limit must be between 0 and {self.MAX_CURRENT} A")
+        if current_limit is not None and not -self.MAX_CURRENT <= current_limit <= self.MAX_CURRENT:
+            raise ValueError(f"Current limit must be between -{self.MAX_CURRENT} and {self.MAX_CURRENT} A")
         self._session.output_function = nidcpower.OutputFunction.DC_VOLTAGE
         self._session.voltage_level = voltage
         if current_limit is not None:
