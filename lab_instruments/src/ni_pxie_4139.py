@@ -6,6 +6,7 @@ Uses the nidcpower Python package (NI-DCPower driver) instead of PyVISA/SCPI.
 Does NOT inherit from DeviceManager.
 """
 
+import contextlib
 import datetime
 
 import nidcpower
@@ -46,8 +47,25 @@ class NI_PXIe_4139:
         The session is left in the Running state with output disabled.
         All subsequent property changes (voltage_level, output_enabled, etc.)
         are applied via commit() while running — NI-DCPower requires this.
+        If the device is in OLP (Overload Protection), the session is opened
+        with relaxed options to clear the latched state first.
         """
-        self._session = nidcpower.Session(resource_name=self.resource_name, channels="0")
+        try:
+            self._session = nidcpower.Session(resource_name=self.resource_name, channels="0", reset=True)
+        except Exception:
+            # OLP or other hard error — open with status checks disabled, clear, reopen
+            self._session = nidcpower.Session(
+                resource_name=self.resource_name,
+                channels="0",
+                reset=True,
+                options="QueryInstrStatus=0,RangeCheck=0",
+            )
+            with contextlib.suppress(Exception):
+                self._session.clear_latched_output_cutoff_state()
+            self._session.reset_device()
+            self._session.close()
+            # Reopen cleanly
+            self._session = nidcpower.Session(resource_name=self.resource_name, channels="0", reset=True)
         self._session.output_function = nidcpower.OutputFunction.DC_VOLTAGE
         self._session.voltage_level_autorange = True
         self._session.current_limit_autorange = True
@@ -298,9 +316,21 @@ class NI_PXIe_4139:
     # ------------------------------------------------------------------
 
     def reset(self):
-        """Reset the instrument to default state."""
-        self._check_session()
-        self._session.reset()
+        """Reset the instrument — full session teardown and reconnect.
+
+        This recovers from hard errors like OLP (Overload Protection)
+        where the session is unresponsive to normal commands.
+        """
+        if self._session is not None:
+            with contextlib.suppress(Exception):
+                self._session.abort()
+            with contextlib.suppress(Exception):
+                self._session.reset()
+            with contextlib.suppress(Exception):
+                self._session.close()
+            self._session = None
+            self._output_on = False
+        self.connect()
 
     def query(self, cmd, **kwargs):
         """Return an IDN-like string (SCPI compatibility stub)."""
