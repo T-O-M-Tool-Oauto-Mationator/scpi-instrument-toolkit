@@ -209,6 +209,22 @@ def expand_script_lines(
             if instr_read_match:
                 expanded.append((raw_line, _loop_ctx + raw_line))
                 continue
+            # linspace assignment: VAR = linspace start stop [count]
+            ls_parts = raw_val.split()
+            if ls_parts and ls_parts[0] == "linspace" and len(ls_parts) >= 3:
+                try:
+                    ls_start = float(ls_parts[1])
+                    ls_stop = float(ls_parts[2])
+                    ls_count = int(ls_parts[3]) if len(ls_parts) >= 4 else 11
+                    if ls_count < 2:
+                        raise ValueError("count must be >= 2")
+                    ls_step = (ls_stop - ls_start) / (ls_count - 1)
+                    ls_vals = [ls_start + i * ls_step for i in range(ls_count)]
+                    variables[key] = " ".join(f"{v:g}" for v in ls_vals)
+                    expanded.append(("__NOP__", f"{_loop_ctx}{raw_line}  →  {key} = [{variables[key]}]"))
+                except (ValueError, ZeroDivisionError) as exc:
+                    ColorPrinter.error(f"linspace: {exc}")
+                continue
             try:
                 num_vars = {}
                 for k, v in variables.items():

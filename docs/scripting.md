@@ -704,6 +704,58 @@ end
 
 This is equivalent to writing all values inline on the `for` line — but much easier to manage.
 
+### linspace — generate evenly-spaced values
+
+```
+<varname> = linspace <start> <stop> [count]
+```
+
+Generates `count` evenly-spaced values from `start` to `stop` (inclusive) and stores them as a space-separated string. Default count is 11.
+
+| Parameter | Required | Values | Description |
+|-----------|----------|--------|-------------|
+| `start` | required | float | First value in the range. |
+| `stop` | required | float | Last value in the range. |
+| `count` | optional | integer >= 2 | Number of points (default: 11). |
+
+**Voltage sweep with linspace:**
+
+```
+VSWEEP = linspace 6 25 20
+for VIN {VSWEEP}
+  psu set 2 {VIN} 0.5
+  sleep 0.5
+  smu meas_store v linereg_{VIN}V unit=V
+end
+```
+
+**Current sweep in mA:**
+
+```
+ISWEEP = linspace 0 0.050 11
+for I {ISWEEP}
+  smu set_mode current {I} 3.0
+  smu on
+  sleep 0.3
+  smu meas_store v ilim_{I}A unit=V
+  smu off
+end
+```
+
+**Use variables for start/stop:**
+
+```
+v_start = 1.0
+v_end = 12.0
+RAMP = linspace {v_start} {v_end} 7
+for v {RAMP}
+  psu set {v}
+  sleep 0.5
+end
+```
+
+Works at the interactive REPL prompt too.
+
 ---
 
 ## Variable Scope

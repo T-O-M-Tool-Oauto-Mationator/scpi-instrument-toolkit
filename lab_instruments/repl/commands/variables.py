@@ -162,6 +162,23 @@ class VariableCommands(BaseCommand):
     def _assign_var(self, key: str, raw_val: str) -> None:
         """Core variable assignment — shared by 'var = expr' and 'set var expr'."""
         raw_val = substitute_vars(raw_val, self.ctx.script_vars, self.ctx.measurements)
+        # linspace: VAR = linspace start stop [count]
+        ls_parts = raw_val.split()
+        if ls_parts and ls_parts[0] == "linspace" and len(ls_parts) >= 3:
+            try:
+                ls_start = float(ls_parts[1])
+                ls_stop = float(ls_parts[2])
+                ls_count = int(ls_parts[3]) if len(ls_parts) >= 4 else 11
+                if ls_count < 2:
+                    raise ValueError("count must be >= 2")
+                ls_step = (ls_stop - ls_start) / (ls_count - 1)
+                ls_vals = [ls_start + i * ls_step for i in range(ls_count)]
+                self.ctx.script_vars[key] = " ".join(f"{v:g}" for v in ls_vals)
+                ColorPrinter.success(f"{key} = [{self.ctx.script_vars[key]}]")
+                return
+            except (ValueError, ZeroDivisionError) as exc:
+                ColorPrinter.error(f"linspace: {exc}")
+                return
         try:
             num_vars = {}
             for k, v in self.ctx.script_vars.items():

@@ -1508,6 +1508,38 @@ class TestExpander:
         expand_script_lines(lines, variables, ctx)
         assert variables["items"] == "1 2 3 4"
 
+    def test_linspace_default_count(self):
+        from lab_instruments.repl.script_engine.expander import expand_script_lines
+
+        ctx = self._make_ctx()
+        variables: dict = {}
+        expand_script_lines(["V = linspace 0 10"], variables, ctx)
+        vals = variables["V"].split()
+        assert len(vals) == 11
+        assert vals[0] == "0"
+        assert vals[-1] == "10"
+
+    def test_linspace_custom_count(self):
+        from lab_instruments.repl.script_engine.expander import expand_script_lines
+
+        ctx = self._make_ctx()
+        variables: dict = {}
+        expand_script_lines(["V = linspace 0 1 5"], variables, ctx)
+        vals = variables["V"].split()
+        assert len(vals) == 5
+        assert vals[0] == "0"
+        assert vals[-1] == "1"
+        assert vals[2] == "0.5"
+
+    def test_linspace_with_for(self):
+        from lab_instruments.repl.script_engine.expander import expand_script_lines
+
+        ctx = self._make_ctx()
+        lines = ["SWEEP = linspace 1 3 3", "for v {SWEEP}", "print {v}", "end"]
+        result = expand_script_lines(lines, {}, ctx)
+        commands = [cmd for cmd, _ in result if cmd != "__NOP__"]
+        assert commands == ["print 1", "print 2", "print 3"]
+
     def test_call(self):
         from lab_instruments.repl.script_engine.expander import expand_script_lines
 
