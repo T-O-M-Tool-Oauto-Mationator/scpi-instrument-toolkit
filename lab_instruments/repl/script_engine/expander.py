@@ -7,7 +7,7 @@ from typing import Any
 
 from lab_instruments.src.terminal import ColorPrinter
 
-from ..syntax import safe_eval, substitute_legacy
+from ..syntax import safe_eval, substitute_expand
 
 # Matches Python-style assignment: identifier = expression
 _ASSIGN_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.+)$")
@@ -87,7 +87,7 @@ def expand_script_lines(
                 continue
             if len(tokens) >= 3:
                 key = tokens[1]
-                raw_val = substitute_legacy(" ".join(tokens[2:]), variables)
+                raw_val = substitute_expand(" ".join(tokens[2:]), variables)
                 try:
                     num_vars = {}
                     for k, v in variables.items():
@@ -109,7 +109,7 @@ def expand_script_lines(
             for token in tokens[2:]:
                 if "=" in token:
                     k, v = token.split("=", 1)
-                    call_params[k] = substitute_legacy(v, variables)
+                    call_params[k] = substitute_expand(v, variables)
             call_exports: dict[str, str] = {}
             expanded.extend(
                 expand_script_lines(
@@ -151,7 +151,7 @@ def expand_script_lines(
                     continue
                 if inner_tokens[0].lower() == "end":
                     break
-                elements.extend(shlex.split(substitute_legacy(line, variables)))
+                elements.extend(shlex.split(substitute_expand(line, variables)))
             variables[varname] = " ".join(elements)
             expanded.append(("__NOP__", f"{_loop_ctx}{raw_line}  →  {varname} = [{variables[varname]}]"))
             continue
@@ -160,7 +160,7 @@ def expand_script_lines(
             key = tokens[1]
             values: list[str] = []
             for _rv in tokens[2:]:
-                _subst = substitute_legacy(_rv, variables)
+                _subst = substitute_expand(_rv, variables)
                 try:
                     values.extend(shlex.split(_subst))
                 except ValueError:
@@ -175,7 +175,7 @@ def expand_script_lines(
                         break
                     local_vars = dict(variables)
                     for name, val in zip(keys, parts, strict=False):
-                        local_vars[name] = substitute_legacy(val, variables)
+                        local_vars[name] = substitute_expand(val, variables)
                     iter_ctx = " ".join(f"{k}={v}" for k, v in zip(keys, parts, strict=False))
                     expanded.append(("__NOP__", f"{_loop_ctx}{raw_line}  →  {iter_ctx}"))
                     expanded.extend(
@@ -184,7 +184,7 @@ def expand_script_lines(
             else:
                 for value in values:
                     local_vars = dict(variables)
-                    local_vars[key] = substitute_legacy(value, variables)
+                    local_vars[key] = substitute_expand(value, variables)
                     expanded.append(("__NOP__", f"{_loop_ctx}{raw_line}  →  {key}={value}"))
                     expanded.extend(
                         expand_script_lines(block, local_vars, ctx, depth, _loop_ctx=_loop_ctx + f"[{key}={value}] ")
@@ -202,7 +202,7 @@ def expand_script_lines(
         _assign_match = _ASSIGN_RE.match(raw_line)
         if _assign_match:
             key = _assign_match.group(1)
-            raw_val = substitute_legacy(_assign_match.group(2).strip(), variables)
+            raw_val = substitute_expand(_assign_match.group(2).strip(), variables)
             # Instrument read assignment: value = dmm read [unit=X]
             # Emit the full line as a command so the shell handles it at runtime
             instr_read_match = _INSTR_READ_RE.match(raw_val)
@@ -221,7 +221,7 @@ def expand_script_lines(
             expanded.append(("__NOP__", f"{_loop_ctx}{raw_line}  →  {key} = {variables[key]}"))
             continue
 
-        expanded.append((substitute_legacy(raw_line, variables), _loop_ctx + raw_line))
+        expanded.append((substitute_expand(raw_line, variables), _loop_ctx + raw_line))
     return expanded
 
 

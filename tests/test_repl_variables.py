@@ -25,11 +25,11 @@ class TestSubstituteVars:
             == "Setting 5.0V to vtest"
         )
 
-    def test_dollar_style_still_works(self):
-        assert substitute_vars("v=$voltage", {"voltage": "3.3"}) == "v=3.3"
+    def test_dollar_style_no_longer_resolves(self):
+        assert substitute_vars("v=$voltage", {"voltage": "3.3"}) == "v=$voltage"
 
-    def test_both_styles_in_one_string(self):
-        result = substitute_vars("{a} and $b", {"a": "1", "b": "2"})
+    def test_only_brace_style(self):
+        result = substitute_vars("{a} and {b}", {"a": "1", "b": "2"})
         assert result == "1 and 2"
 
     def test_unresolved_fstring_left_as_is(self):
@@ -52,7 +52,7 @@ class TestSubstituteVars:
 
         store = MeasurementStore()
         store.record("x", 7.0, "", "test")
-        assert substitute_vars("$last", {}, measurements=store) == "7.0"
+        assert substitute_vars("{last}", {}, measurements=store) == "7.0"
 
 
 # ---------------------------------------------------------------------------
@@ -200,21 +200,21 @@ class TestRegressions:
         out = capsys.readouterr().out
         assert "hello world" in out
 
-    def test_print_dollar_var(self, make_repl, capsys):
-        """$var substitution in print still works."""
+    def test_print_brace_var(self, make_repl, capsys):
+        """{var} substitution in print works."""
         repl = make_repl({})
         repl.ctx.script_vars["msg"] = "hello"
-        repl.onecmd("print $msg")
+        repl.onecmd("print {msg}")
         out = capsys.readouterr().out
         assert "hello" in out
 
-    def test_print_legacy_braces(self, make_repl, capsys):
-        """${var} legacy syntax still works in print."""
+    def test_dollar_syntax_not_resolved(self, make_repl, capsys):
+        """$var is no longer resolved — left as literal."""
         repl = make_repl({})
         repl.ctx.script_vars["v"] = "1"
-        repl.onecmd("print ${v}")
+        repl.onecmd("print $v")
         out = capsys.readouterr().out
-        assert "1" in out
+        assert "$v" in out
 
     def test_set_x_42_prints_error(self, make_repl, capsys):
         """set for assignment is removed — prints error message."""

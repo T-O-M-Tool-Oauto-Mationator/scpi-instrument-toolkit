@@ -54,6 +54,9 @@ def _resolve_channel(dev, ch_str):
         alias = PSU_CHANNEL_ALIASES.get(ch_lower)
         if alias:
             return alias
+        # Accept bare numeric channels (1-3) for devices without a CHANNEL_MAP
+        if ch_str.isdigit() and 1 <= int(ch_str) <= 3:
+            return ch_str
 
     return None
 
@@ -94,6 +97,17 @@ class PsuCommand(BaseCommand):
                 state = args[-1].lower() == "on"
                 if state and not self.safety.check_psu_output_allowed(psu_name):
                     return
+                # Multi-channel: select channel before toggling output
+                if not is_single_channel and len(args) >= 3:
+                    ch_str = args[1].lower()
+                    if ch_str != "all":
+                        channel = _resolve_channel(dev, args[1])
+                        if not channel:
+                            ch_count = len(getattr(dev, "CHANNEL_MAP", {}))
+                            ColorPrinter.warning(f"Invalid channel. Use 1-{ch_count} or 'all'")
+                            return
+                        if hasattr(dev, "select_channel"):
+                            dev.select_channel(channel)
                 dev.enable_output(state)
                 ColorPrinter.success(f"Output {'enabled' if state else 'disabled'}")
 

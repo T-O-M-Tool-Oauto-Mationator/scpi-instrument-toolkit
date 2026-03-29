@@ -284,7 +284,7 @@ dmm1 meas_store {label} unit=V   # → dmm1 meas_store my_run unit=V
 print "Setting {voltage}V"       # → prints  Setting 5.0V
 ```
 
-Both `{varname}` and `$varname` work. `{varname}` is the preferred style.
+Use `{varname}` syntax for variable references.
 
 ### Error handling: set -e / set +e
 
@@ -469,7 +469,7 @@ print "Test complete. Check log print for results."
 print "# blank line"
 ```
 
-Both `{varname}` and `$varname` work in print messages. `{varname}` is preferred.
+Use `{varname}` syntax for variable references in print messages.
 
 Use `print` to add section headers, progress updates, and operator instructions in your scripts.
 

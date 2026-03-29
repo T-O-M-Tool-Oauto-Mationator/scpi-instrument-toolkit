@@ -166,7 +166,7 @@ class TestCalc:
 
     def test_calc_using_stored_measurement(self, repl, capsys):
         _store(repl, "vout", 5.0, "V")
-        repl.onecmd("calc doubled = $vout * 2 unit=V")
+        repl.onecmd("calc doubled = {vout} * 2 unit=V")
         out = capsys.readouterr().out
         assert "doubled" in out
 
@@ -189,7 +189,7 @@ class TestCalc:
 
     def test_calc_bad_expression(self, repl, capsys):
         _store(repl, "v", 1.0)
-        repl.onecmd("calc result = $undefined_var_xyz * 2")
+        repl.onecmd("calc result = {undefined_var_xyz} * 2")
         out = capsys.readouterr().out
         assert out != ""
 
