@@ -1,6 +1,7 @@
 """Plot command: visualise measurement log data with matplotlib."""
 
 import fnmatch
+import os
 
 from lab_instruments.src.terminal import ColorPrinter
 
@@ -24,13 +25,17 @@ class PlotCommand(BaseCommand):
             self._show_help()
             return
 
-        # ---- parse --title ------------------------------------------------
+        # ---- parse --title and --save ----------------------------------------
         title = "Measurements"
+        save_path: str | None = None
         patterns: list[str] = []
         i = 0
         while i < len(args):
             if args[i] == "--title" and i + 1 < len(args):
                 title = args[i + 1]
+                i += 2
+            elif args[i] == "--save" and i + 1 < len(args):
+                save_path = args[i + 1]
                 i += 2
             else:
                 patterns.append(args[i])
@@ -80,6 +85,16 @@ class PlotCommand(BaseCommand):
                 self._plot_series(ax, units[unit_key], subtitle, unit_key)
 
         plt.tight_layout()
+
+        # Auto-save to PNG if --save <path> is specified, or to script dir
+        if save_path:
+            if not os.path.isabs(save_path):
+                base = self.ctx.get_scripts_dir() if self.ctx.in_script else os.getcwd()
+                save_path = os.path.join(base, save_path)
+            os.makedirs(os.path.dirname(save_path) or ".", exist_ok=True)
+            fig.savefig(save_path, dpi=150, bbox_inches="tight")
+            ColorPrinter.success(f"Plot saved to {save_path}")
+
         plt.show(block=False)
         ColorPrinter.success("Plot window opened.")
 
@@ -111,11 +126,14 @@ class PlotCommand(BaseCommand):
                 "  - plot measurements whose label matches the glob pattern(s)",
                 'plot --title "My Title"',
                 "  - set the plot window title",
+                "plot --save <path.png>",
+                "  - save plot to PNG file (relative to script dir)",
                 "",
                 "  Examples:",
                 "    plot",
                 "    plot linereg_*",
                 "    plot loadreg_* ilim_*",
                 '    plot linereg_* --title "Line Regulation"',
+                "    plot load_* --save ../plots/load_reg.png",
             ]
         )
