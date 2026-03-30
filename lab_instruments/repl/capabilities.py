@@ -81,6 +81,7 @@ DRIVER_CAPABILITIES = {
     "Keysight_EDU33212A": (Capability.AWG_SYNC | Capability.AWG_INDEPENDENT_PARAMS),
     "MockEDU33212A": (Capability.AWG_SYNC | Capability.AWG_INDEPENDENT_PARAMS),
     "BK_4063": Capability.AWG_INDEPENDENT_PARAMS,
+    "MockBK_4063": Capability.AWG_INDEPENDENT_PARAMS,
     "JDS6600_Generator": Capability.AWG_JDS6600_PROTOCOL,
     "MockJDS6600": Capability.AWG_JDS6600_PROTOCOL,
     # DMMs
@@ -221,6 +222,7 @@ DISPLAY_NAMES = {
     "Keysight_EDU33212A": "Keysight EDU33212A",
     "MockEDU33212A": "Keysight EDU33212A (Mock)",
     "BK_4063": "BK Precision 4063",
+    "MockBK_4063": "BK Precision 4063 (Mock)",
     "JDS6600_Generator": "JDS6600",
     "MockJDS6600": "JDS6600 (Mock)",
     "HP_34401A": "HP 34401A",

@@ -1,6 +1,5 @@
 """PSU command handler for the REPL."""
 
-import inspect
 from typing import Any
 
 from lab_instruments.src.terminal import ColorPrinter
@@ -73,12 +72,9 @@ class PsuCommand(BaseCommand):
 
         The shell calls this like ``self._psu_cmd.execute(arg, dev, psu_name)``.
         """
-        # Detect single-channel by checking if measure_voltage() takes a channel arg
-        try:
-            sig = inspect.signature(dev.measure_voltage)
-            is_single_channel = "channel" not in sig.parameters
-        except (ValueError, TypeError):
-            is_single_channel = False
+        # Detect multi-channel by whether the device has a select_channel method or CHANNEL_MAP.
+        # Inspecting parameter names is fragile (mocks use 'ch', real devices may vary).
+        is_single_channel = not (hasattr(dev, "select_channel") or bool(getattr(dev, "CHANNEL_MAP", None)))
 
         args = self.parse_args(arg)
         args, help_flag = self.strip_help(args)
@@ -92,8 +88,11 @@ class PsuCommand(BaseCommand):
         try:
             # CHAN COMMAND -- psu chan on|off (single) or psu chan <1|2|3|all> on|off (multi)
             if cmd_name == "chan" and (
-                (is_single_channel and len(args) >= 2) or (not is_single_channel and len(args) >= 3)
+                (is_single_channel and len(args) == 2) or (not is_single_channel and len(args) >= 3)
             ):
+                if is_single_channel and len(args) == 2 and args[1].lower() not in ("on", "off"):
+                    ColorPrinter.warning("Usage: psu chan on|off")
+                    return
                 state = args[-1].lower() == "on"
                 if state and not self.safety.check_psu_output_allowed(psu_name):
                     return

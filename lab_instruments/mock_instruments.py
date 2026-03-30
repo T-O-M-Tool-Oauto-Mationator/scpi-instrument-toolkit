@@ -804,7 +804,37 @@ class MockNI_PXIe_4139(MockPSU):
         return round(random.uniform(22.0, 28.0), 1)
 
 
-class MockHP_E3631A(MockPSU):
+class MockMultiChannelPSU(MockPSU):
+    """Base for multi-channel PSUs: adds select_channel + per-channel output state."""
+
+    def __init__(self):
+        super().__init__()
+        self._ch_outputs: dict = {k: False for k in self.CHANNEL_MAP}
+        self._selected_ch: str | None = None
+
+    def select_channel(self, ch: str) -> None:
+        self._selected_ch = ch
+
+    def enable_output(self, state) -> None:
+        ch = self._selected_ch
+        if ch and ch in self._ch_outputs:
+            self._ch_outputs[ch] = bool(state)
+        else:
+            for k in self._ch_outputs:
+                self._ch_outputs[k] = bool(state)
+
+    def get_output_state(self, ch=None) -> bool:
+        key = ch if ch is not None else self._selected_ch
+        if key and key in self._ch_outputs:
+            return self._ch_outputs[key]
+        return any(self._ch_outputs.values())
+
+    def disable_all_channels(self) -> None:
+        for k in self._ch_outputs:
+            self._ch_outputs[k] = False
+
+
+class MockHP_E3631A(MockMultiChannelPSU):
     """Mock HP E3631A triple-output power supply."""
 
     CHANNEL_MAP = {
@@ -819,7 +849,7 @@ class MockHP_E3631A(MockPSU):
     }
 
 
-class MockEDU36311A(MockPSU):
+class MockEDU36311A(MockMultiChannelPSU):
     """Mock Keysight EDU36311A triple-output power supply."""
 
     CHANNEL_MAP = {
@@ -837,13 +867,23 @@ class MockEDU36311A(MockPSU):
 class MockJDS6600(MockAWG):
     """Mock JDS6600 DDS function generator."""
 
-    pass
+    VALID_WAVEFORMS = [
+        "SINE", "SQUARE", "PULSE", "TRIANGLE", "PARTIAL_SINE", "CMOS", "DC",
+        "HALF_WAVE", "FULL_WAVE", "POS_LADDER", "NEG_LADDER", "NOISE",
+        "EXP_RISE", "EXP_DECAY", "MULTITONE", "SINC", "LORENZ",
+    ]
 
 
 class MockEDU33212A(MockAWG):
     """Mock Keysight EDU33212A function generator."""
 
-    pass
+    VALID_WAVEFORMS = ["SIN", "SQU", "RAMP", "PULS", "NOIS", "PRBS", "DC", "ARB"]
+
+
+class MockBK_4063(MockAWG):
+    """Mock B&K Precision 4063 function generator."""
+
+    VALID_WAVEFORMS = ["SINE", "SQUARE", "RAMP", "PULSE", "NOISE", "DC", "ARB"]
 
 
 class MockHP_34401A(MockDMM):
@@ -960,7 +1000,7 @@ def get_mock_devices(verbose=True):
         ColorPrinter.info(
             "Injecting: psu1 (MockHP_E3631A), psu2 (MockMPS6010H), psu3 (MockEDU36311A), "
             "smu (MockNI_PXIe_4139), "
-            "awg1 (MockEDU33212A), awg2 (MockJDS6600), "
+            "awg1 (MockEDU33212A), awg2 (MockJDS6600), awg3 (MockBK_4063), "
             "dmm1 (MockHP_34401A), dmm2 (MockXDM1041), dmm3 (MockEDU34450A), "
             "scope1 (MockDHO804), scope2 (MockMSO2024), scope3 (MockDSOX1204G), "
             "ev2300 (MockEV2300)"
@@ -972,6 +1012,7 @@ def get_mock_devices(verbose=True):
         "smu": MockNI_PXIe_4139(),
         "awg1": MockEDU33212A(),
         "awg2": MockJDS6600(),
+        "awg3": MockBK_4063(),
         "dmm1": MockHP_34401A(),
         "dmm2": MockXDM1041(),
         "dmm3": MockEDU34450A(),
