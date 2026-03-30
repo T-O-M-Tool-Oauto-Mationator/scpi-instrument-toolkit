@@ -36,6 +36,13 @@ class Keysight_EDU36311A(DeviceManager):
         "n30v_channel": 0.5,  # Default current limit for N30V channel
     }
 
+    # Hardware limits: (max_voltage_V, max_current_A)
+    CHANNEL_LIMITS = {
+        "p6v_channel": (6.0, 5.0),
+        "p30v_channel": (30.0, 1.0),
+        "n30v_channel": (30.0, 1.0),
+    }
+
     def __init__(self, resource_name):
         """Initialize the Keysight EDU36311A PSU."""
         super().__init__(resource_name)

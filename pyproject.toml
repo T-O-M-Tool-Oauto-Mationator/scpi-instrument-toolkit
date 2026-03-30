@@ -30,6 +30,8 @@ dependencies = [
     "pyfunctional>=1.4.0",
     "requests>=2.31.0",
     "textual>=1.8.0",
+    "PySide6>=6.6.0",
+    "pyqtgraph>=0.13.0",
     "nidcpower>=1.5.0; python_version>='3.9'",
     "nidcpower>=1.4.0; python_version<'3.9'",
 ]
@@ -44,6 +46,7 @@ lint = ["ruff>=0.4.0"]
 [project.scripts]
 scpi-repl = "lab_instruments.repl:main"
 scpi-tui = "lab_instruments.tui.app:main"
+scpi-gui = "lab_instruments.gui:main"
 
 [project.urls]
 Homepage = "https://github.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit"

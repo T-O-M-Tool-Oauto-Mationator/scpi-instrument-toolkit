@@ -718,6 +718,9 @@ class MockMSO2024(MockScope):
 class MockMPS6010H(MockPSU):
     """Mock Matrix MPS-6010H power supply with remote mode."""
 
+    MAX_VOLTAGE = 60.0
+    MAX_CURRENT = 10.0
+
     def set_remote_mode(self, on):
         pass
 
@@ -804,13 +807,31 @@ class MockNI_PXIe_4139(MockPSU):
 class MockHP_E3631A(MockPSU):
     """Mock HP E3631A triple-output power supply."""
 
-    pass
+    CHANNEL_MAP = {
+        "positive_6_volts_channel": "P6V",
+        "positive_25_volts_channel": "P25V",
+        "negative_25_volts_channel": "N25V",
+    }
+    CHANNEL_LIMITS = {
+        "positive_6_volts_channel": (6.0, 5.0),
+        "positive_25_volts_channel": (25.0, 1.0),
+        "negative_25_volts_channel": (25.0, 1.0),
+    }
 
 
 class MockEDU36311A(MockPSU):
     """Mock Keysight EDU36311A triple-output power supply."""
 
-    pass
+    CHANNEL_MAP = {
+        "p6v_channel": "P6V",
+        "p30v_channel": "P30V",
+        "n30v_channel": "N30V",
+    }
+    CHANNEL_LIMITS = {
+        "p6v_channel": (6.0, 5.0),
+        "p30v_channel": (30.0, 1.0),
+        "n30v_channel": (30.0, 1.0),
+    }
 
 
 class MockJDS6600(MockAWG):

@@ -30,6 +30,13 @@ class HP_E3631A(DeviceManager):
         "negative_25_volts_channel": 0.5,  # Default current limit for -25V channel
     }
 
+    # Hardware limits: (max_voltage_V, max_current_A)
+    CHANNEL_LIMITS = {
+        "positive_6_volts_channel": (6.0, 5.0),
+        "positive_25_volts_channel": (25.0, 1.0),
+        "negative_25_volts_channel": (25.0, 1.0),
+    }
+
     def __init__(self, resource_name):
         """Initialize the HP E3631A PSU."""
         super().__init__(resource_name)
