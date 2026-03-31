@@ -73,7 +73,7 @@ class TestSCPICommandProviderUnit:
     def test_startup_loads_completions(self):
         """startup() should cache completions from the dispatcher."""
         provider = _make_provider(["psu", "awg", "dmm", "scan", "help"])
-        assert set(provider._all_commands) == {"psu", "awg", "dmm", "scan", "help"}
+        assert set(provider._repl_commands) == {"psu", "awg", "dmm", "scan", "help"}
 
     def test_startup_empty_when_no_dispatcher(self):
         """startup() should not crash when dispatcher has no get_completions."""
@@ -81,20 +81,24 @@ class TestSCPICommandProviderUnit:
         mock_screen.app._dispatcher = None
         provider = SCPICommandProvider(mock_screen)
         asyncio.run(provider.startup())
-        assert provider._all_commands == []
+        assert provider._repl_commands == []
 
-    def test_discover_yields_all_commands(self):
-        """discover() should yield one DiscoveryHit per command."""
+    def test_discover_yields_repl_and_tui_commands(self):
+        """discover() should yield TUI actions plus REPL commands."""
         provider = _make_provider(["psu", "awg", "dmm"])
         hits = asyncio.run(_collect(provider.discover()))
         texts = [h.text for h in hits]
-        assert sorted(texts) == ["awg", "dmm", "psu"]
+        assert "psu" in texts
+        assert "awg" in texts
+        assert "dmm" in texts
+        assert "Show Log View" in texts
 
-    def test_discover_empty_when_no_commands(self):
-        """discover() should yield nothing when command list is empty."""
+    def test_discover_with_no_repl_still_has_tui_actions(self):
+        """discover() should yield TUI actions even with no REPL commands."""
         provider = _make_provider([])
         hits = asyncio.run(_collect(provider.discover()))
-        assert hits == []
+        texts = [h.text for h in hits]
+        assert "Show Log View" in texts
 
     def test_search_returns_matching_hits(self):
         """search() should yield hits for commands matching the query."""
@@ -124,8 +128,8 @@ class TestSCPICommandProviderUnit:
         """Each DiscoveryHit command must be callable."""
         provider = _make_provider(["scan"])
         hits = asyncio.run(_collect(provider.discover()))
-        assert len(hits) == 1
-        assert callable(hits[0].command)
+        assert len(hits) >= 1
+        assert all(callable(h.command) for h in hits)
 
     def test_search_hit_has_command_callable(self):
         """Each Hit command must be callable."""
@@ -134,7 +138,7 @@ class TestSCPICommandProviderUnit:
         assert all(callable(h.command) for h in hits)
 
     def test_lambda_closure_captures_correct_command(self):
-        """Commands in hits must not share a closure - each must dispatch its own cmd."""
+        """REPL commands in hits must not share a closure - each must dispatch its own cmd."""
         dispatched: list[str] = []
 
         mock_screen = MagicMock()
@@ -142,14 +146,18 @@ class TestSCPICommandProviderUnit:
         mock_screen.app._dispatcher = stub
         mock_screen.app.query_one = MagicMock()
         mock_screen.app._dispatch_command = lambda cmd: dispatched.append(cmd)
+        mock_screen.app.run_action = MagicMock()
+        mock_screen.app.prevent = MagicMock(return_value=MagicMock(__enter__=MagicMock(), __exit__=MagicMock()))
         provider = SCPICommandProvider(mock_screen)
         asyncio.run(provider.startup())
 
         hits = asyncio.run(_collect(provider.discover()))
-        # Call each command; each must dispatch its own text
         for hit in hits:
             hit.command()
-        assert sorted(dispatched) == ["awg", "dmm", "psu"]
+        # REPL commands should be in the dispatched list
+        assert "psu" in dispatched
+        assert "awg" in dispatched
+        assert "dmm" in dispatched
 
 
 # ---------------------------------------------------------------------------

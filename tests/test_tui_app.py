@@ -32,7 +32,7 @@ class TestSCPIAppCP1:
             stub = _StubDispatcher()
             app = SCPIApp(stub)
             async with app.run_test(size=(80, 24)):
-                assert app.query_one("#log-view", RichLog) is not None
+                assert app.query_one("#log-output", RichLog) is not None
                 assert app.query_one("#cmd_input", Input) is not None
 
         asyncio.run(inner())
@@ -59,7 +59,7 @@ class TestSCPIAppCP1:
             stub = _StubDispatcher()
             app = SCPIApp(stub)
             async with app.run_test(size=(80, 24)) as pilot:
-                log = app.query_one("#log-view", RichLog)
+                log = app.query_one("#log-output", RichLog)
                 log.write("some output")
                 await pilot.press("ctrl+l")
                 await pilot.pause(0.05)

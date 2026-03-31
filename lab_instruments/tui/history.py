@@ -66,6 +66,12 @@ class CommandHistory:
     # Inspection
     # ------------------------------------------------------------------
 
+    def peek_last(self) -> str | None:
+        """Return the most recent command without moving the cursor."""
+        if not self._entries:
+            return None
+        return self._entries[-1]
+
     @property
     def entries(self) -> list[str]:
         """Read-only copy of stored entries (oldest first)."""

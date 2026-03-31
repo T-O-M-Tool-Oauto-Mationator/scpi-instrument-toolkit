@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 
-from textual.widgets import ContentSwitcher, DataTable, Label
+from textual.widgets import DataTable, Label, TabbedContent
 
 from lab_instruments.tui.widgets.safety_bar import SafetyBar
 from lab_instruments.tui.widgets.script_browser import ScriptBrowser
@@ -307,8 +307,8 @@ class TestCP5AppNav:
             async with app.run_test(size=(80, 24)) as pilot:
                 await app.run_action("show_scripts")
                 await pilot.pause(0.05)
-                sw = app.query_one("#main-content", ContentSwitcher)
-                assert sw.current == "script-view"
+                sw = app.query_one("#main-content", TabbedContent)
+                assert sw.active == "script-view"
 
         asyncio.run(inner())
 
@@ -318,8 +318,8 @@ class TestCP5AppNav:
             async with app.run_test(size=(80, 24)) as pilot:
                 await app.run_action("show_vars")
                 await pilot.pause(0.05)
-                sw = app.query_one("#main-content", ContentSwitcher)
-                assert sw.current == "vars-view"
+                sw = app.query_one("#main-content", TabbedContent)
+                assert sw.active == "vars-view"
 
         asyncio.run(inner())
 
@@ -334,8 +334,8 @@ class TestCP5AppNav:
                     await pilot.press(ch)
                 await pilot.press("enter")
                 await pilot.pause(0.1)
-                sw = app.query_one("#main-content", ContentSwitcher)
-                assert sw.current == "log-view"
+                sw = app.query_one("#main-content", TabbedContent)
+                assert sw.active == "log-view"
 
         asyncio.run(inner())
 

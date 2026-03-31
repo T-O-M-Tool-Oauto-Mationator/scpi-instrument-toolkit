@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import csv
 
-from textual.widgets import ContentSwitcher, DataTable
+from textual.widgets import DataTable, TabbedContent
 
 from lab_instruments.tui.widgets.measurement_table import MeasurementTable
 
@@ -135,7 +135,7 @@ class TestMeasurementTableWidget:
             with csv_files[0].open(newline="", encoding="utf-8") as fh:
                 rows = list(csv.DictReader(fh))
             assert len(rows) == 2
-            assert set(rows[0].keys()) == {"label", "value", "unit", "source"}
+            assert set(rows[0].keys()) == {"label", "value", "unit", "source", "notes"}
             assert rows[0]["label"] == "Vout"
             assert rows[1]["unit"] == "A"
 
@@ -189,8 +189,8 @@ class TestMeasurementTableInApp:
         async def inner():
             app, _ = self._make_app()
             async with app.run_test(size=(80, 24)):
-                sw = app.query_one("#main-content", ContentSwitcher)
-                assert sw.current == "log-view"
+                sw = app.query_one("#main-content", TabbedContent)
+                assert sw.active == "log-view"
 
         asyncio.run(inner())
 
@@ -202,8 +202,8 @@ class TestMeasurementTableInApp:
             async with app.run_test(size=(80, 24)) as pilot:
                 await app.run_action("toggle_measurements")
                 await pilot.pause(0.05)
-                sw = app.query_one("#main-content", ContentSwitcher)
-                assert sw.current == "meas-view"
+                sw = app.query_one("#main-content", TabbedContent)
+                assert sw.active == "meas-view"
 
         asyncio.run(inner())
 
@@ -217,8 +217,8 @@ class TestMeasurementTableInApp:
                 await pilot.pause(0.05)
                 await app.run_action("toggle_measurements")
                 await pilot.pause(0.05)
-                sw = app.query_one("#main-content", ContentSwitcher)
-                assert sw.current == "log-view"
+                sw = app.query_one("#main-content", TabbedContent)
+                assert sw.active == "log-view"
 
         asyncio.run(inner())
 
@@ -249,8 +249,8 @@ class TestMeasurementTableInApp:
                     await pilot.press(ch)
                 await pilot.press("enter")
                 await pilot.pause(0.1)
-                sw = app.query_one("#main-content", ContentSwitcher)
-                assert sw.current == "log-view"
+                sw = app.query_one("#main-content", TabbedContent)
+                assert sw.active == "log-view"
 
         asyncio.run(inner())
 

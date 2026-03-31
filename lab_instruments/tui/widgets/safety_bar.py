@@ -40,11 +40,13 @@ class SafetyBar(Widget):
     def watch_safety_info(self, info: dict) -> None:
         """Rebuild the label text from the info dict."""
         limit_count = info.get("limit_count", 0)
+        meas_count = info.get("measurement_count", 0)
         in_script = info.get("active_script", False)
         exit_on_error = info.get("exit_on_error", False)
 
         parts = [
             f"Limits: {limit_count}",
+            f"Meas: {meas_count}",
             f"Script: {'ON' if in_script else 'OFF'}",
             f"exit_on_error: {'ON' if exit_on_error else 'OFF'}",
         ]
