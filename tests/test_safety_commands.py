@@ -264,13 +264,15 @@ class TestRetroactiveLimitCheckAll:
         dev = MockHP_E3631A()
         dev._voltage = 10.0
         dev._current = 0.1
-        dev._output = True
+        # Set channel outputs to True so get_output_state() returns True
+        for ch in dev._ch_outputs:
+            dev._ch_outputs[ch] = True
         ctx = make_ctx_with_devices({"psu1": dev})
         ctx.safety_limits[("psu1", None)] = {"voltage_upper": 5.0}
         safety = SafetySystem(ctx)
         safety.retroactive_limit_check_all()
         # Output should be auto-disabled
-        assert dev._output is False
+        assert not dev.get_output_state()
 
     def test_psu_violation_output_off_warning(self, capsys):
         dev = MockHP_E3631A()
@@ -288,23 +290,25 @@ class TestRetroactiveLimitCheckAll:
         dev = MockHP_E3631A()
         dev._voltage = 3.0
         dev._current = 2.0
-        dev._output = True
+        for ch in dev._ch_outputs:
+            dev._ch_outputs[ch] = True
         ctx = make_ctx_with_devices({"psu1": dev})
         ctx.safety_limits[("psu1", None)] = {"current_upper": 0.5}
         safety = SafetySystem(ctx)
         safety.retroactive_limit_check_all()
-        assert dev._output is False
+        assert not dev.get_output_state()
 
     def test_psu_lower_violation(self, capsys):
         dev = MockHP_E3631A()
         dev._voltage = 0.5
         dev._current = 0.1
-        dev._output = True
+        for ch in dev._ch_outputs:
+            dev._ch_outputs[ch] = True
         ctx = make_ctx_with_devices({"psu1": dev})
         ctx.safety_limits[("psu1", None)] = {"voltage_lower": 1.0}
         safety = SafetySystem(ctx)
         safety.retroactive_limit_check_all()
-        assert dev._output is False
+        assert not dev.get_output_state()
 
     def test_awg_no_state_skipped(self):
         dev = MockAWG()

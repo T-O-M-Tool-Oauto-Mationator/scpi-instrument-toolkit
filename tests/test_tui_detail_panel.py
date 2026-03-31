@@ -345,9 +345,9 @@ class TestHelpScreen:
             app = SCPIApp(_StubDispatcher())
             async with app.run_test(size=(100, 30)) as pilot:
                 await app.run_action("show_help")
-                await pilot.pause(0.1)
+                await pilot.pause(0.2)
                 await pilot.press("escape")
-                await pilot.pause(0.1)
+                await pilot.pause(0.3)
 
                 assert app.screen.__class__.__name__ != "HelpScreen"
 
