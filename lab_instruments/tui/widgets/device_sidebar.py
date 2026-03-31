@@ -10,7 +10,6 @@ from textual.reactive import reactive
 from textual.widget import Widget
 from textual.widgets import Button, Label, ListItem, ListView
 
-
 _TYPE_COLORS = {
     "psu": "blue",
     "awg": "magenta",

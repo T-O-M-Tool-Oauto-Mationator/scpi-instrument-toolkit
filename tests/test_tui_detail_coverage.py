@@ -333,6 +333,7 @@ class TestRenderPSU:
 
     def test_psu_over_limit_coloring(self):
         """PSU channels exceeding safety limits should have OVER LIMIT text."""
+
         async def inner():
             app = SCPIApp(_Stub())
             async with app.run_test(size=(120, 50)) as pilot:
@@ -368,6 +369,7 @@ class TestRenderPSU:
 
     def test_psu_limit_inputs_and_button(self):
         """PSU renderer should create per-channel limit inputs."""
+
         async def inner():
             app = SCPIApp(_Stub())
             async with app.run_test(size=(120, 50)) as pilot:
@@ -397,6 +399,7 @@ class TestRenderPSU:
 
     def test_psu_fallback_to_type_level_limits(self):
         """If no device-specific limit, should fall back to type-level ('psu') limits."""
+
         async def inner():
             app = SCPIApp(_Stub())
             async with app.run_test(size=(120, 50)) as pilot:
@@ -557,6 +560,7 @@ class TestRenderSMU:
 
     def test_smu_fallback_to_type_level_limits(self):
         """SMU should fall back to type-level 'smu' limits."""
+
         async def inner():
             app = SCPIApp(_Stub())
             async with app.run_test(size=(120, 50)) as pilot:
@@ -733,6 +737,7 @@ class TestRenderScope:
 
     def test_scope_non_triggered_color(self):
         """Non-triggered status should still render (yellow color branch)."""
+
         async def inner():
             app = SCPIApp(_Stub())
             async with app.run_test(size=(120, 50)) as pilot:
@@ -820,6 +825,7 @@ class TestRenderEV2300:
 class TestButtonPressedHandlers:
     def test_save_state_button(self):
         """ss-<dev>-save should post SaveStateRequested."""
+
         async def inner():
             stub = _Stub()
             app = SCPIApp(stub)
@@ -844,6 +850,7 @@ class TestButtonPressedHandlers:
 
     def test_restore_state_button(self):
         """ss-<dev>-restore should post RestoreStateRequested."""
+
         async def inner():
             stub = _Stub()
             app = SCPIApp(stub)
@@ -868,6 +875,7 @@ class TestButtonPressedHandlers:
 
     def test_apply_psu_button(self):
         """apply-<dev>-<ch> should read inputs and post QuickAction."""
+
         async def inner():
             stub = _Stub()
             app = SCPIApp(stub)
@@ -898,6 +906,7 @@ class TestButtonPressedHandlers:
 
     def test_awg_apply_button(self):
         """awgapply-<dev>-<ch> should read freq/amp/offset and post QuickAction."""
+
         async def inner():
             stub = _Stub()
             app = SCPIApp(stub)
@@ -928,6 +937,7 @@ class TestButtonPressedHandlers:
 
     def test_set_limit_button(self):
         """setlim-<dev>-<ch> should read limit inputs and post SetLimitRequested."""
+
         async def inner():
             stub = _Stub()
             app = SCPIApp(stub)
@@ -956,6 +966,7 @@ class TestButtonPressedHandlers:
 
     def test_quick_action_allon(self):
         """qa-<dev>-allon should dispatch output on."""
+
         async def inner():
             stub = _Stub()
             app = SCPIApp(stub)
@@ -981,6 +992,7 @@ class TestButtonPressedHandlers:
 
     def test_quick_action_alloff(self):
         """qa-<dev>-alloff should dispatch output off."""
+
         async def inner():
             stub = _Stub()
             app = SCPIApp(stub)
@@ -1525,6 +1537,7 @@ class TestSafetyLimitsPanelNew:
 
     def test_set_limit_missing_fields_does_nothing(self):
         """Pressing Set Upper with empty required fields should not dispatch."""
+
         async def inner():
             stub = _Stub()
             app = SCPIApp(stub)
@@ -1548,6 +1561,7 @@ class TestSafetyLimitsPanelNew:
 
     def test_limits_table_with_channel(self):
         """Limits with channel=int should show CH<N>."""
+
         async def inner():
             app = SCPIApp(_Stub())
             async with app.run_test(size=(120, 50)) as pilot:
@@ -1565,6 +1579,7 @@ class TestSafetyLimitsPanelNew:
 
     def test_limits_table_with_none_channel(self):
         """Limits with channel=None should show 'All'."""
+
         async def inner():
             app = SCPIApp(_Stub())
             async with app.run_test(size=(120, 50)) as pilot:
@@ -1582,6 +1597,7 @@ class TestSafetyLimitsPanelNew:
 
     def test_limits_table_sorted(self):
         """Multiple limits should be sorted by device then parameter."""
+
         async def inner():
             app = SCPIApp(_Stub())
             async with app.run_test(size=(120, 50)) as pilot:
@@ -1619,6 +1635,7 @@ class TestAppActions:
 
     def test_dispatch_limit_commands_multi_line(self):
         """_dispatch_limit_commands should handle multi-line commands."""
+
         async def inner():
             stub = _Stub()
             app = SCPIApp(stub)
@@ -1632,6 +1649,7 @@ class TestAppActions:
 
     def test_on_instrument_detail_panel_set_limit_requested(self):
         """SetLimitRequested from detail panel should dispatch limit commands."""
+
         async def inner():
             stub = _Stub()
             app = SCPIApp(stub)
@@ -1645,6 +1663,7 @@ class TestAppActions:
 
     def test_on_safety_limits_panel_set_limit_requested(self):
         """SetLimitRequested from safety panel should dispatch limit commands."""
+
         async def inner():
             stub = _Stub()
             app = SCPIApp(stub)
@@ -1658,6 +1677,7 @@ class TestAppActions:
 
     def test_init_safe_state_runs(self):
         """_init_safe_state should dispatch 'state safe' on mount."""
+
         async def inner():
             stub = _Stub()
             app = SCPIApp(stub)
@@ -1670,6 +1690,7 @@ class TestAppActions:
 
     def test_save_and_restore_state(self):
         """SaveStateRequested/RestoreStateRequested should save/restore state."""
+
         async def inner():
             stub = _Stub()
             app = SCPIApp(stub)
@@ -1688,6 +1709,7 @@ class TestAppActions:
 
     def test_restore_state_no_snapshot_warns(self):
         """Restoring without a prior save should log a warning."""
+
         async def inner():
             stub = _Stub()
             app = SCPIApp(stub)
@@ -1703,6 +1725,7 @@ class TestAppActions:
 
     def test_refresh_detail_with_selected_device(self):
         """_refresh_detail should update the panel when a device is selected."""
+
         async def inner():
             stub = _Stub()
             app = SCPIApp(stub)
@@ -1717,6 +1740,7 @@ class TestAppActions:
 
     def test_refresh_detail_no_selected_device(self):
         """_refresh_detail with no selected device should be a no-op."""
+
         async def inner():
             stub = _Stub()
             app = SCPIApp(stub)
@@ -1731,6 +1755,7 @@ class TestAppActions:
 
     def test_retry_last_with_history(self):
         """action_retry_last with history should re-dispatch the last command."""
+
         async def inner():
             stub = _Stub()
             app = SCPIApp(stub)
@@ -1745,6 +1770,7 @@ class TestAppActions:
 
     def test_retry_last_no_history(self):
         """action_retry_last with no history should log a warning."""
+
         async def inner():
             stub = _Stub()
             app = SCPIApp(stub)
@@ -1758,6 +1784,7 @@ class TestAppActions:
 
     def test_bulk_action_dispatches(self):
         """BulkAction from sidebar should dispatch the command."""
+
         async def inner():
             from lab_instruments.tui.widgets.device_sidebar import DeviceSidebar
 
@@ -1773,6 +1800,7 @@ class TestAppActions:
 
     def test_measurement_clear_requested(self):
         """ClearRequested from measurement table should dispatch log clear."""
+
         async def inner():
             from lab_instruments.tui.widgets.measurement_table import MeasurementTable
 
@@ -1788,6 +1816,7 @@ class TestAppActions:
 
     def test_measurement_report_requested(self):
         """ReportRequested from measurement table should dispatch report save."""
+
         async def inner():
             from lab_instruments.tui.widgets.measurement_table import MeasurementTable
 
@@ -1803,6 +1832,7 @@ class TestAppActions:
 
     def test_stream_line_error_coloring(self):
         """_stream_line should color error messages red."""
+
         async def inner():
             from textual.widgets import RichLog
 
@@ -1818,6 +1848,7 @@ class TestAppActions:
 
     def test_stream_line_warning_coloring(self):
         """_stream_line should color warning messages yellow."""
+
         async def inner():
             from textual.widgets import RichLog
 
@@ -1833,6 +1864,7 @@ class TestAppActions:
 
     def test_stream_line_success_coloring(self):
         """_stream_line should color success messages green."""
+
         async def inner():
             from textual.widgets import RichLog
 
@@ -1848,6 +1880,7 @@ class TestAppActions:
 
     def test_stream_line_safety_blocked(self):
         """_stream_line should color safety blocked messages red."""
+
         async def inner():
             from textual.widgets import RichLog
 
@@ -1863,6 +1896,7 @@ class TestAppActions:
 
     def test_stream_line_empty_is_noop(self):
         """_stream_line with empty/whitespace string should be a no-op."""
+
         async def inner():
             from textual.widgets import RichLog
 
@@ -1878,6 +1912,7 @@ class TestAppActions:
 
     def test_stream_line_pass_coloring(self):
         """_stream_line should color PASS messages green."""
+
         async def inner():
             from textual.widgets import RichLog
 
@@ -1893,6 +1928,7 @@ class TestAppActions:
 
     def test_stream_line_retroactive_coloring(self):
         """_stream_line should color RETROACTIVE messages yellow."""
+
         async def inner():
             from textual.widgets import RichLog
 
@@ -1908,6 +1944,7 @@ class TestAppActions:
 
     def test_on_key_up_arrow(self):
         """Up arrow on focused input should cycle history."""
+
         async def inner():
             from textual.widgets import Input
 
@@ -1927,6 +1964,7 @@ class TestAppActions:
 
     def test_on_key_down_arrow(self):
         """Down arrow on focused input should cycle history forward."""
+
         async def inner():
             from textual.widgets import Input
 
@@ -1949,6 +1987,7 @@ class TestAppActions:
 
     def test_input_submitted(self):
         """Submitting text in the command input should dispatch it."""
+
         async def inner():
             from textual.widgets import Input
 
@@ -1966,6 +2005,7 @@ class TestAppActions:
 
     def test_input_submitted_empty_is_noop(self):
         """Submitting empty text should not dispatch anything."""
+
         async def inner():
             from textual.widgets import Input
 

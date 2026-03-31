@@ -186,9 +186,7 @@ class SCPIApp(App):
     def _init_safe_state(self) -> None:
         """Disable all outputs and zero PSU setpoints — runs in a worker thread."""
         self._dispatcher.handle_command("state safe")
-        self.call_from_thread(
-            self._log_notification, "Startup: all outputs disabled (safe state)", "information"
-        )
+        self.call_from_thread(self._log_notification, "Startup: all outputs disabled (safe state)", "information")
 
     # ------------------------------------------------------------------
     # Notification helper

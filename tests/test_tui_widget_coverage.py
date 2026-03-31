@@ -16,7 +16,6 @@ from lab_instruments.tui.widgets.monitor_panel import MonitorPanel
 from lab_instruments.tui.widgets.scpi_console import ScpiConsole
 from lab_instruments.tui.widgets.script_editor import ScriptEditor
 
-
 # ---------------------------------------------------------------------------
 # Stub dispatcher (matches _Stub in test_tui_new_widgets.py)
 # ---------------------------------------------------------------------------

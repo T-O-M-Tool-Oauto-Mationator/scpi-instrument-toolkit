@@ -1,5 +1,7 @@
 """Safety status bar widget - always-visible summary of safety limits."""
 
+import contextlib
+
 from textual.app import ComposeResult
 from textual.reactive import reactive
 from textual.widget import Widget
@@ -71,10 +73,8 @@ class SafetyBar(Widget):
             f"Script: {'ON' if in_script else 'OFF'}",
             f"exit_on_error: {'ON' if exit_on_error else 'OFF'}",
         ]
-        try:
+        with contextlib.suppress(Exception):
             self.query_one("#safety-label", Label).update("  |  ".join(parts))
-        except Exception:  # noqa: BLE001
-            pass
 
         # Highlight bar when a script is actively running
         self.set_class(bool(in_script), "active")
