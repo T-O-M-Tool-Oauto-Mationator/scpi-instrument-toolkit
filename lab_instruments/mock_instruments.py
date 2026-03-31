@@ -868,9 +868,23 @@ class MockJDS6600(MockAWG):
     """Mock JDS6600 DDS function generator."""
 
     VALID_WAVEFORMS = [
-        "SINE", "SQUARE", "PULSE", "TRIANGLE", "PARTIAL_SINE", "CMOS", "DC",
-        "HALF_WAVE", "FULL_WAVE", "POS_LADDER", "NEG_LADDER", "NOISE",
-        "EXP_RISE", "EXP_DECAY", "MULTITONE", "SINC", "LORENZ",
+        "SINE",
+        "SQUARE",
+        "PULSE",
+        "TRIANGLE",
+        "PARTIAL_SINE",
+        "CMOS",
+        "DC",
+        "HALF_WAVE",
+        "FULL_WAVE",
+        "POS_LADDER",
+        "NEG_LADDER",
+        "NOISE",
+        "EXP_RISE",
+        "EXP_DECAY",
+        "MULTITONE",
+        "SINC",
+        "LORENZ",
     ]
 
 

@@ -204,9 +204,9 @@ class TestMockDHO804:
 
 
 class TestGetMockDevices:
-    def test_returns_13_keys(self):
+    def test_returns_14_keys(self):
         devices = get_mock_devices(verbose=False)
-        assert len(devices) == 13
+        assert len(devices) == 14
 
     def test_expected_keys(self):
         devices = get_mock_devices(verbose=False)

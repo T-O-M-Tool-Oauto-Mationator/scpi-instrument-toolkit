@@ -12,7 +12,7 @@ import sys
 from enum import Enum, auto
 from typing import Any
 
-from PySide6.QtCore import QPoint, QRect, QSettings, QTimer, Qt, Signal, Slot
+from PySide6.QtCore import QPoint, QRect, QSettings, Qt, QTimer, Signal, Slot
 from PySide6.QtGui import QAction, QColor, QFont, QPainter, QPen
 from PySide6.QtWidgets import (
     QApplication,
@@ -296,13 +296,10 @@ class _PSUChannel(QGroupBox):
         meas = QHBoxLayout()
         meas.setSpacing(5)
 
-        for attr, unit, color in [("v_display", "V", "#1e7a1e"), ("i_display", "A", "#c45c00")]:
+        for attr, _unit, color in [("v_display", "V", "#1e7a1e"), ("i_display", "A", "#c45c00")]:
             disp = QLabel("0.000")
             disp.setFont(_mono(18))
-            disp.setStyleSheet(
-                f"color: {color}; border-radius: 5px; "
-                f"padding: 4px 8px"
-            )
+            disp.setStyleSheet(f"color: {color}; border-radius: 5px; padding: 4px 8px")
             disp.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             disp.setMinimumHeight(42)
             setattr(self, attr, disp)
@@ -347,7 +344,7 @@ class _PSUChannel(QGroupBox):
 
         sep = QFrame()
         sep.setFrameShape(QFrame.Shape.HLine)
-        
+
         layout.addWidget(sep)
 
         lim_row = QHBoxLayout()
@@ -364,9 +361,7 @@ class _PSUChannel(QGroupBox):
         self.v_lim_spin.setSuffix(" V")
         self.v_lim_spin.setValue(self._max_v)
         self.v_lim_spin.setMinimumWidth(84)
-        self.v_lim_spin.setStyleSheet(
-            "QDoubleSpinBox { font-size: 11px; }"
-        )
+        self.v_lim_spin.setStyleSheet("QDoubleSpinBox { font-size: 11px; }")
         lim_row.addWidget(self.v_lim_spin, 1)
 
         self.i_lim_spin = _NumSpin()
@@ -376,9 +371,7 @@ class _PSUChannel(QGroupBox):
         self.i_lim_spin.setSuffix(" A")
         self.i_lim_spin.setValue(self._max_i)
         self.i_lim_spin.setMinimumWidth(84)
-        self.i_lim_spin.setStyleSheet(
-            "QDoubleSpinBox { font-size: 11px; }"
-        )
+        self.i_lim_spin.setStyleSheet("QDoubleSpinBox { font-size: 11px; }")
         lim_row.addWidget(self.i_lim_spin, 1)
 
         self.set_lim_btn = QPushButton("✓")
@@ -471,14 +464,8 @@ class _PSUChannel(QGroupBox):
 
         v_color = "#f38ba8" if v_over else "#1e7a1e"
         i_color = "#c0392b" if i_over else "#c45c00"
-        self.v_display.setStyleSheet(
-            f"color: {v_color}; border-radius: 5px; "
-            f"padding: 4px 8px"
-        )
-        self.i_display.setStyleSheet(
-            f"color: {i_color}; border-radius: 5px; "
-            f"padding: 4px 8px"
-        )
+        self.v_display.setStyleSheet(f"color: {v_color}; border-radius: 5px; padding: 4px 8px")
+        self.i_display.setStyleSheet(f"color: {i_color}; border-radius: 5px; padding: 4px 8px")
         self.v_display.setText(f"{v:{v_w}.3f} V")
         self.i_display.setText(f"{i:{i_w}.4f} A")
 
@@ -502,9 +489,7 @@ class _PSUBlock(QFrame):
         self._ch_output: dict[int, bool] = {}
         self._ch_keys: dict[int, str | None] = {}
         self.setObjectName("psublock")
-        self.setStyleSheet(
-            "#psublock { border: 1px solid #ccc; border-radius: 10px; }"
-        )
+        self.setStyleSheet("#psublock { border: 1px solid #ccc; border-radius: 10px; }")
         self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
         self._build()
         self._rebuild()
@@ -525,9 +510,7 @@ class _PSUBlock(QFrame):
         outer.setSpacing(0)
 
         hdr = QFrame()
-        hdr.setStyleSheet(
-            "QFrame { border-bottom: 1px solid #ccc; border-radius: 0; }"
-        )
+        hdr.setStyleSheet("QFrame { border-bottom: 1px solid #ccc; border-radius: 0; }")
         hdr_lay = QHBoxLayout(hdr)
         hdr_lay.setContentsMargins(14, 9, 14, 9)
         hdr_lay.setSpacing(8)
@@ -548,13 +531,13 @@ class _PSUBlock(QFrame):
         outer.addWidget(hdr)
 
         body = QWidget()
-        
+
         body_lay = QVBoxLayout(body)
         body_lay.setContentsMargins(10, 10, 10, 6)
         body_lay.setSpacing(8)
 
         self._ch_row_w = QWidget()
-        
+
         self._ch_row_lay = QHBoxLayout(self._ch_row_w)
         self._ch_row_lay.setContentsMargins(0, 0, 0, 0)
         self._ch_row_lay.setSpacing(8)
@@ -826,7 +809,9 @@ def _get_awg_waveforms(dev) -> list[str]:
 
 
 class _AWGChannel(QGroupBox):
-    def __init__(self, channel: int, accent: str, waveforms: list[str] | None = None, parent: QWidget | None = None) -> None:
+    def __init__(
+        self, channel: int, accent: str, waveforms: list[str] | None = None, parent: QWidget | None = None
+    ) -> None:
         super().__init__(f"CH{channel}", parent)
         self.channel = channel
         self._accent = accent
@@ -849,19 +834,13 @@ class _AWGChannel(QGroupBox):
         meas.setSpacing(5)
         self.freq_display = QLabel("10000.000 Hz")
         self.freq_display.setFont(_mono(18))
-        self.freq_display.setStyleSheet(
-            "color: #1e7a1e; border-radius: 5px; "
-            "padding: 4px 8px"
-        )
+        self.freq_display.setStyleSheet("color: #1e7a1e; border-radius: 5px; padding: 4px 8px")
         self.freq_display.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         self.freq_display.setMinimumHeight(42)
         meas.addWidget(self.freq_display, 2)
         self.amp_display = QLabel("5.0000 Vpp")
         self.amp_display.setFont(_mono(18))
-        self.amp_display.setStyleSheet(
-            "color: #c45c00; border-radius: 5px; "
-            "padding: 4px 8px"
-        )
+        self.amp_display.setStyleSheet("color: #c45c00; border-radius: 5px; padding: 4px 8px")
         self.amp_display.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         self.amp_display.setMinimumHeight(42)
         meas.addWidget(self.amp_display, 1)
@@ -920,9 +899,7 @@ class _AWGChannel(QGroupBox):
         self.offset_spin.setDecimals(4)
         self.offset_spin.setSuffix(" V")
         self.offset_spin.setMinimumWidth(88)
-        self.offset_spin.setStyleSheet(
-            "QDoubleSpinBox { font-size: 11px; }"
-        )
+        self.offset_spin.setStyleSheet("QDoubleSpinBox { font-size: 11px; }")
         off_row.addWidget(self.offset_spin)
         off_row.addStretch()
         layout.addLayout(off_row)
@@ -984,9 +961,7 @@ class _AWGBlock(QFrame):
         self._awg = name
         self._chs: dict[int, _AWGChannel] = {}
         self.setObjectName("awgblock")
-        self.setStyleSheet(
-            "#awgblock { border: 1px solid #ccc; border-radius: 10px; }"
-        )
+        self.setStyleSheet("#awgblock { border: 1px solid #ccc; border-radius: 10px; }")
         self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
         self._build()
         self._poll()
@@ -1006,9 +981,7 @@ class _AWGBlock(QFrame):
 
         # Header
         hdr = QFrame()
-        hdr.setStyleSheet(
-            "QFrame { border-bottom: 1px solid #ccc; border-radius: 0; }"
-        )
+        hdr.setStyleSheet("QFrame { border-bottom: 1px solid #ccc; border-radius: 0; }")
         hdr_lay = QHBoxLayout(hdr)
         hdr_lay.setContentsMargins(14, 9, 14, 9)
         hdr_lay.setSpacing(8)
@@ -1086,9 +1059,7 @@ class _AWGBlock(QFrame):
             self._status.setStyleSheet("color: #155724; font-size: 10px;")
             con = self._con()
             if con:
-                con.log_action(
-                    f"{self._awg} wave {ch} {wave.lower()} freq={freq} amp={amp} offset={offset}", msg
-                )
+                con.log_action(f"{self._awg} wave {ch} {wave.lower()} freq={freq} amp={amp} offset={offset}", msg)
             self._poll()
         except Exception as exc:
             self._status.setText(str(exc))
@@ -1160,9 +1131,7 @@ class _SMUBlock(QFrame):
         self._d = d
         self._smu = name
         self.setObjectName("smublock")
-        self.setStyleSheet(
-            "#smublock { border: 1px solid #ccc; border-radius: 10px; }"
-        )
+        self.setStyleSheet("#smublock { border: 1px solid #ccc; border-radius: 10px; }")
         self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
         self._build()
         self._poll()
@@ -1183,9 +1152,7 @@ class _SMUBlock(QFrame):
 
         # Header — identical to _PSUBlock header
         hdr = QFrame()
-        hdr.setStyleSheet(
-            "QFrame { border-bottom: 1px solid #ccc; border-radius: 0; }"
-        )
+        hdr.setStyleSheet("QFrame { border-bottom: 1px solid #ccc; border-radius: 0; }")
         hdr_lay = QHBoxLayout(hdr)
         hdr_lay.setContentsMargins(14, 9, 14, 9)
         hdr_lay.setSpacing(8)
@@ -1231,19 +1198,13 @@ class _SMUBlock(QFrame):
         meas.setSpacing(5)
         self._v_display = QLabel("0.000")
         self._v_display.setFont(_mono(18))
-        self._v_display.setStyleSheet(
-            "color: #1e7a1e; border-radius: 5px; "
-            "padding: 4px 8px"
-        )
+        self._v_display.setStyleSheet("color: #1e7a1e; border-radius: 5px; padding: 4px 8px")
         self._v_display.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         self._v_display.setMinimumHeight(42)
         meas.addWidget(self._v_display, 1)
         self._i_display = QLabel("0.000")
         self._i_display.setFont(_mono(18))
-        self._i_display.setStyleSheet(
-            "color: #c45c00; border-radius: 5px; "
-            "padding: 4px 8px"
-        )
+        self._i_display.setStyleSheet("color: #c45c00; border-radius: 5px; padding: 4px 8px")
         self._i_display.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         self._i_display.setMinimumHeight(42)
         meas.addWidget(self._i_display, 1)
@@ -1288,7 +1249,7 @@ class _SMUBlock(QFrame):
         # Separator
         sep = QFrame()
         sep.setFrameShape(QFrame.Shape.HLine)
-        
+
         grp_lay.addWidget(sep)
 
         # Info row (compliance + delay + avg + temp) — styled like PSU limits row
@@ -1476,9 +1437,7 @@ class _DMMBlock(QFrame):
         self._d = d
         self._dmm = name
         self.setObjectName("dmmblock")
-        self.setStyleSheet(
-            "#dmmblock { border: 1px solid #ccc; border-radius: 10px; }"
-        )
+        self.setStyleSheet("#dmmblock { border: 1px solid #ccc; border-radius: 10px; }")
         self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
         self._build()
         self._poll()
@@ -1499,9 +1458,7 @@ class _DMMBlock(QFrame):
 
         # Header — same as PSU
         hdr = QFrame()
-        hdr.setStyleSheet(
-            "QFrame { border-bottom: 1px solid #ccc; border-radius: 0; }"
-        )
+        hdr.setStyleSheet("QFrame { border-bottom: 1px solid #ccc; border-radius: 0; }")
         hdr_lay = QHBoxLayout(hdr)
         hdr_lay.setContentsMargins(14, 9, 14, 9)
         hdr_lay.setSpacing(8)
@@ -1539,9 +1496,7 @@ class _DMMBlock(QFrame):
         # Measurement display
         self._reading = QLabel("-.------ V")
         self._reading.setFont(_mono(18))
-        self._reading.setStyleSheet(
-            "color: #1e7a1e; border-radius: 5px; padding: 4px 8px"
-        )
+        self._reading.setStyleSheet("color: #1e7a1e; border-radius: 5px; padding: 4px 8px")
         self._reading.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         self._reading.setMinimumHeight(42)
         self._reading.setMinimumWidth(90)
@@ -1664,9 +1619,7 @@ class _ScopeBlock(QFrame):
         self._d = d
         self._scope = name
         self.setObjectName("scopeblock")
-        self.setStyleSheet(
-            "#scopeblock { border: 1px solid #ccc; border-radius: 10px; }"
-        )
+        self.setStyleSheet("#scopeblock { border: 1px solid #ccc; border-radius: 10px; }")
         self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
         self._build()
         self._poll()
@@ -1687,9 +1640,7 @@ class _ScopeBlock(QFrame):
 
         # Header
         hdr = QFrame()
-        hdr.setStyleSheet(
-            "QFrame { border-bottom: 1px solid #ccc; border-radius: 0; }"
-        )
+        hdr.setStyleSheet("QFrame { border-bottom: 1px solid #ccc; border-radius: 0; }")
         hdr_lay = QHBoxLayout(hdr)
         hdr_lay.setContentsMargins(14, 9, 14, 9)
         hdr_lay.setSpacing(8)
@@ -1797,7 +1748,12 @@ class _ScopeBlock(QFrame):
         # Control row
         ctrl = QHBoxLayout()
         ctrl.setSpacing(4)
-        for text, slot in [("Run", self._run), ("Stop", self._stop), ("Single", self._single), ("AutoSet", self._autoset)]:
+        for text, slot in [
+            ("Run", self._run),
+            ("Stop", self._stop),
+            ("Single", self._single),
+            ("AutoSet", self._autoset),
+        ]:
             b = QPushButton(text)
             b.setStyleSheet(
                 f"QPushButton {{ border: 1px solid {_ACCENT}66; color: {_ACCENT}; border-radius: 4px; "
@@ -1906,9 +1862,7 @@ class _EV2300Block(QFrame):
         self._d = d
         self._ev = name
         self.setObjectName("evblock")
-        self.setStyleSheet(
-            "#evblock { border: 1px solid #ccc; border-radius: 10px; }"
-        )
+        self.setStyleSheet("#evblock { border: 1px solid #ccc; border-radius: 10px; }")
         self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
         self._build()
 
@@ -1928,9 +1882,7 @@ class _EV2300Block(QFrame):
 
         # Header — same as PSU
         hdr = QFrame()
-        hdr.setStyleSheet(
-            "QFrame { border-bottom: 1px solid #ccc; border-radius: 0; }"
-        )
+        hdr.setStyleSheet("QFrame { border-bottom: 1px solid #ccc; border-radius: 0; }")
         hdr_lay = QHBoxLayout(hdr)
         hdr_lay.setContentsMargins(14, 9, 14, 9)
         hdr_lay.setSpacing(8)
@@ -1974,9 +1926,7 @@ class _EV2300Block(QFrame):
         # Result display
         self._result = QLabel("---")
         self._result.setFont(_mono(18))
-        self._result.setStyleSheet(
-            "color: #1e7a1e; border-radius: 5px; padding: 4px 8px"
-        )
+        self._result.setStyleSheet("color: #1e7a1e; border-radius: 5px; padding: 4px 8px")
         self._result.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         self._result.setMinimumHeight(42)
         self._result.setMinimumWidth(90)
@@ -2133,7 +2083,14 @@ class _EV2300Block(QFrame):
 
 
 class _DevicePanel(QWidget):
-    _TYPE_COLORS = {"psu": "#1a6bbf", "awg": "#7c3aed", "dmm": "#c45c00", "scope": "#0e7a70", "smu": "#c0392b", "ev": "#6366f1"}
+    _TYPE_COLORS = {
+        "psu": "#1a6bbf",
+        "awg": "#7c3aed",
+        "dmm": "#c45c00",
+        "scope": "#0e7a70",
+        "smu": "#c0392b",
+        "ev": "#6366f1",
+    }
 
     def __init__(self, d: _Dispatcher, main_win: Any, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -2150,9 +2107,7 @@ class _DevicePanel(QWidget):
 
         self._list = QListWidget()
         self._list.setFont(_mono(10))
-        self._list.setStyleSheet(
-            "QListWidget::item { padding: 8px 10px; }"
-        )
+        self._list.setStyleSheet("QListWidget::item { padding: 8px 10px; }")
         self._list.itemClicked.connect(self._on_item_click)
         lay.addWidget(self._list, 1)
 
@@ -2187,7 +2142,7 @@ class _DevicePanel(QWidget):
         for name in sorted(devices):
             disp = self._d.registry.display_name(name)
             base = re.sub(r"\d+$", "", name)
-            color = self._TYPE_COLORS.get(base, "")
+            _color = self._TYPE_COLORS.get(base, "")  # noqa: F841
             item = QListWidgetItem(f"  {name}\n  {disp}")
             item.setData(Qt.ItemDataRole.UserRole, name)
             item.setToolTip(f"{name}  —  {disp}  ({base.upper()})")
@@ -2199,9 +2154,9 @@ class _DevicePanel(QWidget):
 
 class _DZ(Enum):
     CENTER = auto()
-    LEFT   = auto()
-    RIGHT  = auto()
-    TOP    = auto()
+    LEFT = auto()
+    RIGHT = auto()
+    TOP = auto()
     BOTTOM = auto()
 
 
@@ -2235,10 +2190,14 @@ class _DropOverlay(QWidget):
         w, h = r.width(), r.height()
         edge_w, edge_h = max(w // 5, 40), max(h // 5, 40)  # ~20% edge zones
         x, y = pos.x(), pos.y()
-        if x < edge_w:         return _DZ.LEFT
-        if x > w - edge_w:     return _DZ.RIGHT
-        if y < edge_h:         return _DZ.TOP
-        if y > h - edge_h:     return _DZ.BOTTOM
+        if x < edge_w:
+            return _DZ.LEFT
+        if x > w - edge_w:
+            return _DZ.RIGHT
+        if y < edge_h:
+            return _DZ.TOP
+        if y > h - edge_h:
+            return _DZ.BOTTOM
         return _DZ.CENTER
 
     def paintEvent(self, _ev) -> None:  # noqa: N802
@@ -2249,18 +2208,21 @@ class _DropOverlay(QWidget):
         w, h = r.width(), r.height()
         # Highlight covers half the group for splits, full for center (VS Code style)
         highlight = {
-            _DZ.LEFT:   QRect(0,      0,      w // 2,   h),
-            _DZ.RIGHT:  QRect(w // 2, 0,      w // 2,   h),
-            _DZ.TOP:    QRect(0,      0,      w,        h // 2),
-            _DZ.BOTTOM: QRect(0,      h // 2, w,        h // 2),
+            _DZ.LEFT: QRect(0, 0, w // 2, h),
+            _DZ.RIGHT: QRect(w // 2, 0, w // 2, h),
+            _DZ.TOP: QRect(0, 0, w, h // 2),
+            _DZ.BOTTOM: QRect(0, h // 2, w, h // 2),
             _DZ.CENTER: r,
         }[self._zone]
         hi = self.palette().color(self.palette().ColorRole.Highlight)
-        bg = hi; bg.setAlpha(30)
+        bg = hi
+        bg.setAlpha(30)
         p.fillRect(r, bg)
-        hi2 = QColor(hi); hi2.setAlpha(90)
+        hi2 = QColor(hi)
+        hi2.setAlpha(90)
         p.fillRect(highlight, hi2)
-        hi3 = QColor(hi); hi3.setAlpha(200)
+        hi3 = QColor(hi)
+        hi3.setAlpha(200)
         p.setPen(QPen(hi3, 2))
         p.drawRect(highlight.adjusted(2, 2, -2, -2))
         p.end()
@@ -2272,7 +2234,7 @@ class _TabStrip(QWidget):
     TAB_H = 32
     DRAG_MIN = 8
 
-    def __init__(self, group: "_PanelGroup") -> None:
+    def __init__(self, group: _PanelGroup) -> None:
         super().__init__(group)
         self._group = group
         self._tabs: list[str] = []
@@ -2436,9 +2398,8 @@ class _TabStrip(QWidget):
         src: _PanelGroup | None = _DRAG_STATE.get("source")
         tab_idx: int = _DRAG_STATE.get("tab", -1)
         _DRAG_STATE.clear()
-        if work and target and zone and src is not None and tab_idx >= 0:
-            if not (target is src and zone == _DZ.CENTER):
-                work.perform_drop(src, tab_idx, target, zone)
+        if work and target and zone and src is not None and tab_idx >= 0 and not (target is src and zone == _DZ.CENTER):
+            work.perform_drop(src, tab_idx, target, zone)
 
     # -- paint ---------------------------------------------------------------
 
@@ -2447,23 +2408,24 @@ class _TabStrip(QWidget):
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         r = self.rect()
         pal = self.palette()
-        bg   = pal.color(pal.ColorRole.Window)
+        bg = pal.color(pal.ColorRole.Window)
         base = pal.color(pal.ColorRole.Base)
         text = pal.color(pal.ColorRole.WindowText)
-        dim  = pal.color(pal.ColorRole.PlaceholderText)
-        hi   = pal.color(pal.ColorRole.Highlight)
+        dim = pal.color(pal.ColorRole.PlaceholderText)
+        hi = pal.color(pal.ColorRole.Highlight)
         p.fillRect(r, bg)
         tab_rects = self._tab_rects()
-        for i, (title, tr) in enumerate(zip(self._tabs, tab_rects)):
-            active  = i == self._current
+        for i, (title, tr) in enumerate(zip(self._tabs, tab_rects, strict=True)):
+            active = i == self._current
             hovered = i == self._hovered and not active
-            show_x  = active or hovered
+            show_x = active or hovered
             if active:
                 p.fillRect(tr, base)
                 p.fillRect(QRect(tr.x(), 0, tr.width(), 2), hi)
                 p.setPen(text)
             elif hovered:
-                hover_bg = base; hover_bg.setAlpha(180)
+                hover_bg = base
+                hover_bg.setAlpha(180)
                 p.fillRect(tr, hover_bg)
                 p.setPen(text)
             else:
@@ -2508,12 +2470,12 @@ class _PanelGroup(QFrame):
         lay.addWidget(self._tab_strip)
 
         self._stack = QStackedWidget()
-        
+
         lay.addWidget(self._stack, 1)
 
         self._overlay = _DropOverlay(self)
 
-    def _work_area(self) -> "_WorkArea | None":
+    def _work_area(self) -> _WorkArea | None:
         w = self.parent()
         while w:
             if isinstance(w, _WorkArea):
@@ -2596,10 +2558,7 @@ class _WorkArea(QWidget):
         s = QSplitter(orient)
         s.setHandleWidth(5)
         s.setChildrenCollapsible(False)
-        s.setStyleSheet(
-            "QSplitter::handle { background: #ccc; }"
-            "QSplitter::handle:hover { background: #1a6bbf55; }"
-        )
+        s.setStyleSheet("QSplitter::handle { background: #ccc; }QSplitter::handle:hover { background: #1a6bbf55; }")
         return s
 
     def default_group(self) -> _PanelGroup:
@@ -2652,16 +2611,16 @@ class _WorkArea(QWidget):
             self._remove_empty(src)
 
     def _split(self, dst: _PanelGroup, new_grp: _PanelGroup, zone: _DZ) -> None:
-        horiz  = zone in (_DZ.LEFT, _DZ.RIGHT)
+        horiz = zone in (_DZ.LEFT, _DZ.RIGHT)
         orient = Qt.Orientation.Horizontal if horiz else Qt.Orientation.Vertical
         before = zone in (_DZ.LEFT, _DZ.TOP)
 
         sp = dst.parent()
         if not isinstance(sp, QSplitter):
             return
-        idx   = sp.indexOf(dst)
+        idx = sp.indexOf(dst)
         sizes = sp.sizes()
-        sz    = sizes[idx] if idx < len(sizes) else 400
+        sz = sizes[idx] if idx < len(sizes) else 400
 
         if sp.orientation() == orient:
             ins = idx if before else idx + 1
@@ -2701,9 +2660,9 @@ class _WorkArea(QWidget):
             only = sp.widget(0)
             gp = sp.parent()
             if isinstance(gp, QSplitter):
-                gp_idx   = gp.indexOf(sp)
+                gp_idx = gp.indexOf(sp)
                 gp_sizes = gp.sizes()
-                size     = gp_sizes[gp_idx] if gp_idx < len(gp_sizes) else 400
+                size = gp_sizes[gp_idx] if gp_idx < len(gp_sizes) else 400
                 only.setParent(None)
                 sp.setParent(None)
                 sp.deleteLater()
@@ -2785,9 +2744,7 @@ class _MainWindow(QMainWindow):
         self._console = _Console(d)
         _console_dock = QDockWidget("Console", self)
         _console_dock.setWidget(self._console)
-        _console_dock.setAllowedAreas(
-            Qt.DockWidgetArea.BottomDockWidgetArea | Qt.DockWidgetArea.TopDockWidgetArea
-        )
+        _console_dock.setAllowedAreas(Qt.DockWidgetArea.BottomDockWidgetArea | Qt.DockWidgetArea.TopDockWidgetArea)
         self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, _console_dock)
         self._view_menu.addAction(_console_dock.toggleViewAction())
 
@@ -2795,9 +2752,7 @@ class _MainWindow(QMainWindow):
         self._device_panel = _DevicePanel(d, self)
         _devices_dock = QDockWidget("Devices", self)
         _devices_dock.setWidget(self._device_panel)
-        _devices_dock.setAllowedAreas(
-            Qt.DockWidgetArea.LeftDockWidgetArea | Qt.DockWidgetArea.RightDockWidgetArea
-        )
+        _devices_dock.setAllowedAreas(Qt.DockWidgetArea.LeftDockWidgetArea | Qt.DockWidgetArea.RightDockWidgetArea)
         self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, _devices_dock)
         self._view_menu.addAction(_devices_dock.toggleViewAction())
 
@@ -2906,7 +2861,7 @@ class _MainWindow(QMainWindow):
 
         # Create blocks for newly discovered devices — don't open them yet.
         # User clicks the device in the panel to open/focus it (VS Code file-explorer style).
-        for name, disp in psus:
+        for name, _disp in psus:
             if name not in self._psu_blocks:
                 block = _PSUBlock(self._d, name)
                 block.stop()  # pause polling until the tab is actually opened
