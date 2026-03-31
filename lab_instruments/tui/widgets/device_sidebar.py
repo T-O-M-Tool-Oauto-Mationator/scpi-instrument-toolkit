@@ -11,6 +11,16 @@ from textual.widget import Widget
 from textual.widgets import Button, Label, ListItem, ListView
 
 
+_TYPE_COLORS = {
+    "psu": "blue",
+    "awg": "magenta",
+    "dmm": "yellow",
+    "scope": "cyan",
+    "smu": "red",
+    "ev2300": "bright_blue",
+}
+
+
 class DeviceSidebar(Widget):
     """Sidebar that lists connected instruments with selection state.
 
@@ -78,8 +88,12 @@ class DeviceSidebar(Widget):
             display = dev.get("display_name", name)
             selected = dev.get("selected", False)
             status = dev.get("status", "unknown")
+            base_type = dev.get("base_type", "")
             dot = {"connected": "[green]●[/green]", "error": "[red]●[/red]"}.get(status, "[yellow]●[/yellow]")
+            type_color = _TYPE_COLORS.get(base_type, "")
             safe_display = escape(display)
+            if type_color:
+                safe_display = f"[{type_color}]{safe_display}[/{type_color}]"
             label_text = f"[bold]> {dot} {safe_display}[/bold]" if selected else f"  {dot} {safe_display}"
             lv.append(ListItem(Label(label_text, markup=True), name=name))
 

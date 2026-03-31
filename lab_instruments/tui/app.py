@@ -51,6 +51,7 @@ class SCPIApp(App):
         # Shown in footer (essential shortcuts only)
         Binding("ctrl+l", "clear_log", "Clear", show=True),
         Binding("ctrl+r", "retry_last", "Retry", show=True),
+        Binding("ctrl+e", "emergency_stop", "E-STOP", show=True),
         Binding("f1", "show_help", "Help", show=True),
         Binding("f2", "take_screenshot", "Screenshot", show=True),
         Binding("f3", "connection_wizard", "Connect", show=True),
@@ -170,14 +171,24 @@ class SCPIApp(App):
         return str(__import__("pathlib").Path.home())
 
     def on_mount(self) -> None:
-        """Focus input and start polling intervals."""
+        """Focus input, put all instruments into a safe state, and start polling."""
         self.query_one("#cmd_input", Input).focus()
+        # Safety-first: disable all outputs and zero PSU setpoints on launch
+        self._init_safe_state()
         self.set_interval(self._device_poll_interval, self._refresh_devices)
         self.set_interval(self._meas_poll_interval, self._refresh_measurements)
         self.set_interval(self._script_poll_interval, self._refresh_scripts)
         self.set_interval(self._script_poll_interval, self._refresh_vars)
         self.set_interval(self._safety_poll_interval, self._refresh_safety)
         self.set_interval(self._detail_poll_interval, self._refresh_detail)
+
+    @work(thread=True, exit_on_error=False, name="init-safe")
+    def _init_safe_state(self) -> None:
+        """Disable all outputs and zero PSU setpoints — runs in a worker thread."""
+        self._dispatcher.handle_command("state safe")
+        self.call_from_thread(
+            self._log_notification, "Startup: all outputs disabled (safe state)", "information"
+        )
 
     # ------------------------------------------------------------------
     # Notification helper
@@ -204,7 +215,9 @@ class SCPIApp(App):
         if not hasattr(self._dispatcher, "get_device_snapshot"):
             return
         with contextlib.suppress(Exception):
-            self.query_one(DeviceSidebar).devices = self._dispatcher.get_device_snapshot()
+            devices = self._dispatcher.get_device_snapshot()
+            self.query_one(DeviceSidebar).devices = devices
+            self.query_one(SafetyBar).device_count = len(devices)
 
     def _refresh_measurements(self) -> None:
         if not hasattr(self._dispatcher, "get_measurement_snapshot"):
@@ -248,7 +261,12 @@ class SCPIApp(App):
         # Always refresh (even when not visible) so sparkline history accumulates
         with contextlib.suppress(Exception):
             detail = self._dispatcher.get_instrument_detail(self._selected_device)
-            self.query_one(InstrumentDetailPanel).detail = detail
+            panel = self.query_one(InstrumentDetailPanel)
+            # Feed safety limits so the panel can colour over-limit values
+            if hasattr(self._dispatcher, "get_safety_snapshot"):
+                snap = self._dispatcher.get_safety_snapshot()
+                panel.safety_limits = snap.get("limits", [])
+            panel.detail = detail
 
     # ------------------------------------------------------------------
     # Tab helper
@@ -346,6 +364,25 @@ class SCPIApp(App):
         self._switch_tab("log-view")
         self.query_one("#log-output", RichLog).write(f"[bold cyan]> {event.command}[/bold cyan]")
         self._dispatch_command(event.command)
+
+    def on_instrument_detail_panel_set_limit_requested(self, event: InstrumentDetailPanel.SetLimitRequested) -> None:
+        """Set safety limits from the detail panel."""
+        event.stop()
+        self._dispatch_limit_commands(event.command)
+
+    def on_safety_limits_panel_set_limit_requested(self, event: SafetyLimitsPanel.SetLimitRequested) -> None:
+        """Set safety limits from the limits panel form."""
+        event.stop()
+        self._dispatch_limit_commands(event.command)
+
+    def _dispatch_limit_commands(self, command: str) -> None:
+        """Dispatch one or more limit commands and show in log."""
+        self._switch_tab("log-view")
+        for line in command.split("\n"):
+            line = line.strip()
+            if line:
+                self.query_one("#log-output", RichLog).write(f"[bold cyan]> {line}[/bold cyan]")
+                self._dispatch_command(line)
 
     def on_instrument_detail_panel_save_state_requested(self, event: InstrumentDetailPanel.SaveStateRequested) -> None:
         """Save the instrument's current state."""
@@ -533,6 +570,12 @@ class SCPIApp(App):
     # ------------------------------------------------------------------
     # Actions
     # ------------------------------------------------------------------
+
+    def action_emergency_stop(self) -> None:
+        """E-STOP: immediately disable all instrument outputs."""
+        self.query_one("#log-output", RichLog).write("[bold red]> E-STOP: disabling all outputs[/bold red]")
+        self._dispatch_command("state safe")
+        self._log_notification("E-STOP: all outputs disabled", severity="error", timeout=10)
 
     def action_clear_log(self) -> None:
         """Clear output log."""

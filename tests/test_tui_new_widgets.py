@@ -474,10 +474,12 @@ class TestAppActions:
         async def inner():
             app = SCPIApp(_Stub())
             async with app.run_test(size=(120, 40)) as pilot:
+                await pilot.pause(0.1)
+                baseline = len(app._notification_log)
                 app._log_notification("test message", severity="warning")
                 await pilot.pause(0.1)
-                assert len(app._notification_log) == 1
-                assert app._notification_log[0]["message"] == "test message"
+                assert len(app._notification_log) == baseline + 1
+                assert app._notification_log[-1]["message"] == "test message"
 
         asyncio.run(inner())
 

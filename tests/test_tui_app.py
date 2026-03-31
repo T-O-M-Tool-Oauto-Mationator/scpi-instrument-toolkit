@@ -96,17 +96,21 @@ class TestSCPIAppCP1:
         asyncio.run(inner())
 
     def test_empty_command_not_dispatched(self):
-        """Submitting an empty/whitespace command should not call dispatcher."""
+        """Submitting an empty/whitespace command should not call dispatcher (beyond startup safe)."""
 
         async def inner():
             stub = _StubDispatcher()
             app = SCPIApp(stub)
             async with app.run_test(size=(80, 24)) as pilot:
+                await pilot.pause(0.1)
+                # Startup issues "state safe" — record baseline
+                baseline = list(stub._commands)
                 await pilot.click("#cmd_input")
                 await pilot.press("enter")
                 await pilot.press("space")
                 await pilot.press("enter")
                 await pilot.pause(0.05)
-                assert stub._commands == []
+                # No new commands should have been added
+                assert stub._commands == baseline
 
         asyncio.run(inner())
