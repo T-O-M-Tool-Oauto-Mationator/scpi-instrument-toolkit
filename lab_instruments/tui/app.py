@@ -203,7 +203,8 @@ class SCPIApp(App):
     def _refresh_devices(self) -> None:
         if not hasattr(self._dispatcher, "get_device_snapshot"):
             return
-        self.query_one(DeviceSidebar).devices = self._dispatcher.get_device_snapshot()
+        with contextlib.suppress(Exception):
+            self.query_one(DeviceSidebar).devices = self._dispatcher.get_device_snapshot()
 
     def _refresh_measurements(self) -> None:
         if not hasattr(self._dispatcher, "get_measurement_snapshot"):
@@ -216,26 +217,27 @@ class SCPIApp(App):
     def _refresh_scripts(self) -> None:
         if not hasattr(self._dispatcher, "get_script_names"):
             return
-        names = self._dispatcher.get_script_names()
-        self.query_one(ScriptBrowser).scripts = names
         with contextlib.suppress(Exception):
+            names = self._dispatcher.get_script_names()
+            self.query_one(ScriptBrowser).scripts = names
             self.query_one(ScriptEditor).scripts = names
 
     def _refresh_vars(self) -> None:
         if not hasattr(self._dispatcher, "get_vars_snapshot"):
             return
-        self.query_one(VarInspector).variables = self._dispatcher.get_vars_snapshot()
+        with contextlib.suppress(Exception):
+            self.query_one(VarInspector).variables = self._dispatcher.get_vars_snapshot()
 
     def _refresh_safety(self) -> None:
         if not hasattr(self._dispatcher, "get_safety_snapshot"):
             return
-        snap = self._dispatcher.get_safety_snapshot()
-        prev_count = self._prev_safety.get("limit_count", 0)
-        if snap.get("limit_count", 0) > prev_count:
-            self._log_notification("Safety limit triggered", severity="warning")
-        self._prev_safety = dict(snap)
-        self.query_one(SafetyBar).safety_info = snap
         with contextlib.suppress(Exception):
+            snap = self._dispatcher.get_safety_snapshot()
+            prev_count = self._prev_safety.get("limit_count", 0)
+            if snap.get("limit_count", 0) > prev_count:
+                self._log_notification("Safety limit triggered", severity="warning")
+            self._prev_safety = dict(snap)
+            self.query_one(SafetyBar).safety_info = snap
             self.query_one(SafetyLimitsPanel).limits = snap.get("limits", [])
 
     def _refresh_detail(self) -> None:
