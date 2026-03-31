@@ -1373,7 +1373,7 @@ class Rigol_DHO804(DeviceManager):
         with open(filename, "w", newline="") as csvfile:
             writer = csv.writer(csvfile)
             writer.writerow(["Time (s)", f"CH{channel} Voltage (V)"])
-            for t, v in zip(times, volts, strict=False):
+            for t, v in zip(times, volts, strict=True):
                 writer.writerow([t, v])
 
         print(f"Waveform from CH{channel} saved to {filename}")

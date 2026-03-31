@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from rich.markup import escape
 from textual.app import ComposeResult
 from textual.reactive import reactive
 from textual.widget import Widget
@@ -53,7 +54,7 @@ class NotificationCenter(Widget):
             ts = n.get("timestamp", "")
             msg = n.get("message", "")
             color = {"error": "red", "warning": "yellow"}.get(severity, "green")
-            log.write(f"[{color}][{ts}] {msg}[/{color}]")
+            log.write(f"[{color}][{escape(ts)}] {escape(msg)}[/{color}]")
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "notif-clear":

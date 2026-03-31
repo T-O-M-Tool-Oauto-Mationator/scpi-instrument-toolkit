@@ -13,7 +13,7 @@
 #   None — all jobs use GitHub-hosted runners and read-only access.
 #
 # Job graph:
-#   lint ──> test [3.8, 3.10, 3.12] ──> coverage-gate
+#   lint ──> test [3.10, 3.12] ──> coverage-gate
 # =============================================================================
 
 name: CI
@@ -63,7 +63,7 @@ jobs:
         run: ruff format --check lab_instruments/ tests/
 
   # ---------------------------------------------------------------------------
-  # test — pytest with coverage, matrix: Python 3.8 / 3.10 / 3.12
+  # test — pytest with coverage, matrix: Python 3.10 / 3.12
   # All 593 tests are mock-based; no physical instruments are required.
   # Artifacts (JUnit XML + coverage XML) are retained for 14 days.
   # ---------------------------------------------------------------------------

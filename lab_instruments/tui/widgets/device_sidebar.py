@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from rich.markup import escape
 from textual.app import ComposeResult
 from textual.containers import Horizontal
 from textual.message import Message
@@ -78,7 +79,8 @@ class DeviceSidebar(Widget):
             selected = dev.get("selected", False)
             status = dev.get("status", "unknown")
             dot = {"connected": "[green]●[/green]", "error": "[red]●[/red]"}.get(status, "[yellow]●[/yellow]")
-            label_text = f"[bold]> {dot} {display}[/bold]" if selected else f"  {dot} {display}"
+            safe_display = escape(display)
+            label_text = f"[bold]> {dot} {safe_display}[/bold]" if selected else f"  {dot} {safe_display}"
             lv.append(ListItem(Label(label_text, markup=True), name=name))
 
     def on_list_view_selected(self, event: ListView.Selected) -> None:

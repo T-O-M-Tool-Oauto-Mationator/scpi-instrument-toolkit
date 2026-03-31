@@ -604,9 +604,8 @@ class SCPIApp(App):
                 self.query_one("#log-output", RichLog).write("[bold cyan]> scan[/bold cyan]")
                 self._dispatch_command("scan")
             elif result.startswith("test:"):
-                addr = result[5:]
                 self._switch_tab("log-view")
-                self.query_one("#log-output", RichLog).write(f"[bold cyan]> raw *IDN? @ {addr}[/bold cyan]")
+                self.query_one("#log-output", RichLog).write("[bold cyan]> raw *IDN?[/bold cyan]")
                 self._dispatch_command("raw *IDN?")
 
         self.push_screen(ConnectionWizard(), callback=_on_dismiss)

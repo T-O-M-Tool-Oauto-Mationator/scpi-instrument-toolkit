@@ -174,9 +174,9 @@ def expand_script_lines(
                         ColorPrinter.error("for: var list and value list length mismatch.")
                         break
                     local_vars = dict(variables)
-                    for name, val in zip(keys, parts, strict=False):
+                    for name, val in zip(keys, parts, strict=True):
                         local_vars[name] = substitute_expand(val, variables)
-                    iter_ctx = " ".join(f"{k}={v}" for k, v in zip(keys, parts, strict=False))
+                    iter_ctx = " ".join(f"{k}={v}" for k, v in zip(keys, parts, strict=True))
                     expanded.append(("__NOP__", f"{_loop_ctx}{raw_line}  →  {iter_ctx}"))
                     expanded.extend(
                         expand_script_lines(block, local_vars, ctx, depth, _loop_ctx=_loop_ctx + f"[{iter_ctx}] ")

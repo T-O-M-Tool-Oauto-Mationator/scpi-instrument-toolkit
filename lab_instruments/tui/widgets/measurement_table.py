@@ -104,7 +104,7 @@ class MeasurementTable(Widget):
             return
         event.input.clear()
         table = self.query_one("#meas-table", DataTable)
-        if table.cursor_row is not None and table.row_count > 0:
+        if table.cursor_row is not None and table.row_count > 0 and table.cursor_row < table.row_count:
             row_idx = table.cursor_row + 1  # 1-based to match display
             self._annotations[row_idx] = note
             self.watch_measurements(self.measurements)  # rebuild table
@@ -131,10 +131,11 @@ class MeasurementTable(Widget):
         path = dest_dir / f"measurements_{stamp}.csv"
 
         with path.open("w", newline="", encoding="utf-8") as fh:
-            writer = csv.DictWriter(fh, fieldnames=["label", "value", "unit", "source", "notes"])
+            fieldnames = ["label", "value", "unit", "source", "notes"]
+            writer = csv.DictWriter(fh, fieldnames=fieldnames, extrasaction="ignore")
             writer.writeheader()
             for i, entry in enumerate(self.measurements, start=1):
-                row = dict(entry)
+                row = {k: entry.get(k, "") for k in fieldnames}
                 row["notes"] = self._annotations.get(i, "")
                 writer.writerow(row)
 

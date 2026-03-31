@@ -26,7 +26,7 @@ class CommandHistory:
         Resets the cursor to past-end so the next up-arrow starts at the
         most recently submitted command.
         """
-        if not cmd:
+        if not cmd or not cmd.strip():
             return
         if self._entries and self._entries[-1] == cmd:
             self._pos = len(self._entries)

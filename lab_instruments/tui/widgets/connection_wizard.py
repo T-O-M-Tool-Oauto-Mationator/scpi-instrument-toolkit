@@ -75,12 +75,20 @@ class ConnectionWizard(ModalScreen[str | None]):
                 yield Button("Scan All", id="wizard-scan", variant="success")
                 yield Button("Cancel", id="wizard-cancel", variant="error")
 
+    def _get_interface(self) -> str:
+        """Return the selected interface type from the RadioSet."""
+        radio_set = self.query_one("#wizard-interface", RadioSet)
+        idx = radio_set.pressed_index
+        labels = ["TCPIP", "USB", "GPIB", "Serial"]
+        return labels[idx] if 0 <= idx < len(labels) else "TCPIP"
+
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "wizard-test":
             event.stop()
             addr = self.query_one("#wizard-address", Input).value.strip()
+            iface = self._get_interface()
             if addr:
-                self.query_one("#wizard-status", Static).update("[yellow]Testing...[/yellow]")
+                self.query_one("#wizard-status", Static).update(f"[yellow]Testing {iface}://{addr}...[/yellow]")
                 self.dismiss(f"test:{addr}")
             else:
                 self.query_one("#wizard-status", Static).update("[red]Enter a resource string[/red]")

@@ -31,10 +31,16 @@ class PlotCommand(BaseCommand):
         patterns: list[str] = []
         i = 0
         while i < len(args):
-            if args[i] == "--title" and i + 1 < len(args):
+            if args[i] == "--title":
+                if i + 1 >= len(args):
+                    ColorPrinter.error("--title requires a value")
+                    return
                 title = args[i + 1]
                 i += 2
-            elif args[i] == "--save" and i + 1 < len(args):
+            elif args[i] == "--save":
+                if i + 1 >= len(args):
+                    ColorPrinter.error("--save requires a filename")
+                    return
                 save_path = args[i + 1]
                 i += 2
             else:
@@ -80,7 +86,7 @@ class PlotCommand(BaseCommand):
             fig, axes = plt.subplots(n_units, 1, sharex=False)
             if n_units == 1:
                 axes = [axes]
-            for ax, unit_key in zip(axes, unit_keys, strict=False):
+            for ax, unit_key in zip(axes, unit_keys, strict=True):
                 subtitle = f"{title} ({unit_key})" if unit_key else title
                 self._plot_series(ax, units[unit_key], subtitle, unit_key)
 
@@ -89,7 +95,7 @@ class PlotCommand(BaseCommand):
         # Auto-save to PNG if --save <path> is specified, or to script dir
         if save_path:
             if not os.path.isabs(save_path):
-                base = self.ctx.get_scripts_dir() if self.ctx.in_script else os.getcwd()
+                base = self.ctx.get_scripts_dir() if self.ctx.in_script else str(self.ctx.get_data_dir())
                 save_path = os.path.join(base, save_path)
             os.makedirs(os.path.dirname(save_path) or ".", exist_ok=True)
             fig.savefig(save_path, dpi=150, bbox_inches="tight")

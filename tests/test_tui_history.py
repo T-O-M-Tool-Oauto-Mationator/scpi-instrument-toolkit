@@ -19,11 +19,11 @@ class TestCommandHistory:
         h.push("dmm read")
         assert len(h) == 3
 
-    def test_push_empty_string_ignored(self):
+    def test_push_empty_and_whitespace_ignored(self):
         h = CommandHistory()
         h.push("")
         h.push("   ")
-        assert len(h) == 1  # whitespace is not stripped here; only empty str ignored
+        assert len(h) == 0  # both empty and whitespace-only are ignored
 
     def test_push_truly_empty_ignored(self):
         h = CommandHistory()

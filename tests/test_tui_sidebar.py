@@ -111,7 +111,7 @@ class TestDeviceSidebarWidget:
                 await pilot.pause(0.1)
                 lv = sb.query_one("#device-list", ListView)
                 # First item (psu1) is selected - its name attr should match
-                first: ListItem = lv._nodes[0]  # type: ignore[assignment]
+                first = lv.query(ListItem).first()
                 lbl = first.query_one(Label)
                 assert ">" in str(lbl.render())
 

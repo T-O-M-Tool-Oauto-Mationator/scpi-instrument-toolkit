@@ -114,8 +114,7 @@ class MonitorPanel(Widget):
         vals = self._readings
         current = vals[-1]
         mn, mx, avg = min(vals), max(vals), sum(vals) / len(vals)
+        prefix = "[green]Running[/green]" if self._running else "[dim]Stopped[/dim]"
         self.query_one("#monitor-stats", Static).update(
-            f"[green]Running[/green]  "
-            f"Current: {current:.6f}  Min: {mn:.6f}  Max: {mx:.6f}  Mean: {avg:.6f}  "
-            f"({len(vals)} samples)"
+            f"{prefix}  Current: {current:.6f}  Min: {mn:.6f}  Max: {mx:.6f}  Mean: {avg:.6f}  ({len(vals)} samples)"
         )

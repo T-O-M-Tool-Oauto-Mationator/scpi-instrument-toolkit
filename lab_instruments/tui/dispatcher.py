@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import contextlib
 import io
+import threading
 from collections.abc import Callable
 from typing import Protocol, runtime_checkable
 
@@ -93,18 +94,20 @@ class LocalDispatcher:
         from lab_instruments.repl.shell import InstrumentRepl
 
         self.repl = InstrumentRepl()
+        self._lock = threading.Lock()
 
     def handle_command(self, command: str, line_callback: Callable[[str], None] | None = None) -> str:
         """Handle a command and return the response."""
-        if line_callback is not None:
-            stream = _StreamingWriter(line_callback)
-            with contextlib.redirect_stdout(stream):  # type: ignore[type-var]
-                self.repl.onecmd(command)
-            return stream.getvalue()
-        else:
-            with contextlib.redirect_stdout(io.StringIO()) as f:
-                self.repl.onecmd(command)
-            return f.getvalue()
+        with self._lock:
+            if line_callback is not None:
+                stream = _StreamingWriter(line_callback)
+                with contextlib.redirect_stdout(stream):  # type: ignore[type-var]
+                    self.repl.onecmd(command)
+                return stream.getvalue()
+            else:
+                with contextlib.redirect_stdout(io.StringIO()) as f:
+                    self.repl.onecmd(command)
+                return f.getvalue()
 
     def get_device_snapshot(self) -> list[dict]:
         """Return a snapshot of connected devices safe to read from the event loop.
@@ -152,7 +155,7 @@ class LocalDispatcher:
 
     def save_script_content(self, name: str, content: str) -> None:
         """Save script content (string) to memory and disk."""
-        lines = [line for line in content.split("\n") if line.strip()]
+        lines = content.split("\n")
         self.repl.ctx.scripts[name] = lines
         # Persist to disk
         script_path = self.repl.ctx.script_file(name)
@@ -195,7 +198,7 @@ class LocalDispatcher:
         meas_count = len(ctx.measurements.entries) if hasattr(ctx, "measurements") else 0
         data_dir = str(ctx.get_data_dir()) if hasattr(ctx, "get_data_dir") else ""
         return {
-            "limit_count": len(ctx.safety_limits),
+            "limit_count": len(limits_detail),
             "active_script": ctx.in_script,
             "exit_on_error": ctx.exit_on_error,
             "limits": limits_detail,
@@ -257,17 +260,23 @@ class LocalDispatcher:
         channels: list[dict] = []
 
         if multi and hasattr(dev, "CHANNEL_MAP"):
-            for ch_key, ch_label in dev.CHANNEL_MAP.items():
-                ch_info: dict = {"id": ch_key, "label": ch_label}
-                if hasattr(dev, "select_channel"):
-                    dev.select_channel(ch_key)
-                ch_info["voltage_set"] = dev.get_voltage_setpoint()
-                ch_info["current_limit"] = dev.get_current_limit()
-                if has_readback:
-                    ch_info["voltage_meas"] = dev.measure_voltage(ch_key)
-                    ch_info["current_meas"] = dev.measure_current(ch_key)
-                ch_info["output"] = dev.get_output_state(ch_key)
-                channels.append(ch_info)
+            # Save/restore selected channel to avoid mutating device state
+            prev_ch = getattr(dev, "_selected_ch", None)
+            try:
+                for ch_key, ch_label in dev.CHANNEL_MAP.items():
+                    ch_info: dict = {"id": ch_key, "label": ch_label}
+                    if hasattr(dev, "select_channel"):
+                        dev.select_channel(ch_key)
+                    ch_info["voltage_set"] = dev.get_voltage_setpoint()
+                    ch_info["current_limit"] = dev.get_current_limit()
+                    if has_readback:
+                        ch_info["voltage_meas"] = dev.measure_voltage(ch_key)
+                        ch_info["current_meas"] = dev.measure_current(ch_key)
+                    ch_info["output"] = dev.get_output_state(ch_key)
+                    channels.append(ch_info)
+            finally:
+                if prev_ch is not None and hasattr(dev, "select_channel"):
+                    dev.select_channel(prev_ch)
         else:
             ch_info = {
                 "id": 1,
@@ -285,7 +294,16 @@ class LocalDispatcher:
 
     @staticmethod
     def _detail_dmm(dev: object) -> dict:
-        reading = dev.read() if hasattr(dev, "read") else None
+        # Prefer fetch() (non-triggering) over read() (triggers new measurement)
+        if hasattr(dev, "fetch"):
+            try:
+                reading = dev.fetch()
+            except Exception:  # noqa: BLE001
+                reading = dev.read() if hasattr(dev, "read") else None
+        elif hasattr(dev, "read"):
+            reading = dev.read()
+        else:
+            reading = None
         return {"last_reading": reading}
 
     @staticmethod
@@ -352,8 +370,8 @@ class LocalDispatcher:
                         ch_snap["output"] = dev.get_output_state(ch)
                     channels.append(ch_snap)
                 snap["channels"] = channels
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as exc:  # noqa: BLE001
+            snap["error"] = str(exc)
         return snap
 
     def restore_instrument_state(self, device_name: str, snapshot: dict) -> None:
@@ -388,7 +406,7 @@ class LocalDispatcher:
                     if "output" in ch_snap and hasattr(dev, "enable_output"):
                         dev.enable_output(ch, ch_snap["output"])
         except Exception:  # noqa: BLE001
-            pass
+            raise
 
     def get_completions(self, text: str) -> list[str]:
         """Return sorted, deduplicated completion candidates for text.

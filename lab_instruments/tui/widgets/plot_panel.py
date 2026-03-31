@@ -127,6 +127,10 @@ class PlotPanel(Widget):
             cmd = f"plot {pattern}" if pattern else "plot"
             self.post_message(self.QuickAction(cmd))
         elif bid == "plot-save":
+            import time
+
+            stamp = time.strftime("%Y%m%d_%H%M%S")
+            fname = f"measurements_{stamp}.png"
             pattern = self._get_filter()
-            cmd = f"plot {pattern} --save measurements.png" if pattern else "plot --save measurements.png"
+            cmd = f"plot {pattern} --save {fname}" if pattern else f"plot --save {fname}"
             self.post_message(self.QuickAction(cmd))

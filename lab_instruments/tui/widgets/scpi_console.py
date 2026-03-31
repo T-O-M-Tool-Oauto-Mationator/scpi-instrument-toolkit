@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from rich.markup import escape
 from textual.app import ComposeResult
 from textual.message import Message
 from textual.widget import Widget
@@ -58,12 +59,12 @@ class ScpiConsole(Widget):
         if not cmd:
             return
         event.input.clear()
-        self.query_one("#scpi-log", RichLog).write(f"[bold cyan]> {cmd}[/bold cyan]")
+        self.query_one("#scpi-log", RichLog).write(f"[bold cyan]> {escape(cmd)}[/bold cyan]")
         self.post_message(self.RawCommand(cmd))
 
     def add_response(self, response: str) -> None:
         """Write a response line to the SCPI log."""
-        self.query_one("#scpi-log", RichLog).write(response)
+        self.query_one("#scpi-log", RichLog).write(escape(response))
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "scpi-clear":

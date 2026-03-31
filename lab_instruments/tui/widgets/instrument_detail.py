@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections import deque
 
 from textual.app import ComposeResult
-from textual.containers import Vertical
+from textual.containers import Horizontal, Vertical
 from textual.message import Message
 from textual.reactive import reactive
 from textual.widget import Widget
@@ -209,8 +209,6 @@ class InstrumentDetailPanel(Widget):
             self._mount_sparkline(body, f"{name}_{label}_current", f"{label} Current")
 
         # Quick action buttons
-        from textual.containers import Horizontal
-
         row = Horizontal(classes="action-row")
         body.mount(row)
         row.mount(Button("Output ON", id=f"qa-{name}-on", variant="success"))
@@ -244,8 +242,6 @@ class InstrumentDetailPanel(Widget):
         self._mount_sparkline(body, f"{name}_voltage", "Voltage")
         self._mount_sparkline(body, f"{name}_current", "Current")
 
-        from textual.containers import Horizontal
-
         row = Horizontal(classes="action-row")
         body.mount(row)
         row.mount(Button("Output ON", id=f"qa-{name}-on", variant="success"))
@@ -262,8 +258,6 @@ class InstrumentDetailPanel(Widget):
         ]
         body.mount(Static("\n".join(lines), markup=True, classes="detail-section"))
         self._mount_sparkline(body, f"{name}_reading", "Reading")
-
-        from textual.containers import Horizontal
 
         row = Horizontal(classes="action-row")
         body.mount(row)
@@ -282,8 +276,6 @@ class InstrumentDetailPanel(Widget):
 
             line = f"  CH{ch_id}  {freq}  {amp}  offset {offset}  {badge}"
             body.mount(Static(line, markup=True, classes="detail-section"))
-
-        from textual.containers import Horizontal
 
         row = Horizontal(classes="action-row")
         body.mount(row)
@@ -305,8 +297,6 @@ class InstrumentDetailPanel(Widget):
             f"  Channels: {num_ch}",
         ]
         body.mount(Static("\n".join(lines), markup=True, classes="detail-section"))
-
-        from textual.containers import Horizontal
 
         row = Horizontal(classes="action-row")
         body.mount(row)
