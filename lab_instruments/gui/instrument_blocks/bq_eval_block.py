@@ -477,6 +477,10 @@ class _BQEvalBlock(QFrame):
         self._vti_table.verticalHeader().setVisible(False)
         self._vti_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self._vti_table.setAlternatingRowColors(True)
+        # Show all 20 rows without scrolling — compute height from row/header sizes
+        row_h = self._vti_table.verticalHeader().defaultSectionSize()
+        header_h = self._vti_table.horizontalHeader().height()
+        self._vti_table.setMinimumHeight(row_h * len(VTI_PARAMS) + header_h + 4)
         for i, (param, unit) in enumerate(zip(VTI_PARAMS, VTI_UNITS)):
             self._vti_table.setItem(i, 0, QTableWidgetItem(param))
             self._vti_table.setItem(i, 1, QTableWidgetItem(""))
