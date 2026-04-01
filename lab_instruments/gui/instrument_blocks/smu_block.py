@@ -15,8 +15,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ..core.helpers import _NumSpin, _mono
 from ..core.dispatcher import _Dispatcher
+from ..core.helpers import _mono, _NumSpin
 
 
 class _SMUBlock(QFrame):
@@ -27,15 +27,11 @@ class _SMUBlock(QFrame):
         self._d = d
         self._smu = name
         self.setObjectName("smublock")
-        self.setStyleSheet(
-            "#smublock { border: 1px solid #ccc; border-radius: 10px; }"
-        )
+        self.setStyleSheet("#smublock { border: 1px solid #ccc; border-radius: 10px; }")
         self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
         self._build()
-        self._poll()
 
     def _con(self):
-        from ..widgets.console import _Console
 
         w = self.parent()
         while w is not None:
@@ -52,9 +48,7 @@ class _SMUBlock(QFrame):
 
         # Header -- identical to _PSUBlock header
         hdr = QFrame()
-        hdr.setStyleSheet(
-            "QFrame { border-bottom: 1px solid #ccc; border-radius: 0; }"
-        )
+        hdr.setStyleSheet("QFrame { border-bottom: 1px solid #ccc; border-radius: 0; }")
         hdr_lay = QHBoxLayout(hdr)
         hdr_lay.setContentsMargins(14, 9, 14, 9)
         hdr_lay.setSpacing(8)
@@ -100,19 +94,13 @@ class _SMUBlock(QFrame):
         meas.setSpacing(5)
         self._v_display = QLabel("0.000")
         self._v_display.setFont(_mono(18))
-        self._v_display.setStyleSheet(
-            "color: #1e7a1e; border-radius: 5px; "
-            "padding: 4px 8px"
-        )
+        self._v_display.setStyleSheet("color: #1e7a1e; border-radius: 5px; padding: 4px 8px")
         self._v_display.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         self._v_display.setMinimumHeight(42)
         meas.addWidget(self._v_display, 1)
         self._i_display = QLabel("0.000")
         self._i_display.setFont(_mono(18))
-        self._i_display.setStyleSheet(
-            "color: #c45c00; border-radius: 5px; "
-            "padding: 4px 8px"
-        )
+        self._i_display.setStyleSheet("color: #c45c00; border-radius: 5px; padding: 4px 8px")
         self._i_display.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         self._i_display.setMinimumHeight(42)
         meas.addWidget(self._i_display, 1)
@@ -220,46 +208,28 @@ class _SMUBlock(QFrame):
             self._lim_spin.setSuffix(" V")
             self._lim_spin.setRange(0.0, 60.0)
 
+    def _run(self, cmd: str) -> str:
+        result = self._d.run(f"use {self._smu}\n{cmd}")
+        con = self._con()
+        if con:
+            con.log_action(f"{self._smu}: {cmd}", result.strip() if result.strip() else "OK")
+        return result
+
     def _apply(self) -> None:
-        dev = self._d.device(self._smu)
-        if not dev:
-            return
         mode = self._mode_combo.currentText()
         val = self._set_spin.value()
         lim = self._lim_spin.value()
-        try:
-            if mode == "VOLTAGE":
-                dev.set_voltage_mode(val, lim)
-                msg = f"V mode: {val}V, I lim {lim}A"
-            else:
-                dev.set_current_mode(val, lim)
-                msg = f"I mode: {val}A, V lim {lim}V"
-            self._status.setText(msg)
-            self._status.setStyleSheet("color: #155724; font-size: 10px;")
-            con = self._con()
-            if con:
-                con.log_action(f"{self._smu} set", msg)
-            self._poll()
-        except Exception as exc:
-            self._status.setText(str(exc))
-            self._status.setStyleSheet("color: #c0392b; font-size: 10px;")
+        if mode == "VOLTAGE":
+            self._run("smu mode voltage")
+            self._run(f"smu set {val} {lim}")
+        else:
+            self._run("smu mode current")
+            self._run(f"smu set {val} {lim}")
+        self._poll()
 
     def _on_toggle(self, checked: bool) -> None:
-        dev = self._d.device(self._smu)
-        if not dev:
-            return
-        try:
-            dev.enable_output(checked)
-            msg = f"Output {'enabled' if checked else 'disabled'}"
-            self._status.setText(msg)
-            self._status.setStyleSheet("color: #155724; font-size: 10px;")
-            con = self._con()
-            if con:
-                con.log_action(f"{self._smu} {'on' if checked else 'off'}", msg)
-            self._poll()
-        except Exception as exc:
-            self._status.setText(str(exc))
-            self._status.setStyleSheet("color: #c0392b; font-size: 10px;")
+        self._run(f"smu {'on' if checked else 'off'}")
+        self._poll()
 
     @Slot()
     def _poll(self) -> None:

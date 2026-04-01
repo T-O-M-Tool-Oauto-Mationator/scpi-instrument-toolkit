@@ -15,8 +15,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ..core.helpers import _mono
 from ..core.dispatcher import _Dispatcher
+from ..core.helpers import _mono
 
 _DMM_MODES = [
     ("DC Voltage", "measure_dc_voltage", "V"),
@@ -45,15 +45,11 @@ class _DMMBlock(QFrame):
         self._d = d
         self._dmm = name
         self.setObjectName("dmmblock")
-        self.setStyleSheet(
-            "#dmmblock { border: 1px solid #ccc; border-radius: 10px; }"
-        )
+        self.setStyleSheet("#dmmblock { border: 1px solid #ccc; border-radius: 10px; }")
         self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
         self._build()
-        self._poll()
 
     def _con(self):
-        from ..widgets.console import _Console
 
         w = self.parent()
         while w is not None:
@@ -70,9 +66,7 @@ class _DMMBlock(QFrame):
 
         # Header -- same as PSU
         hdr = QFrame()
-        hdr.setStyleSheet(
-            "QFrame { border-bottom: 1px solid #ccc; border-radius: 0; }"
-        )
+        hdr.setStyleSheet("QFrame { border-bottom: 1px solid #ccc; border-radius: 0; }")
         hdr_lay = QHBoxLayout(hdr)
         hdr_lay.setContentsMargins(14, 9, 14, 9)
         hdr_lay.setSpacing(8)
@@ -110,9 +104,7 @@ class _DMMBlock(QFrame):
         # Measurement display
         self._reading = QLabel("-.------ V")
         self._reading.setFont(_mono(18))
-        self._reading.setStyleSheet(
-            "color: #1e7a1e; border-radius: 5px; padding: 4px 8px"
-        )
+        self._reading.setStyleSheet("color: #1e7a1e; border-radius: 5px; padding: 4px 8px")
         self._reading.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         self._reading.setMinimumHeight(42)
         self._reading.setMinimumWidth(90)

@@ -75,15 +75,30 @@ REG_ADCOFFSET = 0x51
 REG_ADCGAIN2 = 0x59
 
 CELL_REGS = [
-    REG_VC1_HI, REG_VC2_HI, REG_VC3_HI, REG_VC4_HI, REG_VC5_HI,
-    REG_VC6_HI, REG_VC7_HI, REG_VC8_HI, REG_VC9_HI, REG_VC10_HI,
-    REG_VC11_HI, REG_VC12_HI, REG_VC13_HI, REG_VC14_HI, REG_VC15_HI,
+    REG_VC1_HI,
+    REG_VC2_HI,
+    REG_VC3_HI,
+    REG_VC4_HI,
+    REG_VC5_HI,
+    REG_VC6_HI,
+    REG_VC7_HI,
+    REG_VC8_HI,
+    REG_VC9_HI,
+    REG_VC10_HI,
+    REG_VC11_HI,
+    REG_VC12_HI,
+    REG_VC13_HI,
+    REG_VC14_HI,
+    REG_VC15_HI,
 ]
 
-VTI_PARAMS = (
-    [f"Voltage Cell {i}" for i in range(1, 16)]
-    + ["Battery Voltage", "Temp Sensor 1", "Temp Sensor 2", "Temp Sensor 3", "Coulomb Counter"]
-)
+VTI_PARAMS = [f"Voltage Cell {i}" for i in range(1, 16)] + [
+    "Battery Voltage",
+    "Temp Sensor 1",
+    "Temp Sensor 2",
+    "Temp Sensor 3",
+    "Coulomb Counter",
+]
 VTI_UNITS = ["Volts"] * 15 + ["Volts", "Volts", "Volts", "Volts", "Volts"]
 VTI_REGS = CELL_REGS + [REG_BAT_HI, REG_TS1_HI, REG_TS2_HI, REG_TS3_HI, REG_CC_HI]
 
@@ -101,30 +116,18 @@ class RegisterDef:
 
 
 REGISTER_DEFS: list[RegisterDef] = [
-    RegisterDef("System Status", 0x00, 8,
-                ["CCRDY", "RSVD", "DEV_XD", "OVRDAL", "UV", "OV", "SCD", "OCD"]),
-    RegisterDef("System Control1", 0x04, 8,
-                ["LOAD_P", "RSVD", "RSVD", "ADC_EN", "TEMP_S", "RSVD", "SHUT_A", "SHUT_B"]),
-    RegisterDef("System Control2", 0x05, 8,
-                ["DLY_DIS", "CC_EN", "CC_ONE", "RSVD", "RSVD", "RSVD", "DSG_ON", "CHG_ON"]),
-    RegisterDef("Cell Balance 1", 0x01, 5,
-                ["CB5", "CB4", "CB3", "CB2", "CB1"]),
-    RegisterDef("Cell Balance 2", 0x02, 5,
-                ["CB10", "CB9", "CB8", "CB7", "CB6"]),
-    RegisterDef("Cell Balance 3", 0x03, 5,
-                ["CB15", "CB14", "CB13", "CB12", "CB11"]),
-    RegisterDef("Protection 1", 0x06, 8,
-                ["RSNS", "RSVD", "RSVD", "SCD_D1", "SCD_D0", "SCD_T2", "SCD_T1", "SCD_T0"]),
-    RegisterDef("Protection 2", 0x07, 7,
-                ["OCD_D2", "OCD_D1", "OCD_D0", "OCD_T3", "OCD_T2", "OCD_T1", "OCD_T0"]),
-    RegisterDef("Protection 3", 0x08, 8,
-                ["UV_D2", "UV_D1", "OV_D1", "OV_D0", "RSVD", "RSVD", "RSVD", "RSVD"]),
-    RegisterDef("OV_TRIP", 0x09, 8,
-                ["OV_T7", "OV_T6", "OV_T5", "OV_T4", "OV_T3", "OV_T2", "OV_T1", "OV_T0"]),
-    RegisterDef("UV_TRIP", 0x0A, 8,
-                ["UV_T7", "UV_T6", "UV_T5", "UV_T4", "UV_T3", "UV_T2", "UV_T1", "UV_T0"]),
-    RegisterDef("CC_CFG", 0x0B, 6,
-                ["CC_CFG5", "CC_CFG4", "CC_CFG3", "CC_CFG2", "CC_CFG1", "CC_CFG0"]),
+    RegisterDef("System Status", 0x00, 8, ["CCRDY", "RSVD", "DEV_XD", "OVRDAL", "UV", "OV", "SCD", "OCD"]),
+    RegisterDef("System Control1", 0x04, 8, ["LOAD_P", "RSVD", "RSVD", "ADC_EN", "TEMP_S", "RSVD", "SHUT_A", "SHUT_B"]),
+    RegisterDef("System Control2", 0x05, 8, ["DLY_DIS", "CC_EN", "CC_ONE", "RSVD", "RSVD", "RSVD", "DSG_ON", "CHG_ON"]),
+    RegisterDef("Cell Balance 1", 0x01, 5, ["CB5", "CB4", "CB3", "CB2", "CB1"]),
+    RegisterDef("Cell Balance 2", 0x02, 5, ["CB10", "CB9", "CB8", "CB7", "CB6"]),
+    RegisterDef("Cell Balance 3", 0x03, 5, ["CB15", "CB14", "CB13", "CB12", "CB11"]),
+    RegisterDef("Protection 1", 0x06, 8, ["RSNS", "RSVD", "RSVD", "SCD_D1", "SCD_D0", "SCD_T2", "SCD_T1", "SCD_T0"]),
+    RegisterDef("Protection 2", 0x07, 7, ["OCD_D2", "OCD_D1", "OCD_D0", "OCD_T3", "OCD_T2", "OCD_T1", "OCD_T0"]),
+    RegisterDef("Protection 3", 0x08, 8, ["UV_D2", "UV_D1", "OV_D1", "OV_D0", "RSVD", "RSVD", "RSVD", "RSVD"]),
+    RegisterDef("OV_TRIP", 0x09, 8, ["OV_T7", "OV_T6", "OV_T5", "OV_T4", "OV_T3", "OV_T2", "OV_T1", "OV_T0"]),
+    RegisterDef("UV_TRIP", 0x0A, 8, ["UV_T7", "UV_T6", "UV_T5", "UV_T4", "UV_T3", "UV_T2", "UV_T1", "UV_T0"]),
+    RegisterDef("CC_CFG", 0x0B, 6, ["CC_CFG5", "CC_CFG4", "CC_CFG3", "CC_CFG2", "CC_CFG1", "CC_CFG0"]),
 ]
 
 _ACCENT = "#6366f1"
@@ -167,9 +170,7 @@ class _BQEvalBlock(QFrame):
         self._d = d
         self._ev = name
         self.setObjectName("bqblock")
-        self.setStyleSheet(
-            "#bqblock { border: 1px solid #ccc; border-radius: 10px; }"
-        )
+        self.setStyleSheet("#bqblock { border: 1px solid #ccc; border-radius: 10px; }")
         self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
 
         self._register_cache: dict[int, int] = {}
@@ -187,7 +188,6 @@ class _BQEvalBlock(QFrame):
     # -- Console access --------------------------------------------------------
 
     def _con(self):
-        from ..widgets.console import _Console
 
         w = self.parent()
         while w is not None:
@@ -483,7 +483,7 @@ class _BQEvalBlock(QFrame):
         row_h = self._vti_table.verticalHeader().defaultSectionSize()
         header_h = self._vti_table.horizontalHeader().height()
         self._vti_table.setMinimumHeight(row_h * len(VTI_PARAMS) + header_h + 4)
-        for i, (param, unit) in enumerate(zip(VTI_PARAMS, VTI_UNITS)):
+        for i, (param, unit) in enumerate(zip(VTI_PARAMS, VTI_UNITS, strict=False)):
             self._vti_table.setItem(i, 0, QTableWidgetItem(param))
             self._vti_table.setItem(i, 1, QTableWidgetItem(""))
             self._vti_table.setItem(i, 2, QTableWidgetItem(unit))
@@ -518,9 +518,7 @@ class _BQEvalBlock(QFrame):
                 btn = QPushButton(bit_name)
                 btn.setStyleSheet(_BIT_UNKNOWN_SS)
                 btn.setFixedHeight(26)
-                btn.clicked.connect(
-                    lambda _, r=rdef.addr, b=bit_pos: self._on_bit_clicked(r, b)
-                )
+                btn.clicked.connect(lambda _, r=rdef.addr, b=bit_pos: self._on_bit_clicked(r, b))
                 row.addWidget(btn)
                 self._bit_buttons[(rdef.addr, bit_pos)] = btn
 
@@ -534,9 +532,7 @@ class _BQEvalBlock(QFrame):
             hex_edit.setFont(_mono(10))
             hex_edit.setMaximumWidth(40)
             hex_edit.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            hex_edit.returnPressed.connect(
-                lambda r=rdef.addr, e=hex_edit: self._on_hex_edit(r, e)
-            )
+            hex_edit.returnPressed.connect(lambda r=rdef.addr, e=hex_edit: self._on_hex_edit(r, e))
             row.addWidget(hex_edit)
             self._reg_hex_edits[rdef.addr] = hex_edit
 
@@ -581,8 +577,7 @@ class _BQEvalBlock(QFrame):
 
         con = self._con()
         if con:
-            con.log_action(f"{self._ev} base_config",
-                           f"CTRL1=0x{ctrl1 & 0xFF:02X} CTRL2=0x{ctrl2 & 0xFF:02X}")
+            con.log_action(f"{self._ev} base_config", f"CTRL1=0x{ctrl1 & 0xFF:02X} CTRL2=0x{ctrl2 & 0xFF:02X}")
 
     # -- Actions: Read/Write Hex Byte ------------------------------------------
 

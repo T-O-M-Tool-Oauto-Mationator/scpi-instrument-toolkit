@@ -1,17 +1,21 @@
 from __future__ import annotations
 
 from enum import Enum, auto
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .panel_group import _PanelGroup
 
 from PySide6.QtCore import QPoint, QRect, Qt
 from PySide6.QtGui import QColor, QPainter, QPen
-from PySide6.QtWidgets import QApplication, QMenu, QWidget
+from PySide6.QtWidgets import QApplication, QMainWindow, QMenu, QWidget
 
 
 class _DZ(Enum):
     CENTER = auto()
-    LEFT   = auto()
-    RIGHT  = auto()
-    TOP    = auto()
+    LEFT = auto()
+    RIGHT = auto()
+    TOP = auto()
     BOTTOM = auto()
 
 
@@ -45,10 +49,14 @@ class _DropOverlay(QWidget):
         w, h = r.width(), r.height()
         edge_w, edge_h = max(w // 5, 40), max(h // 5, 40)  # ~20% edge zones
         x, y = pos.x(), pos.y()
-        if x < edge_w:         return _DZ.LEFT
-        if x > w - edge_w:     return _DZ.RIGHT
-        if y < edge_h:         return _DZ.TOP
-        if y > h - edge_h:     return _DZ.BOTTOM
+        if x < edge_w:
+            return _DZ.LEFT
+        if x > w - edge_w:
+            return _DZ.RIGHT
+        if y < edge_h:
+            return _DZ.TOP
+        if y > h - edge_h:
+            return _DZ.BOTTOM
         return _DZ.CENTER
 
     def paintEvent(self, _ev) -> None:  # noqa: N802
@@ -59,18 +67,21 @@ class _DropOverlay(QWidget):
         w, h = r.width(), r.height()
         # Highlight covers half the group for splits, full for center (VS Code style)
         highlight = {
-            _DZ.LEFT:   QRect(0,      0,      w // 2,   h),
-            _DZ.RIGHT:  QRect(w // 2, 0,      w // 2,   h),
-            _DZ.TOP:    QRect(0,      0,      w,        h // 2),
-            _DZ.BOTTOM: QRect(0,      h // 2, w,        h // 2),
+            _DZ.LEFT: QRect(0, 0, w // 2, h),
+            _DZ.RIGHT: QRect(w // 2, 0, w // 2, h),
+            _DZ.TOP: QRect(0, 0, w, h // 2),
+            _DZ.BOTTOM: QRect(0, h // 2, w, h // 2),
             _DZ.CENTER: r,
         }[self._zone]
         hi = self.palette().color(self.palette().ColorRole.Highlight)
-        bg = hi; bg.setAlpha(30)
+        bg = hi
+        bg.setAlpha(30)
         p.fillRect(r, bg)
-        hi2 = QColor(hi); hi2.setAlpha(90)
+        hi2 = QColor(hi)
+        hi2.setAlpha(90)
         p.fillRect(highlight, hi2)
-        hi3 = QColor(hi); hi3.setAlpha(200)
+        hi3 = QColor(hi)
+        hi3.setAlpha(200)
         p.setPen(QPen(hi3, 2))
         p.drawRect(highlight.adjusted(2, 2, -2, -2))
         p.end()
@@ -82,7 +93,7 @@ class _TabStrip(QWidget):
     TAB_H = 32
     DRAG_MIN = 8
 
-    def __init__(self, group: "PanelGroup") -> None:
+    def __init__(self, group: _PanelGroup) -> None:
         super().__init__(group)
         self._group = group
         self._tabs: list[str] = []
@@ -162,7 +173,6 @@ class _TabStrip(QWidget):
             return
         title, widget = self._group._widgets[idx]
         # Find main window
-        from PySide6.QtWidgets import QMainWindow
         w = self._group.parent()
         while w:
             if isinstance(w, QMainWindow) and hasattr(w, "pop_out_widget"):
@@ -274,8 +284,6 @@ class _TabStrip(QWidget):
             _DRAG_STATE.pop("zone", None)
 
     def _finish_drag(self) -> None:
-        from .panel_group import _PanelGroup
-
         work = self._group._work_area()
         if work:
             for g in work.all_groups():
@@ -285,9 +293,8 @@ class _TabStrip(QWidget):
         src: _PanelGroup | None = _DRAG_STATE.get("source")
         tab_idx: int = _DRAG_STATE.get("tab", -1)
         _DRAG_STATE.clear()
-        if work and target and zone and src is not None and tab_idx >= 0:
-            if not (target is src and zone == _DZ.CENTER):
-                work.perform_drop(src, tab_idx, target, zone)
+        if work and target and zone and src is not None and tab_idx >= 0 and not (target is src and zone == _DZ.CENTER):
+            work.perform_drop(src, tab_idx, target, zone)
 
     # -- paint ---------------------------------------------------------------
 
@@ -296,23 +303,24 @@ class _TabStrip(QWidget):
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         r = self.rect()
         pal = self.palette()
-        bg   = pal.color(pal.ColorRole.Window)
+        bg = pal.color(pal.ColorRole.Window)
         base = pal.color(pal.ColorRole.Base)
         text = pal.color(pal.ColorRole.WindowText)
-        dim  = pal.color(pal.ColorRole.PlaceholderText)
-        hi   = pal.color(pal.ColorRole.Highlight)
+        dim = pal.color(pal.ColorRole.PlaceholderText)
+        hi = pal.color(pal.ColorRole.Highlight)
         p.fillRect(r, bg)
         tab_rects = self._tab_rects()
-        for i, (title, tr) in enumerate(zip(self._tabs, tab_rects)):
-            active  = i == self._current
+        for i, (title, tr) in enumerate(zip(self._tabs, tab_rects, strict=False)):
+            active = i == self._current
             hovered = i == self._hovered and not active
-            show_x  = active or hovered
+            show_x = active or hovered
             if active:
                 p.fillRect(tr, base)
                 p.fillRect(QRect(tr.x(), 0, tr.width(), 2), hi)
                 p.setPen(text)
             elif hovered:
-                hover_bg = base; hover_bg.setAlpha(180)
+                hover_bg = base
+                hover_bg.setAlpha(180)
                 p.fillRect(tr, hover_bg)
                 p.setPen(text)
             else:

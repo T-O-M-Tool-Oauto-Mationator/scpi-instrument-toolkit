@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 import contextlib
-import re
 from typing import Any
 
-from PySide6.QtCore import Qt, Signal, Slot
+from PySide6.QtCore import Qt, Slot
 from PySide6.QtWidgets import (
     QFrame,
     QGroupBox,
@@ -16,8 +15,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ..core.helpers import _CH_ACCENTS, _NumSpin, _mono
 from ..core.dispatcher import _Dispatcher
+from ..core.helpers import _CH_ACCENTS, _mono, _NumSpin
 
 
 class _PSUChannel(QGroupBox):
@@ -52,13 +51,10 @@ class _PSUChannel(QGroupBox):
         meas = QHBoxLayout()
         meas.setSpacing(5)
 
-        for attr, unit, color in [("v_display", "V", "#1e7a1e"), ("i_display", "A", "#c45c00")]:
+        for attr, _unit, color in [("v_display", "V", "#1e7a1e"), ("i_display", "A", "#c45c00")]:
             disp = QLabel("0.000")
             disp.setFont(_mono(18))
-            disp.setStyleSheet(
-                f"color: {color}; border-radius: 5px; "
-                f"padding: 4px 8px"
-            )
+            disp.setStyleSheet(f"color: {color}; border-radius: 5px; padding: 4px 8px")
             disp.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             disp.setMinimumHeight(42)
             setattr(self, attr, disp)
@@ -95,7 +91,7 @@ class _PSUChannel(QGroupBox):
         sp_row.addWidget(self.apply_btn)
         layout.addLayout(sp_row)
 
-        self.toggle_btn = QPushButton("○  OUTPUT OFF")
+        self.toggle_btn = QPushButton("\u25cb  OUTPUT OFF")
         self.toggle_btn.setCheckable(True)
         self.toggle_btn.setMinimumHeight(32)
         self._set_toggle_style(False)
@@ -120,9 +116,7 @@ class _PSUChannel(QGroupBox):
         self.v_lim_spin.setSuffix(" V")
         self.v_lim_spin.setValue(self._max_v)
         self.v_lim_spin.setMinimumWidth(84)
-        self.v_lim_spin.setStyleSheet(
-            "QDoubleSpinBox { font-size: 11px; }"
-        )
+        self.v_lim_spin.setStyleSheet("QDoubleSpinBox { font-size: 11px; }")
         lim_row.addWidget(self.v_lim_spin, 1)
 
         self.i_lim_spin = _NumSpin()
@@ -132,12 +126,10 @@ class _PSUChannel(QGroupBox):
         self.i_lim_spin.setSuffix(" A")
         self.i_lim_spin.setValue(self._max_i)
         self.i_lim_spin.setMinimumWidth(84)
-        self.i_lim_spin.setStyleSheet(
-            "QDoubleSpinBox { font-size: 11px; }"
-        )
+        self.i_lim_spin.setStyleSheet("QDoubleSpinBox { font-size: 11px; }")
         lim_row.addWidget(self.i_lim_spin, 1)
 
-        self.set_lim_btn = QPushButton("✓")
+        self.set_lim_btn = QPushButton("\u2713")
         self.set_lim_btn.setFixedWidth(28)
         self._lim_state = "idle"
         self._set_lim_state("idle")
@@ -154,15 +146,13 @@ class _PSUChannel(QGroupBox):
     def _set_lim_state(self, state: str) -> None:
         self._lim_state = state
         if state == "active":
-            # Green: limit is confirmed and active
-            self.set_lim_btn.setText("✓")
+            self.set_lim_btn.setText("\u2713")
             self.set_lim_btn.setStyleSheet(
                 "QPushButton { border: 2px solid #28a745; color: #a6e3a1; border-radius: 4px; "
                 "padding: 3px; background: #d4edda; font-weight: bold; }"
                 "QPushButton:hover { background: #28a745; color: white; }"
             )
         elif state == "pending":
-            # Amber: value changed but not yet applied
             self.set_lim_btn.setText("!")
             self.set_lim_btn.setStyleSheet(
                 "QPushButton { border: 2px solid orange; color: darkorange; border-radius: 4px; "
@@ -170,8 +160,7 @@ class _PSUChannel(QGroupBox):
                 "QPushButton:hover { background: orange; color: white; }"
             )
         else:
-            # Idle: no active limit constraint
-            self.set_lim_btn.setText("✓")
+            self.set_lim_btn.setText("\u2713")
             self.set_lim_btn.setStyleSheet(
                 "QPushButton { border: 1px solid #aaa; border-radius: 4px; padding: 3px; }"
                 "QPushButton:hover { background: #ddd; }"
@@ -179,40 +168,36 @@ class _PSUChannel(QGroupBox):
 
     def _set_toggle_style(self, on: bool) -> None:
         if on:
-            self.toggle_btn.setText("●  OUTPUT ON")
+            self.toggle_btn.setText("\u25cf  OUTPUT ON")
             self.toggle_btn.setStyleSheet(
                 "QPushButton { background: #d4edda; color: #155724; font-weight: bold; "
                 "border-radius: 4px; border: 2px solid #28a745; padding: 6px; font-size: 11px; }"
                 "QPushButton:hover { background: #28a745; color: white; }"
             )
         else:
-            self.toggle_btn.setText("○  OUTPUT OFF")
+            self.toggle_btn.setText("\u25cb  OUTPUT OFF")
             self.toggle_btn.setStyleSheet(
                 "QPushButton { background: transparent; color: #c0392b; font-weight: bold; "
                 "border-radius: 4px; border: 2px solid #c0392b88; padding: 6px; font-size: 11px; }"
                 "QPushButton:hover { background: #c0392b; color: white; }"
             )
 
-    def _read_v_i(self, dev: Any, ch_key: str | None) -> tuple[float, float]:
-        # Select channel once, then read both V and I without re-selecting
-        if ch_key and hasattr(dev, "select_channel"):
-            dev.select_channel(ch_key)
-        v = dev.get_voltage_setpoint()
-        i = dev.get_current_limit()
-        return v, i
+    def sync_from_device(self, dev: Any, output_state: bool | None, ch_key: str | None) -> None:
+        """Read device state and update UI displays. All reads wrapped in try/except."""
+        try:
+            if ch_key and hasattr(dev, "select_channel"):
+                dev.select_channel(ch_key)
+            v = dev.get_voltage_setpoint()
+            i = dev.get_current_limit()
+        except Exception:
+            return  # device busy or errored — skip this poll
 
-    def init_from_device(self, dev: Any, ch_key: str | None = None) -> None:
-        v, i = self._read_v_i(dev, ch_key)
-        self.v_spin.blockSignals(True)
-        self.v_spin.setValue(v)
-        self.v_spin.blockSignals(False)
-        self.i_spin.blockSignals(True)
-        self.i_spin.setValue(i)
-        self.i_spin.blockSignals(False)
-
-    def sync_from_device(self, dev: Any, output_state: bool | None = None, ch_key: str | None = None) -> None:
-        v, i = self._read_v_i(dev, ch_key)
-        on = output_state if output_state is not None else dev.get_output_state()
+        on = output_state if output_state is not None else False
+        try:
+            if output_state is None:
+                on = dev.get_output_state()
+        except Exception:
+            pass
 
         v_w = len(str(int(self._max_v))) + 4
         i_w = len(str(int(self._max_i))) + 5
@@ -224,14 +209,8 @@ class _PSUChannel(QGroupBox):
 
         v_color = "#f38ba8" if v_over else "#1e7a1e"
         i_color = "#c0392b" if i_over else "#c45c00"
-        self.v_display.setStyleSheet(
-            f"color: {v_color}; border-radius: 5px; "
-            f"padding: 4px 8px"
-        )
-        self.i_display.setStyleSheet(
-            f"color: {i_color}; border-radius: 5px; "
-            f"padding: 4px 8px"
-        )
+        self.v_display.setStyleSheet(f"color: {v_color}; border-radius: 5px; padding: 4px 8px")
+        self.i_display.setStyleSheet(f"color: {i_color}; border-radius: 5px; padding: 4px 8px")
         self.v_display.setText(f"{v:{v_w}.3f} V")
         self.i_display.setText(f"{i:{i_w}.4f} A")
 
@@ -242,7 +221,12 @@ class _PSUChannel(QGroupBox):
 
 
 class _PSUBlock(QFrame):
-    """Self-contained card for one PSU device."""
+    """Self-contained card for one PSU device.
+
+    All writes route through self._d.run() so they go through the REPL
+    command handler with its safety checks.  Reads (polling) call device
+    methods directly for structured data.
+    """
 
     def __init__(self, d: _Dispatcher, name: str, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -252,24 +236,29 @@ class _PSUBlock(QFrame):
         self._ch_output: dict[int, bool] = {}
         self._ch_keys: dict[int, str | None] = {}
         self.setObjectName("psublock")
-        self.setStyleSheet(
-            "#psublock { border: 1px solid #ccc; border-radius: 10px; }"
-        )
+        self.setStyleSheet("#psublock { border: 1px solid #ccc; border-radius: 10px; }")
         self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
         self._build()
         self._rebuild()
         self._init_channels()
-        self._poll()
+        # NOTE: do NOT call _poll() here — device may still be busy from scan
 
     def _con(self):
-        from ..widgets.console import _Console
 
         w = self.parent()
         while w is not None:
             if hasattr(w, "_console"):
-                return w._console  # type: ignore[attr-defined]
+                return w._console
             w = w.parent()
         return None
+
+    def _run(self, cmd: str) -> str:
+        """Execute a REPL command through the dispatcher (unified safety path)."""
+        result = self._d.run(f"use {self._psu}\n{cmd}")
+        con = self._con()
+        if con:
+            con.log_action(f"{self._psu}: {cmd}", result.strip() if result.strip() else "OK")
+        return result
 
     def _build(self) -> None:
         outer = QVBoxLayout(self)
@@ -277,9 +266,7 @@ class _PSUBlock(QFrame):
         outer.setSpacing(0)
 
         hdr = QFrame()
-        hdr.setStyleSheet(
-            "QFrame { border-bottom: 1px solid #ccc; border-radius: 0; }"
-        )
+        hdr.setStyleSheet("QFrame { border-bottom: 1px solid #ccc; border-radius: 0; }")
         hdr_lay = QHBoxLayout(hdr)
         hdr_lay.setContentsMargins(14, 9, 14, 9)
         hdr_lay.setSpacing(8)
@@ -300,13 +287,11 @@ class _PSUBlock(QFrame):
         outer.addWidget(hdr)
 
         body = QWidget()
-
         body_lay = QVBoxLayout(body)
         body_lay.setContentsMargins(10, 10, 10, 6)
         body_lay.setSpacing(8)
 
         self._ch_row_w = QWidget()
-
         self._ch_row_lay = QHBoxLayout(self._ch_row_w)
         self._ch_row_lay.setContentsMargins(0, 0, 0, 0)
         self._ch_row_lay.setSpacing(8)
@@ -402,17 +387,9 @@ class _PSUBlock(QFrame):
         dev = self._d.device(self._psu)
         if not dev:
             return
-        multi = self._d.has_cap(self._psu, "multi_channel")
-        if multi:
-            self._ch_output = {num: False for num in self._chs}
-        else:
-            state = dev.get_output_state()
-            self._ch_output = {num: state for num in self._chs}
-
+        self._ch_output = {num: False for num in self._chs}
         ctx_limits = self._d._repl.ctx.safety_limits
         for num, w in self._chs.items():
-            ch_key = self._ch_keys.get(num)
-            w.init_from_device(dev, ch_key)
             saved = ctx_limits.get((self._psu, num), {})
             if "voltage_upper" in saved:
                 w.v_lim_spin.blockSignals(True)
@@ -429,13 +406,10 @@ class _PSUBlock(QFrame):
         if not dev:
             return
         multi = self._d.has_cap(self._psu, "multi_channel")
-        # Read output state once (global on most multi-channel PSUs)
         global_state: bool | None = None
         if multi:
-            try:
+            with contextlib.suppress(Exception):
                 global_state = dev.get_output_state()
-            except Exception:
-                global_state = None
         for ch_num, w in self._chs.items():
             ch_key = self._ch_keys.get(ch_num)
             state = global_state if multi else None
@@ -443,42 +417,18 @@ class _PSUBlock(QFrame):
                 self._ch_output[ch_num] = state
             w.sync_from_device(dev, state, ch_key)
 
+    # -- Writes: all routed through REPL for unified safety --------------------
+
     def _apply(self, ch_num: int) -> None:
-        dev = self._d.device(self._psu)
         w = self._chs.get(ch_num)
-        if not dev or not w:
+        if not w:
             return
         v, i = w.v_spin.value(), w.i_spin.value()
-        v_lim, i_lim = w.v_lim_spin.value(), w.i_lim_spin.value()
-
-        if v > v_lim + 1e-9:
-            self._status.setText(f"BLOCKED: {v}V > limit {v_lim}V")
-            self._status.setStyleSheet("color: #c0392b; font-size: 10px; font-weight: bold;")
-            con = self._con()
-            if con:
-                con.log_action(f"{self._psu} ch{ch_num}", f"[BLOCKED] {v}V > limit {v_lim}V")
-            return
-        if i > i_lim + 1e-9:
-            self._status.setText(f"BLOCKED: {i}A > limit {i_lim}A")
-            self._status.setStyleSheet("color: #c0392b; font-size: 10px; font-weight: bold;")
-            con = self._con()
-            if con:
-                con.log_action(f"{self._psu} ch{ch_num}", f"[BLOCKED] {i}A > limit {i_lim}A")
-            return
-
         multi = self._d.has_cap(self._psu, "multi_channel")
         if multi:
-            key = self._ch_keys.get(ch_num) or str(ch_num)
-            dev.set_output_channel(key, v, i)
-            cmd = f"{self._psu} set {ch_num} {v} {i}"
+            self._run(f"psu set {ch_num} {v} {i}")
         else:
-            dev.set_voltage(v)
-            dev.set_current_limit(i)
-            cmd = f"{self._psu} set {v} {i}"
-
-        con = self._con()
-        if con:
-            con.log_action(cmd, f"Set: {v}V @ {i}A")
+            self._run(f"psu set {v} {i}")
         self._status.setText(f"Applied: {v}V @ {i}A")
         self._status.setStyleSheet("color: #155724; font-size: 10px;")
         self._poll()
@@ -488,74 +438,47 @@ class _PSUBlock(QFrame):
         if not w:
             return
         v_lim, i_lim = w.v_lim_spin.value(), w.i_lim_spin.value()
+        multi = self._d.has_cap(self._psu, "multi_channel")
+        if multi:
+            self._run(f"upper_limit {self._psu} chan {ch_num} voltage {v_lim}")
+            self._run(f"upper_limit {self._psu} chan {ch_num} current {i_lim}")
+        else:
+            self._run(f"upper_limit {self._psu} voltage {v_lim}")
+            self._run(f"upper_limit {self._psu} current {i_lim}")
         w.v_spin.setMaximum(v_lim)
         w.i_spin.setMaximum(i_lim)
-        self._d._repl.ctx.safety_limits[(self._psu, ch_num)] = {
-            "voltage_upper": v_lim,
-            "current_upper": i_lim,
-        }
         w._set_lim_state("active")
         self._status.setText(f"CH{ch_num} limits: \u2264{v_lim}V / \u2264{i_lim}A")
         self._status.setStyleSheet("color: darkorange; font-size: 10px;")
-        con = self._con()
-        if con:
-            con.log_action(f"limit {self._psu} ch{ch_num} {v_lim}V {i_lim}A", "Safety limits set")
 
     def _output(self, ch_num: int, on: bool) -> None:
-        dev = self._d.device(self._psu)
-        if not dev:
-            return
         multi = self._d.has_cap(self._psu, "multi_channel")
-        if multi and hasattr(dev, "select_channel"):
-            key = self._ch_keys.get(ch_num)
-            if key:
-                dev.select_channel(key)
-        dev.enable_output(on)
-        self._ch_output[ch_num] = on
-        cmd = f"{self._psu} chan {ch_num} {'on' if on else 'off'}"
-        con = self._con()
-        if con:
-            con.log_action(cmd, f"Output {'enabled' if on else 'disabled'}")
+        state = "on" if on else "off"
+        if multi:
+            self._run(f"psu chan {ch_num} {state}")
+        else:
+            self._run(f"psu chan {state}")
         self._poll()
 
     @Slot()
     def _all_on(self) -> None:
-        dev = self._d.device(self._psu)
-        if dev:
-            dev.enable_output(True)
-            for num in self._chs:
-                self._ch_output[num] = True
-            con = self._con()
-            if con:
-                con.log_action(f"{self._psu} on", "All outputs ON")
-            self._poll()
+        self._run("psu on")
+        self._poll()
 
     @Slot()
     def _all_off(self) -> None:
-        dev = self._d.device(self._psu)
-        if dev:
-            dev.enable_output(False)
-            for num in self._chs:
-                self._ch_output[num] = False
-            con = self._con()
-            if con:
-                con.log_action(f"{self._psu} off", "All outputs OFF")
-            self._poll()
+        self._run("psu off")
+        self._poll()
 
     @Slot(bool)
     def _on_track(self, on: bool) -> None:
-        dev = self._d.device(self._psu)
-        if dev and hasattr(dev, "set_tracking"):
-            dev.set_tracking(on)
-            self._track_btn.setText(f"Track: {'ON' if on else 'OFF'}")
+        self._run(f"psu track {'on' if on else 'off'}")
+        self._track_btn.setText(f"Track: {'ON' if on else 'OFF'}")
+        self._poll()
 
     def _save_recall(self, action: str) -> None:
-        dev = self._d.device(self._psu)
-        if dev:
-            (dev.save_state if action == "save" else dev.recall_state)(1)
-            con = self._con()
-            if con:
-                con.log_action(f"{self._psu} {action} 1")
+        self._run(f"psu {action} 1")
+        self._poll()
 
     def stop(self) -> None:
-        pass  # no-op: no timer to stop
+        pass

@@ -5,13 +5,15 @@ import contextlib
 import io
 import re
 import signal
+import threading
 from typing import Any
+
+from lab_instruments.repl.capabilities import Capability
+from lab_instruments.repl.shell import InstrumentRepl
 
 
 class _Dispatcher:
     def __init__(self, mock: bool = False) -> None:
-        from lab_instruments.repl.shell import InstrumentRepl
-
         saved_int = signal.getsignal(signal.SIGINT)
         saved_term = signal.getsignal(signal.SIGTERM) if hasattr(signal, "SIGTERM") else None
 
@@ -23,6 +25,7 @@ class _Dispatcher:
             _disc.InstrumentDiscovery.scan = lambda self, verbose=True: mock_instruments.get_mock_devices(verbose)
 
         self._repl = InstrumentRepl(auto_scan=False)
+        self._lock = threading.Lock()
 
         signal.signal(signal.SIGINT, saved_int)
         if saved_term is not None:
@@ -37,13 +40,18 @@ class _Dispatcher:
             self.run("scan")
 
     def run(self, command: str) -> str:
-        buf = io.StringIO()
-        old_repl_stdout = self._repl.stdout
-        self._repl.stdout = buf
-        with contextlib.redirect_stdout(buf):
-            self._repl.onecmd(command)
-        self._repl.stdout = old_repl_stdout
-        return buf.getvalue()
+        """Execute a REPL command. Thread-safe via lock."""
+        with self._lock:
+            buf = io.StringIO()
+            old_repl_stdout = self._repl.stdout
+            self._repl.stdout = buf
+            with contextlib.redirect_stdout(buf):
+                for line in command.split("\n"):
+                    line = line.strip()
+                    if line:
+                        self._repl.onecmd(line)
+            self._repl.stdout = old_repl_stdout
+            return buf.getvalue()
 
     @property
     def registry(self):
@@ -60,8 +68,6 @@ class _Dispatcher:
         return result
 
     def has_cap(self, name: str, cap_name: str) -> bool:
-        from lab_instruments.repl.capabilities import Capability
-
         cap_map = {
             "multi_channel": Capability.PSU_MULTI_CHANNEL,
             "readback": Capability.PSU_READBACK,

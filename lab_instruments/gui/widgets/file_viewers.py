@@ -6,15 +6,15 @@ import csv
 import os
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont, QPixmap
+from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
+    QPlainTextEdit,
     QPushButton,
     QScrollArea,
     QTableWidget,
     QTableWidgetItem,
-    QPlainTextEdit,
     QVBoxLayout,
     QWidget,
 )
@@ -57,7 +57,9 @@ class ImageViewer(QWidget):
 
         self._pixmap = QPixmap(file_path)
         if not self._pixmap.isNull():
-            self._info.setText(f"{self._pixmap.width()}x{self._pixmap.height()}  {os.path.getsize(file_path) // 1024} KB")
+            self._info.setText(
+                f"{self._pixmap.width()}x{self._pixmap.height()}  {os.path.getsize(file_path) // 1024} KB"
+            )
             self._label.setPixmap(self._pixmap)
             self._label.resize(self._pixmap.size())
 

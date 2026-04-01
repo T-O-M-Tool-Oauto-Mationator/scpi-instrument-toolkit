@@ -6,57 +6,163 @@ from __future__ import annotations
 import os
 import re
 
-from PySide6.QtCore import QFileSystemWatcher, QRect, QSize, QStringListModel, QTimer, Qt, Signal
-from PySide6.QtGui import QColor, QFont, QPainter, QSyntaxHighlighter, QTextBlockUserData, QTextCharFormat, QTextCursor, QTextDocument
-from PySide6.QtWidgets import QCompleter, QHBoxLayout, QLabel, QPlainTextEdit, QPushButton, QVBoxLayout, QWidget
+from PySide6.QtCore import QFileSystemWatcher, QRect, QSize, Qt, QTimer, Signal
+from PySide6.QtGui import (
+    QColor,
+    QFont,
+    QPainter,
+    QSyntaxHighlighter,
+    QTextCharFormat,
+    QTextCursor,
+    QTextDocument,
+)
+from PySide6.QtWidgets import (
+    QCompleter,
+    QHBoxLayout,
+    QInputDialog,
+    QLabel,
+    QPlainTextEdit,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
 
-from ..core.helpers import _mono
-
+from ..core.helpers import _ansi_to_html, _mono
 
 # -- Syntax highlighter ------------------------------------------------------
 
 _KEYWORDS = {
-    "set", "for", "end", "repeat", "call", "import", "export", "array",
-    "breakpoint", "sleep", "print", "use", "if", "else", "linspace",
-    "upper_limit", "lower_limit", "record", "script", "examples", "python",
+    "set",
+    "for",
+    "end",
+    "repeat",
+    "call",
+    "import",
+    "export",
+    "array",
+    "breakpoint",
+    "sleep",
+    "print",
+    "use",
+    "if",
+    "else",
+    "linspace",
+    "upper_limit",
+    "lower_limit",
+    "record",
+    "script",
+    "examples",
+    "python",
 }
 
-_DEVICE_CMDS = {"psu", "psu1", "psu2", "psu3", "awg", "awg1", "awg2", "awg3",
-                "dmm", "dmm1", "dmm2", "dmm3", "smu", "scope", "scope1", "scope2", "scope3",
-                "ev2300", "scan", "state", "help"}
+_DEVICE_CMDS = {
+    "psu",
+    "psu1",
+    "psu2",
+    "psu3",
+    "awg",
+    "awg1",
+    "awg2",
+    "awg3",
+    "dmm",
+    "dmm1",
+    "dmm2",
+    "dmm3",
+    "smu",
+    "scope",
+    "scope1",
+    "scope2",
+    "scope3",
+    "ev2300",
+    "scan",
+    "state",
+    "help",
+}
 
 # IntelliSense completion words
-_COMPLETION_WORDS = sorted(set(
-    list(_KEYWORDS) + list(_DEVICE_CMDS) + [
-        # PSU sub-commands
-        "psu on", "psu off", "psu set", "psu meas", "psu get", "psu chan",
-        "psu track", "psu save", "psu recall", "psu state",
-        "set_voltage", "set_current_limit", "measure_voltage", "measure_current",
-        "enable_output", "select_channel", "get_output_state",
-        # AWG sub-commands
-        "awg on", "awg off", "awg chan", "awg set_frequency", "awg set_amplitude",
-        "awg set_offset", "awg set_function",
-        # DMM sub-commands
-        "dmm read", "dmm mode", "dmm dc_voltage", "dmm ac_voltage",
-        "dmm dc_current", "dmm ac_current", "dmm resistance",
-        "dmm frequency", "dmm continuity", "dmm diode",
-        # Scope sub-commands
-        "scope run", "scope stop", "scope single", "scope autoset",
-        "scope chan", "scope trigger",
-        # SMU sub-commands
-        "smu mode", "smu set_voltage", "smu set_current",
-        "smu output", "smu voltage", "smu current",
-        # EV2300 sub-commands
-        "ev2300 info", "ev2300 read_word", "ev2300 write_word",
-        "ev2300 read_byte", "ev2300 write_byte", "ev2300 read_block",
-        "ev2300 write_block", "ev2300 scan", "ev2300 state",
-        # Script directives
-        "breakpoint", "sleep", "print", "use", "record",
-        "upper_limit", "lower_limit", "linspace",
-        # State commands
-        "state on", "state off", "state safe", "state reset",
-    ]
-))
+_COMPLETION_WORDS = sorted(
+    set(
+        list(_KEYWORDS)
+        + list(_DEVICE_CMDS)
+        + [
+            # PSU sub-commands
+            "psu on",
+            "psu off",
+            "psu set",
+            "psu meas",
+            "psu get",
+            "psu chan",
+            "psu track",
+            "psu save",
+            "psu recall",
+            "psu state",
+            "set_voltage",
+            "set_current_limit",
+            "measure_voltage",
+            "measure_current",
+            "enable_output",
+            "select_channel",
+            "get_output_state",
+            # AWG sub-commands
+            "awg on",
+            "awg off",
+            "awg chan",
+            "awg set_frequency",
+            "awg set_amplitude",
+            "awg set_offset",
+            "awg set_function",
+            # DMM sub-commands
+            "dmm read",
+            "dmm mode",
+            "dmm dc_voltage",
+            "dmm ac_voltage",
+            "dmm dc_current",
+            "dmm ac_current",
+            "dmm resistance",
+            "dmm frequency",
+            "dmm continuity",
+            "dmm diode",
+            # Scope sub-commands
+            "scope run",
+            "scope stop",
+            "scope single",
+            "scope autoset",
+            "scope chan",
+            "scope trigger",
+            # SMU sub-commands
+            "smu mode",
+            "smu set_voltage",
+            "smu set_current",
+            "smu output",
+            "smu voltage",
+            "smu current",
+            # EV2300 sub-commands
+            "ev2300 info",
+            "ev2300 read_word",
+            "ev2300 write_word",
+            "ev2300 read_byte",
+            "ev2300 write_byte",
+            "ev2300 read_block",
+            "ev2300 write_block",
+            "ev2300 scan",
+            "ev2300 state",
+            # Script directives
+            "breakpoint",
+            "sleep",
+            "print",
+            "use",
+            "record",
+            "upper_limit",
+            "lower_limit",
+            "linspace",
+            # State commands
+            "state on",
+            "state off",
+            "state safe",
+            "state reset",
+        ]
+    )
+)
 
 
 class _ScpiHighlighter(QSyntaxHighlighter):
@@ -151,17 +257,20 @@ class _CodeEditor(QPlainTextEdit):
 
     def keyPressEvent(self, event) -> None:  # noqa: N802
         # Let completer handle its keys when popup is visible
-        if self._completer.popup().isVisible():
-            if event.key() in (Qt.Key.Key_Enter, Qt.Key.Key_Return, Qt.Key.Key_Tab,
-                               Qt.Key.Key_Escape):
-                event.ignore()
-                return
+        if self._completer.popup().isVisible() and event.key() in (
+            Qt.Key.Key_Enter,
+            Qt.Key.Key_Return,
+            Qt.Key.Key_Tab,
+            Qt.Key.Key_Escape,
+        ):
+            event.ignore()
+            return
 
         super().keyPressEvent(event)
 
         # Only complete the first word on the line (command position)
         tc = self.textCursor()
-        line_text = tc.block().text()[:tc.positionInBlock()]
+        line_text = tc.block().text()[: tc.positionInBlock()]
         # If there's already a space before cursor, don't complete
         # (user is typing arguments, not a command)
         if " " in line_text.strip():
@@ -179,8 +288,14 @@ class _CodeEditor(QPlainTextEdit):
             self._completer.popup().setCurrentIndex(self._completer.completionModel().index(0, 0))
 
         cr = self.cursorRect()
-        cr.setWidth(max(300, self._completer.popup().sizeHintForColumn(0)
-                    + self._completer.popup().verticalScrollBar().sizeHint().width() + 20))
+        cr.setWidth(
+            max(
+                300,
+                self._completer.popup().sizeHintForColumn(0)
+                + self._completer.popup().verticalScrollBar().sizeHint().width()
+                + 20,
+            )
+        )
         self._completer.complete(cr)
 
     def line_number_width(self) -> int:
@@ -218,7 +333,6 @@ class _CodeEditor(QPlainTextEdit):
 
     def _toggle_breakpoint_at_y(self, y: int) -> None:
         block = self.firstVisibleBlock()
-        top = int(self.blockBoundingGeometry(block).translated(self.contentOffset()).top())
         while block.isValid():
             btop = int(self.blockBoundingGeometry(block).translated(self.contentOffset()).top())
             bbot = btop + int(self.blockBoundingRect(block).height())
@@ -268,8 +382,7 @@ class _CodeEditor(QPlainTextEdit):
                     painter.setPen(current_color)
                 else:
                     painter.setPen(text_color)
-                painter.drawText(0, top, self._line_area.width() - 4, fh,
-                                 Qt.AlignmentFlag.AlignRight, str(line_num))
+                painter.drawText(0, top, self._line_area.width() - 4, fh, Qt.AlignmentFlag.AlignRight, str(line_num))
 
             block = block.next()
             top = bottom
@@ -606,7 +719,6 @@ class ScpiEditor(QWidget):
         """Jump to a specific line."""
         if not self._debug_state:
             return
-        from PySide6.QtWidgets import QInputDialog
         total = len(self._debug_state["lines"])
         line, ok = QInputDialog.getInt(self, "Go to Line", f"Line number (1-{total}):", 1, 1, total)
         if ok:
@@ -621,7 +733,6 @@ class ScpiEditor(QWidget):
             if hasattr(w, "_d"):
                 output = w._d.run(line)
                 if output.strip() and hasattr(w, "_console"):
-                    from ..core.helpers import _ansi_to_html
                     w._console.log(_ansi_to_html(output))
                 return
             if hasattr(w, "_console"):
