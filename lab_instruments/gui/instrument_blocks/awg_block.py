@@ -52,30 +52,22 @@ class _AWGChannel(QGroupBox):
         layout.setSpacing(5)
         layout.setContentsMargins(8, 8, 8, 8)
 
-        # Display row: frequency + amplitude
         meas = QHBoxLayout()
         meas.setSpacing(5)
         self.freq_display = QLabel("10000.000 Hz")
         self.freq_display.setFont(_mono(18))
-        self.freq_display.setStyleSheet(
-            "color: #1e7a1e; border-radius: 5px; "
-            "padding: 4px 8px"
-        )
+        self.freq_display.setStyleSheet("color: #1e7a1e; border-radius: 5px; padding: 4px 8px")
         self.freq_display.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         self.freq_display.setMinimumHeight(42)
         meas.addWidget(self.freq_display, 2)
         self.amp_display = QLabel("5.0000 Vpp")
         self.amp_display.setFont(_mono(18))
-        self.amp_display.setStyleSheet(
-            "color: #c45c00; border-radius: 5px; "
-            "padding: 4px 8px"
-        )
+        self.amp_display.setStyleSheet("color: #c45c00; border-radius: 5px; padding: 4px 8px")
         self.amp_display.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         self.amp_display.setMinimumHeight(42)
         meas.addWidget(self.amp_display, 1)
         layout.addLayout(meas)
 
-        # Control row: waveform + freq + amp + Apply
         ctrl = QHBoxLayout()
         ctrl.setSpacing(4)
         self.wave_combo = QComboBox()
@@ -105,19 +97,16 @@ class _AWGChannel(QGroupBox):
         ctrl.addWidget(self.apply_btn)
         layout.addLayout(ctrl)
 
-        # Toggle
-        self.toggle_btn = QPushButton(f"○  CH{self.channel} OFF")
+        self.toggle_btn = QPushButton(f"\u25cb  CH{self.channel} OFF")
         self.toggle_btn.setCheckable(True)
         self.toggle_btn.setMinimumHeight(32)
         self._set_toggle_style(False)
         layout.addWidget(self.toggle_btn)
 
-        # Separator
         sep = QFrame()
         sep.setFrameShape(QFrame.Shape.HLine)
         layout.addWidget(sep)
 
-        # Offset row (secondary param, styled like PSU limits row)
         off_row = QHBoxLayout()
         off_row.setSpacing(4)
         off_lbl = QLabel("Offset")
@@ -128,23 +117,21 @@ class _AWGChannel(QGroupBox):
         self.offset_spin.setDecimals(4)
         self.offset_spin.setSuffix(" V")
         self.offset_spin.setMinimumWidth(88)
-        self.offset_spin.setStyleSheet(
-            "QDoubleSpinBox { font-size: 11px; }"
-        )
+        self.offset_spin.setStyleSheet("QDoubleSpinBox { font-size: 11px; }")
         off_row.addWidget(self.offset_spin)
         off_row.addStretch()
         layout.addLayout(off_row)
 
     def _set_toggle_style(self, on: bool) -> None:
         if on:
-            self.toggle_btn.setText(f"●  CH{self.channel} ON")
+            self.toggle_btn.setText(f"\u25cf  CH{self.channel} ON")
             self.toggle_btn.setStyleSheet(
                 "QPushButton { background: #d4edda; color: #155724; font-weight: bold; "
                 "border-radius: 4px; border: 2px solid #28a745; padding: 6px; font-size: 11px; }"
                 "QPushButton:hover { background: #28a745; color: white; }"
             )
         else:
-            self.toggle_btn.setText(f"○  CH{self.channel} OFF")
+            self.toggle_btn.setText(f"\u25cb  CH{self.channel} OFF")
             self.toggle_btn.setStyleSheet(
                 "QPushButton { background: transparent; color: #c0392b; font-weight: bold; "
                 "border-radius: 4px; border: 2px solid #c0392b88; padding: 6px; font-size: 11px; }"
@@ -184,7 +171,11 @@ class _AWGChannel(QGroupBox):
 
 
 class _AWGBlock(QFrame):
-    """Self-contained card for one AWG device."""
+    """Self-contained card for one AWG device.
+
+    All writes route through self._run() -> REPL command handler.
+    Reads (polling) call device methods directly.
+    """
 
     def __init__(self, d: _Dispatcher, name: str, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -192,33 +183,33 @@ class _AWGBlock(QFrame):
         self._awg = name
         self._chs: dict[int, _AWGChannel] = {}
         self.setObjectName("awgblock")
-        self.setStyleSheet(
-            "#awgblock { border: 1px solid #ccc; border-radius: 10px; }"
-        )
+        self.setStyleSheet("#awgblock { border: 1px solid #ccc; border-radius: 10px; }")
         self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
         self._build()
-        self._poll()
 
     def _con(self):
         from ..widgets.console import _Console
-
         w = self.parent()
         while w is not None:
             if hasattr(w, "_console"):
-                return w._console  # type: ignore[attr-defined]
+                return w._console
             w = w.parent()
         return None
+
+    def _run(self, cmd: str) -> str:
+        result = self._d.run(f"use {self._awg}\n{cmd}")
+        con = self._con()
+        if con:
+            con.log_action(f"{self._awg}: {cmd}", result.strip() if result.strip() else "OK")
+        return result
 
     def _build(self) -> None:
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
         outer.setSpacing(0)
 
-        # Header
         hdr = QFrame()
-        hdr.setStyleSheet(
-            "QFrame { border-bottom: 1px solid #ccc; border-radius: 0; }"
-        )
+        hdr.setStyleSheet("QFrame { border-bottom: 1px solid #ccc; border-radius: 0; }")
         hdr_lay = QHBoxLayout(hdr)
         hdr_lay.setContentsMargins(14, 9, 14, 9)
         hdr_lay.setSpacing(8)
@@ -235,7 +226,6 @@ class _AWGBlock(QFrame):
             hdr_lay.addStretch(1)
         outer.addWidget(hdr)
 
-        # Body
         body = QWidget()
         body_lay = QVBoxLayout(body)
         body_lay.setContentsMargins(10, 10, 10, 6)
@@ -277,73 +267,39 @@ class _AWGBlock(QFrame):
 
         outer.addWidget(body, 1)
 
+    # -- Writes: route through REPL --------------------------------------------
+
     def _apply(self, ch: int) -> None:
-        dev = self._d.device(self._awg)
         w = self._chs.get(ch)
-        if not dev or not w:
+        if not w:
             return
-        wave = w.wave_combo.currentText()
+        wave = w.wave_combo.currentText().lower()
         freq = w.freq_spin.value()
         amp = w.amp_spin.value()
         offset = w.offset_spin.value()
-        try:
-            dev.set_waveform(ch, wave)
-            dev.set_frequency(ch, freq)
-            dev.set_amplitude(ch, amp)
-            dev.set_offset(ch, offset)
-            msg = f"CH{ch}: {wave} {freq:.1f}Hz {amp:.4f}Vpp offset={offset:.4f}V"
-            self._status.setText(msg)
-            self._status.setStyleSheet("color: #155724; font-size: 10px;")
-            con = self._con()
-            if con:
-                con.log_action(
-                    f"{self._awg} wave {ch} {wave.lower()} freq={freq} amp={amp} offset={offset}", msg
-                )
-            self._poll()
-        except Exception as exc:
-            self._status.setText(str(exc))
-            self._status.setStyleSheet("color: #c0392b; font-size: 10px;")
+        self._run(f"awg chan {ch} set_function {wave}")
+        self._run(f"awg chan {ch} set_frequency {freq}")
+        self._run(f"awg chan {ch} set_amplitude {amp}")
+        self._run(f"awg chan {ch} set_offset {offset}")
+        self._status.setText(f"CH{ch}: {wave.upper()} {freq:.1f}Hz {amp:.4f}Vpp")
+        self._status.setStyleSheet("color: #155724; font-size: 10px;")
+        self._poll()
 
     def _output(self, ch: int, on: bool) -> None:
-        dev = self._d.device(self._awg)
-        if not dev:
-            return
-        try:
-            dev.enable_output(ch, on)
-            msg = f"CH{ch}: {'ON' if on else 'OFF'}"
-            self._status.setText(msg)
-            self._status.setStyleSheet("color: #155724; font-size: 10px;")
-            con = self._con()
-            if con:
-                con.log_action(f"{self._awg} chan {ch} {'on' if on else 'off'}", msg)
-            self._poll()
-        except Exception as exc:
-            self._status.setText(str(exc))
-            self._status.setStyleSheet("color: #c0392b; font-size: 10px;")
+        self._run(f"awg chan {ch} {'on' if on else 'off'}")
+        self._poll()
 
     def _all_on(self) -> None:
-        dev = self._d.device(self._awg)
-        if not dev:
-            return
         for ch in self._chs:
-            with contextlib.suppress(Exception):
-                dev.enable_output(ch, True)
-        con = self._con()
-        if con:
-            con.log_action(f"{self._awg} on", "All channels ON")
+            self._run(f"awg chan {ch} on")
         self._poll()
 
     def _all_off(self) -> None:
-        dev = self._d.device(self._awg)
-        if not dev:
-            return
         for ch in self._chs:
-            with contextlib.suppress(Exception):
-                dev.enable_output(ch, False)
-        con = self._con()
-        if con:
-            con.log_action(f"{self._awg} off", "All channels OFF")
+            self._run(f"awg chan {ch} off")
         self._poll()
+
+    # -- Reads (polling) -------------------------------------------------------
 
     @Slot()
     def _poll(self) -> None:

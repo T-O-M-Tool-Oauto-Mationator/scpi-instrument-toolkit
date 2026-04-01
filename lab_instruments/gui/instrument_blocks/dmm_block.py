@@ -50,7 +50,6 @@ class _DMMBlock(QFrame):
         )
         self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
         self._build()
-        self._poll()
 
     def _con(self):
         from ..widgets.console import _Console
