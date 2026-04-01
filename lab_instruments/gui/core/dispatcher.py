@@ -22,7 +22,7 @@ class _Dispatcher:
             _disc.InstrumentDiscovery.__init__ = lambda self: None
             _disc.InstrumentDiscovery.scan = lambda self, verbose=True: mock_instruments.get_mock_devices(verbose)
 
-        self._repl = InstrumentRepl()
+        self._repl = InstrumentRepl(auto_scan=False)
 
         signal.signal(signal.SIGINT, saved_int)
         if saved_term is not None:
@@ -32,9 +32,6 @@ class _Dispatcher:
         self._repl._cleanup_done = True
         self._repl._term_fd = None
         self._repl._term_settings = None
-
-        if hasattr(self._repl, "_scan_done"):
-            self._repl._scan_done.wait(timeout=15)
 
         if mock:
             self.run("scan")

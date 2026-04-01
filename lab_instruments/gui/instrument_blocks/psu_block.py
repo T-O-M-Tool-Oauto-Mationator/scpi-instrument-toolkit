@@ -194,14 +194,11 @@ class _PSUChannel(QGroupBox):
             )
 
     def _read_v_i(self, dev: Any, ch_key: str | None) -> tuple[float, float]:
-        try:
-            v = dev.get_voltage_setpoint(ch_key) if ch_key else dev.get_voltage_setpoint()
-        except TypeError:
-            v = dev.get_voltage_setpoint()
-        try:
-            i = dev.get_current_limit(ch_key) if ch_key else dev.get_current_limit()
-        except TypeError:
-            i = dev.get_current_limit()
+        # Select channel once, then read both V and I without re-selecting
+        if ch_key and hasattr(dev, "select_channel"):
+            dev.select_channel(ch_key)
+        v = dev.get_voltage_setpoint()
+        i = dev.get_current_limit()
         return v, i
 
     def init_from_device(self, dev: Any, ch_key: str | None = None) -> None:
@@ -432,18 +429,18 @@ class _PSUBlock(QFrame):
         if not dev:
             return
         multi = self._d.has_cap(self._psu, "multi_channel")
+        # Read output state once (global on most multi-channel PSUs)
+        global_state: bool | None = None
+        if multi:
+            try:
+                global_state = dev.get_output_state()
+            except Exception:
+                global_state = None
         for ch_num, w in self._chs.items():
             ch_key = self._ch_keys.get(ch_num)
-            state: bool | None = None
-            if multi:
-                try:
-                    # Direct per-channel query -- avoids stateful select_channel side effects
-                    state = dev.get_output_state(ch_key)
-                except TypeError:
-                    # Device doesn't support ch arg -- fall back to cached value
-                    state = self._ch_output.get(ch_num, False)
-                if state is not None:
-                    self._ch_output[ch_num] = state
+            state = global_state if multi else None
+            if state is not None:
+                self._ch_output[ch_num] = state
             w.sync_from_device(dev, state, ch_key)
 
     def _apply(self, ch_num: int) -> None:
@@ -508,11 +505,6 @@ class _PSUBlock(QFrame):
         dev = self._d.device(self._psu)
         if not dev:
             return
-        multi = self._d.has_cap(self._psu, "multi_channel")
-        if multi and hasattr(dev, "select_channel"):
-            key = self._ch_keys.get(ch_num)
-            if key:
-                dev.select_channel(key)
         dev.enable_output(on)
         self._ch_output[ch_num] = on
         cmd = f"{self._psu} chan {ch_num} {'on' if on else 'off'}"

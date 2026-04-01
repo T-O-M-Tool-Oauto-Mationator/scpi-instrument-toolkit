@@ -3,12 +3,13 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QPoint, Qt
 from PySide6.QtWidgets import (
     QApplication,
     QLabel,
     QListWidget,
     QListWidgetItem,
+    QMenu,
     QPushButton,
     QVBoxLayout,
     QWidget,
@@ -40,6 +41,8 @@ class _DevicePanel(QWidget):
             "QListWidget::item { padding: 8px 10px; }"
         )
         self._list.itemClicked.connect(self._on_item_click)
+        self._list.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self._list.customContextMenuRequested.connect(self._on_context_menu)
         lay.addWidget(self._list, 1)
 
     def _on_scan(self) -> None:
@@ -60,6 +63,28 @@ class _DevicePanel(QWidget):
         name = item.data(Qt.ItemDataRole.UserRole)
         if name and self._main_win:
             self._main_win._on_device_selected(name)
+
+    def _on_context_menu(self, pos: QPoint) -> None:
+        item = self._list.itemAt(pos)
+        if not item:
+            return
+        name = item.data(Qt.ItemDataRole.UserRole)
+        if not name:
+            return
+        menu = QMenu(self)
+        disconnect_action = menu.addAction("Disconnect")
+        action = menu.exec(self._list.mapToGlobal(pos))
+        if action == disconnect_action:
+            self._disconnect_device(name)
+
+    def _disconnect_device(self, name: str) -> None:
+        dev = self._d.device(name)
+        if dev and hasattr(dev, "disconnect"):
+            dev.disconnect()
+        self._d.registry.devices.pop(name, None)
+        if self._main_win:
+            self._main_win._after_scan()
+            self._main_win._console.log_action(f"disconnect {name}", f"{name} disconnected")
 
     def refresh(self) -> None:
         self._list.clear()

@@ -521,12 +521,6 @@ class _MainWindow(QMainWindow):
 
     def _init(self) -> None:
         self._d._repl._general.safe_all()
-        for name, dev in self._d.registry.devices.items():
-            if re.sub(r"\d+$", "", name) == "psu":
-                if hasattr(dev, "set_voltage"):
-                    dev.set_voltage(0)
-                if hasattr(dev, "set_current_limit"):
-                    dev.set_current_limit(0)
         self._device_panel.refresh()
         self._refresh_psu_panels()
         self._refresh_smu_panels()
