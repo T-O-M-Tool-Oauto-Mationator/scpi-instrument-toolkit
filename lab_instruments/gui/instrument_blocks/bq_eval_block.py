@@ -476,6 +476,8 @@ class _BQEvalBlock(QFrame):
         self._vti_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
         self._vti_table.verticalHeader().setVisible(False)
         self._vti_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self._vti_table.setSelectionMode(QTableWidget.SelectionMode.NoSelection)
+        self._vti_table.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self._vti_table.setAlternatingRowColors(True)
         # Show all 20 rows without scrolling — compute height from row/header sizes
         row_h = self._vti_table.verticalHeader().defaultSectionSize()

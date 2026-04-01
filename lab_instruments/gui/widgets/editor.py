@@ -159,8 +159,15 @@ class _CodeEditor(QPlainTextEdit):
 
         super().keyPressEvent(event)
 
-        # Trigger completion on text input
+        # Only complete the first word on the line (command position)
         tc = self.textCursor()
+        line_text = tc.block().text()[:tc.positionInBlock()]
+        # If there's already a space before cursor, don't complete
+        # (user is typing arguments, not a command)
+        if " " in line_text.strip():
+            self._completer.popup().hide()
+            return
+
         tc.movePosition(QTextCursor.MoveOperation.StartOfWord, QTextCursor.MoveMode.KeepAnchor)
         prefix = tc.selectedText().strip()
         if len(prefix) < 2:
@@ -172,8 +179,8 @@ class _CodeEditor(QPlainTextEdit):
             self._completer.popup().setCurrentIndex(self._completer.completionModel().index(0, 0))
 
         cr = self.cursorRect()
-        cr.setWidth(self._completer.popup().sizeHintForColumn(0)
-                    + self._completer.popup().verticalScrollBar().sizeHint().width())
+        cr.setWidth(max(300, self._completer.popup().sizeHintForColumn(0)
+                    + self._completer.popup().verticalScrollBar().sizeHint().width() + 20))
         self._completer.complete(cr)
 
     def line_number_width(self) -> int:

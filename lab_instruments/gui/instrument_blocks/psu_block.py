@@ -505,6 +505,11 @@ class _PSUBlock(QFrame):
         dev = self._d.device(self._psu)
         if not dev:
             return
+        multi = self._d.has_cap(self._psu, "multi_channel")
+        if multi and hasattr(dev, "select_channel"):
+            key = self._ch_keys.get(ch_num)
+            if key:
+                dev.select_channel(key)
         dev.enable_output(on)
         self._ch_output[ch_num] = on
         cmd = f"{self._psu} chan {ch_num} {'on' if on else 'off'}"

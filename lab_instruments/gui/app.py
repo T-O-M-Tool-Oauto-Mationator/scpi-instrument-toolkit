@@ -126,6 +126,7 @@ class _MainWindow(QMainWindow):
         tb = self.addToolBar("Main")
         tb.setMovable(False)
         tb.setObjectName("main_toolbar")
+        tb.toggleViewAction().setVisible(False)  # hide from right-click context menu
         tb.addAction(sa)
 
         et = QAction("\u26a1 E-STOP", self)
@@ -467,26 +468,28 @@ class _MainWindow(QMainWindow):
     # -- Pop-out windows -------------------------------------------------------
 
     def pop_out_widget(self, title: str, widget: QWidget) -> None:
-        """Detach a widget from the work area into a floating window."""
-        # Remove from work area first
-        self._work_area.remove_widget(widget)
-        # Create floating window
-        win = QMainWindow(self)
-        win.setWindowTitle(f"{title} \u2014 SCPI Toolkit")
-        win.setCentralWidget(widget)
-        win.resize(600, 500)
-        win.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, False)
-        self._floating_windows.append(win)
+        """Detach a widget into a floating QDockWidget (draggable back in)."""
+        dock = QDockWidget(title, self)
+        dock.setWidget(widget)
+        dock.setAllowedAreas(
+            Qt.DockWidgetArea.AllDockWidgetAreas
+        )
+        dock.setFloating(True)
+        dock.resize(700, 550)
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, dock)
+        self._floating_windows.append(dock)
 
-        def _on_close(event, w=win, wdg=widget, t=title):
-            # Re-dock into work area when floating window is closed
-            w.setCentralWidget(None)
-            self._work_area.add_widget(t, wdg)
-            self._floating_windows.remove(w)
-            event.accept()
+        def _on_close():
+            widget_ref = dock.widget()
+            if widget_ref is not None:
+                dock.setWidget(None)
+                self._work_area.add_widget(title, widget_ref)
+            if dock in self._floating_windows:
+                self._floating_windows.remove(dock)
 
-        win.closeEvent = _on_close
-        win.show()
+        dock.visibilityChanged.connect(
+            lambda vis: None if vis else QTimer.singleShot(0, _on_close)
+        )
 
     # -- Panel refresh helpers -----------------------------------------------
 
