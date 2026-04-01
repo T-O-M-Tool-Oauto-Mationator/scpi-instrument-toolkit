@@ -1,0 +1,359 @@
+from __future__ import annotations
+
+import contextlib
+from typing import Any
+
+from PySide6.QtCore import Qt, Slot
+from PySide6.QtWidgets import (
+    QComboBox,
+    QFrame,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QSizePolicy,
+    QVBoxLayout,
+    QWidget,
+)
+
+from ..core.helpers import _NumSpin, _mono
+from ..core.dispatcher import _Dispatcher
+
+_AWG_WAVEFORMS = ["SIN", "SQU", "RAMP", "PULS", "NOIS", "DC"]
+_AWG_CH_ACCENTS = ["#1a6bbf", "#7c3aed"]  # CH1: blue, CH2: purple
+
+
+def _get_awg_waveforms(dev) -> list[str]:
+    """Return the waveform list for this AWG device, falling back to the default."""
+    if hasattr(dev, "VALID_WAVEFORMS"):
+        wf = dev.VALID_WAVEFORMS
+        return list(wf) if isinstance(wf, list) else sorted(wf)
+    if hasattr(dev, "WAVEFORMS") and isinstance(getattr(dev, "WAVEFORMS", None), dict):
+        return [k.upper() for k in dev.WAVEFORMS]
+    return list(_AWG_WAVEFORMS)
+
+
+class _AWGChannel(QGroupBox):
+    def __init__(self, channel: int, accent: str, waveforms: list[str] | None = None, parent: QWidget | None = None) -> None:
+        super().__init__(f"CH{channel}", parent)
+        self.channel = channel
+        self._accent = accent
+        self._waveforms = waveforms if waveforms is not None else _AWG_WAVEFORMS
+        self.setStyleSheet(
+            f"QGroupBox {{ border: 2px solid #aaa; border-radius: 7px; "
+            f"margin-top: 12px; padding-top: 14px; }}"
+            f"QGroupBox::title {{ color: {accent}; subcontrol-origin: margin; "
+            f"left: 10px; padding: 0 6px; font-weight: bold; }}"
+        )
+        self._build()
+
+    def _build(self) -> None:
+        layout = QVBoxLayout(self)
+        layout.setSpacing(5)
+        layout.setContentsMargins(8, 8, 8, 8)
+
+        # Display row: frequency + amplitude
+        meas = QHBoxLayout()
+        meas.setSpacing(5)
+        self.freq_display = QLabel("10000.000 Hz")
+        self.freq_display.setFont(_mono(18))
+        self.freq_display.setStyleSheet(
+            "color: #1e7a1e; border-radius: 5px; "
+            "padding: 4px 8px"
+        )
+        self.freq_display.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        self.freq_display.setMinimumHeight(42)
+        meas.addWidget(self.freq_display, 2)
+        self.amp_display = QLabel("5.0000 Vpp")
+        self.amp_display.setFont(_mono(18))
+        self.amp_display.setStyleSheet(
+            "color: #c45c00; border-radius: 5px; "
+            "padding: 4px 8px"
+        )
+        self.amp_display.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        self.amp_display.setMinimumHeight(42)
+        meas.addWidget(self.amp_display, 1)
+        layout.addLayout(meas)
+
+        # Control row: waveform + freq + amp + Apply
+        ctrl = QHBoxLayout()
+        ctrl.setSpacing(4)
+        self.wave_combo = QComboBox()
+        self.wave_combo.addItems(self._waveforms)
+        self.wave_combo.setMinimumWidth(65)
+        ctrl.addWidget(self.wave_combo)
+        self.freq_spin = _NumSpin()
+        self.freq_spin.setRange(0.001, 60e6)
+        self.freq_spin.setDecimals(3)
+        self.freq_spin.setValue(10000.0)
+        self.freq_spin.setSuffix(" Hz")
+        self.freq_spin.setMinimumWidth(100)
+        ctrl.addWidget(self.freq_spin, 1)
+        self.amp_spin = _NumSpin()
+        self.amp_spin.setRange(0.001, 20.0)
+        self.amp_spin.setDecimals(4)
+        self.amp_spin.setValue(5.0)
+        self.amp_spin.setSuffix(" Vpp")
+        self.amp_spin.setMinimumWidth(88)
+        ctrl.addWidget(self.amp_spin, 1)
+        self.apply_btn = QPushButton("Apply")
+        self.apply_btn.setStyleSheet(
+            f"QPushButton {{ background: transparent; color: {self._accent}; font-weight: bold; "
+            f"border: 1px solid {self._accent}88; border-radius: 4px; padding: 4px 10px; }} "
+            f"QPushButton:hover {{ background: {self._accent}; color: #1e1e2e; }}"
+        )
+        ctrl.addWidget(self.apply_btn)
+        layout.addLayout(ctrl)
+
+        # Toggle
+        self.toggle_btn = QPushButton(f"○  CH{self.channel} OFF")
+        self.toggle_btn.setCheckable(True)
+        self.toggle_btn.setMinimumHeight(32)
+        self._set_toggle_style(False)
+        layout.addWidget(self.toggle_btn)
+
+        # Separator
+        sep = QFrame()
+        sep.setFrameShape(QFrame.Shape.HLine)
+        layout.addWidget(sep)
+
+        # Offset row (secondary param, styled like PSU limits row)
+        off_row = QHBoxLayout()
+        off_row.setSpacing(4)
+        off_lbl = QLabel("Offset")
+        off_lbl.setStyleSheet("font-size: 10px;")
+        off_row.addWidget(off_lbl)
+        self.offset_spin = _NumSpin()
+        self.offset_spin.setRange(-10.0, 10.0)
+        self.offset_spin.setDecimals(4)
+        self.offset_spin.setSuffix(" V")
+        self.offset_spin.setMinimumWidth(88)
+        self.offset_spin.setStyleSheet(
+            "QDoubleSpinBox { font-size: 11px; }"
+        )
+        off_row.addWidget(self.offset_spin)
+        off_row.addStretch()
+        layout.addLayout(off_row)
+
+    def _set_toggle_style(self, on: bool) -> None:
+        if on:
+            self.toggle_btn.setText(f"●  CH{self.channel} ON")
+            self.toggle_btn.setStyleSheet(
+                "QPushButton { background: #d4edda; color: #155724; font-weight: bold; "
+                "border-radius: 4px; border: 2px solid #28a745; padding: 6px; font-size: 11px; }"
+                "QPushButton:hover { background: #28a745; color: white; }"
+            )
+        else:
+            self.toggle_btn.setText(f"○  CH{self.channel} OFF")
+            self.toggle_btn.setStyleSheet(
+                "QPushButton { background: transparent; color: #c0392b; font-weight: bold; "
+                "border-radius: 4px; border: 2px solid #c0392b88; padding: 6px; font-size: 11px; }"
+                "QPushButton:hover { background: #c0392b; color: white; }"
+            )
+
+    def sync_from_device(self, dev: Any, on: bool) -> None:
+        with contextlib.suppress(Exception):
+            freq = dev.get_frequency(self.channel)
+            if freq is not None:
+                if freq >= 1e6:
+                    self.freq_display.setText(f"{freq / 1e6:.3f} MHz")
+                elif freq >= 1e3:
+                    self.freq_display.setText(f"{freq / 1e3:.3f} kHz")
+                else:
+                    self.freq_display.setText(f"{freq:.3f} Hz")
+                self.freq_spin.blockSignals(True)
+                self.freq_spin.setValue(freq)
+                self.freq_spin.blockSignals(False)
+        with contextlib.suppress(Exception):
+            amp = dev.get_amplitude(self.channel)
+            if amp is not None:
+                self.amp_display.setText(f"{amp:.4f} Vpp")
+                self.amp_spin.blockSignals(True)
+                self.amp_spin.setValue(amp)
+                self.amp_spin.blockSignals(False)
+        with contextlib.suppress(Exception):
+            offset = dev.get_offset(self.channel)
+            if offset is not None:
+                self.offset_spin.blockSignals(True)
+                self.offset_spin.setValue(offset)
+                self.offset_spin.blockSignals(False)
+        self.toggle_btn.blockSignals(True)
+        self.toggle_btn.setChecked(on)
+        self.toggle_btn.blockSignals(False)
+        self._set_toggle_style(on)
+
+
+class _AWGBlock(QFrame):
+    """Self-contained card for one AWG device."""
+
+    def __init__(self, d: _Dispatcher, name: str, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self._d = d
+        self._awg = name
+        self._chs: dict[int, _AWGChannel] = {}
+        self.setObjectName("awgblock")
+        self.setStyleSheet(
+            "#awgblock { border: 1px solid #ccc; border-radius: 10px; }"
+        )
+        self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
+        self._build()
+        self._poll()
+
+    def _con(self):
+        from ..widgets.console import _Console
+
+        w = self.parent()
+        while w is not None:
+            if hasattr(w, "_console"):
+                return w._console  # type: ignore[attr-defined]
+            w = w.parent()
+        return None
+
+    def _build(self) -> None:
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(0)
+
+        # Header
+        hdr = QFrame()
+        hdr.setStyleSheet(
+            "QFrame { border-bottom: 1px solid #ccc; border-radius: 0; }"
+        )
+        hdr_lay = QHBoxLayout(hdr)
+        hdr_lay.setContentsMargins(14, 9, 14, 9)
+        hdr_lay.setSpacing(8)
+        name_lbl = QLabel(f"<b>{self._awg}</b>")
+        name_lbl.setStyleSheet("font-size: 14px; font-weight: bold;")
+        hdr_lay.addWidget(name_lbl)
+        dev = self._d.device(self._awg)
+        if dev:
+            disp = self._d.registry.display_name(self._awg)
+            type_lbl = QLabel(disp or "")
+            type_lbl.setStyleSheet("font-size: 11px;")
+            hdr_lay.addWidget(type_lbl, 1)
+        else:
+            hdr_lay.addStretch(1)
+        outer.addWidget(hdr)
+
+        # Body
+        body = QWidget()
+        body_lay = QVBoxLayout(body)
+        body_lay.setContentsMargins(10, 10, 10, 6)
+        body_lay.setSpacing(8)
+
+        ch_row = QHBoxLayout()
+        ch_row.setSpacing(8)
+        _dev = self._d.device(self._awg)
+        _waveforms = _get_awg_waveforms(_dev) if _dev else None
+        for i, accent in enumerate(_AWG_CH_ACCENTS, 1):
+            ch = _AWGChannel(i, accent, _waveforms)
+            ch.apply_btn.clicked.connect(lambda _, n=i: self._apply(n))
+            ch.toggle_btn.clicked.connect(lambda checked, n=i: self._output(n, checked))
+            self._chs[i] = ch
+            ch_row.addWidget(ch)
+        body_lay.addLayout(ch_row)
+
+        foot = QHBoxLayout()
+        foot.setSpacing(6)
+        for text, color, slot in [
+            ("All ON", "#1e7a1e", self._all_on),
+            ("All OFF", "#c0392b", self._all_off),
+        ]:
+            b = QPushButton(text)
+            b.setStyleSheet(
+                f"QPushButton {{ border: 1px solid {color}66; color: {color}; border-radius: 4px; "
+                f"padding: 4px 12px; font-weight: bold; font-size: 11px; }} "
+                f"QPushButton:hover {{ background: {color}; }}"
+            )
+            b.clicked.connect(slot)
+            foot.addWidget(b)
+        foot.addStretch()
+        body_lay.addLayout(foot)
+
+        self._status = QLabel("")
+        self._status.setStyleSheet("font-size: 10px;")
+        body_lay.addWidget(self._status)
+        body_lay.addStretch(1)
+
+        outer.addWidget(body, 1)
+
+    def _apply(self, ch: int) -> None:
+        dev = self._d.device(self._awg)
+        w = self._chs.get(ch)
+        if not dev or not w:
+            return
+        wave = w.wave_combo.currentText()
+        freq = w.freq_spin.value()
+        amp = w.amp_spin.value()
+        offset = w.offset_spin.value()
+        try:
+            dev.set_waveform(ch, wave)
+            dev.set_frequency(ch, freq)
+            dev.set_amplitude(ch, amp)
+            dev.set_offset(ch, offset)
+            msg = f"CH{ch}: {wave} {freq:.1f}Hz {amp:.4f}Vpp offset={offset:.4f}V"
+            self._status.setText(msg)
+            self._status.setStyleSheet("color: #155724; font-size: 10px;")
+            con = self._con()
+            if con:
+                con.log_action(
+                    f"{self._awg} wave {ch} {wave.lower()} freq={freq} amp={amp} offset={offset}", msg
+                )
+            self._poll()
+        except Exception as exc:
+            self._status.setText(str(exc))
+            self._status.setStyleSheet("color: #c0392b; font-size: 10px;")
+
+    def _output(self, ch: int, on: bool) -> None:
+        dev = self._d.device(self._awg)
+        if not dev:
+            return
+        try:
+            dev.enable_output(ch, on)
+            msg = f"CH{ch}: {'ON' if on else 'OFF'}"
+            self._status.setText(msg)
+            self._status.setStyleSheet("color: #155724; font-size: 10px;")
+            con = self._con()
+            if con:
+                con.log_action(f"{self._awg} chan {ch} {'on' if on else 'off'}", msg)
+            self._poll()
+        except Exception as exc:
+            self._status.setText(str(exc))
+            self._status.setStyleSheet("color: #c0392b; font-size: 10px;")
+
+    def _all_on(self) -> None:
+        dev = self._d.device(self._awg)
+        if not dev:
+            return
+        for ch in self._chs:
+            with contextlib.suppress(Exception):
+                dev.enable_output(ch, True)
+        con = self._con()
+        if con:
+            con.log_action(f"{self._awg} on", "All channels ON")
+        self._poll()
+
+    def _all_off(self) -> None:
+        dev = self._d.device(self._awg)
+        if not dev:
+            return
+        for ch in self._chs:
+            with contextlib.suppress(Exception):
+                dev.enable_output(ch, False)
+        con = self._con()
+        if con:
+            con.log_action(f"{self._awg} off", "All channels OFF")
+        self._poll()
+
+    @Slot()
+    def _poll(self) -> None:
+        dev = self._d.device(self._awg)
+        if not dev:
+            return
+        for ch_num, w in self._chs.items():
+            with contextlib.suppress(Exception):
+                on = dev.get_output_state(ch_num)
+                w.sync_from_device(dev, on)
+
+    def stop(self) -> None:
+        pass
