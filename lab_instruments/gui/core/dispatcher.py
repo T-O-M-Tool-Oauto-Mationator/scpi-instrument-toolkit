@@ -8,11 +8,12 @@ import signal
 import threading
 from typing import Any
 
+from lab_instruments.repl.capabilities import Capability
+from lab_instruments.repl.shell import InstrumentRepl
+
 
 class _Dispatcher:
     def __init__(self, mock: bool = False) -> None:
-        from lab_instruments.repl.shell import InstrumentRepl
-
         saved_int = signal.getsignal(signal.SIGINT)
         saved_term = signal.getsignal(signal.SIGTERM) if hasattr(signal, "SIGTERM") else None
 
@@ -67,8 +68,6 @@ class _Dispatcher:
         return result
 
     def has_cap(self, name: str, cap_name: str) -> bool:
-        from lab_instruments.repl.capabilities import Capability
-
         cap_map = {
             "multi_channel": Capability.PSU_MULTI_CHANNEL,
             "readback": Capability.PSU_READBACK,

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 
+from PySide6.QtCore import QTimer
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import QDoubleSpinBox
 
@@ -58,14 +59,10 @@ class _NumSpin(QDoubleSpinBox):
 
     def focusInEvent(self, event):  # noqa: N802
         super().focusInEvent(event)
-        from PySide6.QtCore import QTimer
-
         QTimer.singleShot(0, self._select_number)
 
     def mousePressEvent(self, event):  # noqa: N802
         super().mousePressEvent(event)
-        from PySide6.QtCore import QTimer
-
         QTimer.singleShot(0, self._select_number)
 
 

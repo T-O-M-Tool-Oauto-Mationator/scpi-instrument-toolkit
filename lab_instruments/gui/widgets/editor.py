@@ -16,9 +16,18 @@ from PySide6.QtGui import (
     QTextCursor,
     QTextDocument,
 )
-from PySide6.QtWidgets import QCompleter, QHBoxLayout, QLabel, QPlainTextEdit, QPushButton, QVBoxLayout, QWidget
+from PySide6.QtWidgets import (
+    QCompleter,
+    QHBoxLayout,
+    QInputDialog,
+    QLabel,
+    QPlainTextEdit,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
 
-from ..core.helpers import _mono
+from ..core.helpers import _ansi_to_html, _mono
 
 # -- Syntax highlighter ------------------------------------------------------
 
@@ -710,8 +719,6 @@ class ScpiEditor(QWidget):
         """Jump to a specific line."""
         if not self._debug_state:
             return
-        from PySide6.QtWidgets import QInputDialog
-
         total = len(self._debug_state["lines"])
         line, ok = QInputDialog.getInt(self, "Go to Line", f"Line number (1-{total}):", 1, 1, total)
         if ok:
@@ -726,8 +733,6 @@ class ScpiEditor(QWidget):
             if hasattr(w, "_d"):
                 output = w._d.run(line)
                 if output.strip() and hasattr(w, "_console"):
-                    from ..core.helpers import _ansi_to_html
-
                     w._console.log(_ansi_to_html(output))
                 return
             if hasattr(w, "_console"):

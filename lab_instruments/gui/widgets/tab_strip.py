@@ -8,7 +8,7 @@ if TYPE_CHECKING:
 
 from PySide6.QtCore import QPoint, QRect, Qt
 from PySide6.QtGui import QColor, QPainter, QPen
-from PySide6.QtWidgets import QApplication, QMenu, QWidget
+from PySide6.QtWidgets import QApplication, QMainWindow, QMenu, QWidget
 
 
 class _DZ(Enum):
@@ -173,8 +173,6 @@ class _TabStrip(QWidget):
             return
         title, widget = self._group._widgets[idx]
         # Find main window
-        from PySide6.QtWidgets import QMainWindow
-
         w = self._group.parent()
         while w:
             if isinstance(w, QMainWindow) and hasattr(w, "pop_out_widget"):

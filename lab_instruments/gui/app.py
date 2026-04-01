@@ -4,22 +4,29 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import glob
+import io
 import os
 import re
 import sys
 
 from PySide6.QtCore import QObject, QSettings, Qt, QThread, QTimer, Signal, Slot
-from PySide6.QtGui import QAction
+from PySide6.QtGui import QAction, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication,
     QDockWidget,
     QFileDialog,
+    QInputDialog,
     QLabel,
     QMainWindow,
     QWidget,
 )
 
+from lab_instruments.repl.script_engine.expander import expand_script_lines
+from lab_instruments.repl.script_engine.runner import run_expanded
+
 from .core.dispatcher import _Dispatcher
+from .core.helpers import _ansi_to_html
 from .core.workspace import Workspace
 from .dialogs.command_palette import ActionItem, CommandPalette
 from .instrument_blocks.awg_block import _AWGBlock
@@ -31,6 +38,8 @@ from .instrument_blocks.smu_block import _SMUBlock
 from .panels.device_panel import _DevicePanel
 from .panels.file_explorer import FileExplorer
 from .widgets.console import _Console
+from .widgets.editor import ScpiEditor
+from .widgets.file_viewers import CsvViewer, ImageViewer, TextViewer
 from .widgets.work_area import _WorkArea
 
 # -- Background worker for blocking operations --------------------------------
@@ -178,8 +187,6 @@ class _MainWindow(QMainWindow):
         self._palette = CommandPalette(self)
 
         # ── VS Code keybinds ───────────────────────────────────────────
-        from PySide6.QtGui import QKeySequence, QShortcut
-
         QShortcut(QKeySequence("Ctrl+Shift+P"), self, self._show_palette)
         QShortcut(QKeySequence("Ctrl+P"), self, self._quick_open)
         QShortcut(QKeySequence("Ctrl+W"), self, self._close_current_tab)
@@ -275,22 +282,14 @@ class _MainWindow(QMainWindow):
             return
         ext = os.path.splitext(path)[1].lower()
         if ext in (".png", ".jpg", ".jpeg", ".gif", ".bmp"):
-            from .widgets.file_viewers import ImageViewer
-
             widget = ImageViewer(path)
         elif ext == ".csv":
-            from .widgets.file_viewers import CsvViewer
-
             widget = CsvViewer(path)
         elif ext in (".scpi", ".py", ".txt", ".md", ".json", ".toml", ".cfg", ".ini", ".sh"):
-            from .widgets.editor import ScpiEditor
-
             widget = ScpiEditor(path)
             widget.run_requested.connect(self._run_script)
             widget.debug_requested.connect(self._debug_script)
         else:
-            from .widgets.file_viewers import TextViewer
-
             widget = TextViewer(path)
         self._open_files[path] = widget
         self._work_area.add_widget(os.path.basename(path), widget)
@@ -322,8 +321,6 @@ class _MainWindow(QMainWindow):
         if ext == ".py":
             output = self._d.run(f"python {path}")
             if output.strip():
-                from .core.helpers import _ansi_to_html
-
                 self._console.log(_ansi_to_html(output))
             self._console.log(f"<span style='color:#155724'>[DONE] {name}</span>")
             self._on_console_command()
@@ -338,8 +335,6 @@ class _MainWindow(QMainWindow):
             return
 
         try:
-            from lab_instruments.repl.script_engine.expander import expand_script_lines
-
             expanded = expand_script_lines(raw_lines, {}, self._d._repl.ctx)
         except Exception as exc:
             self._console.log(f"<span style='color:#c0392b'>[ERROR] Expansion failed: {exc}</span>")
@@ -375,10 +370,6 @@ class _MainWindow(QMainWindow):
 
         # Normal run (not debug)
         try:
-            import io
-
-            from lab_instruments.repl.script_engine.runner import run_expanded
-
             buf = io.StringIO()
             old_stdout = self._d._repl.stdout
             self._d._repl.stdout = buf
@@ -388,8 +379,6 @@ class _MainWindow(QMainWindow):
 
             output = buf.getvalue()
             if output.strip():
-                from .core.helpers import _ansi_to_html
-
                 self._console.log(_ansi_to_html(output))
             self._console.log(f"<span style='color:#155724'>[DONE] {name}</span>")
         except Exception as exc:
@@ -401,8 +390,6 @@ class _MainWindow(QMainWindow):
 
     def _current_editor(self):
         """Return the currently focused ScpiEditor, or None."""
-        from .widgets.editor import ScpiEditor
-
         for group in self._work_area.all_groups():
             idx = group._strip._current if hasattr(group, "_strip") else -1
             if 0 <= idx < len(group._widgets):
@@ -426,8 +413,6 @@ class _MainWindow(QMainWindow):
         ed = self._current_editor()
         if not ed:
             return
-        from PySide6.QtWidgets import QInputDialog
-
         line, ok = QInputDialog.getInt(self, "Go to Line", "Line number:", 1, 1, 999999)
         if ok:
             ed.goto_line(line)
@@ -457,8 +442,6 @@ class _MainWindow(QMainWindow):
         """Ctrl+P \u2014 quick file open from workspace."""
         if not self._workspace.folder:
             return
-        import glob
-
         files = glob.glob(os.path.join(self._workspace.folder, "**", "*"), recursive=True)
         files = [f for f in files if os.path.isfile(f)]
         actions = []

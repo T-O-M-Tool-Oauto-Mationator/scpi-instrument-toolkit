@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
@@ -75,8 +75,6 @@ class _Console(QWidget):
         self.log(f"<b style='color:#1a6bbf'>eset&gt;</b> {_esc(cmd)}")
         # Run command in background thread to avoid blocking UI
         self._input.setEnabled(False)
-
-        from PySide6.QtCore import QThread
 
         class _CmdWorker(QThread):
             def __init__(self, d, command, parent=None):
