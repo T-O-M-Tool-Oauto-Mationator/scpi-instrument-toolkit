@@ -64,7 +64,7 @@ class InstrumentRepl(cmd.Cmd):
     intro = f"ESET Instrument REPL v{_REPL_VERSION}. Type 'help' for commands."
     prompt = "eset> "
 
-    def __init__(self):
+    def __init__(self, *, auto_scan: bool = True):
         super().__init__()
 
         # Shared state
@@ -126,9 +126,12 @@ class InstrumentRepl(cmd.Cmd):
 
         # Background scan
         self._scan_done = threading.Event()
-        self._scan_thread = threading.Thread(target=self._background_scan, daemon=True, name="scpi-scan")
-        ColorPrinter.info("Scanning for instruments in background — type 'scan' to wait for results.")
-        self._scan_thread.start()
+        if auto_scan:
+            self._scan_thread = threading.Thread(target=self._background_scan, daemon=True, name="scpi-scan")
+            ColorPrinter.info("Scanning for instruments in background — type 'scan' to wait for results.")
+            self._scan_thread.start()
+        else:
+            self._scan_done.set()
 
     # ------------------------------------------------------------------
     # Backward-compatibility properties
