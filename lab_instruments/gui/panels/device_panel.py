@@ -5,8 +5,6 @@ from typing import Any
 
 from PySide6.QtCore import QPoint, Qt
 from PySide6.QtWidgets import (
-    QApplication,
-    QLabel,
     QListWidget,
     QListWidgetItem,
     QMenu,
@@ -15,12 +13,19 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ..core.helpers import _mono
 from ..core.dispatcher import _Dispatcher
+from ..core.helpers import _mono
 
 
 class _DevicePanel(QWidget):
-    _TYPE_COLORS = {"psu": "#1a6bbf", "awg": "#7c3aed", "dmm": "#c45c00", "scope": "#0e7a70", "smu": "#c0392b", "ev": "#6366f1"}
+    _TYPE_COLORS = {
+        "psu": "#1a6bbf",
+        "awg": "#7c3aed",
+        "dmm": "#c45c00",
+        "scope": "#0e7a70",
+        "smu": "#c0392b",
+        "ev": "#6366f1",
+    }
 
     def __init__(self, d: _Dispatcher, main_win: Any, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -37,9 +42,7 @@ class _DevicePanel(QWidget):
 
         self._list = QListWidget()
         self._list.setFont(_mono(10))
-        self._list.setStyleSheet(
-            "QListWidget::item { padding: 8px 10px; }"
-        )
+        self._list.setStyleSheet("QListWidget::item { padding: 8px 10px; }")
         self._list.itemClicked.connect(self._on_item_click)
         self._list.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self._list.customContextMenuRequested.connect(self._on_context_menu)
@@ -92,7 +95,7 @@ class _DevicePanel(QWidget):
         for name in sorted(devices):
             disp = self._d.registry.display_name(name)
             base = re.sub(r"\d+$", "", name)
-            color = self._TYPE_COLORS.get(base, "")
+            self._TYPE_COLORS.get(base, "")
             item = QListWidgetItem(f"  {name}\n  {disp}")
             item.setData(Qt.ItemDataRole.UserRole, name)
             item.setToolTip(f"{name}  \u2014  {disp}  ({base.upper()})")

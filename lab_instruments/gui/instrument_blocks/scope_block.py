@@ -14,8 +14,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ..core.helpers import _mono
 from ..core.dispatcher import _Dispatcher
+from ..core.helpers import _mono
 
 _SCOPE_MEAS = [
     ("Freq", "measure_frequency", "Hz"),
@@ -33,14 +33,11 @@ class _ScopeBlock(QFrame):
         self._d = d
         self._scope = name
         self.setObjectName("scopeblock")
-        self.setStyleSheet(
-            "#scopeblock { border: 1px solid #ccc; border-radius: 10px; }"
-        )
+        self.setStyleSheet("#scopeblock { border: 1px solid #ccc; border-radius: 10px; }")
         self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
         self._build()
 
     def _con(self):
-        from ..widgets.console import _Console
 
         w = self.parent()
         while w is not None:
@@ -57,9 +54,7 @@ class _ScopeBlock(QFrame):
 
         # Header
         hdr = QFrame()
-        hdr.setStyleSheet(
-            "QFrame { border-bottom: 1px solid #ccc; border-radius: 0; }"
-        )
+        hdr.setStyleSheet("QFrame { border-bottom: 1px solid #ccc; border-radius: 0; }")
         hdr_lay = QHBoxLayout(hdr)
         hdr_lay.setContentsMargins(14, 9, 14, 9)
         hdr_lay.setSpacing(8)
@@ -167,7 +162,12 @@ class _ScopeBlock(QFrame):
         # Control row
         ctrl = QHBoxLayout()
         ctrl.setSpacing(4)
-        for text, slot in [("Run", self._run), ("Stop", self._stop), ("Single", self._single), ("AutoSet", self._autoset)]:
+        for text, slot in [
+            ("Run", self._run),
+            ("Stop", self._stop),
+            ("Single", self._single),
+            ("AutoSet", self._autoset),
+        ]:
             b = QPushButton(text)
             b.setStyleSheet(
                 f"QPushButton {{ border: 1px solid {_ACCENT}66; color: {_ACCENT}; border-radius: 4px; "

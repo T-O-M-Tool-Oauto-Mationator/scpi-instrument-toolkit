@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 import contextlib
-import re
 from typing import Any
 
-from PySide6.QtCore import Qt, Signal, Slot
+from PySide6.QtCore import Qt, Slot
 from PySide6.QtWidgets import (
     QFrame,
     QGroupBox,
@@ -16,8 +15,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ..core.helpers import _CH_ACCENTS, _NumSpin, _mono
 from ..core.dispatcher import _Dispatcher
+from ..core.helpers import _CH_ACCENTS, _mono, _NumSpin
 
 
 class _PSUChannel(QGroupBox):
@@ -52,13 +51,10 @@ class _PSUChannel(QGroupBox):
         meas = QHBoxLayout()
         meas.setSpacing(5)
 
-        for attr, unit, color in [("v_display", "V", "#1e7a1e"), ("i_display", "A", "#c45c00")]:
+        for attr, _unit, color in [("v_display", "V", "#1e7a1e"), ("i_display", "A", "#c45c00")]:
             disp = QLabel("0.000")
             disp.setFont(_mono(18))
-            disp.setStyleSheet(
-                f"color: {color}; border-radius: 5px; "
-                f"padding: 4px 8px"
-            )
+            disp.setStyleSheet(f"color: {color}; border-radius: 5px; padding: 4px 8px")
             disp.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             disp.setMinimumHeight(42)
             setattr(self, attr, disp)
@@ -120,9 +116,7 @@ class _PSUChannel(QGroupBox):
         self.v_lim_spin.setSuffix(" V")
         self.v_lim_spin.setValue(self._max_v)
         self.v_lim_spin.setMinimumWidth(84)
-        self.v_lim_spin.setStyleSheet(
-            "QDoubleSpinBox { font-size: 11px; }"
-        )
+        self.v_lim_spin.setStyleSheet("QDoubleSpinBox { font-size: 11px; }")
         lim_row.addWidget(self.v_lim_spin, 1)
 
         self.i_lim_spin = _NumSpin()
@@ -132,9 +126,7 @@ class _PSUChannel(QGroupBox):
         self.i_lim_spin.setSuffix(" A")
         self.i_lim_spin.setValue(self._max_i)
         self.i_lim_spin.setMinimumWidth(84)
-        self.i_lim_spin.setStyleSheet(
-            "QDoubleSpinBox { font-size: 11px; }"
-        )
+        self.i_lim_spin.setStyleSheet("QDoubleSpinBox { font-size: 11px; }")
         lim_row.addWidget(self.i_lim_spin, 1)
 
         self.set_lim_btn = QPushButton("\u2713")
@@ -244,9 +236,7 @@ class _PSUBlock(QFrame):
         self._ch_output: dict[int, bool] = {}
         self._ch_keys: dict[int, str | None] = {}
         self.setObjectName("psublock")
-        self.setStyleSheet(
-            "#psublock { border: 1px solid #ccc; border-radius: 10px; }"
-        )
+        self.setStyleSheet("#psublock { border: 1px solid #ccc; border-radius: 10px; }")
         self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
         self._build()
         self._rebuild()
@@ -254,7 +244,6 @@ class _PSUBlock(QFrame):
         # NOTE: do NOT call _poll() here — device may still be busy from scan
 
     def _con(self):
-        from ..widgets.console import _Console
 
         w = self.parent()
         while w is not None:

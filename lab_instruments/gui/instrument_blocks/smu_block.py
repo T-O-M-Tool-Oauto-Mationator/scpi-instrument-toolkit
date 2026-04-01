@@ -15,8 +15,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ..core.helpers import _NumSpin, _mono
 from ..core.dispatcher import _Dispatcher
+from ..core.helpers import _mono, _NumSpin
 
 
 class _SMUBlock(QFrame):
@@ -27,14 +27,11 @@ class _SMUBlock(QFrame):
         self._d = d
         self._smu = name
         self.setObjectName("smublock")
-        self.setStyleSheet(
-            "#smublock { border: 1px solid #ccc; border-radius: 10px; }"
-        )
+        self.setStyleSheet("#smublock { border: 1px solid #ccc; border-radius: 10px; }")
         self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
         self._build()
 
     def _con(self):
-        from ..widgets.console import _Console
 
         w = self.parent()
         while w is not None:
@@ -51,9 +48,7 @@ class _SMUBlock(QFrame):
 
         # Header -- identical to _PSUBlock header
         hdr = QFrame()
-        hdr.setStyleSheet(
-            "QFrame { border-bottom: 1px solid #ccc; border-radius: 0; }"
-        )
+        hdr.setStyleSheet("QFrame { border-bottom: 1px solid #ccc; border-radius: 0; }")
         hdr_lay = QHBoxLayout(hdr)
         hdr_lay.setContentsMargins(14, 9, 14, 9)
         hdr_lay.setSpacing(8)
@@ -99,19 +94,13 @@ class _SMUBlock(QFrame):
         meas.setSpacing(5)
         self._v_display = QLabel("0.000")
         self._v_display.setFont(_mono(18))
-        self._v_display.setStyleSheet(
-            "color: #1e7a1e; border-radius: 5px; "
-            "padding: 4px 8px"
-        )
+        self._v_display.setStyleSheet("color: #1e7a1e; border-radius: 5px; padding: 4px 8px")
         self._v_display.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         self._v_display.setMinimumHeight(42)
         meas.addWidget(self._v_display, 1)
         self._i_display = QLabel("0.000")
         self._i_display.setFont(_mono(18))
-        self._i_display.setStyleSheet(
-            "color: #c45c00; border-radius: 5px; "
-            "padding: 4px 8px"
-        )
+        self._i_display.setStyleSheet("color: #c45c00; border-radius: 5px; padding: 4px 8px")
         self._i_display.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         self._i_display.setMinimumHeight(42)
         meas.addWidget(self._i_display, 1)
@@ -231,10 +220,10 @@ class _SMUBlock(QFrame):
         val = self._set_spin.value()
         lim = self._lim_spin.value()
         if mode == "VOLTAGE":
-            self._run(f"smu mode voltage")
+            self._run("smu mode voltage")
             self._run(f"smu set {val} {lim}")
         else:
-            self._run(f"smu mode current")
+            self._run("smu mode current")
             self._run(f"smu set {val} {lim}")
         self._poll()
 

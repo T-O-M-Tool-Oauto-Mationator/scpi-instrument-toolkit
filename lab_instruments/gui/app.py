@@ -7,9 +7,8 @@ import contextlib
 import os
 import re
 import sys
-import threading
 
-from PySide6.QtCore import QObject, QSettings, QThread, QTimer, Qt, Signal, Slot
+from PySide6.QtCore import QObject, QSettings, Qt, QThread, QTimer, Signal, Slot
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (
     QApplication,
@@ -24,8 +23,8 @@ from .core.dispatcher import _Dispatcher
 from .core.workspace import Workspace
 from .dialogs.command_palette import ActionItem, CommandPalette
 from .instrument_blocks.awg_block import _AWGBlock
-from .instrument_blocks.dmm_block import _DMMBlock
 from .instrument_blocks.bq_eval_block import _BQEvalBlock
+from .instrument_blocks.dmm_block import _DMMBlock
 from .instrument_blocks.psu_block import _PSUBlock
 from .instrument_blocks.scope_block import _ScopeBlock
 from .instrument_blocks.smu_block import _SMUBlock
@@ -33,7 +32,6 @@ from .panels.device_panel import _DevicePanel
 from .panels.file_explorer import FileExplorer
 from .widgets.console import _Console
 from .widgets.work_area import _WorkArea
-
 
 # -- Background worker for blocking operations --------------------------------
 
@@ -146,9 +144,7 @@ class _MainWindow(QMainWindow):
         self._console = _Console(d)
         _console_dock = QDockWidget("Console", self)
         _console_dock.setWidget(self._console)
-        _console_dock.setAllowedAreas(
-            Qt.DockWidgetArea.BottomDockWidgetArea | Qt.DockWidgetArea.TopDockWidgetArea
-        )
+        _console_dock.setAllowedAreas(Qt.DockWidgetArea.BottomDockWidgetArea | Qt.DockWidgetArea.TopDockWidgetArea)
         self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, _console_dock)
         self._view_menu.addAction(_console_dock.toggleViewAction())
 
@@ -156,9 +152,7 @@ class _MainWindow(QMainWindow):
         self._device_panel = _DevicePanel(d, self)
         _devices_dock = QDockWidget("Devices", self)
         _devices_dock.setWidget(self._device_panel)
-        _devices_dock.setAllowedAreas(
-            Qt.DockWidgetArea.LeftDockWidgetArea | Qt.DockWidgetArea.RightDockWidgetArea
-        )
+        _devices_dock.setAllowedAreas(Qt.DockWidgetArea.LeftDockWidgetArea | Qt.DockWidgetArea.RightDockWidgetArea)
         self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, _devices_dock)
         self._view_menu.addAction(_devices_dock.toggleViewAction())
 
@@ -169,9 +163,7 @@ class _MainWindow(QMainWindow):
         self._file_explorer.debug_script.connect(self._debug_script)
         _explorer_dock = QDockWidget("Explorer", self)
         _explorer_dock.setWidget(self._file_explorer)
-        _explorer_dock.setAllowedAreas(
-            Qt.DockWidgetArea.LeftDockWidgetArea | Qt.DockWidgetArea.RightDockWidgetArea
-        )
+        _explorer_dock.setAllowedAreas(Qt.DockWidgetArea.LeftDockWidgetArea | Qt.DockWidgetArea.RightDockWidgetArea)
         self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, _explorer_dock)
         self.tabifyDockWidget(_devices_dock, _explorer_dock)
         _devices_dock.raise_()
@@ -186,7 +178,7 @@ class _MainWindow(QMainWindow):
         self._palette = CommandPalette(self)
 
         # ── VS Code keybinds ───────────────────────────────────────────
-        from PySide6.QtGui import QShortcut, QKeySequence
+        from PySide6.QtGui import QKeySequence, QShortcut
 
         QShortcut(QKeySequence("Ctrl+Shift+P"), self, self._show_palette)
         QShortcut(QKeySequence("Ctrl+P"), self, self._quick_open)
@@ -256,8 +248,7 @@ class _MainWindow(QMainWindow):
     def _on_open_file(self) -> None:
         """Open a file via dialog."""
         path, _ = QFileDialog.getOpenFileName(
-            self, "Open File", self._workspace.folder or "",
-            "SCPI Scripts (*.scpi);;Python Files (*.py);;All Files (*)"
+            self, "Open File", self._workspace.folder or "", "SCPI Scripts (*.scpi);;Python Files (*.py);;All Files (*)"
         )
         if path:
             self.open_file(path)
@@ -285,17 +276,21 @@ class _MainWindow(QMainWindow):
         ext = os.path.splitext(path)[1].lower()
         if ext in (".png", ".jpg", ".jpeg", ".gif", ".bmp"):
             from .widgets.file_viewers import ImageViewer
+
             widget = ImageViewer(path)
         elif ext == ".csv":
             from .widgets.file_viewers import CsvViewer
+
             widget = CsvViewer(path)
         elif ext in (".scpi", ".py", ".txt", ".md", ".json", ".toml", ".cfg", ".ini", ".sh"):
             from .widgets.editor import ScpiEditor
+
             widget = ScpiEditor(path)
             widget.run_requested.connect(self._run_script)
             widget.debug_requested.connect(self._debug_script)
         else:
             from .widgets.file_viewers import TextViewer
+
             widget = TextViewer(path)
         self._open_files[path] = widget
         self._work_area.add_widget(os.path.basename(path), widget)
@@ -328,6 +323,7 @@ class _MainWindow(QMainWindow):
             output = self._d.run(f"python {path}")
             if output.strip():
                 from .core.helpers import _ansi_to_html
+
                 self._console.log(_ansi_to_html(output))
             self._console.log(f"<span style='color:#155724'>[DONE] {name}</span>")
             self._on_console_command()
@@ -343,6 +339,7 @@ class _MainWindow(QMainWindow):
 
         try:
             from lab_instruments.repl.script_engine.expander import expand_script_lines
+
             expanded = expand_script_lines(raw_lines, {}, self._d._repl.ctx)
         except Exception as exc:
             self._console.log(f"<span style='color:#c0392b'>[ERROR] Expansion failed: {exc}</span>")
@@ -356,7 +353,7 @@ class _MainWindow(QMainWindow):
         breakpoints: set[int] = set()
         clean_lines = []
         clean_sources = []
-        for i, (cmd, src) in enumerate(zip(lines, source_lines)):
+        for _i, (cmd, src) in enumerate(zip(lines, source_lines, strict=False)):
             if cmd == "__BREAKPOINT__":
                 breakpoints.add(len(clean_lines) + 1)
             else:
@@ -379,6 +376,7 @@ class _MainWindow(QMainWindow):
         # Normal run (not debug)
         try:
             import io
+
             from lab_instruments.repl.script_engine.runner import run_expanded
 
             buf = io.StringIO()
@@ -391,6 +389,7 @@ class _MainWindow(QMainWindow):
             output = buf.getvalue()
             if output.strip():
                 from .core.helpers import _ansi_to_html
+
                 self._console.log(_ansi_to_html(output))
             self._console.log(f"<span style='color:#155724'>[DONE] {name}</span>")
         except Exception as exc:
@@ -403,6 +402,7 @@ class _MainWindow(QMainWindow):
     def _current_editor(self):
         """Return the currently focused ScpiEditor, or None."""
         from .widgets.editor import ScpiEditor
+
         for group in self._work_area.all_groups():
             idx = group._strip._current if hasattr(group, "_strip") else -1
             if 0 <= idx < len(group._widgets):
@@ -427,6 +427,7 @@ class _MainWindow(QMainWindow):
         if not ed:
             return
         from PySide6.QtWidgets import QInputDialog
+
         line, ok = QInputDialog.getInt(self, "Go to Line", "Line number:", 1, 1, 999999)
         if ok:
             ed.goto_line(line)
@@ -457,6 +458,7 @@ class _MainWindow(QMainWindow):
         if not self._workspace.folder:
             return
         import glob
+
         files = glob.glob(os.path.join(self._workspace.folder, "**", "*"), recursive=True)
         files = [f for f in files if os.path.isfile(f)]
         actions = []
@@ -471,9 +473,7 @@ class _MainWindow(QMainWindow):
         """Detach a widget into a floating QDockWidget (draggable back in)."""
         dock = QDockWidget(title, self)
         dock.setWidget(widget)
-        dock.setAllowedAreas(
-            Qt.DockWidgetArea.AllDockWidgetAreas
-        )
+        dock.setAllowedAreas(Qt.DockWidgetArea.AllDockWidgetAreas)
         dock.setFloating(True)
         dock.resize(700, 550)
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, dock)
@@ -487,9 +487,7 @@ class _MainWindow(QMainWindow):
             if dock in self._floating_windows:
                 self._floating_windows.remove(dock)
 
-        dock.visibilityChanged.connect(
-            lambda vis: None if vis else QTimer.singleShot(0, _on_close)
-        )
+        dock.visibilityChanged.connect(lambda vis: None if vis else QTimer.singleShot(0, _on_close))
 
     # -- Panel refresh helpers -----------------------------------------------
 
@@ -502,7 +500,7 @@ class _MainWindow(QMainWindow):
                 block.stop()
                 self._work_area.remove_widget(block)
                 self._psu_closed.discard(name)
-        for name, disp in psus:
+        for name, _disp in psus:
             if name not in self._psu_blocks:
                 block = _PSUBlock(self._d, name)
                 block.stop()
@@ -594,9 +592,7 @@ class _MainWindow(QMainWindow):
     def _init(self) -> None:
         # Prompt for folder on first launch (no previous workspace)
         if not self._workspace.folder:
-            folder = QFileDialog.getExistingDirectory(
-                self, "Select a Workspace Folder to Get Started"
-            )
+            folder = QFileDialog.getExistingDirectory(self, "Select a Workspace Folder to Get Started")
             if folder:
                 self._workspace.folder = folder
                 Workspace.save_last_folder(folder)
@@ -662,8 +658,7 @@ class _MainWindow(QMainWindow):
     @Slot()
     def _on_console_command(self) -> None:
         """Refresh all instrument blocks immediately after any console command."""
-        for blocks in [self._psu_blocks, self._smu_blocks, self._awg_blocks,
-                       self._dmm_blocks, self._scope_blocks]:
+        for blocks in [self._psu_blocks, self._smu_blocks, self._awg_blocks, self._dmm_blocks, self._scope_blocks]:
             for block in blocks.values():
                 block._poll()
         n = len(self._d.registry.devices)
@@ -726,8 +721,7 @@ class _MainWindow(QMainWindow):
         self._d._repl._general.safe_all()
         self._console.log_action("safe_all", "All outputs disabled")
         self._status.setText("E-STOP: all outputs disabled")
-        for blocks in [self._psu_blocks, self._smu_blocks, self._awg_blocks,
-                       self._dmm_blocks, self._scope_blocks]:
+        for blocks in [self._psu_blocks, self._smu_blocks, self._awg_blocks, self._dmm_blocks, self._scope_blocks]:
             for block in blocks.values():
                 block._poll()
 
@@ -735,8 +729,14 @@ class _MainWindow(QMainWindow):
         s = QSettings("SCPIToolkit", "GUI")
         s.setValue("geometry", self.saveGeometry())
         s.setValue("state", self.saveState())
-        for blocks in [self._psu_blocks, self._smu_blocks, self._awg_blocks,
-                       self._dmm_blocks, self._ev_blocks, self._scope_blocks]:
+        for blocks in [
+            self._psu_blocks,
+            self._smu_blocks,
+            self._awg_blocks,
+            self._dmm_blocks,
+            self._ev_blocks,
+            self._scope_blocks,
+        ]:
             for block in blocks.values():
                 with contextlib.suppress(Exception):
                     block.stop()

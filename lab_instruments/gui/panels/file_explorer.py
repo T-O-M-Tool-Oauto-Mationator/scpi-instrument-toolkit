@@ -13,12 +13,10 @@ from PySide6.QtWidgets import (
     QLabel,
     QMenu,
     QMessageBox,
-    QPushButton,
     QTreeView,
     QVBoxLayout,
     QWidget,
 )
-
 
 _HIDDEN_DIRS = {"__pycache__", ".git", ".svn", ".hg", "node_modules", ".venv", "venv", ".mypy_cache", ".ruff_cache"}
 
@@ -26,7 +24,9 @@ _HIDDEN_DIRS = {"__pycache__", ".git", ".svn", ".hg", "node_modules", ".venv", "
 class _FilteredFileSystemModel(QFileSystemModel):
     """QFileSystemModel that hides __pycache__ and other noise directories."""
 
-    def hasChildren(self, parent=QModelIndex()) -> bool:  # noqa: N802
+    def hasChildren(self, parent=None) -> bool:  # noqa: N802
+        if parent is None:
+            parent = QModelIndex()
         return super().hasChildren(parent)
 
     def filterAcceptsRow(self, source_row: int, source_parent: QModelIndex) -> bool:  # noqa: N802

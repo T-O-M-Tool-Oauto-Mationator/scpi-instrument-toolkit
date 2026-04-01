@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QColor
 from PySide6.QtWidgets import QSplitter, QVBoxLayout, QWidget
 
 from .panel_group import _PanelGroup
@@ -24,10 +23,7 @@ class _WorkArea(QWidget):
         s = QSplitter(orient)
         s.setHandleWidth(5)
         s.setChildrenCollapsible(False)
-        s.setStyleSheet(
-            "QSplitter::handle { background: #ccc; }"
-            "QSplitter::handle:hover { background: #1a6bbf55; }"
-        )
+        s.setStyleSheet("QSplitter::handle { background: #ccc; }QSplitter::handle:hover { background: #1a6bbf55; }")
         return s
 
     def default_group(self) -> _PanelGroup:
@@ -80,16 +76,16 @@ class _WorkArea(QWidget):
             self._remove_empty(src)
 
     def _split(self, dst: _PanelGroup, new_grp: _PanelGroup, zone: _DZ) -> None:
-        horiz  = zone in (_DZ.LEFT, _DZ.RIGHT)
+        horiz = zone in (_DZ.LEFT, _DZ.RIGHT)
         orient = Qt.Orientation.Horizontal if horiz else Qt.Orientation.Vertical
         before = zone in (_DZ.LEFT, _DZ.TOP)
 
         sp = dst.parent()
         if not isinstance(sp, QSplitter):
             return
-        idx   = sp.indexOf(dst)
+        idx = sp.indexOf(dst)
         sizes = sp.sizes()
-        sz    = sizes[idx] if idx < len(sizes) else 400
+        sz = sizes[idx] if idx < len(sizes) else 400
 
         if sp.orientation() == orient:
             ins = idx if before else idx + 1
@@ -129,9 +125,9 @@ class _WorkArea(QWidget):
             only = sp.widget(0)
             gp = sp.parent()
             if isinstance(gp, QSplitter):
-                gp_idx   = gp.indexOf(sp)
+                gp_idx = gp.indexOf(sp)
                 gp_sizes = gp.sizes()
-                size     = gp_sizes[gp_idx] if gp_idx < len(gp_sizes) else 400
+                size = gp_sizes[gp_idx] if gp_idx < len(gp_sizes) else 400
                 only.setParent(None)
                 sp.setParent(None)
                 sp.deleteLater()

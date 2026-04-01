@@ -16,8 +16,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ..core.helpers import _NumSpin, _mono
 from ..core.dispatcher import _Dispatcher
+from ..core.helpers import _mono, _NumSpin
 
 _AWG_WAVEFORMS = ["SIN", "SQU", "RAMP", "PULS", "NOIS", "DC"]
 _AWG_CH_ACCENTS = ["#1a6bbf", "#7c3aed"]  # CH1: blue, CH2: purple
@@ -34,7 +34,9 @@ def _get_awg_waveforms(dev) -> list[str]:
 
 
 class _AWGChannel(QGroupBox):
-    def __init__(self, channel: int, accent: str, waveforms: list[str] | None = None, parent: QWidget | None = None) -> None:
+    def __init__(
+        self, channel: int, accent: str, waveforms: list[str] | None = None, parent: QWidget | None = None
+    ) -> None:
         super().__init__(f"CH{channel}", parent)
         self.channel = channel
         self._accent = accent
@@ -188,7 +190,6 @@ class _AWGBlock(QFrame):
         self._build()
 
     def _con(self):
-        from ..widgets.console import _Console
         w = self.parent()
         while w is not None:
             if hasattr(w, "_console"):

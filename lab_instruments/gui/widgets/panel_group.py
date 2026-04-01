@@ -1,6 +1,10 @@
 from __future__ import annotations
 
-from PySide6.QtCore import Qt
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .work_area import _WorkArea
+
 from PySide6.QtWidgets import (
     QFrame,
     QMainWindow,
@@ -34,7 +38,7 @@ class _PanelGroup(QFrame):
 
         self._overlay = _DropOverlay(self)
 
-    def _work_area(self) -> "_WorkArea | None":
+    def _work_area(self) -> _WorkArea | None:
         from .work_area import _WorkArea
 
         w = self.parent()
