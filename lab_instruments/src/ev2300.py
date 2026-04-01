@@ -602,7 +602,11 @@ class _DarwinBackend(_HIDBackend):
 
     def open(self, path: object) -> object:
         device = self._hid.device()
-        device.open_path(path)
+        try:
+            device.open_path(path)
+        except OSError:
+            # open_path() fails on some macOS configurations; fall back to VID/PID
+            device.open(VID, PID_FLASHED)
         return device
 
     def close(self, handle: object) -> None:
@@ -623,7 +627,8 @@ class _DarwinBackend(_HIDBackend):
 
     def flush(self, handle: object) -> None:
         try:
-            while handle.read(BUF_SIZE, timeout_ms=0):
+            # timeout_ms=0 can block on macOS with some HID devices; use 1ms
+            while handle.read(BUF_SIZE, timeout_ms=1):
                 pass
         except Exception:
             pass
