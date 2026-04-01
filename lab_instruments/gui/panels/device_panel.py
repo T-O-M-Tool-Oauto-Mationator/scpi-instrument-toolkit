@@ -46,18 +46,12 @@ class _DevicePanel(QWidget):
         lay.addWidget(self._list, 1)
 
     def _on_scan(self) -> None:
-        self._scan_btn.setEnabled(False)
-        self._scan_btn.setText("Scanning...")
-        QApplication.processEvents()
-        result = self._d.run("scan")
-        self._d._repl._general.safe_all()
-        self._scan_btn.setEnabled(True)
-        self._scan_btn.setText("\u27f3  Scan")
-        self.refresh()
-        if self._main_win:
-            self._main_win._console.log_action("scan", result)
-            self._main_win._console.log_action("safe_all", "All outputs set to safe state")
-            self._main_win._after_scan()
+        if self._main_win and hasattr(self._main_win, "_on_scan"):
+            self._main_win._on_scan()
+        else:
+            # Fallback: blocking scan
+            self._d.run("scan")
+            self.refresh()
 
     def _on_item_click(self, item: QListWidgetItem) -> None:
         name = item.data(Qt.ItemDataRole.UserRole)

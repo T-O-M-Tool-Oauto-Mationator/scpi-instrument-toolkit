@@ -682,18 +682,35 @@ class _MainWindow(QMainWindow):
         self._refresh_ev_panels()
         self._refresh_scope_panels()
         self._device_panel.refresh()
+        # Auto-open any newly detected instrument blocks
+        self._auto_open_blocks()
         n = len(self._d.registry.devices)
         self._dev_count.setText(f"Devices: {n}")
         self._status.setText(f"Scan complete: {n} device(s)")
+
+    def _auto_open_blocks(self) -> None:
+        """Open instrument blocks that are in the closed set (newly detected)."""
+        for blocks, closed in [
+            (self._psu_blocks, self._psu_closed),
+            (self._smu_blocks, self._smu_closed),
+            (self._awg_blocks, self._awg_closed),
+            (self._dmm_blocks, self._dmm_closed),
+            (self._ev_blocks, self._ev_closed),
+            (self._scope_blocks, self._scope_closed),
+        ]:
+            for name in list(closed):
+                block = blocks.get(name)
+                if block:
+                    disp = self._d.registry.display_name(name)
+                    self._work_area.add_widget(disp or name, block)
+                    closed.discard(name)
 
     def _on_scan(self) -> None:
         """Non-blocking scan using a background thread."""
         self._status.setText("Scanning...")
 
         def _do_scan():
-            result = self._d.run("scan")
-            self._d._repl._general.safe_all()
-            return result
+            return self._d.run("scan")
 
         def _scan_done(result):
             self._console.log_action("scan", result)
