@@ -4,7 +4,7 @@ from enum import Enum, auto
 
 from PySide6.QtCore import QPoint, QRect, Qt
 from PySide6.QtGui import QColor, QPainter, QPen
-from PySide6.QtWidgets import QApplication, QWidget
+from PySide6.QtWidgets import QApplication, QMenu, QWidget
 
 
 class _DZ(Enum):
@@ -142,6 +142,41 @@ class _TabStrip(QWidget):
         return [self._close_rect(tr) for tr in self._tab_rects()]
 
     # -- mouse events --------------------------------------------------------
+
+    def contextMenuEvent(self, event) -> None:  # noqa: N802
+        idx = self.tab_at(event.pos())
+        if idx < 0:
+            return
+        menu = QMenu(self)
+        pop_out = menu.addAction("Pop Out")
+        menu.addSeparator()
+        close = menu.addAction("Close")
+        action = menu.exec(event.globalPos())
+        if action == pop_out:
+            self._pop_out_tab(idx)
+        elif action == close:
+            self._group.close_tab(idx)
+
+    def _pop_out_tab(self, idx: int) -> None:
+        if not 0 <= idx < len(self._group._widgets):
+            return
+        title, widget = self._group._widgets[idx]
+        # Find main window
+        from PySide6.QtWidgets import QMainWindow
+        w = self._group.parent()
+        while w:
+            if isinstance(w, QMainWindow) and hasattr(w, "pop_out_widget"):
+                self._group.remove_widget_at(idx)
+                if self._group.count() == 0:
+                    work = self._group._work_area()
+                    if work:
+                        work._remove_empty(self._group)
+                w.pop_out_widget(title, widget)
+                return
+            try:
+                w = w.parent()
+            except Exception:
+                break
 
     def mousePressEvent(self, event) -> None:  # noqa: N802
         if event.button() == Qt.MouseButton.LeftButton:

@@ -6,9 +6,9 @@ from __future__ import annotations
 import os
 import re
 
-from PySide6.QtCore import QFileSystemWatcher, QRect, QSize, QTimer, Qt, Signal
+from PySide6.QtCore import QFileSystemWatcher, QRect, QSize, QStringListModel, QTimer, Qt, Signal
 from PySide6.QtGui import QColor, QFont, QPainter, QSyntaxHighlighter, QTextBlockUserData, QTextCharFormat, QTextCursor, QTextDocument
-from PySide6.QtWidgets import QHBoxLayout, QLabel, QPlainTextEdit, QPushButton, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QCompleter, QHBoxLayout, QLabel, QPlainTextEdit, QPushButton, QVBoxLayout, QWidget
 
 from ..core.helpers import _mono
 
@@ -24,6 +24,39 @@ _KEYWORDS = {
 _DEVICE_CMDS = {"psu", "psu1", "psu2", "psu3", "awg", "awg1", "awg2", "awg3",
                 "dmm", "dmm1", "dmm2", "dmm3", "smu", "scope", "scope1", "scope2", "scope3",
                 "ev2300", "scan", "state", "help"}
+
+# IntelliSense completion words
+_COMPLETION_WORDS = sorted(set(
+    list(_KEYWORDS) + list(_DEVICE_CMDS) + [
+        # PSU sub-commands
+        "psu on", "psu off", "psu set", "psu meas", "psu get", "psu chan",
+        "psu track", "psu save", "psu recall", "psu state",
+        "set_voltage", "set_current_limit", "measure_voltage", "measure_current",
+        "enable_output", "select_channel", "get_output_state",
+        # AWG sub-commands
+        "awg on", "awg off", "awg chan", "awg set_frequency", "awg set_amplitude",
+        "awg set_offset", "awg set_function",
+        # DMM sub-commands
+        "dmm read", "dmm mode", "dmm dc_voltage", "dmm ac_voltage",
+        "dmm dc_current", "dmm ac_current", "dmm resistance",
+        "dmm frequency", "dmm continuity", "dmm diode",
+        # Scope sub-commands
+        "scope run", "scope stop", "scope single", "scope autoset",
+        "scope chan", "scope trigger",
+        # SMU sub-commands
+        "smu mode", "smu set_voltage", "smu set_current",
+        "smu output", "smu voltage", "smu current",
+        # EV2300 sub-commands
+        "ev2300 info", "ev2300 read_word", "ev2300 write_word",
+        "ev2300 read_byte", "ev2300 write_byte", "ev2300 read_block",
+        "ev2300 write_block", "ev2300 scan", "ev2300 state",
+        # Script directives
+        "breakpoint", "sleep", "print", "use", "record",
+        "upper_limit", "lower_limit", "linspace",
+        # State commands
+        "state on", "state off", "state safe", "state reset",
+    ]
+))
 
 
 class _ScpiHighlighter(QSyntaxHighlighter):
@@ -100,6 +133,48 @@ class _CodeEditor(QPlainTextEdit):
         self.blockCountChanged.connect(self._update_line_area_width)
         self.updateRequest.connect(self._update_line_area)
         self._update_line_area_width()
+
+        # IntelliSense completer
+        self._completer = QCompleter(_COMPLETION_WORDS, self)
+        self._completer.setWidget(self)
+        self._completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
+        self._completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        self._completer.setFilterMode(Qt.MatchFlag.MatchContains)
+        self._completer.activated.connect(self._insert_completion)
+
+    def _insert_completion(self, text: str) -> None:
+        tc = self.textCursor()
+        # Select the current word and replace it
+        tc.movePosition(QTextCursor.MoveOperation.StartOfWord, QTextCursor.MoveMode.KeepAnchor)
+        tc.insertText(text)
+        self.setTextCursor(tc)
+
+    def keyPressEvent(self, event) -> None:  # noqa: N802
+        # Let completer handle its keys when popup is visible
+        if self._completer.popup().isVisible():
+            if event.key() in (Qt.Key.Key_Enter, Qt.Key.Key_Return, Qt.Key.Key_Tab,
+                               Qt.Key.Key_Escape):
+                event.ignore()
+                return
+
+        super().keyPressEvent(event)
+
+        # Trigger completion on text input
+        tc = self.textCursor()
+        tc.movePosition(QTextCursor.MoveOperation.StartOfWord, QTextCursor.MoveMode.KeepAnchor)
+        prefix = tc.selectedText().strip()
+        if len(prefix) < 2:
+            self._completer.popup().hide()
+            return
+
+        if prefix != self._completer.completionPrefix():
+            self._completer.setCompletionPrefix(prefix)
+            self._completer.popup().setCurrentIndex(self._completer.completionModel().index(0, 0))
+
+        cr = self.cursorRect()
+        cr.setWidth(self._completer.popup().sizeHintForColumn(0)
+                    + self._completer.popup().verticalScrollBar().sizeHint().width())
+        self._completer.complete(cr)
 
     def line_number_width(self) -> int:
         digits = max(3, len(str(self.blockCount())))
@@ -277,6 +352,27 @@ class ScpiEditor(QWidget):
             self._stop_btn.setVisible(False)
             self._toolbar.addWidget(self._stop_btn)
 
+            # Extra debug controls (hidden until debugging)
+            self._back_btn = QPushButton("Back")
+            self._back_btn.setStyleSheet(
+                "QPushButton { color: #7c3aed; border: 1px solid #7c3aed88; border-radius: 4px; "
+                "padding: 4px 10px; font-weight: bold; }"
+                "QPushButton:hover { background: #7c3aed; color: white; }"
+            )
+            self._back_btn.clicked.connect(self._debug_back)
+            self._back_btn.setVisible(False)
+            self._toolbar.addWidget(self._back_btn)
+
+            self._goto_btn = QPushButton("Goto")
+            self._goto_btn.setStyleSheet(
+                "QPushButton { color: #0e7a70; border: 1px solid #0e7a7088; border-radius: 4px; "
+                "padding: 4px 10px; font-weight: bold; }"
+                "QPushButton:hover { background: #0e7a70; color: white; }"
+            )
+            self._goto_btn.clicked.connect(self._debug_goto)
+            self._goto_btn.setVisible(False)
+            self._toolbar.addWidget(self._goto_btn)
+
             self._toolbar.addStretch()
 
             self._dbg_label = QLabel("")
@@ -428,6 +524,10 @@ class ScpiEditor(QWidget):
         self._step_btn.setVisible(show)
         self._cont_btn.setVisible(show)
         self._stop_btn.setVisible(show)
+        if hasattr(self, "_back_btn"):
+            self._back_btn.setVisible(show)
+        if hasattr(self, "_goto_btn"):
+            self._goto_btn.setVisible(show)
 
     def _debug_update_position(self) -> None:
         if not self._debug_state:
@@ -482,6 +582,29 @@ class ScpiEditor(QWidget):
             while st["idx"] < len(st["lines"]) and st["lines"][st["idx"]] == "__NOP__":
                 st["idx"] += 1
         self._debug_stop()
+
+    def _debug_back(self) -> None:
+        """Move back one line (state NOT reversed)."""
+        if not self._debug_state:
+            return
+        st = self._debug_state
+        if st["idx"] > 0:
+            st["idx"] -= 1
+            # Skip back over __NOP__ lines
+            while st["idx"] > 0 and st["lines"][st["idx"]] == "__NOP__":
+                st["idx"] -= 1
+            self._debug_update_position()
+
+    def _debug_goto(self) -> None:
+        """Jump to a specific line."""
+        if not self._debug_state:
+            return
+        from PySide6.QtWidgets import QInputDialog
+        total = len(self._debug_state["lines"])
+        line, ok = QInputDialog.getInt(self, "Go to Line", f"Line number (1-{total}):", 1, 1, total)
+        if ok:
+            self._debug_state["idx"] = line - 1
+            self._debug_update_position()
 
     def _debug_exec_line(self, line: str) -> None:
         """Execute a single SCPI command and show output in console."""

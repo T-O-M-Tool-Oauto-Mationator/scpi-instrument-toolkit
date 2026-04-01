@@ -7,8 +7,9 @@ import contextlib
 import os
 import re
 import sys
+import threading
 
-from PySide6.QtCore import QSettings, QTimer, Qt, Slot
+from PySide6.QtCore import QObject, QSettings, QThread, QTimer, Qt, Signal, Slot
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (
     QApplication,
@@ -34,6 +35,27 @@ from .widgets.console import _Console
 from .widgets.work_area import _WorkArea
 
 
+# -- Background worker for blocking operations --------------------------------
+
+
+class _Worker(QObject):
+    """Runs a callable in a QThread and signals completion."""
+
+    finished = Signal(str)  # result string
+
+    def __init__(self, fn, parent=None):
+        super().__init__(parent)
+        self._fn = fn
+
+    @Slot()
+    def run(self):
+        try:
+            result = self._fn()
+            self.finished.emit(result or "")
+        except Exception as exc:
+            self.finished.emit(f"[ERROR] {exc}")
+
+
 # -- Main window -------------------------------------------------------------
 
 
@@ -42,6 +64,7 @@ class _MainWindow(QMainWindow):
         super().__init__()
         self._d = d
         self.setWindowTitle("SCPI Instrument Toolkit")
+        self._floating_windows: list[QWidget] = []
 
         self._psu_blocks: dict[str, _PSUBlock] = {}
         self._psu_closed: set[str] = set()
@@ -102,9 +125,10 @@ class _MainWindow(QMainWindow):
         # ── Toolbar ───────────────────────────────────────────────────
         tb = self.addToolBar("Main")
         tb.setMovable(False)
+        tb.setObjectName("main_toolbar")
         tb.addAction(sa)
 
-        et = QAction("⚡ E-STOP", self)
+        et = QAction("\u26a1 E-STOP", self)
         et.triggered.connect(self._on_estop)
         tb.addAction(et)
         # ── Status bar ────────────────────────────────────────────────
@@ -178,6 +202,27 @@ class _MainWindow(QMainWindow):
             self.restoreState(s.value("state"))
 
         QTimer.singleShot(200, self._init)
+
+    # -- Background worker helper -----------------------------------------------
+
+    def _run_in_background(self, fn, on_done=None, status_msg="Working..."):
+        """Run *fn* in a QThread. Calls *on_done(result_str)* on completion."""
+        self._status.setText(status_msg)
+        thread = QThread(self)
+        worker = _Worker(fn)
+        worker.moveToThread(thread)
+        thread.started.connect(worker.run)
+
+        def _finished(result):
+            if on_done:
+                on_done(result)
+            thread.quit()
+            thread.wait()
+            thread.deleteLater()
+            worker.deleteLater()
+
+        worker.finished.connect(_finished)
+        thread.start()
 
     # -- Workspace / file handling -------------------------------------------
 
@@ -318,15 +363,15 @@ class _MainWindow(QMainWindow):
                 clean_sources.append(src)
 
         if debug:
-            # Find the editor widget for this file and start inline debugger
+            # Also collect breakpoints set in the editor gutter
             editor = self._open_files.get(path)
+            if not editor:
+                self.open_file(path)
+                editor = self._open_files.get(path)
             if editor and hasattr(editor, "start_debug"):
-                editor.start_debug(clean_lines, clean_sources, breakpoints)
-                return
-            # Fallback: if editor not open, open it first
-            self.open_file(path)
-            editor = self._open_files.get(path)
-            if editor and hasattr(editor, "start_debug"):
+                # Merge gutter breakpoints with script breakpoints
+                if hasattr(editor, "editor") and hasattr(editor.editor(), "_breakpoints"):
+                    breakpoints |= editor.editor()._breakpoints
                 editor.start_debug(clean_lines, clean_sources, breakpoints)
                 return
 
@@ -407,7 +452,7 @@ class _MainWindow(QMainWindow):
         self._palette.show_palette(actions)
 
     def _quick_open(self) -> None:
-        """Ctrl+P — quick file open from workspace."""
+        """Ctrl+P \u2014 quick file open from workspace."""
         if not self._workspace.folder:
             return
         import glob
@@ -418,6 +463,30 @@ class _MainWindow(QMainWindow):
             rel = os.path.relpath(f, self._workspace.folder)
             actions.append(ActionItem(f"file:{f}", rel, "", lambda p=f: self.open_file(p), ""))
         self._palette.show_palette(actions)
+
+    # -- Pop-out windows -------------------------------------------------------
+
+    def pop_out_widget(self, title: str, widget: QWidget) -> None:
+        """Detach a widget from the work area into a floating window."""
+        # Remove from work area first
+        self._work_area.remove_widget(widget)
+        # Create floating window
+        win = QMainWindow(self)
+        win.setWindowTitle(f"{title} \u2014 SCPI Toolkit")
+        win.setCentralWidget(widget)
+        win.resize(600, 500)
+        win.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, False)
+        self._floating_windows.append(win)
+
+        def _on_close(event, w=win, wdg=widget, t=title):
+            # Re-dock into work area when floating window is closed
+            w.setCentralWidget(None)
+            self._work_area.add_widget(t, wdg)
+            self._floating_windows.remove(w)
+            event.accept()
+
+        win.closeEvent = _on_close
+        win.show()
 
     # -- Panel refresh helpers -----------------------------------------------
 
@@ -520,6 +589,16 @@ class _MainWindow(QMainWindow):
     # -- Lifecycle -----------------------------------------------------------
 
     def _init(self) -> None:
+        # Prompt for folder on first launch (no previous workspace)
+        if not self._workspace.folder:
+            folder = QFileDialog.getExistingDirectory(
+                self, "Select a Workspace Folder to Get Started"
+            )
+            if folder:
+                self._workspace.folder = folder
+                Workspace.save_last_folder(folder)
+                self._file_explorer.set_root(folder)
+
         self._d._repl._general.safe_all()
         self._device_panel.refresh()
         self._refresh_psu_panels()
@@ -530,7 +609,7 @@ class _MainWindow(QMainWindow):
         self._refresh_scope_panels()
         n = len(self._d.registry.devices)
         self._dev_count.setText(f"Devices: {n}")
-        self._status.setText(f"{n} device(s) — all outputs safe")
+        self._status.setText(f"{n} device(s) \u2014 all outputs safe")
 
     def _on_tab_closed(self, widget: QWidget) -> None:
         # Check instrument blocks
@@ -602,18 +681,26 @@ class _MainWindow(QMainWindow):
         self._refresh_dmm_panels()
         self._refresh_ev_panels()
         self._refresh_scope_panels()
+        self._device_panel.refresh()
         n = len(self._d.registry.devices)
         self._dev_count.setText(f"Devices: {n}")
         self._status.setText(f"Scan complete: {n} device(s)")
 
     def _on_scan(self) -> None:
+        """Non-blocking scan using a background thread."""
         self._status.setText("Scanning...")
-        QApplication.processEvents()
-        result = self._d.run("scan")
-        self._d._repl._general.safe_all()
-        self._console.log_action("scan", result)
-        self._device_panel.refresh()
-        self._after_scan()
+
+        def _do_scan():
+            result = self._d.run("scan")
+            self._d._repl._general.safe_all()
+            return result
+
+        def _scan_done(result):
+            self._console.log_action("scan", result)
+            self._device_panel.refresh()
+            self._after_scan()
+
+        self._run_in_background(_do_scan, _scan_done, "Scanning for instruments...")
 
     def _on_estop(self) -> None:
         self._d._repl._general.safe_all()
@@ -633,6 +720,9 @@ class _MainWindow(QMainWindow):
             for block in blocks.values():
                 with contextlib.suppress(Exception):
                     block.stop()
+        # Close floating windows
+        for win in list(self._floating_windows):
+            win.close()
         super().closeEvent(event)
 
 

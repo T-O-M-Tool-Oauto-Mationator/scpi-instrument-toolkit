@@ -73,10 +73,33 @@ class _Console(QWidget):
             self._output.clear()
             return
         self.log(f"<b style='color:#1a6bbf'>eset&gt;</b> {_esc(cmd)}")
-        result = self._d.run(cmd)
-        if result.strip():
-            self.log(_ansi_to_html(result.rstrip("\n")))
-        self.command_ran.emit()
+        # Run command in background thread to avoid blocking UI
+        self._input.setEnabled(False)
+
+        from PySide6.QtCore import QThread
+
+        class _CmdWorker(QThread):
+            def __init__(self, d, command, parent=None):
+                super().__init__(parent)
+                self._d = d
+                self._cmd = command
+                self.result = ""
+
+            def run(self):
+                self.result = self._d.run(self._cmd)
+
+        worker = _CmdWorker(self._d, cmd, self)
+
+        def _done():
+            if worker.result.strip():
+                self.log(_ansi_to_html(worker.result.rstrip("\n")))
+            self._input.setEnabled(True)
+            self._input.setFocus()
+            self.command_ran.emit()
+            worker.deleteLater()
+
+        worker.finished.connect(_done)
+        worker.start()
 
     def log(self, html: str) -> None:
         sb = self._output.verticalScrollBar()
