@@ -61,6 +61,8 @@ To deactivate when you are done: `deactivate`
 
 **VS Code:** open the project folder (`code .`), then pick `.venv` as the interpreter (Ctrl+Shift+P -> "Python: Select Interpreter").
 
+> **Don't want to use the REPL?** You can import the drivers directly in your own Python scripts -- see [Using the Python Drivers Directly](#using-the-python-drivers-directly).
+
 See [docs/troubleshooting.md](docs/troubleshooting.md) if you run into issues.
 
 ---
@@ -119,8 +121,6 @@ pip install --upgrade "git+https://github.com/T-O-M-Tool-Oauto-Mationator/scpi-i
 ```
 
 That's it. Both channels install everything including the `scpi-repl` command.
-
-> **Prefer writing Python scripts over using the REPL?** See [Using the Python Drivers Directly](#using-the-python-drivers-directly) below.
 
 > **Note:** You also need [NI-VISA](https://www.ni.com/en/support/downloads/drivers/download.ni-visa.html) installed for the tool to detect instruments over USB or GPIB.
 
