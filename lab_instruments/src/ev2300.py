@@ -822,9 +822,10 @@ class _EV2300Core:
             return {"ok": False, "status_text": "Write failed"}
 
         if write_submit:
-            # Read and discard the write-command response
-            time.sleep(0.01)
-            self.read_report()
+            # Write commands (0x07 WriteByte, etc.) are SILENT on the
+            # EV2300 — no HID response.  Just wait and flush, then SUBMIT.
+            time.sleep(0.05)
+            self.flush_input()
 
             submit = self.build_packet(CMD_SUBMIT)
             if not self.write_report(submit):
