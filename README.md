@@ -120,6 +120,8 @@ pip install --upgrade "git+https://github.com/T-O-M-Tool-Oauto-Mationator/scpi-i
 
 That's it. Both channels install everything including the `scpi-repl` command.
 
+> **Prefer writing Python scripts over using the REPL?** See [Using the Python Drivers Directly](#using-the-python-drivers-directly) below.
+
 > **Note:** You also need [NI-VISA](https://www.ni.com/en/support/downloads/drivers/download.ni-visa.html) installed for the tool to detect instruments over USB or GPIB.
 
 ---
