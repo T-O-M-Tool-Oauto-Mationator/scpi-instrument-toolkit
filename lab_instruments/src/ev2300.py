@@ -1057,8 +1057,34 @@ class TI_EV2300:
         return 0
 
     def i2c_power(self, enabled: int = 1) -> dict:
-        """SMBusTransport compat: no-op (I2C always powered when open)."""
-        return {"ok": True, "status": 0, "enabled": int(enabled)}
+        """Send I2CPower command (0x18) to enable/disable the I2C power rail.
+
+        This is a SILENT command -- the real EV2300 sends no HID response.
+        The STM32 bridge accepts it silently too.
+        """
+        import time
+
+        self._require_open()
+        en = 1 if enabled else 0
+
+        buf = bytearray(BUF_SIZE)
+        payload = bytes([en])
+        plen = len(payload)
+        buf[0] = 2 + 1 + 3 + 1 + plen + 1 + 1
+        buf[1] = FRAME_MARKER
+        buf[2] = 0x18
+        buf[6] = plen
+        buf[7 : 7 + plen] = payload
+        crc_end = 7 + plen
+        buf[crc_end] = crc8(buf[2:crc_end])
+        buf[crc_end + 1] = FRAME_END
+
+        self._core.flush_input()
+        self._core.write_report(buf)
+        time.sleep(0.05)
+        self._core.flush_input()
+
+        return {"ok": True, "status": 0, "enabled": en}
 
     def read_smbus_word(self, i2c_addr: int, register_addr: int, pec: int = 0) -> dict:
         """SMBusTransport compat: read 16-bit word."""
