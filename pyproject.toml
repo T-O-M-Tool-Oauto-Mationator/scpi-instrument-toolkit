@@ -45,6 +45,7 @@ lint = ["ruff>=0.4.0"]
 [project.scripts]
 scpi-repl = "lab_instruments.repl:main"
 scpi-gui = "lab_instruments.gui:main"
+scpi-docs = "lab_instruments.docs_server:main"
 
 [project.urls]
 Homepage = "https://github.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit"
@@ -71,6 +72,8 @@ ignore = ["E501"]
 source = ["lab_instruments"]
 omit = [
     "lab_instruments/site/*",
+    "lab_instruments/site-library/*",
+    "lab_instruments/docs_server.py",
     "lab_instruments/gui/*",
     "lab_instruments/__main__.py",
     "lab_instruments/examples.py",
@@ -108,5 +111,18 @@ lab_instruments = [
     "site/assets/javascripts/workers/*.js",
     "site/assets/javascripts/workers/*.map",
     "site/search/*.json",
+    "site-library/*.html",
+    "site-library/*.xml",
+    "site-library/*.gz",
+    "site-library/assets/stylesheets/*.css",
+    "site-library/assets/stylesheets/*.map",
+    "site-library/assets/javascripts/*.js",
+    "site-library/assets/javascripts/*.map",
+    "site-library/assets/javascripts/lunr/*.js",
+    "site-library/assets/javascripts/lunr/min/*.js",
+    "site-library/assets/javascripts/workers/*.js",
+    "site-library/assets/javascripts/workers/*.map",
+    "site-library/search/*.json",
+    "site-library/instruments/**/*.html",
 ]
 
