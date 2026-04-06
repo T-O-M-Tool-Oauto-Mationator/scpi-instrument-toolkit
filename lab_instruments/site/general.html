@@ -550,6 +550,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#unscan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        unscan
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#list" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1204,6 +1215,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#unscan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        unscan
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#list" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1390,15 +1412,43 @@
 <p>You don't need to run <code>scan</code> manually on startup — the REPL scans automatically when it launches.</p>
 </div>
 <hr />
+<h2 id="unscan">unscan<a class="headerlink" href="#unscan" title="Permanent link">&para;</a></h2>
+<p>Remove a connected instrument from the current session without rescanning.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>unscan &lt;name&gt;
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>name</code></td>
+<td>required</td>
+<td>Instrument name as shown by <code>list</code> (e.g. <code>psu1</code>, <code>scope2</code>)</td>
+</tr>
+</tbody>
+</table>
+<p>The device is removed from the REPL's device list. If it was the active selection, the selection is cleared. Use <code>scan</code> to rediscover it.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>unscan psu1    # remove psu1 from the session
+</code></pre></div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This does not physically disconnect the instrument — it just removes it from the device list. Run <code>scan</code> to bring it back.</p>
+</div>
+<hr />
 <h2 id="list">list<a class="headerlink" href="#list" title="Permanent link">&para;</a></h2>
 <p>Show all currently connected instruments.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>list
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>list
 </code></pre></div>
 <p>Displays each instrument's assigned name, model, and whether it is currently active (set via <code>use</code>).</p>
 <hr />
 <h2 id="use">use<a class="headerlink" href="#use" title="Permanent link">&para;</a></h2>
 <p>Set the active instrument for subsequent generic commands.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>use &lt;name&gt;
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>use &lt;name&gt;
 </code></pre></div>
 <table>
 <thead>
@@ -1417,24 +1467,24 @@
 </tbody>
 </table>
 <p>When only one instrument of a type is connected it is selected automatically. With multiple of the same type you must <code>use</code> the desired one before using generic commands like <code>psu set</code>.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>use psu1          # make psu1 active
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>psu set 5.0       # acts on psu1
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>use psu2          # switch to psu2
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>psu set 12.0      # now acts on psu2
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>use psu1          # make psu1 active
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>psu set 5.0       # acts on psu1
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>use psu2          # switch to psu2
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>psu set 12.0      # now acts on psu2
 </code></pre></div>
 <div class="admonition tip">
 <p class="admonition-title">Direct addressing</p>
 <p>You can skip <code>use</code> entirely by prefixing the instrument name to any command:
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>psu1 set 5.0
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>psu2 set 12.0
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>psu1 set 5.0
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>psu2 set 12.0
 </code></pre></div>
 This does not change the active selection.</p>
 </div>
 <hr />
 <h2 id="idn">idn<a class="headerlink" href="#idn" title="Permanent link">&para;</a></h2>
 <p>Query a instrument's identification string (<code>*IDN?</code>).</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>idn [name]
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>idn [name]
 </code></pre></div>
 <table>
 <thead>
@@ -1453,13 +1503,13 @@ This does not change the active selection.</p>
 </tbody>
 </table>
 <p>The response is the instrument's manufacturer, model, serial number, and firmware version.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>idn           # query active instrument
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>idn scope1    # query scope1 specifically
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>idn           # query active instrument
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>idn scope1    # query scope1 specifically
 </code></pre></div>
 <hr />
 <h2 id="raw">raw<a class="headerlink" href="#raw" title="Permanent link">&para;</a></h2>
 <p>Send a raw SCPI command or query directly.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>raw &lt;command&gt;
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>raw &lt;command&gt;
 </code></pre></div>
 <table>
 <thead>
@@ -1477,9 +1527,9 @@ This does not change the active selection.</p>
 </tr>
 </tbody>
 </table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>raw *RST              # reset the instrument
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>raw OUTP:STAT ON      # send a command
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>raw MEAS:VOLT:DC?     # query — prints the response
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>raw *RST              # reset the instrument
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>raw OUTP:STAT ON      # send a command
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>raw MEAS:VOLT:DC?     # query — prints the response
 </code></pre></div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
@@ -1488,7 +1538,7 @@ This does not change the active selection.</p>
 <hr />
 <h2 id="state">state<a class="headerlink" href="#state" title="Permanent link">&para;</a></h2>
 <p>Set the active instrument to a named state.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>state &lt;on|off|safe|reset&gt;
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>state &lt;on|off|safe|reset&gt;
 </code></pre></div>
 <table>
 <thead>
@@ -1516,22 +1566,22 @@ This does not change the active selection.</p>
 </tr>
 </tbody>
 </table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>state safe     # safe state on active instrument
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>state reset    # factory reset active instrument
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>state safe     # safe state on active instrument
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>state reset    # factory reset active instrument
 </code></pre></div>
 <hr />
 <h2 id="all">all<a class="headerlink" href="#all" title="Permanent link">&para;</a></h2>
 <p>Apply a state to <strong>every</strong> connected instrument simultaneously.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>all &lt;on|off|safe|reset&gt;
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>all &lt;on|off|safe|reset&gt;
 </code></pre></div>
 <p>Same values as <code>state</code>. Useful as a quick emergency stop or to reset everything before a new test.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>all safe      # put everything in safe state
-<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>all off       # turn off all outputs
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>all safe      # put everything in safe state
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>all off       # turn off all outputs
 </code></pre></div>
 <hr />
 <h2 id="sleep">sleep<a class="headerlink" href="#sleep" title="Permanent link">&para;</a></h2>
 <p>Pause for a specified duration.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>sleep &lt;seconds&gt;
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>sleep &lt;seconds&gt;
 </code></pre></div>
 <table>
 <thead>
@@ -1549,29 +1599,29 @@ This does not change the active selection.</p>
 </tr>
 </tbody>
 </table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>sleep 1.0     # wait 1 second
-<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>sleep 0.5     # wait 500 ms
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>sleep 1.0     # wait 1 second
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>sleep 0.5     # wait 500 ms
 </code></pre></div>
 <p>Also valid as a <a href="scripting.html#timing">script directive</a>: <code>sleep {delay}</code></p>
 <hr />
 <h2 id="status">status<a class="headerlink" href="#status" title="Permanent link">&para;</a></h2>
 <p>Show all connected instruments and which one is currently active.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>status
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>status
 </code></pre></div>
 <p>Identical to <code>list</code>. See the <code>list</code> command for full details. <code>status</code> exists as a convenience alias.</p>
 <hr />
 <h2 id="close">close<a class="headerlink" href="#close" title="Permanent link">&para;</a></h2>
 <p>Disconnect all instruments and release VISA resources.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>close
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>close
 </code></pre></div>
 <p>Use <code>scan</code> to reconnect after closing.</p>
 <hr />
 <h2 id="docs">docs<a class="headerlink" href="#docs" title="Permanent link">&para;</a></h2>
 <p>Open the full HTML command reference in your web browser.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>docs
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>docs
 </code></pre></div>
 <p>Serves the bundled MkDocs site via a local HTTP server on a random port. If the site has not been built yet and <code>mkdocs.yml</code> is present, it automatically runs <code>mkdocs build</code> first.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>docs<span class="w">    </span><span class="c1"># opens http://127.0.0.1:&lt;port&gt;/index.html in your default browser</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>docs<span class="w">    </span><span class="c1"># opens http://127.0.0.1:&lt;port&gt;/index.html in your default browser</span>
 </code></pre></div>
 <div class="admonition tip">
 <p class="admonition-title">Tip</p>
@@ -1584,22 +1634,22 @@ This does not change the active selection.</p>
 <hr />
 <h2 id="clear">clear<a class="headerlink" href="#clear" title="Permanent link">&para;</a></h2>
 <p>Clear the terminal screen.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>clear
+<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>clear
 </code></pre></div>
 <hr />
 <h2 id="reload">reload<a class="headerlink" href="#reload" title="Permanent link">&para;</a></h2>
 <p>Restart the REPL process, disconnecting all instruments.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>reload
+<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a>reload
 </code></pre></div>
 <hr />
 <h2 id="version">version<a class="headerlink" href="#version" title="Permanent link">&para;</a></h2>
 <p>Print the installed version of the toolkit.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>version
+<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a>version
 </code></pre></div>
 <hr />
 <h2 id="exit">exit<a class="headerlink" href="#exit" title="Permanent link">&para;</a></h2>
 <p>Close the REPL and disconnect all instruments safely.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a>exit
+<div class="highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a>exit
 </code></pre></div>
 
 

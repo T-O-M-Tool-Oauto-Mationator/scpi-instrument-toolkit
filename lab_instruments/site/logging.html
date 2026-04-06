@@ -1441,10 +1441,14 @@
 </tr>
 </tbody>
 </table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>log save results.csv          # CSV format (opens in Excel)
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>log save results.txt          # formatted text table
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>log save sweep_data.csv       # save to named file
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>log save results.csv              # CSV format (opens in Excel)
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>log save results.txt              # formatted text table
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>log save ../results/data.csv      # relative path from script dir
 </code></pre></div>
+<div class="admonition note">
+<p class="admonition-title">Path resolution</p>
+<p>Relative paths are resolved from the <strong>script directory</strong> when running inside a script, or the <strong>data directory</strong> when used interactively. Use absolute paths to override.</p>
+</div>
 <p>CSV files can be opened directly in Excel, LibreOffice Calc, or imported into Python with pandas.</p>
 <hr />
 <h2 id="log-clear">log clear<a class="headerlink" href="#log-clear" title="Permanent link">&para;</a></h2>

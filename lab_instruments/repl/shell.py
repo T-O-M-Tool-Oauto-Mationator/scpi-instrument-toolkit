@@ -983,6 +983,7 @@ class InstrumentRepl(cmd.Cmd):
 
         section("GENERAL")
         cmd_line("scan", "discover and connect to instruments")
+        cmd_line("unscan", "remove a device from the session  (unscan <name>)")
         cmd_line("reload", "restart the REPL process")
         cmd_line("list", "show connected instruments")
         cmd_line("use", "set active instrument  (use <name>)")
