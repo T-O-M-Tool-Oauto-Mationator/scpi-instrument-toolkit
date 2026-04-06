@@ -63,6 +63,15 @@ To deactivate when you are done: `deactivate`
 
 > **Don't want to use the REPL?** You can import the drivers directly in your own Python scripts -- see [Using the Python Drivers Directly](#using-the-python-drivers-directly).
 
+### Documentation
+
+| Docs | What they cover |
+|------|----------------|
+| [REPL Command Reference](docs/index.md) | Interactive REPL commands, scripting, logging |
+| [Python API Reference](docs-library/index.md) | Using the drivers as a Python library in your own scripts |
+
+To open them from the REPL: `docs repl` or `docs python`.
+
 See [docs/troubleshooting.md](docs/troubleshooting.md) if you run into issues.
 
 ---
@@ -159,6 +168,8 @@ This uses fake instruments so you can test commands safely.
 ## Using the Python Drivers Directly
 
 If you are writing a Python script for data collection, pandas analysis, or a lab report and do not need the interactive REPL, you can import the instrument drivers directly.
+
+> **Full Python API docs:** Run `docs python` in the REPL, or open [docs-library/index.md](docs-library/index.md) for the complete API reference with method tables and examples for every driver.
 
 ### Find your instrument's VISA address
 

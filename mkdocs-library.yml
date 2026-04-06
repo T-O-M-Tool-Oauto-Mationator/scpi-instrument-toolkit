@@ -1,0 +1,77 @@
+site_name: SCPI Instrument Toolkit — Python API
+site_dir: lab_instruments/site-library
+use_directory_urls: false
+site_description: Python drivers for controlling lab instruments over VISA
+repo_url: https://github.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit
+repo_name: T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit
+docs_dir: docs-library
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: teal
+      accent: cyan
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: teal
+      accent: cyan
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.highlight
+    - search.suggest
+    - content.code.copy
+    - toc.follow
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+      linenums: false
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - Core:
+    - DeviceManager: instruments/device-manager.md
+    - Discovery: instruments/discovery.md
+  - Power Supplies:
+    - HP E3631A: instruments/psu/hp-e3631a.md
+    - Keysight EDU36311A: instruments/psu/keysight-edu36311a.md
+    - Matrix MPS-6010H: instruments/psu/matrix-mps6010h.md
+  - Multimeters:
+    - HP 34401A: instruments/dmm/hp-34401a.md
+    - Keysight EDU34450A: instruments/dmm/keysight-edu34450a.md
+    - OWON XDM1041: instruments/dmm/owon-xdm1041.md
+  - Function Generators:
+    - Keysight EDU33212A: instruments/awg/keysight-edu33212a.md
+    - BK Precision 4063: instruments/awg/bk-4063.md
+    - JDS6600: instruments/awg/jds6600.md
+  - Oscilloscopes:
+    - Rigol DHO804: instruments/scope/rigol-dho804.md
+    - Tektronix MSO2024: instruments/scope/tektronix-mso2024.md
+    - Keysight DSOX1204G: instruments/scope/keysight-dsox1204g.md
+  - Specialized:
+    - NI PXIe-4139 (SMU): instruments/specialized/ni-pxie-4139.md
+    - TI EV2300 (I2C): instruments/specialized/ti-ev2300.md
+  - Examples: examples.md

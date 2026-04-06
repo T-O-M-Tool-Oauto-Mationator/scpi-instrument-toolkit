@@ -33,13 +33,21 @@ class GeneralCommands(BaseCommand):
                 [
                     "# DOCS",
                     "",
-                    "docs",
-                    "  - open the full command reference in your web browser",
-                    "  - serves the bundled MkDocs site if available",
-                    "  - auto-builds from mkdocs.yml if the site has not been built yet",
+                    "docs              - open REPL command reference (default)",
+                    "docs repl         - open REPL command reference",
+                    "docs python       - open Python library API reference",
+                    "",
+                    "  - serves the bundled MkDocs site in your web browser",
+                    "  - auto-builds on first run if site has not been built yet",
                     "  - requires: pip install mkdocs-material  (for auto-build)",
                 ]
             )
+            return
+
+        # Determine which docs to open
+        variant = args[0].lower() if args else "repl"
+        if variant not in ("repl", "python"):
+            ColorPrinter.warning(f"Unknown docs variant '{variant}'. Use 'docs repl' or 'docs python'.")
             return
 
         # Locate paths relative to the package
@@ -47,24 +55,30 @@ class GeneralCommands(BaseCommand):
         # lab_instruments/ is 3 parents up; repo root is 4 parents up
         lab_pkg = pathlib.Path(__file__).resolve().parent.parent.parent
         pkg_root = lab_pkg.parent  # repo root — mkdocs.yml lives here
-        site_dir = lab_pkg / "site"  # matches site_dir in mkdocs.yml
-        mkdocs_yml = pkg_root / "mkdocs.yml"
+
+        if variant == "python":
+            site_dir = lab_pkg / "site-library"
+            mkdocs_cfg = pkg_root / "mkdocs-library.yml"
+            label = "Python API"
+        else:
+            site_dir = lab_pkg / "site"
+            mkdocs_cfg = pkg_root / "mkdocs.yml"
+            label = "REPL command"
 
         # Auto-build if needed
-        if not (site_dir / "index.html").exists() and mkdocs_yml.exists():
-            ColorPrinter.info("Building docs (first run — takes a few seconds)...")
+        if not (site_dir / "index.html").exists() and mkdocs_cfg.exists():
+            ColorPrinter.info(f"Building {label} docs (first run — takes a few seconds)...")
             try:
                 subprocess.run(
-                    [sys.executable, "-m", "mkdocs", "build"],
+                    [sys.executable, "-m", "mkdocs", "build", "-f", str(mkdocs_cfg)],
                     cwd=str(pkg_root),
                     check=True,
                     capture_output=True,
                     text=True,
                 )
-                ColorPrinter.success("Docs built.")
+                ColorPrinter.success(f"{label} docs built.")
             except FileNotFoundError:
                 ColorPrinter.warning("mkdocs not found. Install with: pip install mkdocs-material")
-                ColorPrinter.info(f"Docs source: {pkg_root / 'docs'}")
                 return
             except subprocess.CalledProcessError as exc:
                 stderr = (exc.stderr or "")[:200]
@@ -72,13 +86,16 @@ class GeneralCommands(BaseCommand):
                 return
 
         if not (site_dir / "index.html").exists():
-            ColorPrinter.warning("No built docs site found.")
-            ColorPrinter.info(f"To build: cd {pkg_root} && mkdocs build")
+            ColorPrinter.warning(f"No built {label} docs site found.")
+            ColorPrinter.info(f"To build: cd {pkg_root} && mkdocs build -f {mkdocs_cfg.name}")
             ColorPrinter.info("Requires: pip install mkdocs-material")
             return
 
         # Spawn HTTP server on first call; reuse port on subsequent calls
-        if self._docs_server is None:
+        # Use separate servers for repl vs python docs
+        server_attr = f"_docs_server_{variant}"
+        port_attr = f"_docs_port_{variant}"
+        if not hasattr(self, server_attr) or getattr(self, server_attr) is None:
             _site = str(site_dir)
 
             class _QuietHandler(http.server.SimpleHTTPRequestHandler):
@@ -88,12 +105,14 @@ class GeneralCommands(BaseCommand):
                 def log_message(self_h, fmt, *a):
                     pass
 
-            self._docs_server = http.server.HTTPServer(("127.0.0.1", 0), _QuietHandler)
-            self._docs_port = self._docs_server.server_address[1]
-            threading.Thread(target=self._docs_server.serve_forever, daemon=True).start()
+            server = http.server.HTTPServer(("127.0.0.1", 0), _QuietHandler)
+            setattr(self, server_attr, server)
+            setattr(self, port_attr, server.server_address[1])
+            threading.Thread(target=server.serve_forever, daemon=True).start()
 
-        url = f"http://127.0.0.1:{self._docs_port}/index.html"
-        ColorPrinter.info(f"Opening docs: {url}")
+        port = getattr(self, port_attr)
+        url = f"http://127.0.0.1:{port}/index.html"
+        ColorPrinter.info(f"Opening {label} docs: {url}")
         webbrowser.open(url)
 
     def do_scan(self, arg: str, discovery: Any, scan_done: Any) -> None:
