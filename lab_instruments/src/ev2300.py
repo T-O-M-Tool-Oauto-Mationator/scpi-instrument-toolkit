@@ -827,8 +827,9 @@ class _EV2300Core:
         if not self.write_report(packet):
             return {"ok": False, "status_text": "Write failed"}
 
-        # Some commands (WriteByte=0x07, I2CPower=0x18, ExtWrite=0x1E) produce
+        # Some commands (I2CPower=0x18, ExtWrite=0x1E) produce
         # no HID response at all -- just fire and return success.
+        # NOTE: WriteByte=0x07 uses the two-phase write_submit path, not this.
         if no_response:
             return {"ok": True, "status": 0, "status_text": "OK"}
 
@@ -874,7 +875,7 @@ class _EV2300Core:
 
     def write_byte(self, i2c_addr: int, register: int, value: int) -> dict:
         pkt = self.build_packet(CMD_WRITE_BYTE, i2c_addr, register, bytes([value & 0xFF]))
-        return self._request(pkt, no_response=True)
+        return self._request(pkt, write_submit=True)
 
     def read_block(self, i2c_addr: int, register: int) -> dict:
         pkt = self.build_packet(CMD_READ_BLOCK, i2c_addr, register)
