@@ -39,7 +39,7 @@ CMD_WRITE_WORD = 0x04
 CMD_WRITE_BLOCK = 0x05
 CMD_COMMAND = 0x06  # SMBus "Send Byte"
 CMD_WRITE_BYTE = 0x07
-CMD_SUBMIT = 0x80  # Write handshake
+CMD_SUBMIT = 0x80  # Write handshake (Submit | response 0xC0)
 CMD_ERROR = 0x46  # Device error response
 
 RESP_FLAG = 0x40  # Success responses have bit 6 set
@@ -475,8 +475,13 @@ class _LinuxBackend(_HIDBackend):
             logger.warning("write failed: %s", e)
             return False
 
-    def read(self, handle: object) -> bytes | None:
+    def read(self, handle: object, timeout_ms: int = 1000) -> bytes | None:
+        import select
         try:
+            ready, _, _ = select.select([handle], [], [], timeout_ms / 1000.0)
+            if not ready:
+                logger.warning("read timeout after %d ms", timeout_ms)
+                return None
             data = os.read(handle, BUF_SIZE)
             return data if data else None
         except OSError as e:
@@ -811,7 +816,8 @@ class _EV2300Core:
     # Core request/response
     # ------------------------------------------------------------------
 
-    def _request(self, packet: bytearray, write_submit: bool = False) -> dict:
+    def _request(self, packet: bytearray, write_submit: bool = False,
+                 no_response: bool = False) -> dict:
         import time
 
         # Flush stale responses left by previous commands
@@ -820,6 +826,11 @@ class _EV2300Core:
 
         if not self.write_report(packet):
             return {"ok": False, "status_text": "Write failed"}
+
+        # Some commands (WriteByte=0x07, I2CPower=0x18, ExtWrite=0x1E) produce
+        # no HID response at all -- just fire and return success.
+        if no_response:
+            return {"ok": True, "status": 0, "status_text": "OK"}
 
         if write_submit:
             # Read and discard the write-command response
@@ -863,7 +874,7 @@ class _EV2300Core:
 
     def write_byte(self, i2c_addr: int, register: int, value: int) -> dict:
         pkt = self.build_packet(CMD_WRITE_BYTE, i2c_addr, register, bytes([value & 0xFF]))
-        return self._request(pkt, write_submit=True)
+        return self._request(pkt, no_response=True)
 
     def read_block(self, i2c_addr: int, register: int) -> dict:
         pkt = self.build_packet(CMD_READ_BLOCK, i2c_addr, register)
