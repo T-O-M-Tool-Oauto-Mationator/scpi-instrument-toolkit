@@ -834,9 +834,13 @@ class _EV2300Core:
             return {"ok": True, "status": 0, "status_text": "OK"}
 
         if write_submit:
-            # Read and discard the write-command response
+            # Read and discard the write-command ACK (0x4E for WRITE_BYTE, 0x44/0x45 for
+            # WRITE_WORD/WRITE_BLOCK, 0xC0 for SEND_BYTE).  If it never arrives the
+            # device is unresponsive; abort rather than sending SUBMIT blind.
             time.sleep(0.01)
-            self.read_report()
+            ack = self.read_report()
+            if ack is None:
+                return {"ok": False, "status_text": "Write ACK timeout"}
 
             submit = self.build_packet(CMD_SUBMIT)
             if not self.write_report(submit):
@@ -857,13 +861,16 @@ class _EV2300Core:
         pkt = self.build_packet(CMD_READ_WORD, i2c_addr, register)
         resp = self._request(pkt)
         if resp["ok"] and len(resp.get("raw", b"")) >= 10:
-            resp["value"] = struct.unpack("<H", resp["raw"][8:10])[0]
+            # Firmware uses HAL_I2C_Mem_Read which returns bytes in I2C wire order.
+            # BQ76920 (and most I2C devices) send the high byte first (big-endian).
+            resp["value"] = struct.unpack(">H", resp["raw"][8:10])[0]
         else:
             resp["value"] = None
         return resp
 
     def write_word(self, i2c_addr: int, register: int, value: int) -> dict:
-        data = struct.pack("<H", value & 0xFFFF)
+        # Big-endian: HAL_I2C_Mem_Write sends data[0] first; BQ76920 expects high byte first.
+        data = struct.pack(">H", value & 0xFFFF)
         pkt = self.build_packet(CMD_WRITE_WORD, i2c_addr, register, data)
         return self._request(pkt, write_submit=True)
 
