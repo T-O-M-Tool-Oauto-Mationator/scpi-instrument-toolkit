@@ -19,6 +19,29 @@ Instruments are identified by querying `*IDN?` and matched against the [supporte
 
 ---
 
+## unscan
+
+Remove a connected instrument from the current session without rescanning.
+
+```
+unscan <name>
+```
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `name` | required | Instrument name as shown by `list` (e.g. `psu1`, `scope2`) |
+
+The device is removed from the REPL's device list. If it was the active selection, the selection is cleared. Use `scan` to rediscover it.
+
+```
+unscan psu1    # remove psu1 from the session
+```
+
+!!! note
+    This does not physically disconnect the instrument — it just removes it from the device list. Run `scan` to bring it back.
+
+---
+
 ## list
 
 Show all currently connected instruments.

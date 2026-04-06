@@ -122,6 +122,31 @@ class GeneralCommands(BaseCommand):
             else:
                 ColorPrinter.warning("No instruments found.")
 
+    def do_unscan(self, arg: str) -> None:
+        args = self.parse_args(arg)
+        if self.is_help(args) or not args:
+            self.print_colored_usage(
+                [
+                    "# UNSCAN",
+                    "",
+                    "unscan <name>",
+                    "  - remove a scanned device from the session by name",
+                    "  - use 'list' to see device names",
+                    "  - the device is removed until the next 'scan'",
+                ]
+            )
+            return
+        name = args[0]
+        if name not in self.registry.devices:
+            ColorPrinter.warning(f"No device named '{name}'. Run 'list' to see connected devices.")
+            return
+        del self.registry.devices[name]
+        if self.registry.selected == name:
+            self.registry.selected = None
+            ColorPrinter.info(f"Removed '{name}' and cleared active selection.")
+        else:
+            ColorPrinter.success(f"Removed '{name}'.")
+
     def do_list(self, arg: str) -> None:
         args = self.parse_args(arg)
         if self.is_help(args):

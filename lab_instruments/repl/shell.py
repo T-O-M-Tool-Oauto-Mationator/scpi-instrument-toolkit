@@ -659,6 +659,10 @@ class InstrumentRepl(cmd.Cmd):
         self._wait_for_scan()
         self._general.do_scan(arg, self.discovery, self._scan_done)
 
+    def do_unscan(self, arg):
+        """unscan <name>: remove a scanned device from the session"""
+        self._general.do_unscan(arg)
+
     def do_list(self, arg):
         """list: show connected instruments"""
         self._general.do_list(arg)
