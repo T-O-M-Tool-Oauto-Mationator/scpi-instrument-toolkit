@@ -38,7 +38,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install doc dependencies
-        run: pip install mkdocs-material "mkdocstrings[python]>=0.25.0" matplotlib
+        run: pip install mkdocs-material "mkdocstrings[python]>=0.25.0" mkdocs-gen-files matplotlib
 
       - name: Install package (needed by mkdocstrings to import modules)
         run: pip install -e ".[dev]" --no-deps 2>/dev/null || pip install -e . --no-deps
