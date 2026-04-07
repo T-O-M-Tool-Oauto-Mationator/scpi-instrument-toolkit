@@ -519,9 +519,7 @@ class TestEV2300:
         from lab_instruments.src.labview_bridge import ev2300_get_device_info
 
         dev, _ = ev2300
-        dev.get_device_info = MagicMock(
-            return_value={"ok": True, "serial": "TEST001", "product": "EV2300A"}
-        )
+        dev.get_device_info = MagicMock(return_value={"ok": True, "serial": "TEST001", "product": "EV2300A"})
         inst_id = _inject(dev, "ev2300")
         result = json.loads(ev2300_get_device_info(inst_id))
         assert result["serial"] == "TEST001"

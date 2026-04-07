@@ -544,9 +544,7 @@ class InstrumentDiscovery:
         results = list(kept_results)
         if new_resources:
             with concurrent.futures.ThreadPoolExecutor(max_workers=len(new_resources)) as executor:
-                future_to_resource = {
-                    executor.submit(self._probe_resource, res, verbose): res for res in new_resources
-                }
+                future_to_resource = {executor.submit(self._probe_resource, res, verbose): res for res in new_resources}
                 for future in concurrent.futures.as_completed(future_to_resource):
                     try:
                         res = future.result()

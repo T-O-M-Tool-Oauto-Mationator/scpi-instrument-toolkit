@@ -138,10 +138,7 @@ def _get_typed(instrument_id: str, valid_types: tuple) -> object:
     dev = _get(instrument_id)
     if not isinstance(dev, valid_types):
         expected = [c.__name__ for c in valid_types]
-        raise TypeError(
-            f"Instrument '{instrument_id}' is {type(dev).__name__}, "
-            f"expected one of {expected}"
-        )
+        raise TypeError(f"Instrument '{instrument_id}' is {type(dev).__name__}, expected one of {expected}")
     return dev
 
 
@@ -157,6 +154,7 @@ def discover_instruments() -> str:
         str: JSON object like {"psu": "HP_E3631A", "dmm": "HP_34401A", ...}
     """
     from .discovery import find_all
+
     found = find_all(verbose=False)
     result = {name: type(drv).__name__ for name, drv in found.items()}
     return json.dumps(result)
@@ -189,6 +187,7 @@ def list_visa_resources() -> str:
         str: JSON list like ["USB0::0x0957::0x0807::...", "ASRL3::INSTR", ...]
     """
     import pyvisa
+
     rm = pyvisa.ResourceManager()
     resources = list(rm.list_resources())
     return json.dumps(sorted(resources))
@@ -210,10 +209,7 @@ def open_instrument(visa_address: str, driver_name: str) -> str:
         str: Instrument ID (e.g. "psu_1") to use in subsequent calls.
     """
     if driver_name not in _DRIVER_MAP:
-        raise ValueError(
-            f"Unknown driver '{driver_name}'. "
-            f"Available: {sorted(_DRIVER_MAP.keys())}"
-        )
+        raise ValueError(f"Unknown driver '{driver_name}'. Available: {sorted(_DRIVER_MAP.keys())}")
     driver_class = _DRIVER_MAP[driver_name]
     dev = driver_class(visa_address)
     dev.connect()
@@ -280,9 +276,7 @@ def open_ev2300(resource_name: str = "") -> str:
         str: Instrument ID (e.g. "ev2300_1").
     """
     if TI_EV2300 is None:
-        raise ImportError(
-            "EV2300 driver not available. Install hidapi: pip install hidapi"
-        )
+        raise ImportError("EV2300 driver not available. Install hidapi: pip install hidapi")
     if resource_name:
         dev = TI_EV2300(resource_name)
     else:
@@ -380,9 +374,7 @@ def psu_set_current_limit(instrument_id: str, channel: int, current: float) -> s
     return "OK"
 
 
-def psu_set_output_channel(
-    instrument_id: str, channel: int, voltage: float, current_limit: float
-) -> str:
+def psu_set_output_channel(instrument_id: str, channel: int, voltage: float, current_limit: float) -> str:
     """Set voltage and current limit for a PSU channel in one call.
 
     Returns:
@@ -657,9 +649,7 @@ def scope_single(instrument_id: str) -> str:
     return "OK"
 
 
-def scope_set_vertical_scale(
-    instrument_id: str, channel: int, volts_per_div: float
-) -> str:
+def scope_set_vertical_scale(instrument_id: str, channel: int, volts_per_div: float) -> str:
     """Set vertical scale for a scope channel.
 
     Returns:
@@ -723,9 +713,7 @@ def ev2300_read_byte(instrument_id: str, i2c_addr: int, register: int) -> int:
     return result["value"]
 
 
-def ev2300_write_byte(
-    instrument_id: str, i2c_addr: int, register: int, value: int
-) -> str:
+def ev2300_write_byte(instrument_id: str, i2c_addr: int, register: int, value: int) -> str:
     """Write a single byte to an I2C register via EV2300.
 
     Returns:
@@ -751,9 +739,7 @@ def ev2300_read_word(instrument_id: str, i2c_addr: int, register: int) -> int:
     return result["value"]
 
 
-def ev2300_write_word(
-    instrument_id: str, i2c_addr: int, register: int, value: int
-) -> str:
+def ev2300_write_word(instrument_id: str, i2c_addr: int, register: int, value: int) -> str:
     """Write a 16-bit word to an I2C register via EV2300.
 
     Returns:
@@ -779,9 +765,7 @@ def ev2300_read_block(instrument_id: str, i2c_addr: int, register: int) -> str:
     return json.dumps(list(result["data"]))
 
 
-def ev2300_write_block(
-    instrument_id: str, i2c_addr: int, register: int, data_json: str
-) -> str:
+def ev2300_write_block(instrument_id: str, i2c_addr: int, register: int, data_json: str) -> str:
     """Write a block of bytes to an I2C register via EV2300.
 
     Args:
@@ -814,9 +798,7 @@ def ev2300_get_device_info(instrument_id: str) -> str:
 # =========================================================================
 
 
-def smu_set_voltage_mode(
-    instrument_id: str, voltage: float, current_limit: float
-) -> str:
+def smu_set_voltage_mode(instrument_id: str, voltage: float, current_limit: float) -> str:
     """Switch SMU to voltage mode and set voltage/current limit.
 
     Returns:
@@ -827,9 +809,7 @@ def smu_set_voltage_mode(
     return "OK"
 
 
-def smu_set_current_mode(
-    instrument_id: str, current: float, voltage_limit: float
-) -> str:
+def smu_set_current_mode(instrument_id: str, current: float, voltage_limit: float) -> str:
     """Switch SMU to current mode and set current/voltage limit.
 
     Returns:
@@ -918,4 +898,5 @@ def get_version() -> str:
         str: Version string (e.g. "0.1.153").
     """
     from .. import __version__
+
     return __version__

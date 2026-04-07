@@ -16,6 +16,7 @@ from enum import Enum
 # AWG / Function generator
 # ---------------------------------------------------------------------------
 
+
 class WaveformType(str, Enum):
     """Canonical SCPI waveform identifiers for AWG / function generators.
 
@@ -71,33 +72,32 @@ class WaveformType(str, Enum):
             return cls(s.strip().upper())
         except ValueError:
             known = ", ".join(sorted(_WAVE_ALIASES.keys()))
-            raise ValueError(
-                f"Unknown waveform '{s}'. Known aliases: {known}"
-            ) from None
+            raise ValueError(f"Unknown waveform '{s}'. Known aliases: {known}") from None
 
 
 # Alias table: user-friendly name → WaveformType member
 _WAVE_ALIASES: dict[str, WaveformType] = {
-    "sine":     WaveformType.SIN,
-    "sin":      WaveformType.SIN,
-    "square":   WaveformType.SQU,
-    "squ":      WaveformType.SQU,
-    "ramp":     WaveformType.RAMP,
+    "sine": WaveformType.SIN,
+    "sin": WaveformType.SIN,
+    "square": WaveformType.SQU,
+    "squ": WaveformType.SQU,
+    "ramp": WaveformType.RAMP,
     "triangle": WaveformType.RAMP,
-    "tri":      WaveformType.RAMP,
-    "pulse":    WaveformType.PULS,
-    "puls":     WaveformType.PULS,
-    "noise":    WaveformType.NOIS,
-    "nois":     WaveformType.NOIS,
-    "dc":       WaveformType.DC,
-    "arb":      WaveformType.ARB,
-    "prbs":     WaveformType.PRBS,
+    "tri": WaveformType.RAMP,
+    "pulse": WaveformType.PULS,
+    "puls": WaveformType.PULS,
+    "noise": WaveformType.NOIS,
+    "nois": WaveformType.NOIS,
+    "dc": WaveformType.DC,
+    "arb": WaveformType.ARB,
+    "prbs": WaveformType.PRBS,
 }
 
 
 # ---------------------------------------------------------------------------
 # DMM
 # ---------------------------------------------------------------------------
+
 
 class DMMMode(str, Enum):
     """Measurement mode identifiers for digital multimeters.
@@ -148,42 +148,41 @@ class DMMMode(str, Enum):
             return cls(key)
         except ValueError:
             known = ", ".join(sorted(_DMM_ALIASES.keys()))
-            raise ValueError(
-                f"Unknown DMM mode '{s}'. Known aliases: {known}"
-            ) from None
+            raise ValueError(f"Unknown DMM mode '{s}'. Known aliases: {known}") from None
 
 
 # Alias table: REPL shorthand → DMMMode member
 _DMM_ALIASES: dict[str, DMMMode] = {
-    "vdc":          DMMMode.DC_VOLTAGE,
-    "dc_voltage":   DMMMode.DC_VOLTAGE,
-    "vac":          DMMMode.AC_VOLTAGE,
-    "ac_voltage":   DMMMode.AC_VOLTAGE,
-    "idc":          DMMMode.DC_CURRENT,
-    "dc_current":   DMMMode.DC_CURRENT,
-    "iac":          DMMMode.AC_CURRENT,
-    "ac_current":   DMMMode.AC_CURRENT,
-    "res":          DMMMode.RESISTANCE_2WIRE,
+    "vdc": DMMMode.DC_VOLTAGE,
+    "dc_voltage": DMMMode.DC_VOLTAGE,
+    "vac": DMMMode.AC_VOLTAGE,
+    "ac_voltage": DMMMode.AC_VOLTAGE,
+    "idc": DMMMode.DC_CURRENT,
+    "dc_current": DMMMode.DC_CURRENT,
+    "iac": DMMMode.AC_CURRENT,
+    "ac_current": DMMMode.AC_CURRENT,
+    "res": DMMMode.RESISTANCE_2WIRE,
     "resistance_2wire": DMMMode.RESISTANCE_2WIRE,
-    "fres":         DMMMode.RESISTANCE_4WIRE,
+    "fres": DMMMode.RESISTANCE_4WIRE,
     "resistance_4wire": DMMMode.RESISTANCE_4WIRE,
-    "freq":         DMMMode.FREQUENCY,
-    "frequency":    DMMMode.FREQUENCY,
-    "per":          DMMMode.PERIOD,
-    "period":       DMMMode.PERIOD,
-    "cont":         DMMMode.CONTINUITY,
-    "continuity":   DMMMode.CONTINUITY,
-    "diode":        DMMMode.DIODE,
-    "cap":          DMMMode.CAPACITANCE,
-    "capacitance":  DMMMode.CAPACITANCE,
-    "temp":         DMMMode.TEMPERATURE,
-    "temperature":  DMMMode.TEMPERATURE,
+    "freq": DMMMode.FREQUENCY,
+    "frequency": DMMMode.FREQUENCY,
+    "per": DMMMode.PERIOD,
+    "period": DMMMode.PERIOD,
+    "cont": DMMMode.CONTINUITY,
+    "continuity": DMMMode.CONTINUITY,
+    "diode": DMMMode.DIODE,
+    "cap": DMMMode.CAPACITANCE,
+    "capacitance": DMMMode.CAPACITANCE,
+    "temp": DMMMode.TEMPERATURE,
+    "temperature": DMMMode.TEMPERATURE,
 }
 
 
 # ---------------------------------------------------------------------------
 # Oscilloscope
 # ---------------------------------------------------------------------------
+
 
 class CouplingMode(str, Enum):
     """Input coupling modes for oscilloscope channels.
@@ -226,6 +225,7 @@ class TriggerMode(str, Enum):
 # ---------------------------------------------------------------------------
 # SMU (Source Measure Unit)
 # ---------------------------------------------------------------------------
+
 
 class SMUSourceMode(str, Enum):
     """Output source mode for SMU instruments.

@@ -723,8 +723,14 @@ class _MainWindow(QMainWindow):
         # Disable console and all instrument blocks to prevent lock contention
         self._console._input.setEnabled(False)
         self._device_panel._scan_btn.setEnabled(False)
-        for blocks in [self._psu_blocks, self._smu_blocks, self._awg_blocks,
-                       self._dmm_blocks, self._ev_blocks, self._scope_blocks]:
+        for blocks in [
+            self._psu_blocks,
+            self._smu_blocks,
+            self._awg_blocks,
+            self._dmm_blocks,
+            self._ev_blocks,
+            self._scope_blocks,
+        ]:
             for block in blocks.values():
                 block.setEnabled(False)
 
@@ -734,8 +740,14 @@ class _MainWindow(QMainWindow):
         def _scan_done(result):
             self._console._input.setEnabled(True)
             self._device_panel._scan_btn.setEnabled(True)
-            for blocks in [self._psu_blocks, self._smu_blocks, self._awg_blocks,
-                           self._dmm_blocks, self._ev_blocks, self._scope_blocks]:
+            for blocks in [
+                self._psu_blocks,
+                self._smu_blocks,
+                self._awg_blocks,
+                self._dmm_blocks,
+                self._ev_blocks,
+                self._scope_blocks,
+            ]:
                 for block in blocks.values():
                     block.setEnabled(True)
             if result.startswith("[ERROR]"):

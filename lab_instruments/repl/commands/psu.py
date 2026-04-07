@@ -217,9 +217,7 @@ class PsuCommand(BaseCommand):
                 return
             channel = _resolve_channel(dev, args[1])
             if channel is None:
-                ch_count = len(
-                    getattr(dev.__class__, "CHANNEL_FROM_NUMBER", None) or getattr(dev, "CHANNEL_MAP", {})
-                )
+                ch_count = len(getattr(dev.__class__, "CHANNEL_FROM_NUMBER", None) or getattr(dev, "CHANNEL_MAP", {}))
                 ColorPrinter.warning(f"Invalid channel. Use 1-{ch_count}")
                 return
             voltage = float(args[2])
@@ -266,9 +264,7 @@ class PsuCommand(BaseCommand):
             channel = _resolve_channel(dev, args[1])
             mode = args[2].lower()
             if channel is None:
-                ch_count = len(
-                    getattr(dev.__class__, "CHANNEL_FROM_NUMBER", None) or getattr(dev, "CHANNEL_MAP", {})
-                )
+                ch_count = len(getattr(dev.__class__, "CHANNEL_FROM_NUMBER", None) or getattr(dev, "CHANNEL_MAP", {}))
                 ColorPrinter.warning(f"Invalid channel. Use 1-{ch_count}")
                 return
             if mode in ("v", "volt", "voltage"):

@@ -25,10 +25,7 @@ class DocsViewer(QWidget):
             lay.addWidget(self._view)
             self._view.load(QUrl.fromLocalFile(str(index)))
         else:
-            lbl = QLabel(
-                f"QtWebEngineWidgets not available.<br>"
-                f'<a href="file://{index}">Open docs in browser</a>'
-            )
+            lbl = QLabel(f'QtWebEngineWidgets not available.<br><a href="file://{index}">Open docs in browser</a>')
             lbl.setOpenExternalLinks(False)
             lbl.linkActivated.connect(lambda _: webbrowser.open(index.as_uri()))
             lay.addWidget(lbl)

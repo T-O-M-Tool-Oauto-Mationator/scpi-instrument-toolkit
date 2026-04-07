@@ -477,6 +477,7 @@ class _LinuxBackend(_HIDBackend):
 
     def read(self, handle: object, timeout_ms: int = 1000) -> bytes | None:
         import select
+
         try:
             ready, _, _ = select.select([handle], [], [], timeout_ms / 1000.0)
             if not ready:
@@ -816,8 +817,7 @@ class _EV2300Core:
     # Core request/response
     # ------------------------------------------------------------------
 
-    def _request(self, packet: bytearray, write_submit: bool = False,
-                 no_response: bool = False) -> dict:
+    def _request(self, packet: bytearray, write_submit: bool = False, no_response: bool = False) -> dict:
         import time
 
         # Flush stale responses left by previous commands
