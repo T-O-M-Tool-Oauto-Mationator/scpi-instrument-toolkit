@@ -31,8 +31,10 @@ class _InputBridge(QObject):
     @Slot(str)
     def _show_dialog(self, prompt: str) -> None:
         from PySide6.QtWidgets import QApplication
+        # Strip ANSI escape codes from the prompt
+        clean = re.sub(r"\x1b\[[0-9;]*m", "", prompt or "")
         parent = QApplication.activeWindow()
-        text, ok = QInputDialog.getText(parent, "Input Required", prompt or "Enter value:")
+        text, ok = QInputDialog.getText(parent, "Input Required", clean or "Enter value:")
         self._result = text if ok else ""
 
     def ask(self, prompt: str) -> str:

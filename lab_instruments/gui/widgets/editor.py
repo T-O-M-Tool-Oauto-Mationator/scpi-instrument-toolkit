@@ -714,25 +714,44 @@ class ScpiEditor(QWidget):
         else:
             self._debug_stop()
 
-    def _next_real_line(self, from_idx: int) -> int:
-        """Return index of next non-__NOP__ line at or after from_idx, or len(lines) if none."""
+    def _is_skippable(self, idx: int) -> bool:
+        """Return True if line at idx is a blank/comment NOP that should be auto-skipped."""
+        st = self._debug_state
+        if not st or idx >= len(st["lines"]):
+            return False
+        if st["lines"][idx] != "__NOP__":
+            return False
+        # Check source line — skip blanks and comments, pause on directives
+        src = st["source_lines"][idx].strip() if idx < len(st["source_lines"]) else ""
+        return not src or src.startswith("#")
+
+    def _next_actionable_line(self, from_idx: int) -> int:
+        """Return index of next non-skippable line at or after from_idx."""
         st = self._debug_state
         if not st:
             return from_idx
-        lines = st["lines"]
         i = from_idx
-        while i < len(lines) and lines[i] == "__NOP__":
+        while i < len(st["lines"]) and self._is_skippable(i):
             i += 1
         return i
 
+    def _find_console(self):
+        """Walk parents to find the main window's console."""
+        w = self.parent()
+        while w is not None:
+            if hasattr(w, "_console"):
+                return w._console
+            w = w.parent()
+        return None
+
     def _debug_step(self) -> None:
-        """Execute current line and advance to next real command. Skips comments/NOPs."""
+        """Execute current line and advance. Skips blank/comment NOPs, pauses on directives."""
         if not self._debug_state or self._debug_state.get("busy"):
             return
         st = self._debug_state
 
-        # Skip to the next real command
-        idx = self._next_real_line(st["idx"])
+        # Skip blank lines and comments
+        idx = self._next_actionable_line(st["idx"])
         if idx >= len(st["lines"]):
             self._debug_stop()
             return
@@ -740,6 +759,25 @@ class ScpiEditor(QWidget):
         st["idx"] = idx
         self._debug_update_position()
         line = st["lines"][idx]
+
+        # If this is a NOP directive (upper_limit, set -e, etc.), just show it and advance
+        if line == "__NOP__":
+            src = st["source_lines"][idx] if idx < len(st["source_lines"]) else ""
+            console = self._find_console()
+            if console and src.strip():
+                console.log(f"<span style='color:#555'>[debug]</span> {_ansi_to_html(src)}")
+            st["idx"] = self._next_actionable_line(idx + 1)
+            if st["idx"] >= len(st["lines"]):
+                self._debug_stop()
+            else:
+                self._debug_update_position()
+            return
+
+        # Log the command BEFORE executing so output like "Sleeping 2s..." shows first
+        console = self._find_console()
+        if console:
+            src = st["source_lines"][idx] if idx < len(st["source_lines"]) else line
+            console.log(f"<span style='color:#555'>[debug]</span> <b>{_ansi_to_html(src)}</b>")
 
         # Run the command in background so sleep/long ops don't freeze UI
         st["busy"] = True
@@ -757,8 +795,7 @@ class ScpiEditor(QWidget):
             self._debug_state["busy"] = False
             self._step_btn.setEnabled(True)
             self._cont_btn.setEnabled(True)
-            # Advance past current line and skip to next real command
-            next_idx = self._next_real_line(self._debug_state["idx"] + 1)
+            next_idx = self._next_actionable_line(self._debug_state["idx"] + 1)
             self._debug_state["idx"] = next_idx
             if next_idx >= len(self._debug_state["lines"]):
                 self._debug_stop()
@@ -788,7 +825,6 @@ class ScpiEditor(QWidget):
         if not self._debug_state:
             return False
         bps = self._debug_state["breakpoints"]
-        # Breakpoints on NOP lines should trigger at the next real line
         return any((i + 1) in bps for i in range(start, end))
 
     def _debug_continue_step(self) -> None:
@@ -796,7 +832,6 @@ class ScpiEditor(QWidget):
             return
         st = self._debug_state
         if st.get("busy"):
-            # Previous step still running — wait and retry
             QTimer.singleShot(50, self._debug_continue_step)
             return
         idx = st["idx"]
@@ -804,38 +839,51 @@ class ScpiEditor(QWidget):
             self._debug_stop()
             return
 
-        # Check for breakpoint: a breakpoint on any line from current position
-        # through the next NOP block should stop at the next real line
-        next_real = self._next_real_line(idx)
-        if next_real >= len(st["lines"]):
+        # Find the next actionable line (skip blank/comment NOPs)
+        next_act = self._next_actionable_line(idx)
+        if next_act >= len(st["lines"]):
             self._debug_stop()
             return
 
-        # Check if any breakpoint falls in the NOP range or on the real line itself
-        if self._has_breakpoint_in_range(idx, next_real + 1) and idx != st.get("_cont_start", -1):
-            st["idx"] = next_real
+        # Check if any breakpoint falls between current position and next actionable line
+        cont_start = st.pop("_cont_start", -1)
+        if self._has_breakpoint_in_range(idx, next_act + 1) and idx != cont_start:
+            st["idx"] = next_act
             self._debug_update_position()
             return
 
-        # Execute and advance
-        st["idx"] = next_real
-        line = st["lines"][next_real]
+        st["idx"] = next_act
+        line = st["lines"][next_act]
+
+        # NOP directive (upper_limit etc.) — show and advance without pausing
+        if line == "__NOP__":
+            src = st["source_lines"][next_act] if next_act < len(st["source_lines"]) else ""
+            console = self._find_console()
+            if console and src.strip():
+                console.log(f"<span style='color:#555'>[debug]</span> {_ansi_to_html(src)}")
+            st["idx"] = self._next_actionable_line(next_act + 1)
+            if st["idx"] >= len(st["lines"]):
+                self._debug_stop()
+            else:
+                self._debug_schedule_continue()
+            return
+
+        # Real command — execute
         self._debug_exec_line(line)
-        st["idx"] = self._next_real_line(next_real + 1)
+        st["idx"] = self._next_actionable_line(next_act + 1)
         if st["idx"] >= len(st["lines"]):
             self._debug_stop()
         else:
             self._debug_schedule_continue()
 
     def _debug_back(self) -> None:
-        """Move back one line (state NOT reversed)."""
+        """Move back one line (state NOT reversed). Skips blank/comment NOPs."""
         if not self._debug_state:
             return
         st = self._debug_state
         if st["idx"] > 0:
             st["idx"] -= 1
-            # Skip back over __NOP__ lines
-            while st["idx"] > 0 and st["lines"][st["idx"]] == "__NOP__":
+            while st["idx"] > 0 and self._is_skippable(st["idx"]):
                 st["idx"] -= 1
             self._debug_update_position()
 
