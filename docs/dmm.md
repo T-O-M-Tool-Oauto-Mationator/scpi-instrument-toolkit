@@ -1,5 +1,8 @@
 # DMM — Multimeter
 
+!!! tip "Auto-generated reference"
+    For the definitive command list extracted directly from source code, see [REPL Command Reference](generated/repl-ref.md#dmm-multimeter).
+
 Controls digital multimeters.
 
 - Multiple DMMs are named `dmm1`, `dmm2`, etc.
@@ -281,6 +284,9 @@ Print the valid measurement ranges for the connected DMM model.
 ```
 dmm ranges
 ```
+
+!!! note
+    `dmm limits` is an alias for `dmm ranges`.
 
 ---
 

@@ -2,6 +2,9 @@
 
 ## Supported models
 
+!!! tip "Auto-generated version"
+    An auto-generated instruments table (built from source code, always up-to-date) is available at [Instruments & Capabilities](generated/instruments.md).
+
 | Model | Type | Interface | Key Features |
 |-------|------|-----------|--------------|
 | Rigol DHO804 | Oscilloscope | USB | Screenshot, display, acquire, cursor, math, record, mask, label, invert, bwlimit, built-in AWG/counter/DVM |

@@ -1,5 +1,8 @@
 # Scope — Oscilloscope
 
+!!! tip "Auto-generated reference"
+    For the definitive command list extracted directly from source code, see [REPL Command Reference](generated/repl-ref.md#scope-oscilloscope).
+
 Controls oscilloscopes over VISA.
 
 - Channels are numbered `1`–`4`. Use `all` to affect every channel at once.

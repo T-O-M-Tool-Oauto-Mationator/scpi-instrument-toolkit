@@ -14,7 +14,7 @@
         <link rel="prev" href="ev2300.html">
       
       
-        <link rel="next" href="../labview.html">
+        <link rel="next" href="../generated/instruments.html">
       
       
         
@@ -311,6 +311,26 @@
   
   
   Python API
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../generated/instruments.html" class="md-tabs__link">
+          
+  
+  
+  Reference
 
         </a>
       </li>
@@ -1333,6 +1353,123 @@
   
   
   
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../generated/instruments.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Instruments & Capabilities
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../generated/repl-ref.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    REPL Command Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../labview.html" class="md-nav__link">
         
@@ -1569,7 +1706,47 @@
 
 
 
-        <p>Base class for SCPI instrument management using PyVISA.</p>
+        <p>Base class for SCPI instrument drivers using PyVISA.</p>
+<p>All instrument drivers inherit from this class and gain a shared
+PyVISA connection lifecycle (connect / disconnect) plus thin wrappers
+around the two most common SCPI operations: write-only commands and
+query-response commands.</p>
+
+
+<p><span class="doc-section-title">Attributes:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code><span title="lab_instruments.src.device_manager.DeviceManager.resource_name">resource_name</span></code></td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>VISA resource string passed at construction time,
+e.g. <code>"USB0::0x0957::0x2807::MY12345678::INSTR"</code>.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="lab_instruments.src.device_manager.DeviceManager.instrument">instrument</span></code></td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The open <code>pyvisa.Resource</code> object, or <code>None</code> when
+not connected.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
 
 
@@ -1605,7 +1782,34 @@
 
     <div class="doc doc-contents ">
 
-        <p>Connects to the instrument.</p>
+        <p>Open a PyVISA session to the instrument.</p>
+<p>Sets a 5-second timeout and <code>"\n"</code> read termination on the
+session.  Prints a confirmation message on success.</p>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pyvisa.VisaIOError">VisaIOError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If the resource cannot be opened (e.g.
+instrument is off, address is wrong, or no VISA driver
+is installed).</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
 
     </div>
@@ -1625,7 +1829,9 @@
 
     <div class="doc doc-contents ">
 
-        <p>Disconnects from the instrument.</p>
+        <p>Close the PyVISA session and release the instrument handle.</p>
+<p>Safe to call even when not connected — does nothing if
+<code>self.instrument</code> is already <code>None</code>.</p>
 
 
     </div>
@@ -1645,7 +1851,60 @@
 
     <div class="doc doc-contents ">
 
-        <p>Sends a command to the instrument without waiting for a response.</p>
+        <p>Write a SCPI command to the instrument (fire-and-forget).</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>command</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>SCPI command string, e.g. <code>":CHAN1:DISP ON"</code>.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="ConnectionError">ConnectionError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If the instrument session is not open.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
 
     </div>
@@ -1665,7 +1924,82 @@
 
     <div class="doc doc-contents ">
 
-        <p>Sends a command and returns the response.</p>
+        <p>Write a SCPI command and return the instrument's response.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>command</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>SCPI query string, e.g. <code>"*IDN?"</code>.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The response string with leading/trailing whitespace stripped.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="ConnectionError">ConnectionError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If the instrument session is not open.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
 
     </div>
@@ -1685,7 +2019,10 @@
 
     <div class="doc doc-contents ">
 
-        <p>Clears the instrument status byte.</p>
+        <p>Send <code>*CLS</code> to clear the instrument's status registers.</p>
+<p>Clears the Standard Event Status Register (SESR), the Status Byte
+Register (STB), and the error queue.  Typically called during
+initialisation before issuing other commands.</p>
 
 
     </div>
@@ -1705,7 +2042,10 @@
 
     <div class="doc doc-contents ">
 
-        <p>Resets the DMM to a known state.</p>
+        <p>Send <code>*RST</code> followed by <code>*CLS</code> to restore factory defaults.</p>
+<p>Resets all instrument settings to their power-on defaults and then
+clears the status registers.  Use at the start of a test sequence
+to guarantee a known instrument state.</p>
 
 
     </div>

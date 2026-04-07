@@ -321,6 +321,26 @@
   
   
   
+    
+    
+      <li class="md-tabs__item">
+        <a href="generated/instruments.html" class="md-tabs__link">
+          
+  
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
     <li class="md-tabs__item">
       <a href="labview.html" class="md-tabs__link">
         
@@ -1339,6 +1359,123 @@
   
   
   
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="generated/instruments.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Instruments & Capabilities
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="generated/repl-ref.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    REPL Command Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="labview.html" class="md-nav__link">
         
@@ -1587,6 +1724,15 @@
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="n">python</span> <span class="n">-m</span> <span class="n">lab_instruments</span> <span class="p">-</span><span class="n">-mock</span>
 </code></pre></div>
 See <a href="troubleshooting.html">Troubleshooting</a> for a session-only PATH fix and other tips.</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">One connection at a time</p>
+<p>Instrument connections are exclusive. Only one program can hold the connection to a device at a time.</p>
+<ul>
+<li>You cannot run the REPL and a Python script against the same instrument simultaneously.</li>
+<li>You cannot have the REPL or a Python script connected while BQStudio (or any other vendor software) is open and using that instrument.</li>
+</ul>
+<p>Close one program before opening the other. If you get a "resource busy" or "cannot open" error, check that no other terminal, script, or vendor tool is already connected.</p>
 </div>
 <h3 id="3-find-your-instruments">3. Find your instruments<a class="headerlink" href="#3-find-your-instruments" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>list          # show all connected instruments and their names
