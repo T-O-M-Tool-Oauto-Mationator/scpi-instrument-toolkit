@@ -381,6 +381,7 @@ class PptxViewer(QWidget):
 
     def _render_all(self, file_path: str) -> None:
         from pptx import Presentation
+        from pptx.enum.shapes import MSO_SHAPE_TYPE
         from pptx.util import Emu
         from PySide6.QtGui import QColor, QFont, QPainter
 
@@ -392,6 +393,42 @@ class PptxViewer(QWidget):
         scale = 1.5
         px_w = int(sw / 914400 * 96 * scale)
         px_h = int(sh / 914400 * 96 * scale)
+        emu_to_px = lambda emu: int((emu or 0) / 914400 * 96 * scale)
+
+        def _draw_shape(painter, shape, ox=0, oy=0):
+            """Draw a single shape. ox/oy are parent offsets for grouped shapes."""
+            x = emu_to_px(shape.left) + ox
+            y = emu_to_px(shape.top) + oy
+            w = emu_to_px(shape.width)
+            h = emu_to_px(shape.height)
+
+            # Recurse into group shapes
+            if shape.shape_type == MSO_SHAPE_TYPE.GROUP:
+                for child in shape.shapes:
+                    _draw_shape(painter, child, x, y)
+                return
+
+            # Draw embedded images (PICTURE type)
+            if shape.shape_type == MSO_SHAPE_TYPE.PICTURE:
+                try:
+                    blob = shape.image.blob
+                    pix = QPixmap()
+                    pix.loadFromData(blob)
+                    if not pix.isNull():
+                        painter.drawPixmap(x, y, w, h, pix)
+                        return
+                except Exception:
+                    pass
+
+            # Draw text
+            if shape.has_text_frame:
+                self._draw_text(painter, shape, x, y, w, scale)
+                return
+
+            # Draw tables
+            if shape.has_table:
+                self._draw_table(painter, shape, x, y, w, h, scale)
+                return
 
         for slide in prs.slides:
             img = QImage(px_w, px_h, QImage.Format.Format_ARGB32)
@@ -400,71 +437,58 @@ class PptxViewer(QWidget):
             painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
             for shape in slide.shapes:
-                x = int(shape.left / 914400 * 96 * scale) if shape.left else 0
-                y = int(shape.top / 914400 * 96 * scale) if shape.top else 0
-                w = int(shape.width / 914400 * 96 * scale) if shape.width else 0
-                h = int(shape.height / 914400 * 96 * scale) if shape.height else 0
-
-                # Draw embedded images
-                if shape.shape_type is not None and hasattr(shape, "image"):
-                    try:
-                        blob = shape.image.blob
-                        pix = QPixmap()
-                        pix.loadFromData(blob)
-                        if not pix.isNull():
-                            painter.drawPixmap(x, y, w, h, pix)
-                            continue
-                    except Exception:
-                        pass
-
-                # Draw text
-                if shape.has_text_frame:
-                    ty = y + 4
-                    for para in shape.text_frame.paragraphs:
-                        text = para.text.strip()
-                        if not text:
-                            ty += 16
-                            continue
-                        # Estimate font size from paragraph runs
-                        font_size = 14
-                        bold = False
-                        for run in para.runs:
-                            if run.font.size:
-                                font_size = int(run.font.size / 12700 * scale)
-                            if run.font.bold:
-                                bold = True
-                        font = QFont("Arial", max(8, min(font_size, 48)))
-                        font.setBold(bold)
-                        painter.setFont(font)
-                        painter.setPen(QColor(0, 0, 0))
-                        from PySide6.QtCore import QRect
-                        rect = QRect(x + 4, ty, w - 8, font_size + 8)
-                        painter.drawText(rect, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop, text)
-                        ty += font_size + 6
-
-                # Draw tables
-                if shape.has_table:
-                    table = shape.table
-                    nrows = len(table.rows)
-                    ncols = len(table.columns)
-                    if nrows > 0 and ncols > 0:
-                        cw = w // ncols
-                        rh = h // nrows
-                        painter.setPen(QColor(100, 100, 100))
-                        font = QFont("Arial", int(10 * scale))
-                        painter.setFont(font)
-                        for ri, row in enumerate(table.rows):
-                            for ci, cell in enumerate(row.cells):
-                                cx = x + ci * cw
-                                cy = y + ri * rh
-                                painter.drawRect(cx, cy, cw, rh)
-                                from PySide6.QtCore import QRect
-                                painter.drawText(QRect(cx + 2, cy + 2, cw - 4, rh - 4),
-                                                 Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
-                                                 cell.text)
+                _draw_shape(painter, shape)
 
             painter.end()
             self._slides.append(QPixmap.fromImage(img))
+
+    def _draw_text(self, painter, shape, x, y, w, scale):
+        from PySide6.QtCore import QRect
+        from PySide6.QtGui import QColor, QFont
+
+        ty = y + 4
+        for para in shape.text_frame.paragraphs:
+            text = para.text.strip()
+            if not text:
+                ty += 16
+                continue
+            font_size = 14
+            bold = False
+            for run in para.runs:
+                if run.font.size:
+                    font_size = int(run.font.size / 12700 * scale)
+                if run.font.bold:
+                    bold = True
+            font = QFont("Arial", max(8, min(font_size, 48)))
+            font.setBold(bold)
+            painter.setFont(font)
+            painter.setPen(QColor(0, 0, 0))
+            rect = QRect(x + 4, ty, w - 8, font_size + 8)
+            painter.drawText(rect, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop, text)
+            ty += font_size + 6
+
+    def _draw_table(self, painter, shape, x, y, w, h, scale):
+        from PySide6.QtCore import QRect
+        from PySide6.QtGui import QColor, QFont
+
+        table = shape.table
+        nrows = len(table.rows)
+        ncols = len(table.columns)
+        if nrows == 0 or ncols == 0:
+            return
+        cw = w // ncols
+        rh = h // nrows
+        painter.setPen(QColor(100, 100, 100))
+        font = QFont("Arial", int(10 * scale))
+        painter.setFont(font)
+        for ri, row in enumerate(table.rows):
+            for ci, cell in enumerate(row.cells):
+                cx = x + ci * cw
+                cy = y + ri * rh
+                painter.drawRect(cx, cy, cw, rh)
+                painter.drawText(QRect(cx + 2, cy + 2, cw - 4, rh - 4),
+                                 Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
+                                 cell.text)
 
     def _show_slide(self) -> None:
         if not self._slides:
