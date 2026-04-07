@@ -1,161 +1,108 @@
-"""Generate the architecture layer diagram as a PNG for docs."""
+"""Generate concentric-circle architecture diagram (reference: AI/ML onion style)."""
 
 import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
-from matplotlib.patches import FancyBboxPatch
 
-# ── palette (teal family, dark→light bottom→top) ───────────────────────────
+fig, ax = plt.subplots(figsize=(12, 12))
+ax.set_xlim(-6.5, 6.5)
+ax.set_ylim(-6.8, 6.5)
+ax.set_aspect("equal")
+ax.axis("off")
+fig.patch.set_facecolor("white")
+
+# Each layer: (radius, fill, edge, title, title_fs, item_fs, [(label, x, y), ...])
+# Items verified to be inside their ring (r_inner < sqrt(x²+y²) < r_outer)
 LAYERS = [
-    # (layer_tag, title, items, bg, fg)
     (
-        "Layer 0",
-        "Hardware & OS Interfaces",
-        ["Physical instruments (oscilloscopes, PSUs, DMMs, AWGs, SMUs)",
-         "NI-VISA / USBTMC  ·  USB HID (/dev/hidrawN, hid.dll)  ·  NI PXIe chassis"],
-        "#004D40", "#FFFFFF",
+        5.2, "#F5F5F5", "#9E9E9E",
+        "Layer 4 — Frontends", 14, 10,
+        [
+            ("REPL / CLI",        -2.5,  4.55),
+            ("scpi-repl",         -2.5,  4.15),
+            ("GUI  (Tkinter)",     2.5,  4.55),
+            ("scpi-gui",           2.5,  4.15),
+            ("LabVIEW bridge",    -4.75,  0.9),
+            ("Python scripts",     4.4,   0.9),
+            ("…",                 -4.0,  -3.2),
+            ("…",                  4.0,  -3.2),
+        ],
     ),
     (
-        "Layer 1",
-        "Transport Libraries",
-        ["pyvisa  — VISA session management (USB, GPIB, Serial)",
-         "ctypes + OS HID APIs  — byte-level I/O for TI EV2300 (no pip needed)",
-         "nidcpower  — NI official Python SDK for PXIe-4139 SMU"],
-        "#00695C", "#FFFFFF",
+        4.1, "#DCEEFB", "#1976D2",
+        "Layer 3 — REPL Session Layer", 13, 9,
+        [
+            ("commands/",         -1.8,   3.65),
+            ("ReplContext",         1.9,   3.25),
+            ("DeviceRegistry",     -3.6,   0.75),
+            ("ScriptEngine",        3.5,  -0.65),
+            ("MeasurementStore",   -2.6,  -2.4),
+            ("SafetySystem",        2.2,  -2.9),
+        ],
     ),
     (
-        "Layer 2",
-        "Instrument Drivers  (lab_instruments/src/)",
-        ["SCPI drivers (inherit DeviceManager via pyvisa):",
-         "  HP_E3631A · HP_34401A · Rigol_DHO804 · Keysight_EDU33212A",
-         "  Keysight_DSOX1204G · Keysight_EDU36311A · Tektronix_MSO2024",
-         "  MATRIX_MPS6010H · BK_4063 · Owon_XDM1041 · JDS6600_Generator",
-         "Non-SCPI drivers (own transport):",
-         "  TI_EV2300 (ctypes/HID)  ·  NI_PXIe_4139 (nidcpower)",
-         "Shared:  DeviceManager (base)  ·  discovery.py  ·  mock_instruments.py"],
-        "#00897B", "#FFFFFF",
+        3.0, "#DCEDD9", "#388E3C",
+        "Layer 2 — Instrument Drivers", 12, 8.5,
+        [
+            ("HP_E3631A",    -1.35,  2.45),
+            ("HP_34401A",     1.25,  2.65),
+            ("Rigol_DHO804", -2.5,  -1.0),
+            ("TI_EV2300",    2.25,   1.3),
+            ("NI_PXIe_4139", -1.65, -2.1),
+            ("DeviceManager", 2.2,  -1.75),
+            ("discovery.py",  0.0,  -2.85),
+        ],
     ),
     (
-        "Layer 3",
-        "REPL Session Layer  (lab_instruments/repl/)",
-        ["commands/  — psu · awg · dmm · scope · smu · ev2300 · scripting · logging",
-         "ReplContext / DeviceRegistry  — live instrument map + active selection",
-         "ScriptEngine  — loops, variables, for/while/if/repeat directives",
-         "MeasurementStore  — labelled log, CSV export, calc expressions",
-         "SafetySystem  — voltage/current limits, interlock checks"],
-        "#26A69A", "#FFFFFF",
+        1.9, "#FFF9C4", "#F9A825",
+        "Layer 1 — Transport", 11, 8,
+        [
+            ("pyvisa",       -1.1,  0.85),
+            ("ctypes / HID",  0.95, 0.85),
+            ("nidcpower",    -0.1, -1.5),
+        ],
     ),
     (
-        "Layer 4",
-        "Frontends",
-        ["REPL / CLI  (scpi-repl)              → Layer 3 (commands)",
-         "GUI  (scpi-gui, Tkinter)              → Layer 3 + direct Layer 2 for live polling",
-         "LabVIEW bridge  (labview_bridge.py)   → Layer 3 (wraps REPL commands for Python Node)",
-         "Python scripts  (import lab_instruments) → direct Layer 2 access"],
-        "#4DB6AC", "#003330",
+        0.9, "#FFE0B2", "#E64A19",
+        "Layer 0 — Hardware", 9, 7.5,
+        [
+            ("NI-VISA",  -0.48,  0.2),
+            ("USB HID",   0.42,  0.2),
+            ("PXIe",      0.0,  -0.38),
+        ],
     ),
 ]
 
-FIG_W, FIG_H = 15, 11
-BAND_H = FIG_H / len(LAYERS)
-LEFT_PAD = 1.2   # space for layer badge on left
-RIGHT_PAD = 0.25
-TITLE_X = LEFT_PAD + 0.15
-
-fig, ax = plt.subplots(figsize=(FIG_W, FIG_H))
-ax.set_xlim(0, FIG_W)
-ax.set_ylim(0, FIG_H)
-ax.axis("off")
-fig.patch.set_facecolor("#ECEFF1")
-
-for i, (tag, title, items, bg, fg) in enumerate(LAYERS):
-    y_bottom = i * BAND_H
-    band_w = FIG_W - RIGHT_PAD
-
-    # Main band
-    rect = FancyBboxPatch(
-        (0.1, y_bottom + 0.07), band_w - 0.1, BAND_H - 0.14,
-        boxstyle="round,pad=0.06",
-        linewidth=0,
-        facecolor=bg,
-        zorder=1,
+# Draw largest → smallest so inner circles paint on top
+for i, (radius, fill, edge, title, tfs, ifs, items) in enumerate(LAYERS):
+    circle = plt.Circle(
+        (0, 0), radius,
+        facecolor=fill, edgecolor=edge,
+        linewidth=2.2, zorder=i + 1,
     )
-    ax.add_patch(rect)
+    ax.add_patch(circle)
 
-    # Left badge
-    badge = FancyBboxPatch(
-        (0.18, y_bottom + 0.15), LEFT_PAD - 0.38, BAND_H - 0.30,
-        boxstyle="round,pad=0.05",
-        linewidth=0,
-        facecolor="#FFFFFF",
-        alpha=0.15,
-        zorder=2,
-    )
-    ax.add_patch(badge)
-
+    # Bold title just inside the top of each circle
     ax.text(
-        0.18 + (LEFT_PAD - 0.38) / 2,
-        y_bottom + BAND_H / 2,
-        tag,
-        ha="center", va="center",
-        fontsize=9, fontweight="bold", color=fg,
-        rotation=0, zorder=3,
-        fontfamily="monospace",
+        0, radius - 0.33, title,
+        ha="center", va="top",
+        fontsize=tfs, fontweight="bold", color="#212121",
+        zorder=i + 20,
     )
 
-    # Title
-    title_y = y_bottom + BAND_H - 0.28
-    ax.text(
-        TITLE_X, title_y, title,
-        ha="left", va="top",
-        fontsize=10, fontweight="bold", color=fg,
-        zorder=3,
-    )
-
-    # Bullet items
-    item_y = title_y - 0.30
-    for item in items:
+    # Scattered items
+    for label, x, y in items:
         ax.text(
-            TITLE_X + 0.1, item_y, item,
-            ha="left", va="top",
-            fontsize=7.8, color=fg, alpha=0.93,
-            zorder=3,
-            fontfamily="monospace",
+            x, y, label,
+            ha="center", va="center",
+            fontsize=ifs, color="#424242",
+            zorder=i + 20,
         )
-        item_y -= 0.245
 
-# ── thin white dividers between bands ──────────────────────────────────────
-for i in range(1, len(LAYERS)):
-    ax.axhline(i * BAND_H, color="#ECEFF1", linewidth=2, zorder=4)
-
-# ── title ──────────────────────────────────────────────────────────────────
-ax.text(
-    FIG_W / 2, FIG_H - 0.12,
-    "SCPI Instrument Toolkit  —  Architecture",
-    ha="center", va="top",
-    fontsize=14, fontweight="bold", color="#004D40",
-    zorder=5,
+ax.set_title(
+    "SCPI Instrument Toolkit — Architecture",
+    fontsize=16, fontweight="bold", color="#004D40", pad=12,
 )
 
-# ── side arrow showing data flow ───────────────────────────────────────────
-arrow_x = FIG_W - 0.55
-ax.annotate(
-    "", xy=(arrow_x, 0.3), xytext=(arrow_x, FIG_H - 0.5),
-    arrowprops=dict(
-        arrowstyle="<->",
-        color="#78909C",
-        lw=1.8,
-    ),
-    zorder=5,
-)
-ax.text(
-    arrow_x + 0.12, FIG_H / 2,
-    "abstraction",
-    ha="left", va="center",
-    fontsize=8, color="#78909C", rotation=270,
-    zorder=5,
-)
-
-plt.tight_layout(pad=0)
+plt.tight_layout()
 out = "docs/img/architecture.png"
-plt.savefig(out, dpi=180, bbox_inches="tight", facecolor=fig.get_facecolor())
+plt.savefig(out, dpi=180, bbox_inches="tight", facecolor="white", edgecolor="none")
 print(f"Saved → {out}")
