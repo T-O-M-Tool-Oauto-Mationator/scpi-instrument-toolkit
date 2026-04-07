@@ -642,4 +642,108 @@ psu.enable_output(False)
 ColorPrinter.success("Ramp complete")
 ''',
     },
+    # ------------------------------------------------------------------
+    "cross_script_demo": {
+        "description": "SCPI collects data + sets vars, Python reads them for analysis",
+        "lines": [
+            "# cross_script_demo",
+            "# Collects PSU measurements and stores them in REPL variables.",
+            "# After running this, run the Python version to analyze the data.",
+            "# Works with --mock.",
+            "",
+            'print "=== Cross-Script Demo (SCPI) ==="',
+            "",
+            "target = 5.0",
+            "tolerance = 0.05",
+            "",
+            "psu1 chan 1 on",
+            "dmm1 config vdc",
+            "sleep 0.3",
+            "",
+            "# Collect 10 readings at the target voltage",
+            "psu1 set 1 {target}",
+            "sleep 0.3",
+            "",
+            "for i 1 2 3 4 5 6 7 8 9 10",
+            "  reading_{i} = dmm1 meas unit=V",
+            "  sleep 100ms",
+            "end",
+            "",
+            "# Compute min and max from readings",
+            "psu_v = psu1 meas v unit=V",
+            "",
+            "psu1 chan 1 off",
+            'print "=== SCPI collection done ==="',
+            'print "Target: {target}V  Tolerance: {tolerance}V"',
+            'print "PSU readback: {psu_v}V"',
+            "log print",
+            'print ""',
+            'print "Now run the Python version to analyze these measurements."',
+        ],
+        "code": '''\
+"""Cross-script demo — Python analysis version.
+
+Reads measurements and REPL variables left by the SCPI version of this
+example, then performs statistical analysis.  Run the SCPI version first,
+then this one.  Works with --mock.
+"""
+
+# --- Read REPL variables set by the SCPI script ---
+target = float(repl.ctx.script_vars.get("target", "5.0"))
+tolerance = float(repl.ctx.script_vars.get("tolerance", "0.05"))
+psu_v = repl.ctx.script_vars.get("psu_v", None)
+
+ColorPrinter.header("Cross-Script Demo (Python Analysis)")
+ColorPrinter.info(f"Target: {target} V, Tolerance: +/- {tolerance} V")
+if psu_v:
+    ColorPrinter.info(f"PSU readback from SCPI run: {psu_v} V")
+
+# --- Gather all DMM readings from the measurement store ---
+readings = []
+for entry in repl.ctx.measurements.entries:
+    if entry["label"].startswith("reading_") and entry["unit"] == "V":
+        readings.append(entry["value"])
+
+if not readings:
+    ColorPrinter.error("No readings found. Run the SCPI version first!")
+    ColorPrinter.info("  examples load cross_script_demo")
+    ColorPrinter.info("  script run cross_script_demo")
+    raise SystemExit
+
+# --- Analyze ---
+n = len(readings)
+mean_v = sum(readings) / n
+min_v = min(readings)
+max_v = max(readings)
+spread = max_v - min_v
+error = mean_v - target
+
+# Standard deviation
+variance = sum((r - mean_v) ** 2 for r in readings) / n
+std_dev = variance ** 0.5
+
+ColorPrinter.info(f"Samples:   {n}")
+ColorPrinter.info(f"Mean:      {mean_v:.6f} V")
+ColorPrinter.info(f"Min:       {min_v:.6f} V")
+ColorPrinter.info(f"Max:       {max_v:.6f} V")
+ColorPrinter.info(f"Spread:    {spread:.6f} V")
+ColorPrinter.info(f"Std dev:   {std_dev:.6f} V")
+ColorPrinter.info(f"Error:     {error:+.6f} V ({error/target*100:+.4f}%)")
+
+# Store results back into REPL variables for further use
+repl.ctx.script_vars["mean_v"] = str(round(mean_v, 6))
+repl.ctx.script_vars["std_dev"] = str(round(std_dev, 6))
+repl.ctx.script_vars["error_pct"] = str(round(error / target * 100, 4))
+
+# Pass/fail check
+if abs(error) <= tolerance:
+    ColorPrinter.success(f"PASS: error {error:+.6f} V is within +/- {tolerance} V")
+else:
+    ColorPrinter.error(f"FAIL: error {error:+.6f} V exceeds +/- {tolerance} V")
+
+ColorPrinter.info(f"\\nVariables set: mean_v={repl.ctx.script_vars['mean_v']}, "
+                  f"std_dev={repl.ctx.script_vars['std_dev']}, "
+                  f"error_pct={repl.ctx.script_vars['error_pct']}")
+''',
+    },
 }
