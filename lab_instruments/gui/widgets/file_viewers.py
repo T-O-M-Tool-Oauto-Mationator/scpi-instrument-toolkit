@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import csv
 import hashlib
 import os
@@ -9,6 +10,20 @@ import shutil
 import subprocess
 import tempfile
 from pathlib import Path
+
+
+@contextlib.contextmanager
+def _silence_mupdf():
+    """Suppress MuPDF C-level stderr spam (e.g. structure tree warnings)."""
+    devnull = os.open(os.devnull, os.O_WRONLY)
+    saved = os.dup(2)
+    os.dup2(devnull, 2)
+    os.close(devnull)
+    try:
+        yield
+    finally:
+        os.dup2(saved, 2)
+        os.close(saved)
 
 from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtGui import QImage, QPixmap
@@ -201,8 +216,8 @@ class PdfViewer(QWidget):
         try:
             import fitz
 
-            fitz.TOOLS.mupdf_warnings(False)
-            self._doc = fitz.open(file_path)
+            with _silence_mupdf():
+                self._doc = fitz.open(file_path)
             self._page_count = len(self._doc)
             self._render()
         except ImportError:
@@ -349,8 +364,8 @@ class _OfficeConversionWorker(QThread):
                 self.error.emit("pymupdf is not installed. Run: pip install pymupdf")
                 return
 
-            fitz.TOOLS.mupdf_warnings(False)
-            doc = fitz.open(str(pdf_path))
+            with _silence_mupdf():
+                doc = fitz.open(str(pdf_path))
             images: list[QImage] = []
             for i, page in enumerate(doc):
                 self.progress.emit(f"Rendering page {i + 1} of {len(doc)}...")
@@ -619,9 +634,7 @@ class _PreconvertWorker(QThread):
 
     def run(self) -> None:
         try:
-            import fitz
-
-            fitz.TOOLS.mupdf_warnings(False)
+            import fitz  # noqa: F401
         except ImportError:
             return
 
@@ -650,7 +663,8 @@ class _PreconvertWorker(QThread):
             pdfs = list(cache_dir.glob("*.pdf"))
             if not pdfs:
                 return
-            doc = fitz.open(str(pdfs[0]))
+            with _silence_mupdf():
+                doc = fitz.open(str(pdfs[0]))
             for i, page in enumerate(doc):
                 mat = fitz.Matrix(2.0, 2.0)
                 pix = page.get_pixmap(matrix=mat, alpha=False)
