@@ -812,9 +812,8 @@ class ScpiEditor(QWidget):
         """Execute until next breakpoint or end."""
         if not self._debug_state:
             return
-        # Mark start so continue doesn't immediately stop on current breakpoint
+        # Mark start so continue doesn't immediately stop on current line's breakpoint
         self._debug_state["_cont_start"] = self._debug_state["idx"]
-        self._debug_step()
         self._debug_schedule_continue()
 
     def _debug_schedule_continue(self) -> None:
@@ -861,8 +860,17 @@ class ScpiEditor(QWidget):
             console = self._find_console()
             if console and src.strip():
                 console.log(f"<span style='color:#555'>[debug]</span> {_ansi_to_html(src)}")
-            st["idx"] = self._next_actionable_line(next_act + 1)
-            if st["idx"] >= len(st["lines"]):
+            new_idx = self._next_actionable_line(next_act + 1)
+            # Check if any breakpoint falls in the gap we're about to skip
+            if self._has_breakpoint_in_range(next_act + 1, new_idx + 1 if new_idx < len(st["lines"]) else new_idx):
+                st["idx"] = new_idx
+                if new_idx < len(st["lines"]):
+                    self._debug_update_position()
+                else:
+                    self._debug_stop()
+                return
+            st["idx"] = new_idx
+            if new_idx >= len(st["lines"]):
                 self._debug_stop()
             else:
                 self._debug_schedule_continue()
@@ -879,8 +887,17 @@ class ScpiEditor(QWidget):
             if not self._debug_state:
                 return
             self._debug_state["busy"] = False
-            self._debug_state["idx"] = self._next_actionable_line(next_act + 1)
-            if self._debug_state["idx"] >= len(self._debug_state["lines"]):
+            new_idx = self._next_actionable_line(next_act + 1)
+            # Check breakpoints in the gap we're about to skip
+            if self._has_breakpoint_in_range(next_act + 1, new_idx + 1 if new_idx < len(self._debug_state["lines"]) else new_idx):
+                self._debug_state["idx"] = new_idx
+                if new_idx < len(self._debug_state["lines"]):
+                    self._debug_update_position()
+                else:
+                    self._debug_stop()
+                return
+            self._debug_state["idx"] = new_idx
+            if new_idx >= len(self._debug_state["lines"]):
                 self._debug_stop()
             else:
                 self._debug_schedule_continue()
