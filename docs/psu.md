@@ -49,92 +49,74 @@ psu chan all off     # disable all channels at once
 
 ## psu set
 
-Set output voltage and optional current limit.
+Set output voltage and optional current limit. Channel is always required.
 
-=== "Single-channel PSU"
-    ```
-    psu set <voltage> [current]
-    ```
-
-=== "Multi-channel PSU"
-    ```
-    psu set <channel> <voltage> [current]
-    ```
+```
+psu set <channel> <voltage> [current]
+```
 
 | Parameter | Required | Values | Description |
 |-----------|----------|--------|-------------|
-| `channel` | multi-ch only | `1`, `2`, `3` | Channel number — required before voltage on multi-channel PSUs. |
+| `channel` | required | `1`, `2`, `3` | Channel number. Single-channel PSUs use `1`. |
 | `voltage` | required | float (V) | Target output voltage in volts. |
 | `current` | optional | float (A) | Current limit in amperes. If omitted, the current limit is unchanged. |
 
 ```
-psu set 5.0               # set 5 V (single-channel)
-psu set 5.0 0.5           # set 5 V with 0.5 A limit
-psu set 2 12.0            # multi-channel: channel 2 to 12 V
-psu set 2 12.0 1.0        # multi-channel: channel 2, 12 V, 1 A limit
+psu set 1 5.0             # channel 1 to 5 V
+psu set 1 5.0 0.5         # channel 1: 5 V, 0.5 A limit
+psu set 2 12.0            # channel 2 to 12 V
+psu set 2 12.0 1.0        # channel 2: 12 V, 1 A limit
 ```
 
 ---
 
 ## psu meas
 
-Measure and print the live output value.
+Measure and print the live output value. Channel is always required.
 
-=== "Single-channel PSU"
-    ```
-    psu meas <v|i>
-    ```
-
-=== "Multi-channel PSU"
-    ```
-    psu meas <channel> <v|i>
-    ```
+```
+psu meas <channel> <v|i>
+```
 
 | Parameter | Required | Values | Description |
 |-----------|----------|--------|-------------|
-| `channel` | multi-ch only | `1`, `2`, `3` | Channel to measure. Required for multi-channel PSUs; omit for single-channel. |
+| `channel` | required | `1`, `2`, `3` | Channel to measure. Single-channel PSUs use `1`. |
 | `v\|i` | required | `v`, `i` | `v` = measure output voltage; `i` = measure output current. |
 
 ```
-psu meas v         # print output voltage (single-channel)
-psu meas i         # print output current (single-channel)
-psu meas 2 v       # multi-channel: channel 2 voltage
+psu meas 1 v       # channel 1 voltage
+psu meas 1 i       # channel 1 current
+psu meas 2 v       # channel 2 voltage
 ```
 
 !!! note
-    `psu meas` prints the value but does not record it. To record for export or calculations, use the assignment syntax: `label = psu meas v unit=V`.
+    `psu meas` prints the value but does not record it. To record for export or calculations, use the assignment syntax: `label = psu meas 1 v unit=V`.
 
 !!! tip "Recording measurements"
     Use assignment syntax to measure **and** store the result to the measurement log in one step:
 
-    === "Single-channel PSU"
-        ```
-        <label> = psu meas <v|i> [unit=<str>]
-        ```
-
-    === "Multi-channel PSU"
-        ```
-        <label> = psu meas <channel> <v|i> [unit=<str>]
-        ```
+    ```
+    <label> = psu meas <channel> <v|i> [unit=<str>]
+    ```
 
     | Parameter | Required | Values | Description |
     |-----------|----------|--------|-------------|
     | `label` | required | string, no spaces | **Name for this entry in the log.** Appears as the row identifier in `log print` output. Also used as the dictionary key in `calc` expressions: `m["label"]`. Use underscores instead of spaces — e.g. `ch1_voltage`. |
-    | `channel` | multi-ch only | `1`, `2`, `3` | Channel to measure. Required for multi-channel PSUs; omit for single-channel. |
+    | `channel` | required | `1`, `2`, `3` | Channel to measure. Single-channel PSUs use `1`. |
     | `v\|i` | required | `v`, `i` | Quantity to measure: `v` = voltage, `i` = current. |
     | `unit=` | optional | string | Unit label shown in `log print` output (e.g. `V`, `A`). **Display-only** — does not affect the stored numeric value or any calculation. |
 
     ```
-    psu_out = psu meas v unit=V        # store as 'psu_out', access as m["psu_out"]
-    psu_i = psu meas i unit=A          # store current
-    ch2_v = psu meas 2 v unit=V       # multi-channel: channel 2 voltage
+    ch1_v = psu meas 1 v unit=V       # store channel 1 voltage
+    ch1_i = psu meas 1 i unit=A       # store channel 1 current
+    ch2_v = psu meas 2 v unit=V       # store channel 2 voltage
     ```
 
     After storing, view with `log print` or compute derived values with `calc`:
 
     ```
-    psu_v = psu meas v unit=V
-    psu_i = psu meas i unit=A
+    psu_v = psu meas 1 v unit=V
+    psu_i = psu meas 1 i unit=A
     calc power m["psu_v"] * m["psu_i"] unit=W    # compute power
     log print
     ```

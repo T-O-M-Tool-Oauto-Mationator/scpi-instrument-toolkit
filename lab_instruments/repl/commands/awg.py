@@ -103,10 +103,14 @@ class AwgCommand(BaseCommand):
             elif cmd_name == "state" and len(args) >= 2:
                 self._state_callback(dev_name, args[1])
 
-            # ON/OFF SHORTHAND -- "awg on" / "awg off" -> all channels
-            elif cmd_name in ("on", "off") and len(args) == 1:
+            # ON/OFF SHORTHAND -- "awg on <1|2|all>" / "awg off <1|2|all>"
+            elif cmd_name in ("on", "off"):
+                if len(args) < 2:
+                    ColorPrinter.warning(f"Usage: awg {cmd_name} <1|2|all>")
+                    return
                 state = cmd_name == "on"
-                for channel in [1, 2]:
+                channels = self.parse_channels(args[1], max_ch=2)
+                for channel in channels:
                     if state and not self.safety.check_awg_output_allowed(dev_name, channel):
                         return
                     if is_jds6600:
@@ -147,7 +151,7 @@ class AwgCommand(BaseCommand):
             [
                 "# AWG",
                 "",
-                "awg on|off                         (all channels)",
+                "awg on|off <1|2|all>",
                 "awg chan <1|2|all> on|off",
                 "awg wave <1|2|all> <type> [freq=] [amp=] [offset=] [duty=] [phase=]",
                 "  - type: sine|square|ramp|triangle|pulse|noise|dc|arb",
