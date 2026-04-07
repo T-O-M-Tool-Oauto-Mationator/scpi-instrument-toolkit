@@ -54,6 +54,8 @@ class Ev2300Command(BaseCommand):
                 self._handle_scan(args, dev)
             elif cmd_name == "probe":
                 self._handle_probe(args, dev)
+            elif cmd_name == "fix":
+                self._handle_fix()
             elif cmd_name == "state":
                 if len(args) < 2:
                     self._show_help()
@@ -91,6 +93,8 @@ class Ev2300Command(BaseCommand):
                 "ev2300 probe <cmd_code> [i2c_addr] [register]",
                 "  - send arbitrary command code for reverse engineering",
                 "ev2300 state on|off|safe|reset",
+                "ev2300 fix",
+                "  - step-by-step recovery for communication errors",
             ]
         )
 
@@ -102,6 +106,11 @@ class Ev2300Command(BaseCommand):
     def _parse_int(s: str) -> int:
         """Parse an integer from hex (0x...) or decimal string."""
         return int(s, 0)
+
+    def _fail(self, op: str, result: dict) -> None:
+        """Print an error message with a hint to run 'ev2300 fix'."""
+        ColorPrinter.error(f"{op} failed: {result.get('status_text', 'unknown error')}")
+        ColorPrinter.info("Tip: run 'ev2300 fix' for recovery steps")
 
     # ------------------------------------------------------------------
     # Command handlers
@@ -128,7 +137,7 @@ class Ev2300Command(BaseCommand):
             val = result["value"]
             ColorPrinter.cyan(f"0x{val:04X} ({val})")
         else:
-            ColorPrinter.error(f"Read failed: {result.get('status_text', 'unknown error')}")
+            self._fail("Read", result)
 
     def _handle_write_word(self, args: list, dev: Any) -> None:
         if len(args) < 4:
@@ -141,7 +150,7 @@ class Ev2300Command(BaseCommand):
         if result.get("ok"):
             ColorPrinter.success(f"Wrote 0x{val:04X} to addr=0x{addr:02X} reg=0x{reg:02X}")
         else:
-            ColorPrinter.error(f"Write failed: {result.get('status_text', 'unknown error')}")
+            self._fail("Write", result)
 
     def _handle_read_byte(self, args: list, dev: Any) -> None:
         if len(args) < 3:
@@ -154,7 +163,7 @@ class Ev2300Command(BaseCommand):
             val = result["value"]
             ColorPrinter.cyan(f"0x{val:02X} ({val})")
         else:
-            ColorPrinter.error(f"Read failed: {result.get('status_text', 'unknown error')}")
+            self._fail("Read", result)
 
     def _handle_write_byte(self, args: list, dev: Any) -> None:
         if len(args) < 4:
@@ -167,7 +176,7 @@ class Ev2300Command(BaseCommand):
         if result.get("ok"):
             ColorPrinter.success(f"Wrote 0x{val:02X} to addr=0x{addr:02X} reg=0x{reg:02X}")
         else:
-            ColorPrinter.error(f"Write failed: {result.get('status_text', 'unknown error')}")
+            self._fail("Write", result)
 
     def _handle_read_block(self, args: list, dev: Any) -> None:
         if len(args) < 3:
@@ -181,7 +190,7 @@ class Ev2300Command(BaseCommand):
             hex_str = " ".join(f"{b:02X}" for b in block)
             ColorPrinter.cyan(f"[{len(block)} bytes] {hex_str}")
         else:
-            ColorPrinter.error(f"Read failed: {result.get('status_text', 'unknown error')}")
+            self._fail("Read", result)
 
     def _handle_write_block(self, args: list, dev: Any) -> None:
         if len(args) < 4:
@@ -199,7 +208,7 @@ class Ev2300Command(BaseCommand):
         if result.get("ok"):
             ColorPrinter.success(f"Wrote {len(data)} bytes to addr=0x{addr:02X} reg=0x{reg:02X}")
         else:
-            ColorPrinter.error(f"Write failed: {result.get('status_text', 'unknown error')}")
+            self._fail("Write", result)
 
     def _handle_send_byte(self, args: list, dev: Any) -> None:
         if len(args) < 3:
@@ -211,7 +220,7 @@ class Ev2300Command(BaseCommand):
         if result.get("ok"):
             ColorPrinter.success(f"Sent byte 0x{cmd:02X} to addr=0x{addr:02X}")
         else:
-            ColorPrinter.error(f"Send failed: {result.get('status_text', 'unknown error')}")
+            self._fail("Send", result)
 
     def _handle_scan(self, args: list, dev: Any) -> None:
         if len(args) < 2:
@@ -247,3 +256,30 @@ class Ev2300Command(BaseCommand):
             ColorPrinter.error(f"0x{cmd_code:02X}: ERROR  [{hex_str}]")
         else:
             ColorPrinter.cyan(f"0x{cmd_code:02X}: resp=0x{resp_cmd:02X}  [{hex_str}]")
+
+    def _handle_fix(self) -> None:
+        self.print_colored_usage(
+            [
+                "# EV2300 Communication Recovery",
+                "",
+                "If you are getting 'Device error (0x46)' or similar I2C failures,",
+                "follow these steps:",
+                "",
+                "  1. Press the BOOT button on the BQ EVM board",
+                "     (this resets the EV2300 and the fuel gauge IC)",
+                "",
+                "  2. In the REPL, disconnect the EV2300:",
+                "       disconnect ev2300",
+                "",
+                "  3. Re-scan to pick it back up:",
+                "       scan",
+                "",
+                "  4. Retry your command",
+                "",
+                "Why this works:",
+                "  The EV2300 USB-to-I2C bridge can get into a bad state if the",
+                "  fuel gauge is not powered or was powered on after the EV2300.",
+                "  Pressing BOOT resets both the bridge and the I2C bus, clearing",
+                "  any stuck transactions.",
+            ]
+        )

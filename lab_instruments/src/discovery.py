@@ -344,8 +344,24 @@ class InstrumentDiscovery:
                     if verbose:
                         self._safe_print(f"Checking USB HID... {ColorPrinter.GREEN}Found: {idn}{ColorPrinter.RESET}")
                         self._safe_print("  -> Identified as EV2300 (USB-to-I2C adapter)")
+                        self._safe_print(
+                            f"  {ColorPrinter.CYAN}Tip: if you get I2C errors, "
+                            f"run 'ev2300 fix' for recovery steps{ColorPrinter.RESET}"
+                        )
 
                     results.append(("ev2300", driver, "EV2300", idn))
+                except ConnectionError as exc:
+                    if verbose:
+                        path_str = dev_info.get("path_str", dev_info.get("path", "?"))
+                        self._safe_print(
+                            f"  {ColorPrinter.YELLOW}[WARN] EV2300 at {path_str}: "
+                            f"connect failed: {exc}{ColorPrinter.RESET}"
+                        )
+                        self._safe_print(
+                            f"  {ColorPrinter.YELLOW}Another program (e.g. BQ Studio) may have "
+                            f"the EV2300 open. Close it and run 'scan' again.{ColorPrinter.RESET}"
+                        )
+                    continue
                 except Exception as exc:
                     if verbose:
                         path_str = dev_info.get("path_str", dev_info.get("path", "?"))

@@ -140,3 +140,22 @@ If you cannot run scripts, use this one-liner in PowerShell:
 ```powershell
 $g=(Get-ChildItem "$env:LOCALAPPDATA\GitHubDesktop\app-*\resources\app\git\cmd\git.exe" -EA 0|Sort-Object LastWriteTime -Desc|Select-Object -First 1); if(-not $g){$g=(Get-ChildItem "$env:LOCALAPPDATA\GitHubDesktop" -Filter git.exe -Recurse -EA 0|?{$_.DirectoryName -like "*\git\cmd"}|Sort-Object LastWriteTime -Desc|Select-Object -First 1)}; if(-not $g){Write-Host "GitHub Desktop Git not found" -FG Red}else{$p=$g.DirectoryName;$u=[Environment]::GetEnvironmentVariable('Path','User'); if(($u -split ';'|%{$_.TrimEnd('\\').ToLowerInvariant()}) -notcontains $p.TrimEnd('\\').ToLowerInvariant()){[Environment]::SetEnvironmentVariable('Path',($(if([string]::IsNullOrWhiteSpace($u)){$p}else{"$u;$p"})),'User')}; Write-Host "Done. Open a new terminal and run: git --version" -FG Green}
 ```
+
+---
+
+## EV2300 communication errors
+
+### "Device error (0x46)" or I2C read/write failures
+
+The EV2300 USB-to-I2C bridge can get into a bad state. Run `ev2300 fix` in the REPL for step-by-step recovery, or follow these steps:
+
+1. Press the **BOOT** button on the BQ EVM board
+2. `disconnect ev2300`
+3. `scan`
+4. Retry your command
+
+### EV2300 detected but cannot connect
+
+Another program (e.g. **BQ Studio**) likely has the EV2300 HID handle open. Close it and run `scan` again. Only one program can use the EV2300 at a time.
+
+See [EV2300 Troubleshooting](ev2300.md#troubleshooting) for more details.
