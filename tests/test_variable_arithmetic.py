@@ -138,9 +138,9 @@ class TestChainedArithmetic:
     def test_chain_five_steps(self, repl):
         repl.onecmd("p = 2")
         repl.onecmd("q = 3")
-        repl.onecmd("r = p * q")       # 6
-        repl.onecmd("s = r + 1")       # 7
-        repl.onecmd("t = s * 2")       # 14
+        repl.onecmd("r = p * q")  # 6
+        repl.onecmd("s = r + 1")  # 7
+        repl.onecmd("t = s * 2")  # 14
         assert float(repl.ctx.script_vars["r"]) == 6.0
         assert float(repl.ctx.script_vars["s"]) == 7.0
         assert float(repl.ctx.script_vars["t"]) == 14.0
@@ -336,6 +336,7 @@ class TestMathFunctions:
     def test_asin(self, repl):
         repl.onecmd("x = asin(1)")
         import math
+
         assert abs(float(repl.ctx.script_vars["x"]) - math.pi / 2) < 1e-9
 
     def test_acos(self, repl):
@@ -349,6 +350,7 @@ class TestMathFunctions:
     def test_atan2(self, repl):
         repl.onecmd("x = atan2(1, 1)")
         import math
+
         assert abs(float(repl.ctx.script_vars["x"]) - math.pi / 4) < 1e-9
 
     def test_log_natural(self, repl):
@@ -380,22 +382,24 @@ class TestMathFunctions:
         assert float(repl.ctx.script_vars["x"]) == 5.0
 
     def test_degrees(self, repl):
-        import math
         repl.onecmd("x = degrees(pi)")
         assert abs(float(repl.ctx.script_vars["x"]) - 180.0) < 1e-9
 
     def test_radians(self, repl):
         import math
+
         repl.onecmd("x = radians(180)")
         assert abs(float(repl.ctx.script_vars["x"]) - math.pi) < 1e-9
 
     def test_pi_constant(self, repl):
         import math
+
         repl.onecmd("x = pi")
         assert abs(float(repl.ctx.script_vars["x"]) - math.pi) < 1e-9
 
     def test_e_constant(self, repl):
         import math
+
         repl.onecmd("x = e")
         assert abs(float(repl.ctx.script_vars["x"]) - math.e) < 1e-9
 

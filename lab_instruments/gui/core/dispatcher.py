@@ -9,7 +9,7 @@ import signal
 import threading
 from typing import Any
 
-from PySide6.QtCore import QMetaObject, QObject, Qt, Signal, Slot
+from PySide6.QtCore import QObject, Qt, Signal, Slot
 from PySide6.QtWidgets import QInputDialog
 
 from lab_instruments.repl.capabilities import Capability
@@ -31,6 +31,7 @@ class _InputBridge(QObject):
     @Slot(str)
     def _show_dialog(self, prompt: str) -> None:
         from PySide6.QtWidgets import QApplication
+
         # Strip ANSI escape codes from the prompt
         clean = re.sub(r"\x1b\[[0-9;]*m", "", prompt or "")
         parent = QApplication.activeWindow()

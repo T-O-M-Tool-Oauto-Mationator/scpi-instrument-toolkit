@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 from typing import Any
 
 from PySide6.QtCore import QPoint, Qt
@@ -90,10 +89,7 @@ class _DevicePanel(QWidget):
         self._list.clear()
         devices = self._d.registry.devices
         if not devices:
-            if self._d.is_busy():
-                msg = "Scanning for instruments..."
-            else:
-                msg = "No devices.\nClick Scan or use --mock."
+            msg = "Scanning for instruments..." if self._d.is_busy() else "No devices.\nClick Scan or use --mock."
             placeholder = QListWidgetItem(msg)
             placeholder.setFlags(Qt.ItemFlag.NoItemFlags)
             placeholder.setForeground(Qt.GlobalColor.gray)

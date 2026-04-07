@@ -26,8 +26,9 @@ def _silence_mupdf():
         os.dup2(saved, 2)
         os.close(saved)
 
+
 from PySide6.QtCore import QEvent, Qt, QThread, Signal
-from PySide6.QtGui import QColor, QImage, QKeySequence, QPixmap, QShortcut, QTextCharFormat, QTextCursor, QTextDocument
+from PySide6.QtGui import QColor, QImage, QKeySequence, QPixmap, QShortcut, QTextCharFormat, QTextCursor
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
@@ -518,8 +519,9 @@ class TextViewer(QWidget):
     def _on_search_changed(self, pattern: str, use_regex: bool, case_sensitive: bool) -> None:
         self._update_matches(pattern, use_regex, case_sensitive)
 
-    def _update_matches(self, pattern: str | None = None, use_regex: bool | None = None,
-                        case_sensitive: bool | None = None) -> None:
+    def _update_matches(
+        self, pattern: str | None = None, use_regex: bool | None = None, case_sensitive: bool | None = None
+    ) -> None:
         """Rebuild match list from current bar settings and highlight all."""
         if pattern is None:
             pattern = self._find_bar.pattern()
@@ -820,7 +822,6 @@ class PdfViewer(QWidget):
     def _fit_width(self) -> None:
         if not self._page_count:
             return
-        import fitz  # noqa: F811
         vp_w = self._scroll.viewport().width() - 4
         page = self._doc[self._page]
         if vp_w > 0 and page.rect.width > 0:
@@ -831,7 +832,6 @@ class PdfViewer(QWidget):
     def _fit_height(self) -> None:
         if not self._page_count:
             return
-        import fitz  # noqa: F811
         vp_w = self._scroll.viewport().width() - 4
         vp_h = self._scroll.viewport().height() - 4
         page = self._doc[self._page]

@@ -15,9 +15,7 @@ _ASSIGN_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_.]*)\s*=(?!=)\s*(.+)$")
 
 # Matches instrument read RHS: <instrument> read [unit=X]
 # Also matches ev2300 read_word/read_byte/read_block commands
-_INSTR_READ_RE = re.compile(
-    r"^([A-Za-z_][A-Za-z0-9_]*)\s+(?:read|meas|read_word|read_byte|read_block)(?:\s+(.*))?$"
-)
+_INSTR_READ_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*)\s+(?:read|meas|read_word|read_byte|read_block)(?:\s+(.*))?$")
 
 
 def expand_script_lines(
@@ -200,6 +198,34 @@ def expand_script_lines(
             expanded.append(("__NOP__", _loop_ctx + raw_line))
             continue
 
+        # Runtime-evaluated blocks: while, if/elif/else, assert, break, continue
+        # These must pass through the expander untouched so the shell can
+        # evaluate conditions with live variable values at runtime.
+        if head in ("while", "if"):
+            block, idx = _collect_block(lines, idx)
+            # Emit variable sync commands so runtime has access to
+            # variables that were set during expansion (before this block).
+            for vk, vv in variables.items():
+                expanded.append((f"{vk} = {vv}", f"{_loop_ctx}[sync] {vk} = {vv}"))
+            # Emit header, body, and closing 'end' as raw commands
+            expanded.append((raw_line, _loop_ctx + raw_line))
+            for bline in block:
+                expanded.append((bline, _loop_ctx + bline))
+            expanded.append(("end", _loop_ctx + "end"))
+            continue
+
+        if head in ("elif", "else"):
+            # These are only reached inside an if-block being passed through
+            expanded.append((raw_line, _loop_ctx + raw_line))
+            continue
+
+        if head in ("assert", "break", "continue"):
+            # Emit variable sync so assert can access expander-time variables
+            for vk, vv in variables.items():
+                expanded.append((f"{vk} = {vv}", f"{_loop_ctx}[sync] {vk} = {vv}"))
+            expanded.append((raw_line, _loop_ctx + raw_line))
+            continue
+
         if head in ("lower_limit", "upper_limit") and len(tokens) >= 3:
             _parse_limit(head, tokens, ctx, expanded, _loop_ctx, raw_line)
             continue
@@ -268,7 +294,7 @@ def _collect_block(lines: list[str], idx: int) -> tuple[list[str], int]:
             line_tokens = line.split()
         if not line_tokens:
             continue
-        if line_tokens[0].lower() in ("repeat", "for", "array"):
+        if line_tokens[0].lower() in ("repeat", "for", "array", "while", "if"):
             depth_inner += 1
         elif line_tokens[0].lower() == "end":
             depth_inner -= 1

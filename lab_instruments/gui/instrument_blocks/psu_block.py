@@ -405,6 +405,13 @@ class _PSUBlock(QFrame):
 
     @Slot()
     def _poll(self) -> None:
+        try:
+            self._poll_inner()
+        except RuntimeError:
+            # C++ widget already deleted (tab closed while poll pending) — ignore
+            return
+
+    def _poll_inner(self) -> None:
         if self._d.is_busy():
             return
         dev = self._d.device(self._psu)

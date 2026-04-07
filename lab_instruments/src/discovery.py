@@ -574,7 +574,7 @@ class InstrumentDiscovery:
 
         # Add kept non-VISA devices (PXI, EV2300 HID) that weren't in the VISA
         # resource list and therefore weren't added to kept_results above.
-        for res_name, (name, drv) in existing_by_resource.items():
+        for _res_name, (name, drv) in existing_by_resource.items():
             # Skip if already in kept_results (VISA devices handled above)
             if any(d is drv for _, d, _, _ in results):
                 continue

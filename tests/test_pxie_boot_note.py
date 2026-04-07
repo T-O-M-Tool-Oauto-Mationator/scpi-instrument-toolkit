@@ -50,16 +50,12 @@ class TestSmuHelpPxieBootNote:
     def test_help_mentions_power_cycle(self, repl, capsys):
         repl.onecmd("smu")
         out = capsys.readouterr().out
-        assert "power cycle" in out.lower(), (
-            "SMU help should tell users to power cycle the PC"
-        )
+        assert "power cycle" in out.lower(), "SMU help should tell users to power cycle the PC"
 
     def test_help_mentions_chassis_before_pc(self, repl, capsys):
         repl.onecmd("smu")
         out = capsys.readouterr().out
-        assert "BEFORE" in out, (
-            "SMU help should emphasize chassis must be on BEFORE the PC"
-        )
+        assert "BEFORE" in out, "SMU help should emphasize chassis must be on BEFORE the PC"
 
 
 class TestTroubleshootingDoc:
