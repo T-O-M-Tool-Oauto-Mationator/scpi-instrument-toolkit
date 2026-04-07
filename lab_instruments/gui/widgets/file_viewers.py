@@ -362,7 +362,9 @@ class CsvViewer(QWidget):
         self._find_bar.find_prev.connect(lambda t: self._find(t, backward=True))
         lay.addWidget(self._find_bar)
 
-        QShortcut(QKeySequence.StandardKey.Find, self).activated.connect(self._find_bar.open)
+        _csv_find_sc = QShortcut(QKeySequence.StandardKey.Find, self)
+        _csv_find_sc.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
+        _csv_find_sc.activated.connect(self._find_bar.open)
 
         self._load()
 
@@ -455,7 +457,9 @@ class TextViewer(QWidget):
         _repl_sc = QShortcut(QKeySequence("Ctrl+H"), self)
         _repl_sc.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
         _repl_sc.activated.connect(self._find_bar.open_replace)
-        QShortcut(QKeySequence.StandardKey.Save, self).activated.connect(self._save)
+        _save_sc = QShortcut(QKeySequence.StandardKey.Save, self)
+        _save_sc.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
+        _save_sc.activated.connect(self._save)
 
         try:
             with open(file_path, encoding="utf-8", errors="replace") as f:
@@ -1292,7 +1296,9 @@ class XlsxViewer(QWidget):
         self._find_bar.find_prev.connect(lambda t: self._find(t, backward=True))
         lay.addWidget(self._find_bar)
 
-        QShortcut(QKeySequence.StandardKey.Find, self).activated.connect(self._find_bar.open)
+        _xlsx_find_sc = QShortcut(QKeySequence.StandardKey.Find, self)
+        _xlsx_find_sc.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
+        _xlsx_find_sc.activated.connect(self._find_bar.open)
 
         try:
             from openpyxl import load_workbook

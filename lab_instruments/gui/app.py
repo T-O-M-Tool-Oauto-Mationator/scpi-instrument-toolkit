@@ -193,8 +193,8 @@ class _MainWindow(QMainWindow):
 
         vm.addSeparator()
         vm.addSection("Search")
-        self._vm_find = _va("Find…", "Ctrl+F", self._viewer_find)
-        self._vm_replace = _va("Find && Replace…", "Ctrl+H", self._viewer_find_replace)
+        self._vm_find = _va("Find…  Ctrl+F", None, self._viewer_find)
+        self._vm_replace = _va("Find && Replace…  Ctrl+H", None, self._viewer_find_replace)
         vm.addAction(self._vm_find)
         vm.addAction(self._vm_replace)
 
