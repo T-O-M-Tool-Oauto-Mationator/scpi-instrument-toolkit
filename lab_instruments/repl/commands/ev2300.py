@@ -65,6 +65,7 @@ class Ev2300Command(BaseCommand):
                 ColorPrinter.warning(f"Unknown EV2300 command: ev2300 {arg}")
         except Exception as exc:
             ColorPrinter.error(str(exc))
+            self.ctx.command_had_error = True
 
     # ------------------------------------------------------------------
     # Help
@@ -111,6 +112,7 @@ class Ev2300Command(BaseCommand):
         """Print an error message with a hint to run 'ev2300 fix'."""
         ColorPrinter.error(f"{op} failed: {result.get('status_text', 'unknown error')}")
         ColorPrinter.info("Tip: run 'ev2300 fix' for recovery steps")
+        self.ctx.command_had_error = True
 
     # ------------------------------------------------------------------
     # Command handlers
@@ -120,6 +122,7 @@ class Ev2300Command(BaseCommand):
         info = dev.get_device_info()
         if not info.get("ok"):
             ColorPrinter.error(info.get("status_text", "Failed to get device info"))
+            self.ctx.command_had_error = True
             return
         for key in ("vid", "pid", "serial", "product", "manufacturer", "version"):
             val = info.get(key)
