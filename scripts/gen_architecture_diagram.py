@@ -1,94 +1,112 @@
 """Generate concentric-circle architecture diagram (reference: AI/ML onion style)."""
 
+import numpy as np
 import matplotlib.pyplot as plt
 
-fig, ax = plt.subplots(figsize=(12, 12))
-ax.set_xlim(-6.5, 6.5)
-ax.set_ylim(-6.8, 6.5)
+
+def xy(r, deg):
+    """Cartesian position at radius r, angle deg (CCW from +x axis)."""
+    rad = np.radians(deg)
+    return float(r * np.cos(rad)), float(r * np.sin(rad))
+
+
+fig, ax = plt.subplots(figsize=(13, 13))
+ax.set_xlim(-7, 7)
+ax.set_ylim(-7.3, 7)
 ax.set_aspect("equal")
 ax.axis("off")
 fig.patch.set_facecolor("white")
 
-# Each layer: (radius, fill, edge, title, title_fs, item_fs, [(label, x, y), ...])
-# Items verified to be inside their ring (r_inner < sqrt(x²+y²) < r_outer)
+# ── layer definitions ──────────────────────────────────────────────────────
+# (r_outer, fill, edge, title, title_fs, item_fs, [(label, x, y), ...])
+#
+# Radii:  5.5 | 4.4 | 3.3 | 2.1 | 1.0
+# Mid-r:      4.95  3.85  2.70  1.55  0.55
+#
+# Angles are interleaved between rings so no two adjacent items share
+# similar (angle, radius) coordinates — prevents cross-ring visual crowding.
+
+m4, m3, m2, m1, m0 = 4.95, 3.85, 2.70, 1.55, 0.55
+
 LAYERS = [
+    # ── Layer 4 — Frontends ────────────────────────────────────────────────
     (
-        5.2, "#F5F5F5", "#9E9E9E",
+        5.5, "#F5F5F5", "#9E9E9E",
         "Layer 4 — Frontends", 14, 10,
         [
-            ("REPL / CLI",        -2.5,  4.55),
-            ("scpi-repl",         -2.5,  4.15),
-            ("GUI  (Tkinter)",     2.5,  4.55),
-            ("scpi-gui",           2.5,  4.15),
-            ("LabVIEW bridge",    -4.75,  0.9),
-            ("Python scripts",     4.4,   0.9),
-            ("…",                 -4.0,  -3.2),
-            ("…",                  4.0,  -3.2),
+            ("REPL / CLI\nscpi-repl",    *xy(m4, 122)),   # upper-left
+            ("GUI  (Tkinter)\nscpi-gui", *xy(m4,  58)),   # upper-right
+            ("LabVIEW bridge",           *xy(m4, 165)),   # left
+            ("Python scripts",           *xy(m4,  15)),   # right
+            ("…",                        *xy(m4, 220)),   # lower-left
+            ("…",                        *xy(m4, 320)),   # lower-right
         ],
     ),
+    # ── Layer 3 — REPL Session Layer ───────────────────────────────────────
     (
-        4.1, "#DCEEFB", "#1976D2",
+        4.4, "#DCEEFB", "#1976D2",
         "Layer 3 — REPL Session Layer", 13, 9,
         [
-            ("commands/",         -1.8,   3.65),
-            ("ReplContext",         1.9,   3.25),
-            ("DeviceRegistry",     -3.6,   0.75),
-            ("ScriptEngine",        3.5,  -0.65),
-            ("MeasurementStore",   -2.6,  -2.4),
-            ("SafetySystem",        2.2,  -2.9),
+            ("commands/",         *xy(m3, 143)),
+            ("ReplContext",        *xy(m3,  37)),
+            ("DeviceRegistry",    *xy(m3, 193)),
+            ("ScriptEngine",      *xy(m3, 347)),
+            ("MeasurementStore",  *xy(m3, 233)),
+            ("SafetySystem",      *xy(m3, 307)),
         ],
     ),
+    # ── Layer 2 — Instrument Drivers ───────────────────────────────────────
     (
-        3.0, "#DCEDD9", "#388E3C",
+        3.3, "#DCEDD9", "#388E3C",
         "Layer 2 — Instrument Drivers", 12, 8.5,
         [
-            ("HP_E3631A",    -1.35,  2.45),
-            ("HP_34401A",     1.25,  2.65),
-            ("Rigol_DHO804", -2.5,  -1.0),
-            ("TI_EV2300",    2.25,   1.3),
-            ("NI_PXIe_4139", -1.65, -2.1),
-            ("DeviceManager", 2.2,  -1.75),
-            ("discovery.py",  0.0,  -2.85),
+            ("HP_E3631A",          *xy(m2, 132)),
+            ("HP_34401A",          *xy(m2,  48)),
+            ("Rigol_DHO804",       *xy(m2, 173)),
+            ("TI_EV2300",          *xy(m2,   7)),
+            ("NI_PXIe_4139",       *xy(m2, 213)),
+            ("DeviceManager",      *xy(m2, 327)),
+            ("discovery.py",       *xy(m2, 270)),
         ],
     ),
+    # ── Layer 1 — Transport ────────────────────────────────────────────────
     (
-        1.9, "#FFF9C4", "#F9A825",
-        "Layer 1 — Transport", 11, 8,
+        2.1, "#FFF9C4", "#F9A825",
+        "Layer 1 — Transport", 11, 8.5,
         [
-            ("pyvisa",       -1.1,  0.85),
-            ("ctypes / HID",  0.95, 0.85),
-            ("nidcpower",    -0.1, -1.5),
+            ("pyvisa",             *xy(m1, 152)),
+            ("ctypes / HID",       *xy(m1,  28)),
+            ("nidcpower",          *xy(m1, 270)),
         ],
     ),
+    # ── Layer 0 — Hardware ─────────────────────────────────────────────────
     (
-        0.9, "#FFE0B2", "#E64A19",
+        1.0, "#FFE0B2", "#E64A19",
         "Layer 0 — Hardware", 9, 7.5,
         [
-            ("NI-VISA",  -0.48,  0.2),
-            ("USB HID",   0.42,  0.2),
-            ("PXIe",      0.0,  -0.38),
+            ("NI-VISA",            *xy(m0, 150)),
+            ("USB HID",            *xy(m0,  30)),
+            ("PXIe",               *xy(m0, 270)),
         ],
     ),
 ]
 
-# Draw largest → smallest so inner circles paint on top
+# ── draw (largest → smallest so inner circles paint on top) ────────────────
 for i, (radius, fill, edge, title, tfs, ifs, items) in enumerate(LAYERS):
-    circle = plt.Circle(
+    ax.add_patch(plt.Circle(
         (0, 0), radius,
         facecolor=fill, edgecolor=edge,
         linewidth=2.2, zorder=i + 1,
-    )
-    ax.add_patch(circle)
+    ))
 
-    # Bold title just inside the top of each circle
+    # Title: bold, near top of this circle (0.5 units below the apex)
     ax.text(
-        0, radius - 0.33, title,
+        0, radius - 0.5, title,
         ha="center", va="top",
         fontsize=tfs, fontweight="bold", color="#212121",
         zorder=i + 20,
     )
 
-    # Scattered items
     for label, x, y in items:
         ax.text(
             x, y, label,
