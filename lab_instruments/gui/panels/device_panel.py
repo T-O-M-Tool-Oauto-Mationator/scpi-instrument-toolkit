@@ -90,7 +90,11 @@ class _DevicePanel(QWidget):
         self._list.clear()
         devices = self._d.registry.devices
         if not devices:
-            placeholder = QListWidgetItem("No devices.\nClick Scan or use --mock.")
+            if self._d.is_busy():
+                msg = "Scanning for instruments..."
+            else:
+                msg = "No devices.\nClick Scan or use --mock."
+            placeholder = QListWidgetItem(msg)
             placeholder.setFlags(Qt.ItemFlag.NoItemFlags)
             placeholder.setForeground(Qt.GlobalColor.gray)
             self._list.addItem(placeholder)

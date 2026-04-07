@@ -914,6 +914,10 @@ class InstrumentRepl(cmd.Cmd):
         """plot [pattern ...] [--title "text"]: plot measurement log data"""
         self._plot_cmd.execute(arg)
 
+    def do_liveplot(self, arg):
+        """liveplot <pattern> [--title "text"]: live-updating chart"""
+        self._plot_cmd.execute_liveplot(arg)
+
     # Scripting commands
     def do_script(self, arg):
         """script <new|run|debug|edit|list|rm|show|dir|import|load|save>: manage scripts"""

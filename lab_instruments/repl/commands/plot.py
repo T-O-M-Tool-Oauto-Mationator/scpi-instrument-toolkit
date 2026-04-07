@@ -2,6 +2,7 @@
 
 import fnmatch
 import os
+import tempfile
 
 from lab_instruments.src.terminal import ColorPrinter
 
@@ -92,7 +93,7 @@ class PlotCommand(BaseCommand):
 
         plt.tight_layout()
 
-        # Auto-save to PNG if --save <path> is specified, or to script dir
+        # Auto-save to PNG if --save <path> is specified
         if save_path:
             if not os.path.isabs(save_path):
                 base = self.ctx.get_scripts_dir() if self.ctx.in_script else str(self.ctx.get_data_dir())
@@ -101,8 +102,14 @@ class PlotCommand(BaseCommand):
             fig.savefig(save_path, dpi=150, bbox_inches="tight")
             ColorPrinter.success(f"Plot saved to {save_path}")
 
-        plt.show(block=False)
-        ColorPrinter.success("Plot window opened.")
+        # Always save to temp file for GUI to pick up (avoids matplotlib thread crash)
+        tmp = tempfile.NamedTemporaryFile(suffix=".png", prefix="scpi_plot_", delete=False)
+        tmp.close()
+        fig.savefig(tmp.name, dpi=150, bbox_inches="tight")
+        plt.close(fig)
+        # Marker for GUI to detect and open as a tab
+        print(f"__PLOT__:{tmp.name}")
+        ColorPrinter.success("Plot rendered.")
 
     # ------------------------------------------------------------------
     # helpers
@@ -120,6 +127,68 @@ class PlotCommand(BaseCommand):
         ax.set_xlabel("measurement")
         ax.set_xticks(indices)
         ax.set_xticklabels(labels, rotation=45 if len(labels) > 5 else 0, ha="right")
+
+    def execute_liveplot(self, arg: str) -> None:
+        """Start a live-updating plot.
+
+        Syntax: liveplot <pattern> [...] [--title T] [--xlabel X] [--ylabel Y]
+        """
+        args = self.parse_args(arg)
+        args, help_flag = self.strip_help(args)
+
+        if help_flag or not args:
+            self.print_colored_usage(
+                [
+                    "# LIVEPLOT",
+                    "",
+                    "liveplot <pattern> [<pattern> ...] [options]",
+                    "  - open a live-updating chart that refreshes as data is collected",
+                    "  - use glob patterns to match measurement labels",
+                    "  - multiple patterns = multiple series on one chart",
+                    "",
+                    "  Options:",
+                    '    --title "My Chart"',
+                    '    --xlabel "Voltage (V)"',
+                    '    --ylabel "ADC Count"',
+                    "",
+                    "  Examples:",
+                    "    liveplot vc1_*",
+                    "    liveplot vc1_* dmm_vc1_*",
+                    '    liveplot dmm_* --title "DMM vs VBAT" --xlabel "VBAT (V)" --ylabel "Voltage (V)"',
+                ]
+            )
+            return
+
+        title = "Live Plot"
+        xlabel = ""
+        ylabel = ""
+        patterns: list[str] = []
+        i = 0
+        while i < len(args):
+            if args[i] == "--title" and i + 1 < len(args):
+                title = args[i + 1]
+                i += 2
+            elif args[i] == "--xlabel" and i + 1 < len(args):
+                xlabel = args[i + 1]
+                i += 2
+            elif args[i] == "--ylabel" and i + 1 < len(args):
+                ylabel = args[i + 1]
+                i += 2
+            else:
+                patterns.append(args[i])
+                i += 1
+
+        if not patterns:
+            ColorPrinter.warning("Usage: liveplot <pattern> [--title text]")
+            return
+
+        # Direct callback for GUI (opens tab immediately, even mid-script)
+        if self.ctx.on_liveplot is not None:
+            self.ctx.on_liveplot(patterns, title, xlabel, ylabel)
+        else:
+            # Fallback marker for non-GUI / legacy usage
+            print(f"__LIVEPLOT__:{','.join(patterns)}|{title}|{xlabel}|{ylabel}")
+        ColorPrinter.success(f"Live plot started for: {', '.join(patterns)}")
 
     def _show_help(self) -> None:
         self.print_colored_usage(

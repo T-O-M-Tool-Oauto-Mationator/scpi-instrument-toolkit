@@ -1,0 +1,25 @@
+# live_combined_plot.scpi
+# Plots voltage AND current as two series on a SINGLE chart.
+# Multiple glob patterns on one liveplot = multiple series, one chart.
+# Run with --mock.
+
+print "=== Combined V+I Live Plot ==="
+
+# Two patterns on ONE liveplot = two series on one chart
+liveplot psu_v_* psu_i_* --title "PSU Voltage & Current" --xlabel "Time (s)"
+
+psu1 chan 1 on
+sleep 0.3
+
+ramp_voltages = linspace 0.5 12.0 50
+for v {ramp_voltages}
+  print "Ramping to {v}V..."
+  psu1 set 1 {v}
+  sleep 200ms
+  psu_v_{v} = psu1 meas v unit=V
+  psu_i_{v} = psu1 meas i unit=A
+end
+
+psu1 chan 1 off
+print "=== Ramp complete ==="
+log print

@@ -49,6 +49,9 @@ class ReplContext:
         # Keyed by device name, e.g. {"dmm": "vdc", "psu": "v"}
         self.last_instrument_mode: dict[str, str] = {}
 
+        # GUI callbacks (set by dispatcher when running inside the GUI)
+        self.on_liveplot: Any | None = None  # (patterns, title, xlabel, ylabel) -> None
+
         # DMM text loop state
         self.dmm_text_loop_active: bool = False
         self.dmm_text_frames: list = []

@@ -1,0 +1,26 @@
+# live_multi_plot.scpi
+# Opens two independent live plots -- one for voltage, one for current.
+# Watch both update in real time as the PSU ramps.  Run with --mock.
+
+print "=== Multi-Plot PSU Ramp ==="
+
+# Open two live plots (each gets its own tab)
+liveplot psu_v_* --title "PSU Voltage" --xlabel "Time (s)" --ylabel "Voltage (V)"
+liveplot psu_i_* --title "PSU Current" --xlabel "Time (s)" --ylabel "Current (A)"
+
+psu1 chan 1 on
+sleep 0.3
+
+# 50 points from 0.5V to 12V
+ramp_voltages = linspace 0.5 12.0 50
+for v {ramp_voltages}
+  print "Ramping to {v}V..."
+  psu1 set 1 {v}
+  sleep 250ms
+  psu_v_{v} = psu1 meas v unit=V
+  psu_i_{v} = psu1 meas i unit=A
+end
+
+psu1 chan 1 off
+print "=== Ramp complete ==="
+log print

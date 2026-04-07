@@ -1,0 +1,27 @@
+# live_voltage_sweep.scpi
+# Sweeps PSU through voltages while a live plot shows DMM measurements
+# in real time.  Run with:  python repl.py --mock
+# Then:  script load examples/scpi/live_voltage_sweep.scpi
+#        script run live_voltage_sweep
+
+print "=== Live Voltage Sweep ==="
+
+# Start live plot BEFORE collecting data
+liveplot dmm_* --title "Voltage Sweep" --xlabel "Time (s)" --ylabel "Voltage (V)"
+
+psu1 chan 1 on
+dmm1 config vdc
+sleep 0.3
+
+# 50 points from 0.5V to 12V
+sweep_voltages = linspace 0.5 12.0 50
+for v {sweep_voltages}
+  print "Setting {v}V..."
+  psu1 set 1 {v}
+  sleep 200ms
+  dmm_{v}V = dmm1 meas unit=V
+end
+
+psu1 chan 1 off
+print "=== Sweep complete ==="
+log print

@@ -51,10 +51,10 @@ class TestPlotNoMeasurements:
 
 
 class TestPlotFiltering:
-    @patch("matplotlib.pyplot.show")
+    @patch("matplotlib.pyplot.close")
     @patch("matplotlib.pyplot.tight_layout")
     @patch("matplotlib.pyplot.subplots")
-    def test_plot_all_measurements(self, mock_subplots, mock_tight, mock_show, repl, capsys):
+    def test_plot_all_measurements(self, mock_subplots, mock_tight, mock_close, repl, capsys):
         mock_ax = MagicMock()
         mock_subplots.return_value = (MagicMock(), mock_ax)
 
@@ -64,15 +64,15 @@ class TestPlotFiltering:
         repl.onecmd("plot")
         capsys.readouterr()
 
-        mock_show.assert_called_once_with(block=False)
+        mock_close.assert_called_once()
         # Both measurements should be plotted
         call_args = mock_ax.plot.call_args
         assert len(call_args[0][1]) == 2  # two values
 
-    @patch("matplotlib.pyplot.show")
+    @patch("matplotlib.pyplot.close")
     @patch("matplotlib.pyplot.tight_layout")
     @patch("matplotlib.pyplot.subplots")
-    def test_plot_with_pattern(self, mock_subplots, mock_tight, mock_show, repl, capsys):
+    def test_plot_with_pattern(self, mock_subplots, mock_tight, mock_close, repl, capsys):
         mock_ax = MagicMock()
         mock_subplots.return_value = (MagicMock(), mock_ax)
 
@@ -83,14 +83,14 @@ class TestPlotFiltering:
         repl.onecmd("plot linereg_*")
         capsys.readouterr()
 
-        mock_show.assert_called_once_with(block=False)
+        mock_close.assert_called_once()
         call_args = mock_ax.plot.call_args
         assert len(call_args[0][1]) == 2  # only linereg entries
 
-    @patch("matplotlib.pyplot.show")
+    @patch("matplotlib.pyplot.close")
     @patch("matplotlib.pyplot.tight_layout")
     @patch("matplotlib.pyplot.subplots")
-    def test_plot_multiple_patterns(self, mock_subplots, mock_tight, mock_show, repl, capsys):
+    def test_plot_multiple_patterns(self, mock_subplots, mock_tight, mock_close, repl, capsys):
         mock_ax = MagicMock()
         mock_subplots.return_value = (MagicMock(), mock_ax)
 
@@ -101,7 +101,7 @@ class TestPlotFiltering:
         repl.onecmd("plot linereg_* ilim_*")
         capsys.readouterr()
 
-        mock_show.assert_called_once_with(block=False)
+        mock_close.assert_called_once()
         call_args = mock_ax.plot.call_args
         assert len(call_args[0][1]) == 2  # linereg + ilim
 
@@ -118,10 +118,10 @@ class TestPlotFiltering:
 
 
 class TestPlotTitle:
-    @patch("matplotlib.pyplot.show")
+    @patch("matplotlib.pyplot.close")
     @patch("matplotlib.pyplot.tight_layout")
     @patch("matplotlib.pyplot.subplots")
-    def test_plot_custom_title(self, mock_subplots, mock_tight, mock_show, repl, capsys):
+    def test_plot_custom_title(self, mock_subplots, mock_tight, mock_close, repl, capsys):
         mock_ax = MagicMock()
         mock_subplots.return_value = (MagicMock(), mock_ax)
 
@@ -137,10 +137,10 @@ class TestPlotTitle:
 
 
 class TestPlotMultipleUnits:
-    @patch("matplotlib.pyplot.show")
+    @patch("matplotlib.pyplot.close")
     @patch("matplotlib.pyplot.tight_layout")
     @patch("matplotlib.pyplot.subplots")
-    def test_plot_groups_by_unit(self, mock_subplots, mock_tight, mock_show, repl, capsys):
+    def test_plot_groups_by_unit(self, mock_subplots, mock_tight, mock_close, repl, capsys):
         mock_ax1 = MagicMock()
         mock_ax2 = MagicMock()
         mock_subplots.return_value = (MagicMock(), [mock_ax1, mock_ax2])

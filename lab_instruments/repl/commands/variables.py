@@ -91,7 +91,7 @@ class VariableCommands(BaseCommand):
         base_type = re.sub(r"\d+$", "", instr_token)
 
         # Check if it's a known instrument type
-        known_types = ("dmm", "psu", "scope", "awg", "smu")
+        known_types = ("dmm", "psu", "scope", "awg", "smu", "ev2300")
         if base_type not in known_types:
             return False
 
@@ -119,7 +119,9 @@ class VariableCommands(BaseCommand):
 
         # Execute the measurement
         try:
-            if base_type == "smu":
+            if base_type == "ev2300":
+                value, auto_unit = self._ev2300_read(dev, dev_name, _verb, meas_args)
+            elif base_type == "smu":
                 value, auto_unit = self._smu_meas(dev, dev_name, mode_arg)
             elif base_type == "psu":
                 value, auto_unit = self._psu_meas(dev, dev_name, mode_arg)
@@ -192,6 +194,35 @@ class VariableCommands(BaseCommand):
         value = dev.measure_bnf(ch, mtype.upper())
         auto_unit = _SCOPE_UNIT_MAP.get(mtype, "")
         return value, auto_unit
+
+    def _ev2300_read(self, dev, dev_name: str, verb: str, meas_args: list) -> tuple:
+        """Read from EV2300. Handles read_word, read_byte, read_block.
+
+        meas_args: remaining tokens after the verb, e.g. ['0x08', '0x0c']
+        Returns (value, auto_unit).
+        """
+        if len(meas_args) < 2:
+            raise ValueError(f"ev2300 {verb} requires <i2c_addr> <register>")
+        addr = int(meas_args[0], 0)
+        reg = int(meas_args[1], 0)
+        if verb == "read_word":
+            result = dev.read_word(addr, reg)
+            if result.get("ok") and result.get("value") is not None:
+                return result["value"], ""
+            raise ValueError(f"read_word failed: {result.get('status_text', 'unknown error')}")
+        elif verb == "read_byte":
+            result = dev.read_byte(addr, reg)
+            if result.get("ok") and result.get("value") is not None:
+                return result["value"], ""
+            raise ValueError(f"read_byte failed: {result.get('status_text', 'unknown error')}")
+        elif verb == "read_block":
+            result = dev.read_block(addr, reg)
+            if result.get("ok") and result.get("block") is not None:
+                block = result["block"]
+                return " ".join(f"{b:02X}" for b in block), ""
+            raise ValueError(f"read_block failed: {result.get('status_text', 'unknown error')}")
+        else:
+            raise ValueError(f"Unknown ev2300 verb: {verb}")
 
     def _assign_var(self, key: str, raw_val: str) -> None:
         """Core variable assignment — shared by 'var = expr' and 'set var expr'."""

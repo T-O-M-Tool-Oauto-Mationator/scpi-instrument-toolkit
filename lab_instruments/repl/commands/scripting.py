@@ -193,19 +193,33 @@ class ScriptingCommands(BaseCommand):
         if not args:
             ColorPrinter.info("Available example scripts:")
             for name, info in EXAMPLES.items():
+                tags = []
+                if info.get("lines"):
+                    tags.append("scpi")
+                if info.get("code"):
+                    tags.append("py")
+                tag_str = f"[{'+'.join(tags)}]" if tags else ""
                 desc = info.get("description", "")
-                ColorPrinter.cyan(f"  {name}: {desc}")
+                ColorPrinter.cyan(f"  {name} {tag_str}: {desc}")
             print("\n  Use: examples load <name>  or  examples load all")
             return
         if args[0].lower() == "load":
             name = args[1] if len(args) >= 2 else None
             if name == "all":
+                loaded = 0
                 for ename, info in EXAMPLES.items():
-                    self.ctx.scripts[ename] = info.get("lines", [])
-                ColorPrinter.success(f"Loaded {len(EXAMPLES)} example scripts.")
+                    lines = info.get("lines", [])
+                    if lines:
+                        self.ctx.scripts[ename] = lines
+                        loaded += 1
+                ColorPrinter.success(f"Loaded {loaded} SCPI example scripts.")
             elif name and name in EXAMPLES:
-                self.ctx.scripts[name] = EXAMPLES[name].get("lines", [])
-                ColorPrinter.success(f"Loaded example '{name}'.")
+                lines = EXAMPLES[name].get("lines", [])
+                if lines:
+                    self.ctx.scripts[name] = lines
+                    ColorPrinter.success(f"Loaded example '{name}'.")
+                else:
+                    ColorPrinter.warning(f"'{name}' has no SCPI version. Use the .py file directly.")
             else:
                 ColorPrinter.warning(f"Example '{name}' not found.")
 

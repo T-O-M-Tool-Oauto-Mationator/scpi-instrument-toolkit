@@ -53,6 +53,7 @@ from .widgets.file_viewers import (
     _OfficeViewerBase,
     preconvert_office_files,
 )
+from .widgets.live_plot import LivePlotWidget
 from .widgets.work_area import _WorkArea
 
 # -- Background worker for blocking operations --------------------------------
@@ -149,12 +150,15 @@ class _MainWindow(QMainWindow):
             scpi_menu = em.addMenu("SCPI Scripts")
             py_menu = em.addMenu("Python Scripts")
             for ex_name, ex_info in _EXAMPLES.items():
-                is_python = ex_info.get("type") == "python"
-                display = ex_name
-                desc = ex_info.get("description", "").removeprefix("Python: ")
-                act = QAction(f"{display}  —  {desc}", self)
-                act.triggered.connect(lambda checked, n=ex_name: self._import_example(n))
-                (py_menu if is_python else scpi_menu).addAction(act)
+                desc = ex_info.get("description", "")
+                if ex_info.get("lines"):
+                    act = QAction(f"{ex_name}  —  {desc}", self)
+                    act.triggered.connect(lambda checked, n=ex_name: self._import_example(n, "scpi"))
+                    scpi_menu.addAction(act)
+                if ex_info.get("code"):
+                    act = QAction(f"{ex_name}  —  {desc}", self)
+                    act.triggered.connect(lambda checked, n=ex_name: self._import_example(n, "python"))
+                    py_menu.addAction(act)
         except ImportError:
             na = QAction("(no examples available)", self)
             na.setEnabled(False)
@@ -267,6 +271,11 @@ class _MainWindow(QMainWindow):
 
         self._console.command_ran.connect(self._on_console_command)
 
+        # Open live-plot tabs immediately when the command fires (even mid-script)
+        d.liveplot_requested.connect(
+            self._open_liveplot, Qt.ConnectionType.QueuedConnection,
+        )
+
         # ── Command palette ────────────────────────────────────────────
         self._palette = CommandPalette(self)
 
@@ -349,8 +358,11 @@ class _MainWindow(QMainWindow):
         self._file_explorer.set_root(folder)
         self._status.setText(f"Opened: {folder}")
 
-    def _import_example(self, name: str) -> None:
-        """Copy a bundled example to the workspace examples/ folder and open it."""
+    def _import_example(self, name: str, kind: str = "scpi") -> None:
+        """Copy a bundled example to the workspace and open it.
+
+        *kind* is ``"scpi"`` or ``"python"`` — only that format is exported.
+        """
         from lab_instruments.examples import EXAMPLES
 
         info = EXAMPLES.get(name)
@@ -360,12 +372,22 @@ class _MainWindow(QMainWindow):
         folder = self._workspace.folder
         if not folder:
             folder = os.path.expanduser("~")
-        is_python = info.get("type") == "python"
-        subdir = "python" if is_python else "scpi"
-        ext = ".py" if is_python else ".scpi"
+
+        if kind == "python":
+            content = info.get("code")
+            subdir, ext = "python", ".py"
+        else:
+            content = info.get("lines")
+            subdir, ext = "scpi", ".scpi"
+
+        if not content:
+            self._status.setText(f"Example '{name}' has no {kind} version")
+            return
+
         examples_dir = os.path.join(folder, "examples", subdir)
         os.makedirs(examples_dir, exist_ok=True)
         path = os.path.join(examples_dir, f"{name}{ext}")
+
         if os.path.exists(path):
             reply = QMessageBox.question(
                 self,
@@ -378,13 +400,15 @@ class _MainWindow(QMainWindow):
             if reply != QMessageBox.StandardButton.Yes:
                 self.open_file(path)
                 return
+
         with open(path, "w", encoding="utf-8") as f:
-            if is_python:
-                f.write(info.get("code", ""))
+            if kind == "scpi":
+                f.write("\n".join(content) + "\n")
             else:
-                f.write("\n".join(info.get("lines", [])) + "\n")
+                f.write(content)
+
         self._file_explorer.set_root(folder)
-        self._status.setText(f"Imported example: {name}")
+        self._status.setText(f"Imported: {name}{ext}")
         self.open_file(path)
 
     def open_file(self, path: str) -> None:
@@ -459,15 +483,26 @@ class _MainWindow(QMainWindow):
 
         if ext == ".py":
             self._console._input.setEnabled(False)
+            self._console.show_running(name)
 
             def _py_done(output):
                 if output.strip():
                     self._console.log(_ansi_to_html(output))
                 self._console.log(f"<span style='color:#155724'>[DONE] {name}</span>")
                 self._console._input.setEnabled(True)
+                self._console.hide_running()
                 self._on_console_command()
 
-            self._run_in_background(lambda: self._d.run(f"python {path}"), _py_done, f"Running {name}...")
+            def _py_worker():
+                self._console._worker_thread_id = __import__("threading").current_thread().ident
+                try:
+                    return self._d.run(f"python {path}")
+                except KeyboardInterrupt:
+                    return "\033[93m[STOPPED]\033[0m"
+                finally:
+                    self._console._worker_thread_id = None
+
+            self._run_in_background(_py_worker, _py_done, f"Running {name}...")
             return
 
         # .scpi files
@@ -515,19 +550,22 @@ class _MainWindow(QMainWindow):
         # Normal run (not debug) — run each command and stream output to console
         run_cmds = [cmd for cmd, _ in expanded if cmd.strip() and cmd != "__BREAKPOINT__" and cmd != "__NOP__"]
         self._console._input.setEnabled(False)
+        self._console.show_running(name)
+        self._d._repl.ctx.interrupt_requested = False
 
         def _run_all():
-            output_parts = []
-            for cmd in run_cmds:
-                result = self._d.run(cmd)
-                if result.strip():
-                    output_parts.append(result.rstrip("\n"))
-                    # Emit output to console via signal (thread-safe)
-                    _sig.finished.emit(result.rstrip("\n"))
-                # Stop on error if set -e is active
-                if self._d._repl.ctx.exit_on_error and self._d._repl.ctx.command_had_error:
-                    _sig.finished.emit("[ERROR] Script stopped (set -e)")
-                    break
+            try:
+                for cmd in run_cmds:
+                    if self._d._repl.ctx.interrupt_requested:
+                        break
+                    result = self._d.run(cmd)
+                    if result.strip():
+                        _sig.finished.emit(result.rstrip("\n"))
+                    if self._d._repl.ctx.exit_on_error and self._d._repl.ctx.command_had_error:
+                        _sig.finished.emit("[ERROR] Script stopped (set -e)")
+                        break
+            except KeyboardInterrupt:
+                pass
             return ""
 
         def _line_output(text):
@@ -535,8 +573,10 @@ class _MainWindow(QMainWindow):
                 self._console.log(_ansi_to_html(text))
 
         def _all_done(_):
+            self._d._repl.ctx.interrupt_requested = False
             self._console.log(f"<span style='color:#155724'>[DONE] {name}</span>")
             self._console._input.setEnabled(True)
+            self._console.hide_running()
             self._on_console_command()
 
         _sig = _BgSignal(self)
@@ -547,10 +587,16 @@ class _MainWindow(QMainWindow):
         import threading
 
         def _worker():
-            _run_all()
+            self._console._worker_thread_id = threading.current_thread().ident
+            try:
+                _run_all()
+            except KeyboardInterrupt:
+                pass
+            finally:
+                self._console._worker_thread_id = None
             _done_sig.finished.emit("")
 
-        t = threading.Thread(target=_worker, daemon=True)
+        t = threading.Thread(target=_worker, name="script_run", daemon=True)
         t.start()
         self._status.setText(f"Running {name}...")
 
@@ -1017,6 +1063,15 @@ class _MainWindow(QMainWindow):
                 self._after_scan()
 
         self._run_in_background(_do_force_scan, _force_scan_done, "Force rescanning (resetting all outputs)...")
+
+    def _open_liveplot(self, patterns: list[str], title: str,
+                       xlabel: str = "", ylabel: str = "") -> None:
+        """Open a live plot widget in the work area."""
+        widget = LivePlotWidget(
+            self._d._repl.ctx.measurements, patterns, title,
+            xlabel=xlabel, ylabel=ylabel,
+        )
+        self._work_area.add_widget(f"Live: {title}", widget)
 
     def _on_estop(self) -> None:
         # Route through dispatcher so the lock is respected

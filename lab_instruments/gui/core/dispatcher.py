@@ -45,6 +45,10 @@ class _InputBridge(QObject):
 
 
 class _Dispatcher(QObject):
+    # Emitted from any thread when a ``liveplot`` command executes.
+    # Signature: (patterns: list[str], title: str, xlabel: str, ylabel: str)
+    liveplot_requested = Signal(list, str, str, str)
+
     def __init__(self, mock: bool = False, parent=None) -> None:
         super().__init__(parent)
         saved_int = signal.getsignal(signal.SIGINT)
@@ -70,8 +74,15 @@ class _Dispatcher(QObject):
         self._repl._term_fd = None
         self._repl._term_settings = None
 
+        # Wire up the liveplot callback so tabs open immediately (even mid-script)
+        self._repl.ctx.on_liveplot = self._on_liveplot
+
         if mock:
             self.run("scan")
+
+    def _on_liveplot(self, patterns: list[str], title: str, xlabel: str, ylabel: str) -> None:
+        """Called from worker threads — emits a Qt signal to the main thread."""
+        self.liveplot_requested.emit(patterns, title, xlabel, ylabel)
 
     def run(self, command: str) -> str:
         """Execute a REPL command. Thread-safe via lock."""

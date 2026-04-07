@@ -1,5 +1,6 @@
 """Measurement recording and access for the REPL."""
 
+import time
 from typing import Any
 
 
@@ -8,6 +9,7 @@ class MeasurementStore:
 
     def __init__(self) -> None:
         self._entries: list[dict[str, Any]] = []
+        self._t0: float = time.monotonic()
 
     def record(self, label: str, value: Any, unit: str = "", source: str = "") -> None:
         """Record a new measurement."""
@@ -17,6 +19,7 @@ class MeasurementStore:
                 "value": value,
                 "unit": unit,
                 "source": source,
+                "time": time.monotonic() - self._t0,
             }
         )
 

@@ -14,7 +14,10 @@ from ..syntax import safe_eval, substitute_expand
 _ASSIGN_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_.]*)\s*=(?!=)\s*(.+)$")
 
 # Matches instrument read RHS: <instrument> read [unit=X]
-_INSTR_READ_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*)\s+(?:read|meas)(?:\s+(.*))?$")
+# Also matches ev2300 read_word/read_byte/read_block commands
+_INSTR_READ_RE = re.compile(
+    r"^([A-Za-z_][A-Za-z0-9_]*)\s+(?:read|meas|read_word|read_byte|read_block)(?:\s+(.*))?$"
+)
 
 
 def expand_script_lines(
