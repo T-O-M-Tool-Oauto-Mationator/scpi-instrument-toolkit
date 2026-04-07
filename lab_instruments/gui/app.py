@@ -42,7 +42,16 @@ from .panels.file_explorer import FileExplorer
 from .widgets.console import _Console
 from .widgets.docs_viewer import DocsViewer
 from .widgets.editor import ScpiEditor
-from .widgets.file_viewers import CsvViewer, DocxViewer, ImageViewer, PdfViewer, PptxViewer, TextViewer, XlsxViewer
+from .widgets.file_viewers import (
+    CsvViewer,
+    DocxViewer,
+    ImageViewer,
+    PdfViewer,
+    PptxViewer,
+    TextViewer,
+    XlsxViewer,
+    preconvert_office_files,
+)
 from .widgets.work_area import _WorkArea
 
 # -- Background worker for blocking operations --------------------------------
@@ -135,6 +144,7 @@ class _MainWindow(QMainWindow):
         em = mb.addMenu("&Examples")
         try:
             from lab_instruments.examples import EXAMPLES as _EXAMPLES
+
             scpi_menu = em.addMenu("SCPI Scripts")
             py_menu = em.addMenu("Python Scripts")
             for ex_name, ex_info in _EXAMPLES.items():
@@ -209,8 +219,10 @@ class _MainWindow(QMainWindow):
         _devices_dock.raise_()
         self._view_menu.addAction(_explorer_dock.toggleViewAction())
 
+        self._preconvert_worker = None
         if self._workspace.folder:
             self._file_explorer.set_root(self._workspace.folder)
+            self._preconvert_worker = preconvert_office_files(self._workspace.folder)
 
         self._console.command_ran.connect(self._on_console_command)
 
@@ -299,6 +311,7 @@ class _MainWindow(QMainWindow):
     def _import_example(self, name: str) -> None:
         """Copy a bundled example to the workspace examples/ folder and open it."""
         from lab_instruments.examples import EXAMPLES
+
         info = EXAMPLES.get(name)
         if not info:
             self._status.setText(f"Example '{name}' not found")
@@ -314,7 +327,8 @@ class _MainWindow(QMainWindow):
         path = os.path.join(examples_dir, f"{name}{ext}")
         if os.path.exists(path):
             reply = QMessageBox.question(
-                self, "Replace example?",
+                self,
+                "Replace example?",
                 f"{os.path.basename(path)} already exists in your workspace.\n\n"
                 "Replace it with the bundled version? Your changes will be lost.",
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
@@ -490,6 +504,7 @@ class _MainWindow(QMainWindow):
         _done_sig.finished.connect(_all_done, Qt.ConnectionType.QueuedConnection)
 
         import threading
+
         def _worker():
             _run_all()
             _done_sig.finished.emit("")
@@ -815,8 +830,14 @@ class _MainWindow(QMainWindow):
         self._console._input.setEnabled(False)
         self._device_panel._scan_btn.setEnabled(False)
         self._device_panel._force_scan_btn.setEnabled(False)
-        for blocks in [self._psu_blocks, self._smu_blocks, self._awg_blocks,
-                       self._dmm_blocks, self._ev_blocks, self._scope_blocks]:
+        for blocks in [
+            self._psu_blocks,
+            self._smu_blocks,
+            self._awg_blocks,
+            self._dmm_blocks,
+            self._ev_blocks,
+            self._scope_blocks,
+        ]:
             for block in blocks.values():
                 block.setEnabled(False)
 
@@ -827,8 +848,14 @@ class _MainWindow(QMainWindow):
             self._console._input.setEnabled(True)
             self._device_panel._scan_btn.setEnabled(True)
             self._device_panel._force_scan_btn.setEnabled(True)
-            for blocks in [self._psu_blocks, self._smu_blocks, self._awg_blocks,
-                           self._dmm_blocks, self._ev_blocks, self._scope_blocks]:
+            for blocks in [
+                self._psu_blocks,
+                self._smu_blocks,
+                self._awg_blocks,
+                self._dmm_blocks,
+                self._ev_blocks,
+                self._scope_blocks,
+            ]:
                 for block in blocks.values():
                     block.setEnabled(True)
             if result.startswith("[ERROR]"):
@@ -848,8 +875,14 @@ class _MainWindow(QMainWindow):
         self._console._input.setEnabled(False)
         self._device_panel._scan_btn.setEnabled(False)
         self._device_panel._force_scan_btn.setEnabled(False)
-        for blocks in [self._psu_blocks, self._smu_blocks, self._awg_blocks,
-                       self._dmm_blocks, self._ev_blocks, self._scope_blocks]:
+        for blocks in [
+            self._psu_blocks,
+            self._smu_blocks,
+            self._awg_blocks,
+            self._dmm_blocks,
+            self._ev_blocks,
+            self._scope_blocks,
+        ]:
             for block in blocks.values():
                 block.setEnabled(False)
 
@@ -860,8 +893,14 @@ class _MainWindow(QMainWindow):
             self._console._input.setEnabled(True)
             self._device_panel._scan_btn.setEnabled(True)
             self._device_panel._force_scan_btn.setEnabled(True)
-            for blocks in [self._psu_blocks, self._smu_blocks, self._awg_blocks,
-                           self._dmm_blocks, self._ev_blocks, self._scope_blocks]:
+            for blocks in [
+                self._psu_blocks,
+                self._smu_blocks,
+                self._awg_blocks,
+                self._dmm_blocks,
+                self._ev_blocks,
+                self._scope_blocks,
+            ]:
                 for block in blocks.values():
                     block.setEnabled(True)
             if result.startswith("[ERROR]"):
@@ -915,6 +954,7 @@ def main(argv: list[str] | None = None) -> None:
     args = parser.parse_args(argv)
 
     import signal
+
     # Suppress harmless Qt font database warnings on Windows
     os.environ.setdefault("QT_LOGGING_RULES", "qt.text.font.db=false")
     app = QApplication(sys.argv)

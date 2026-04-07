@@ -3,16 +3,24 @@
 from __future__ import annotations
 
 import csv
+import hashlib
 import os
+import shutil
+import subprocess
+import tempfile
+from pathlib import Path
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtGui import QImage, QPixmap
 from PySide6.QtWidgets import (
+    QComboBox,
     QHBoxLayout,
     QLabel,
     QPlainTextEdit,
     QPushButton,
     QScrollArea,
+    QSizePolicy,
+    QSpacerItem,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
@@ -192,6 +200,8 @@ class PdfViewer(QWidget):
 
         try:
             import fitz
+
+            fitz.TOOLS.mupdf_warnings(False)
             self._doc = fitz.open(file_path)
             self._page_count = len(self._doc)
             self._render()
@@ -202,6 +212,7 @@ class PdfViewer(QWidget):
 
     def _render(self) -> None:
         import fitz  # noqa: F811
+
         page = self._doc[self._page]
         mat = fitz.Matrix(2.0, 2.0)  # 2x zoom for readability
         pix = page.get_pixmap(matrix=mat)
@@ -222,65 +233,315 @@ class PdfViewer(QWidget):
             self._render()
 
 
-class DocxViewer(QWidget):
-    """Displays .docx content as formatted text."""
+# ---------------------------------------------------------------------------
+# Shared helpers for Office document viewers (DOCX, XLSX, PPTX)
+# ---------------------------------------------------------------------------
 
-    def __init__(self, file_path: str, parent: QWidget | None = None) -> None:
+
+def _find_soffice() -> str | None:
+    """Return the path to a working LibreOffice ``soffice`` binary, or None."""
+    for name in ("soffice", "libreoffice"):
+        p = shutil.which(name)
+        if p:
+            return p
+    for fixed in (
+        "/Applications/LibreOffice.app/Contents/MacOS/soffice",
+        "/usr/bin/soffice",
+        "/usr/local/bin/soffice",
+        r"C:\Program Files\LibreOffice\program\soffice.exe",
+        r"C:\Program Files (x86)\LibreOffice\program\soffice.exe",
+    ):
+        if os.path.isfile(fixed):
+            return fixed
+    return None
+
+
+def _office_cache_dir(file_path: str) -> Path:
+    """Return a per-file cache directory for converted pages.
+
+    The cache is keyed on path + mtime so edits to the source file
+    automatically invalidate stale PNGs.
+    """
+    mtime = int(os.path.getmtime(file_path))
+    key = f"{file_path}\0{mtime}"
+    digest = hashlib.md5(key.encode()).hexdigest()[:16]  # noqa: S324
+    d = Path(tempfile.gettempdir()) / "office_viewer_cache" / digest
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def _soffice_user_profile() -> str:
+    """Return a unique LibreOffice user-profile URI to avoid lock conflicts.
+
+    soffice hangs when another instance is already running and they share
+    the default profile.  Using a disposable profile per-process avoids this.
+    """
+    d = Path(tempfile.gettempdir()) / "office_viewer_profile" / str(os.getpid())
+    d.mkdir(parents=True, exist_ok=True)
+    return d.as_uri()
+
+
+def _soffice_cmd(soffice_bin: str, cache_dir: Path, file_path: str) -> list[str]:
+    """Build the soffice conversion command with a unique user profile."""
+    return [
+        soffice_bin,
+        "--headless",
+        "--nolockcheck",
+        f"-env:UserInstallation={_soffice_user_profile()}",
+        "--convert-to",
+        "pdf",
+        "--outdir",
+        str(cache_dir),
+        file_path,
+    ]
+
+
+class _OfficeConversionWorker(QThread):
+    """Background thread: soffice -> PDF -> PyMuPDF -> QImage list."""
+
+    pages_ready = Signal(list)
+    error = Signal(str)
+    progress = Signal(str)
+
+    def __init__(self, file_path: str, soffice_bin: str, cache_dir: Path) -> None:
+        super().__init__()
+        self._file_path = file_path
+        self._soffice = soffice_bin
+        self._cache_dir = cache_dir
+
+    def run(self) -> None:  # noqa: C901
+        try:
+            # 1. Cache hit?
+            cached = sorted(self._cache_dir.glob("page_*.png"))
+            if cached:
+                images = []
+                for p in cached:
+                    img = QImage(str(p))
+                    if not img.isNull():
+                        images.append(img)
+                if images:
+                    self.pages_ready.emit(images)
+                    return
+
+            # 2. Convert to PDF via LibreOffice
+            self.progress.emit("Converting with LibreOffice...")
+            result = subprocess.run(
+                _soffice_cmd(self._soffice, self._cache_dir, self._file_path),
+                capture_output=True,
+                timeout=180,
+            )
+            if result.returncode != 0:
+                stderr = result.stderr.decode(errors="replace")[:400]
+                self.error.emit(f"LibreOffice failed (exit {result.returncode}):\n{stderr}")
+                return
+
+            # 3. Find the PDF
+            pdfs = list(self._cache_dir.glob("*.pdf"))
+            if not pdfs:
+                self.error.emit("LibreOffice did not produce a PDF file.")
+                return
+            pdf_path = pdfs[0]
+
+            # 4. Render with PyMuPDF
+            try:
+                import fitz
+            except ImportError:
+                self.error.emit("pymupdf is not installed. Run: pip install pymupdf")
+                return
+
+            fitz.TOOLS.mupdf_warnings(False)
+            doc = fitz.open(str(pdf_path))
+            images: list[QImage] = []
+            for i, page in enumerate(doc):
+                self.progress.emit(f"Rendering page {i + 1} of {len(doc)}...")
+                mat = fitz.Matrix(2.0, 2.0)  # 144 DPI
+                pix = page.get_pixmap(matrix=mat, alpha=False)
+                img = QImage(
+                    pix.samples,
+                    pix.width,
+                    pix.height,
+                    pix.stride,
+                    QImage.Format.Format_RGB888,
+                ).copy()
+                img.save(str(self._cache_dir / f"page_{i:04d}.png"))
+                images.append(img)
+            doc.close()
+
+            self.pages_ready.emit(images)
+        except Exception as exc:
+            self.error.emit(str(exc))
+
+
+class _OfficeViewerBase(QWidget):
+    """Base viewer for Office documents rendered via LibreOffice + PyMuPDF."""
+
+    def __init__(self, file_path: str, page_label: str = "Page", parent: QWidget | None = None) -> None:
         super().__init__(parent)
+        self._path = file_path
+        self._page_label = page_label
+        self._pages: list[QImage] = []
+        self._current = 0
+        self._worker: _OfficeConversionWorker | None = None
+
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+
         lay = QVBoxLayout(self)
         lay.setContentsMargins(0, 0, 0, 0)
 
-        from PySide6.QtWidgets import QTextEdit
-        self._text = QTextEdit()
-        self._text.setReadOnly(True)
-        lay.addWidget(self._text, 1)
+        # -- toolbar --
+        tb = QHBoxLayout()
+        tb.setContentsMargins(4, 4, 4, 4)
 
-        try:
-            from docx import Document
-            doc = Document(file_path)
-            html_parts = []
-            for para in doc.paragraphs:
-                style = para.style.name if para.style else ""
-                text = para.text
-                if "Heading 1" in style:
-                    html_parts.append(f"<h1>{text}</h1>")
-                elif "Heading 2" in style:
-                    html_parts.append(f"<h2>{text}</h2>")
-                elif "Heading 3" in style:
-                    html_parts.append(f"<h3>{text}</h3>")
-                elif text.strip():
-                    # Render runs with bold/italic
-                    runs_html = ""
-                    for run in para.runs:
-                        t = run.text
-                        if run.bold:
-                            t = f"<b>{t}</b>"
-                        if run.italic:
-                            t = f"<i>{t}</i>"
-                        if run.underline:
-                            t = f"<u>{t}</u>"
-                        runs_html += t
-                    html_parts.append(f"<p>{runs_html}</p>")
+        self._prev_btn = QPushButton("\u2039")
+        self._prev_btn.setFixedWidth(32)
+        self._prev_btn.setEnabled(False)
+        self._prev_btn.clicked.connect(self._prev)
+        tb.addWidget(self._prev_btn)
 
-            # Also extract tables
-            for table in doc.tables:
-                html_parts.append("<table border='1' cellpadding='4' cellspacing='0'>")
-                for row in table.rows:
-                    html_parts.append("<tr>")
-                    for cell in row.cells:
-                        html_parts.append(f"<td>{cell.text}</td>")
-                    html_parts.append("</tr>")
-                html_parts.append("</table><br>")
+        self._page_info = QLabel("")
+        self._page_info.setMinimumWidth(120)
+        self._page_info.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        tb.addWidget(self._page_info)
 
-            self._text.setHtml("\n".join(html_parts))
-        except ImportError:
-            self._text.setPlainText("Install python-docx to view .docx files:\npip install python-docx")
-        except Exception as exc:
-            self._text.setPlainText(f"Error: {exc}")
+        self._next_btn = QPushButton("\u203a")
+        self._next_btn.setFixedWidth(32)
+        self._next_btn.setEnabled(False)
+        self._next_btn.clicked.connect(self._next)
+        tb.addWidget(self._next_btn)
+
+        tb.addItem(QSpacerItem(0, 0, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum))
+
+        tb.addWidget(QLabel("Zoom:"))
+        self._zoom_combo = QComboBox()
+        self._zoom_combo.addItems(["Fit Width", "50%", "75%", "100%", "150%", "200%"])
+        self._zoom_combo.setCurrentIndex(0)
+        self._zoom_combo.currentTextChanged.connect(lambda _: self._apply_zoom())
+        tb.addWidget(self._zoom_combo)
+
+        lay.addLayout(tb)
+
+        # -- scroll area --
+        self._scroll = QScrollArea()
+        self._scroll.setWidgetResizable(True)
+        self._scroll.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        self._label = QLabel()
+        self._label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._scroll.setWidget(self._label)
+        lay.addWidget(self._scroll, 1)
+
+        # -- kick off --
+        soffice = _find_soffice()
+        if soffice is None:
+            self._label.setText(
+                "LibreOffice is required to render Office documents.\n\n"
+                "Install it from https://www.libreoffice.org -- it's free.\n"
+                "Restart the app after installing."
+            )
+            self._label.setWordWrap(True)
+            return
+
+        self._label.setText("Converting... this may take a moment on first open.")
+        cache = _office_cache_dir(file_path)
+        self._worker = _OfficeConversionWorker(file_path, soffice, cache)
+        self._worker.pages_ready.connect(self._on_pages_ready)
+        self._worker.error.connect(self._on_error)
+        self._worker.progress.connect(self._on_progress)
+        self._worker.start()
+
+    # -- slots --
+
+    def _on_pages_ready(self, images: list[QImage]) -> None:
+        self._pages = images
+        self._current = 0
+        self._go_to(0)
+
+    def _on_error(self, msg: str) -> None:
+        self._label.setText(msg)
+        self._label.setWordWrap(True)
+        self._label.setStyleSheet("color: #c0392b;")
+
+    def _on_progress(self, msg: str) -> None:
+        self._label.setText(msg)
+
+    # -- navigation --
+
+    def _go_to(self, index: int) -> None:
+        if not self._pages:
+            return
+        self._current = max(0, min(index, len(self._pages) - 1))
+        self._apply_zoom()
+        total = len(self._pages)
+        self._page_info.setText(f"{self._page_label} {self._current + 1} of {total}")
+        self._prev_btn.setEnabled(self._current > 0)
+        self._next_btn.setEnabled(self._current < total - 1)
+
+    def _apply_zoom(self) -> None:
+        if not self._pages:
+            return
+        src = self._pages[self._current]
+        pix = QPixmap.fromImage(src)
+        choice = self._zoom_combo.currentText()
+        if choice == "Fit Width":
+            vp_w = self._scroll.viewport().width() - 4
+            if vp_w > 0 and pix.width() > 0:
+                pix = pix.scaledToWidth(vp_w, Qt.TransformationMode.SmoothTransformation)
+        else:
+            pct = int(choice.replace("%", ""))
+            target_w = int(src.width() * pct / 100)
+            if target_w > 0:
+                pix = pix.scaledToWidth(target_w, Qt.TransformationMode.SmoothTransformation)
+        self._label.setPixmap(pix)
+
+    def _prev(self) -> None:
+        if self._current > 0:
+            self._go_to(self._current - 1)
+
+    def _next(self) -> None:
+        if self._pages and self._current < len(self._pages) - 1:
+            self._go_to(self._current + 1)
+
+    # -- events --
+
+    def resizeEvent(self, event) -> None:
+        if self._zoom_combo.currentText() == "Fit Width":
+            self._apply_zoom()
+        super().resizeEvent(event)
+
+    def keyPressEvent(self, event) -> None:
+        key = event.key()
+        if key in (Qt.Key.Key_Left, Qt.Key.Key_Up):
+            self._prev()
+        elif key in (Qt.Key.Key_Right, Qt.Key.Key_Down):
+            self._next()
+        elif key == Qt.Key.Key_Home:
+            self._go_to(0)
+        elif key == Qt.Key.Key_End:
+            self._go_to(len(self._pages) - 1)
+        else:
+            super().keyPressEvent(event)
+
+    def closeEvent(self, event) -> None:
+        if self._worker is not None and self._worker.isRunning():
+            self._worker.quit()
+            self._worker.wait(3000)
+        super().closeEvent(event)
+
+
+# ---------------------------------------------------------------------------
+# Public viewer classes (thin wrappers preserving original constructor API)
+# ---------------------------------------------------------------------------
+
+
+class DocxViewer(_OfficeViewerBase):
+    """Displays .docx documents via LibreOffice PDF conversion."""
+
+    def __init__(self, file_path: str, parent: QWidget | None = None) -> None:
+        super().__init__(file_path, page_label="Page", parent=parent)
 
 
 class XlsxViewer(QWidget):
-    """Displays .xlsx spreadsheets in a table with sheet tabs."""
+    """Displays .xlsx spreadsheets in a read-only table with sheet tabs."""
 
     def __init__(self, file_path: str, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -292,7 +553,6 @@ class XlsxViewer(QWidget):
         self._table.setAlternatingRowColors(True)
         lay.addWidget(self._table, 1)
 
-        # Sheet selector
         tb = QHBoxLayout()
         tb.setContentsMargins(4, 2, 4, 2)
         self._sheet_label = QLabel("")
@@ -306,6 +566,7 @@ class XlsxViewer(QWidget):
 
         try:
             from openpyxl import load_workbook
+
             self._wb = load_workbook(file_path, read_only=True, data_only=True)
             self._sheets = self._wb.sheetnames
             if self._sheets:
@@ -329,181 +590,92 @@ class XlsxViewer(QWidget):
             for c, val in enumerate(row or []):
                 self._table.setItem(r, c, QTableWidgetItem(str(val) if val is not None else ""))
         self._table.resizeColumnsToContents()
-        self._info.setText(f"{len(rows)} rows x {ncols} columns — {name}")
+        self._info.setText(f"{len(rows)} rows x {ncols} columns - {name}")
 
 
-class PptxViewer(QWidget):
-    """Renders .pptx slides as images with prev/next navigation.
-
-    Uses python-pptx to read shapes and paints them onto a QImage canvas
-    with proper positioning, text rendering, and embedded image support.
-    """
+class PptxViewer(_OfficeViewerBase):
+    """Renders .pptx slides via LibreOffice PDF conversion."""
 
     def __init__(self, file_path: str, parent: QWidget | None = None) -> None:
-        super().__init__(parent)
-        self._slides: list[QPixmap] = []
-        self._page = 0
+        super().__init__(file_path, page_label="Slide", parent=parent)
 
-        lay = QVBoxLayout(self)
-        lay.setContentsMargins(0, 0, 0, 0)
 
-        # Toolbar
-        tb = QHBoxLayout()
-        tb.setContentsMargins(4, 4, 4, 4)
-        self._prev_btn = QPushButton("< Prev")
-        self._prev_btn.clicked.connect(self._prev)
-        tb.addWidget(self._prev_btn)
-        self._next_btn = QPushButton("Next >")
-        self._next_btn.clicked.connect(self._next)
-        tb.addWidget(self._next_btn)
-        tb.addStretch()
-        self._info = QLabel("")
-        self._info.setStyleSheet("font-size: 10px;")
-        tb.addWidget(self._info)
-        lay.addLayout(tb)
+# ---------------------------------------------------------------------------
+# Background pre-conversion of all Office files in a workspace
+# ---------------------------------------------------------------------------
 
-        self._scroll = QScrollArea()
-        self._scroll.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._scroll.setWidgetResizable(True)
-        self._label = QLabel()
-        self._label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._scroll.setWidget(self._label)
-        lay.addWidget(self._scroll, 1)
+_OFFICE_EXTS = {".docx", ".doc", ".pptx"}
 
+
+class _PreconvertWorker(QThread):
+    """Walks a folder tree, converts every Office file to cached PNGs."""
+
+    finished_all = Signal()
+
+    def __init__(self, folder: str, soffice_bin: str) -> None:
+        super().__init__()
+        self._folder = folder
+        self._soffice = soffice_bin
+
+    def run(self) -> None:
         try:
-            self._render_all(file_path)
-            if self._slides:
-                self._show_slide()
+            import fitz
+
+            fitz.TOOLS.mupdf_warnings(False)
         except ImportError:
-            self._label.setText("Install python-pptx to view .pptx files:\npip install python-pptx")
-        except Exception as exc:
-            self._label.setText(f"Error: {exc}")
-
-    def _render_all(self, file_path: str) -> None:
-        from pptx import Presentation
-        from pptx.enum.shapes import MSO_SHAPE_TYPE
-        from pptx.util import Emu
-        from PySide6.QtGui import QColor, QFont, QPainter
-
-        prs = Presentation(file_path)
-        sw = prs.slide_width or Emu(9144000)   # default 10"
-        sh = prs.slide_height or Emu(6858000)  # default 7.5"
-
-        # Scale: 1 inch = 914400 EMU, render at ~1.5x for readability
-        scale = 1.5
-        px_w = int(sw / 914400 * 96 * scale)
-        px_h = int(sh / 914400 * 96 * scale)
-        emu_to_px = lambda emu: int((emu or 0) / 914400 * 96 * scale)
-
-        def _draw_shape(painter, shape, ox=0, oy=0):
-            """Draw a single shape. ox/oy are parent offsets for grouped shapes."""
-            x = emu_to_px(shape.left) + ox
-            y = emu_to_px(shape.top) + oy
-            w = emu_to_px(shape.width)
-            h = emu_to_px(shape.height)
-
-            # Recurse into group shapes
-            if shape.shape_type == MSO_SHAPE_TYPE.GROUP:
-                for child in shape.shapes:
-                    _draw_shape(painter, child, x, y)
-                return
-
-            # Draw embedded images (PICTURE type)
-            if shape.shape_type == MSO_SHAPE_TYPE.PICTURE:
-                try:
-                    blob = shape.image.blob
-                    pix = QPixmap()
-                    pix.loadFromData(blob)
-                    if not pix.isNull():
-                        painter.drawPixmap(x, y, w, h, pix)
-                        return
-                except Exception:
-                    pass
-
-            # Draw text
-            if shape.has_text_frame:
-                self._draw_text(painter, shape, x, y, w, scale)
-                return
-
-            # Draw tables
-            if shape.has_table:
-                self._draw_table(painter, shape, x, y, w, h, scale)
-                return
-
-        for slide in prs.slides:
-            img = QImage(px_w, px_h, QImage.Format.Format_ARGB32)
-            img.fill(QColor(255, 255, 255))
-            painter = QPainter(img)
-            painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-
-            for shape in slide.shapes:
-                _draw_shape(painter, shape)
-
-            painter.end()
-            self._slides.append(QPixmap.fromImage(img))
-
-    def _draw_text(self, painter, shape, x, y, w, scale):
-        from PySide6.QtCore import QRect
-        from PySide6.QtGui import QColor, QFont
-
-        ty = y + 4
-        for para in shape.text_frame.paragraphs:
-            text = para.text.strip()
-            if not text:
-                ty += 16
-                continue
-            font_size = 14
-            bold = False
-            for run in para.runs:
-                if run.font.size:
-                    font_size = int(run.font.size / 12700 * scale)
-                if run.font.bold:
-                    bold = True
-            font = QFont("Arial", max(8, min(font_size, 48)))
-            font.setBold(bold)
-            painter.setFont(font)
-            painter.setPen(QColor(0, 0, 0))
-            rect = QRect(x + 4, ty, w - 8, font_size + 8)
-            painter.drawText(rect, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop, text)
-            ty += font_size + 6
-
-    def _draw_table(self, painter, shape, x, y, w, h, scale):
-        from PySide6.QtCore import QRect
-        from PySide6.QtGui import QColor, QFont
-
-        table = shape.table
-        nrows = len(table.rows)
-        ncols = len(table.columns)
-        if nrows == 0 or ncols == 0:
             return
-        cw = w // ncols
-        rh = h // nrows
-        painter.setPen(QColor(100, 100, 100))
-        font = QFont("Arial", int(10 * scale))
-        painter.setFont(font)
-        for ri, row in enumerate(table.rows):
-            for ci, cell in enumerate(row.cells):
-                cx = x + ci * cw
-                cy = y + ri * rh
-                painter.drawRect(cx, cy, cw, rh)
-                painter.drawText(QRect(cx + 2, cy + 2, cw - 4, rh - 4),
-                                 Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
-                                 cell.text)
 
-    def _show_slide(self) -> None:
-        if not self._slides:
-            return
-        self._label.setPixmap(self._slides[self._page])
-        self._info.setText(f"Slide {self._page + 1} / {len(self._slides)}")
-        self._prev_btn.setEnabled(self._page > 0)
-        self._next_btn.setEnabled(self._page < len(self._slides) - 1)
+        for root, _, files in os.walk(self._folder):
+            for fname in files:
+                ext = os.path.splitext(fname)[1].lower()
+                if ext not in _OFFICE_EXTS:
+                    continue
+                fpath = os.path.join(root, fname)
+                cache = _office_cache_dir(fpath)
+                # Skip if already cached
+                if list(cache.glob("page_*.png")):
+                    continue
+                self._convert_one(fpath, cache, fitz)
+        self.finished_all.emit()
 
-    def _prev(self) -> None:
-        if self._page > 0:
-            self._page -= 1
-            self._show_slide()
+    def _convert_one(self, file_path: str, cache_dir: Path, fitz) -> None:  # type: ignore[type-arg]
+        try:
+            result = subprocess.run(
+                _soffice_cmd(self._soffice, cache_dir, file_path),
+                capture_output=True,
+                timeout=120,
+            )
+            if result.returncode != 0:
+                return
+            pdfs = list(cache_dir.glob("*.pdf"))
+            if not pdfs:
+                return
+            doc = fitz.open(str(pdfs[0]))
+            for i, page in enumerate(doc):
+                mat = fitz.Matrix(2.0, 2.0)
+                pix = page.get_pixmap(matrix=mat, alpha=False)
+                img = QImage(
+                    pix.samples,
+                    pix.width,
+                    pix.height,
+                    pix.stride,
+                    QImage.Format.Format_RGB888,
+                ).copy()
+                img.save(str(cache_dir / f"page_{i:04d}.png"))
+            doc.close()
+        except Exception:
+            pass
 
-    def _next(self) -> None:
-        if self._page < len(self._slides) - 1:
-            self._page += 1
-            self._show_slide()
+
+def preconvert_office_files(folder: str) -> _PreconvertWorker | None:
+    """Start background pre-conversion of all Office files under *folder*.
+
+    Returns the worker thread (caller must keep a reference to prevent GC),
+    or ``None`` if LibreOffice is not installed.
+    """
+    soffice = _find_soffice()
+    if soffice is None:
+        return None
+    worker = _PreconvertWorker(folder, soffice)
+    worker.start()
+    return worker
