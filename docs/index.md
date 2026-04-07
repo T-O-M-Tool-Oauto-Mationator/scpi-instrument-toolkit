@@ -31,6 +31,14 @@ scpi-repl --mock    # simulate instruments (no hardware needed)
     ```
     See [Troubleshooting](troubleshooting.md) for a session-only PATH fix and other tips.
 
+!!! warning "One connection at a time"
+    Instrument connections are exclusive. Only one program can hold the connection to a device at a time.
+
+    - You cannot run the REPL and a Python script against the same instrument simultaneously.
+    - You cannot have the REPL or a Python script connected while BQStudio (or any other vendor software) is open and using that instrument.
+
+    Close one program before opening the other. If you get a "resource busy" or "cannot open" error, check that no other terminal, script, or vendor tool is already connected.
+
 ### 3. Find your instruments
 
 ```

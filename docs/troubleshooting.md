@@ -89,6 +89,21 @@ python -m lab_instruments --mock
 
 ---
 
+## "Resource busy" / instrument already in use
+
+Instrument connections are exclusive. Only one program can hold a connection to a device at a time. Common causes:
+
+- **REPL + Python script open at the same time** targeting the same instrument
+- **REPL or Python script open while BQStudio is connected** to the EV2300 (or any other TI/vendor tool that holds the USB connection)
+- **A previous script that crashed** without calling `disconnect()`, leaving the VISA session open
+
+**Fix:** close the other program first, then retry. If a crashed script left a session open, restart your terminal -- the VISA session is tied to the Python process and will be released when the process exits.
+
+!!! tip "Using the EV2300 with BQStudio"
+    The EV2300A USB-to-I2C adapter can only be claimed by one application at a time. If you need to use BQStudio for firmware flashing or register browsing, close the REPL or stop your script first. When you are done in BQStudio, close it before re-running your script or REPL.
+
+---
+
 ## First-time setup on TAMU / managed Windows machines
 
 If you are starting from scratch on a managed machine, use the all-in-one setup script — it installs GitHub Desktop (including git), Python, and the toolkit in one step with no admin rights.
