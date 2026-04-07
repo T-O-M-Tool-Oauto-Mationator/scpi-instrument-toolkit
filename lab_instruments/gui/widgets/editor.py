@@ -32,137 +32,106 @@ from ..core.helpers import _ansi_to_html, _mono
 # -- Syntax highlighter ------------------------------------------------------
 
 _KEYWORDS = {
-    "set",
-    "for",
-    "end",
-    "repeat",
-    "call",
-    "import",
-    "export",
-    "array",
-    "breakpoint",
-    "sleep",
-    "print",
-    "use",
-    "if",
-    "else",
-    "linspace",
-    "upper_limit",
-    "lower_limit",
-    "record",
-    "script",
-    "examples",
-    "python",
+    "set", "for", "end", "repeat", "call", "import", "export", "array",
+    "breakpoint", "sleep", "print", "use", "if", "else", "linspace",
+    "upper_limit", "lower_limit", "record", "script", "examples", "python",
+    "input", "unset",
 }
 
 _DEVICE_CMDS = {
-    "psu",
-    "psu1",
-    "psu2",
-    "psu3",
-    "awg",
-    "awg1",
-    "awg2",
-    "awg3",
-    "dmm",
-    "dmm1",
-    "dmm2",
-    "dmm3",
-    "smu",
-    "scope",
-    "scope1",
-    "scope2",
-    "scope3",
-    "ev2300",
-    "scan",
-    "state",
-    "help",
+    "psu", "psu1", "psu2", "psu3", "awg", "awg1", "awg2", "awg3",
+    "dmm", "dmm1", "dmm2", "dmm3", "smu", "scope", "scope1", "scope2",
+    "scope3", "ev2300", "scan", "force_scan", "state", "help", "all",
+    "disconnect", "docs", "list", "idn", "raw", "reload", "status",
+    "log", "calc", "data", "plot", "check", "report", "clear", "close",
+    "version", "exit", "pause",
 }
 
-# IntelliSense completion words
-_COMPLETION_WORDS = sorted(
-    set(
-        list(_KEYWORDS)
-        + list(_DEVICE_CMDS)
-        + [
-            # PSU sub-commands
-            "psu on",
-            "psu off",
-            "psu set",
-            "psu meas",
-            "psu get",
-            "psu chan",
-            "psu track",
-            "psu save",
-            "psu recall",
-            "psu state",
-            "set_voltage",
-            "set_current_limit",
-            "measure_voltage",
-            "measure_current",
-            "enable_output",
-            "select_channel",
-            "get_output_state",
-            # AWG sub-commands
-            "awg on",
-            "awg off",
-            "awg chan",
-            "awg set_frequency",
-            "awg set_amplitude",
-            "awg set_offset",
-            "awg set_function",
-            # DMM sub-commands
-            "dmm read",
-            "dmm mode",
-            "dmm dc_voltage",
-            "dmm ac_voltage",
-            "dmm dc_current",
-            "dmm ac_current",
-            "dmm resistance",
-            "dmm frequency",
-            "dmm continuity",
-            "dmm diode",
-            # Scope sub-commands
-            "scope run",
-            "scope stop",
-            "scope single",
-            "scope autoset",
-            "scope chan",
-            "scope trigger",
-            # SMU sub-commands
-            "smu mode",
-            "smu set_voltage",
-            "smu set_current",
-            "smu output",
-            "smu voltage",
-            "smu current",
-            # EV2300 sub-commands
-            "ev2300 info",
-            "ev2300 read_word",
-            "ev2300 write_word",
-            "ev2300 read_byte",
-            "ev2300 write_byte",
-            "ev2300 read_block",
-            "ev2300 write_block",
-            "ev2300 scan",
-            "ev2300 state",
-            # Script directives
-            "breakpoint",
-            "sleep",
-            "print",
-            "use",
-            "record",
-            "upper_limit",
-            "lower_limit",
-            "linspace",
-            # State commands
-            "state on",
-            "state off",
-            "state safe",
-            "state reset",
-        ]
-    )
-)
+# Context-aware sub-command completions for each device/command prefix
+_SUB_COMMANDS: dict[str, list[str]] = {
+    "psu": ["set", "meas", "chan", "on", "off", "get", "state", "track", "save", "recall"],
+    "awg": ["chan", "wave", "freq", "amp", "offset", "duty", "phase", "on", "off", "sync", "state"],
+    "dmm": ["config", "read", "meas", "display", "text", "state"],
+    "scope": ["run", "stop", "single", "autoset", "chan", "coupling", "probe",
+              "vscale", "vpos", "hscale", "trigger", "meas", "label", "invert",
+              "bwlimit", "force", "state"],
+    "smu": ["set", "meas", "on", "off", "mode", "state", "compliance", "delay"],
+    "ev2300": ["info", "read_word", "write_word", "read_byte", "write_byte",
+               "read_block", "write_block", "send_byte", "scan", "probe", "fix", "state"],
+    "state": ["on", "off", "safe", "reset"],
+    "log": ["print", "save", "clear", "delete"],
+    "script": ["run", "list", "show", "delete", "save"],
+    "record": ["start", "stop", "show"],
+    "examples": ["load"],
+    "dmm config": ["vdc", "vac", "idc", "iac", "res", "freq", "cont", "diode"],
+    "psu chan": ["1", "2", "3", "all", "on", "off"],
+    "psu set": ["1", "2", "3"],
+    "psu meas": ["1", "2", "3"],
+    "awg chan": ["1", "2", "all", "on", "off"],
+    "awg wave": ["1", "2", "all"],
+    "scope chan": ["1", "2", "3", "4", "all", "on", "off"],
+}
+
+# Top-level command list for first-word completion
+_TOP_COMMANDS = sorted(_KEYWORDS | _DEVICE_CMDS)
+
+# Python keywords and builtins for .py file completions
+_PY_KEYWORDS = {
+    "def", "class", "return", "if", "else", "elif", "for", "while", "try",
+    "except", "finally", "with", "as", "import", "from", "True", "False",
+    "None", "and", "or", "not", "in", "is", "lambda", "pass", "break",
+    "continue", "raise", "yield", "global", "nonlocal", "del", "assert",
+}
+
+_PY_BUILTINS = {
+    "print", "len", "range", "str", "int", "float", "list", "dict", "set",
+    "tuple", "open", "isinstance", "type", "super", "enumerate", "zip",
+    "map", "filter", "sorted", "reversed", "abs", "max", "min", "sum",
+    "any", "all", "hasattr", "getattr", "setattr", "input", "bool", "hex",
+    "oct", "bin", "round", "format",
+}
+
+# Injected context vars available in scripts run via `python <file>`
+_PY_CONTEXT = [
+    "devices", "repl", "measurements", "ColorPrinter", "time", "os", "sys",
+    "json", "lab_instruments",
+    # Common device access patterns
+    'devices.get("psu")', 'devices.get("dmm")', 'devices.get("awg")',
+    'devices.get("scope")', 'devices.get("smu")', 'devices.get("ev2300")',
+    # Common driver methods
+    "set_output_channel", "measure_voltage", "measure_current",
+    "enable_output", "set_waveform", "set_frequency", "set_amplitude",
+    "get_output_state", "select_channel", "set_voltage", "set_current_limit",
+    "read_byte", "write_byte", "read_word", "write_word",
+]
+
+_PY_COMPLETIONS = sorted(_PY_KEYWORDS | _PY_BUILTINS | set(_PY_CONTEXT))
+
+
+def _get_scpi_completions(line_text: str) -> list[str]:
+    """Return context-aware completions for the current SCPI line."""
+    stripped = line_text.strip()
+    if not stripped or " " not in stripped:
+        return _TOP_COMMANDS
+
+    # Try progressively shorter prefixes for sub-command lookup
+    # e.g. "psu chan 1" → try "psu chan 1", then "psu chan", then "psu"
+    parts = stripped.split()
+    for n in range(len(parts), 0, -1):
+        prefix = " ".join(parts[:n]).lower()
+        if prefix in _SUB_COMMANDS:
+            return _SUB_COMMANDS[prefix]
+
+    # Also try base device type (psu1 → psu)
+    base = re.sub(r"\d+$", "", parts[0].lower())
+    remaining = " ".join(parts[1:]).lower() if len(parts) > 1 else ""
+    for n in range(len(parts), 0, -1):
+        prefix = base + (" " + " ".join(parts[1:n]).lower() if n > 1 else "")
+        prefix = prefix.strip()
+        if prefix in _SUB_COMMANDS:
+            return _SUB_COMMANDS[prefix]
+
+    return _TOP_COMMANDS
 
 
 class _ScpiHighlighter(QSyntaxHighlighter):
@@ -195,7 +164,69 @@ class _ScpiHighlighter(QSyntaxHighlighter):
 
         fmt = QTextCharFormat()
         fmt.setForeground(QColor("#b8860b"))
-        self._rules.append((re.compile(r'"[^"]*"'), fmt))
+        self._rules.append((re.compile(r"""("[^"]*"|'[^']*')"""), fmt))
+
+    def highlightBlock(self, text: str) -> None:
+        for pattern, fmt in self._rules:
+            for m in pattern.finditer(text):
+                self.setFormat(m.start(), m.end() - m.start(), fmt)
+
+
+class _PythonHighlighter(QSyntaxHighlighter):
+    def __init__(self, document: QTextDocument) -> None:
+        super().__init__(document)
+        self._rules: list[tuple[re.Pattern, QTextCharFormat]] = []
+
+        # Comments
+        fmt = QTextCharFormat()
+        fmt.setForeground(QColor("#808080"))
+        fmt.setFontItalic(True)
+        self._rules.append((re.compile(r"#.*$"), fmt))
+
+        # Keywords
+        fmt = QTextCharFormat()
+        fmt.setForeground(QColor("#7c3aed"))
+        fmt.setFontWeight(QFont.Weight.Bold)
+        self._rules.append((re.compile(r"\b(" + "|".join(_PY_KEYWORDS) + r")\b"), fmt))
+
+        # Built-in functions
+        fmt = QTextCharFormat()
+        fmt.setForeground(QColor("#1a6bbf"))
+        self._rules.append((re.compile(r"\b(" + "|".join(_PY_BUILTINS) + r")\b"), fmt))
+
+        # self
+        fmt = QTextCharFormat()
+        fmt.setForeground(QColor("#c0392b"))
+        fmt.setFontItalic(True)
+        self._rules.append((re.compile(r"\bself\b"), fmt))
+
+        # Decorators
+        fmt = QTextCharFormat()
+        fmt.setForeground(QColor("#0e7a70"))
+        self._rules.append((re.compile(r"@\w+"), fmt))
+
+        # Numbers
+        fmt = QTextCharFormat()
+        fmt.setForeground(QColor("#c45c00"))
+        self._rules.append((re.compile(r"\b\d+\.?\d*([eE][+-]?\d+)?\b"), fmt))
+
+        # Strings (single, double, triple)
+        fmt = QTextCharFormat()
+        fmt.setForeground(QColor("#b8860b"))
+        self._rules.append((re.compile(r'"""[\s\S]*?"""|\'\'\'[\s\S]*?\'\'\''), fmt))
+        self._rules.append((re.compile(r"""f?("[^"\\]*(?:\\.[^"\\]*)*"|'[^'\\]*(?:\\.[^'\\]*)*')"""), fmt))
+
+        # Function/method definitions
+        fmt = QTextCharFormat()
+        fmt.setForeground(QColor("#1a6bbf"))
+        fmt.setFontWeight(QFont.Weight.Bold)
+        self._rules.append((re.compile(r"\bdef\s+(\w+)"), fmt))
+
+        # Class definitions
+        fmt = QTextCharFormat()
+        fmt.setForeground(QColor("#1a6bbf"))
+        fmt.setFontWeight(QFont.Weight.Bold)
+        self._rules.append((re.compile(r"\bclass\s+(\w+)"), fmt))
 
     def highlightBlock(self, text: str) -> None:
         for pattern, fmt in self._rules:
@@ -241,12 +272,23 @@ class _CodeEditor(QPlainTextEdit):
         self._update_line_area_width()
 
         # IntelliSense completer
-        self._completer = QCompleter(_COMPLETION_WORDS, self)
+        self._is_python = False  # set by ScpiEditor based on file extension
+        self._completer = QCompleter([], self)
         self._completer.setWidget(self)
         self._completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
         self._completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
         self._completer.setFilterMode(Qt.MatchFlag.MatchContains)
         self._completer.activated.connect(self._insert_completion)
+        self._update_completions(_TOP_COMMANDS)
+
+    def _update_completions(self, words: list[str]) -> None:
+        """Replace the completer's word list."""
+        from PySide6.QtCore import QStringListModel
+        model = self._completer.model()
+        if isinstance(model, QStringListModel):
+            model.setStringList(words)
+        else:
+            self._completer.setModel(QStringListModel(words, self._completer))
 
     def _insert_completion(self, text: str) -> None:
         tc = self.textCursor()
@@ -268,24 +310,31 @@ class _CodeEditor(QPlainTextEdit):
 
         super().keyPressEvent(event)
 
-        # Only complete the first word on the line (command position)
         tc = self.textCursor()
         line_text = tc.block().text()[: tc.positionInBlock()]
-        # If there's already a space before cursor, don't complete
-        # (user is typing arguments, not a command)
-        if " " in line_text.strip():
-            self._completer.popup().hide()
-            return
 
+        # Update completions based on context
+        if self._is_python:
+            self._update_completions(_PY_COMPLETIONS)
+        else:
+            completions = _get_scpi_completions(line_text)
+            self._update_completions(completions)
+
+        # Get the current word being typed (last word on line)
         tc.movePosition(QTextCursor.MoveOperation.StartOfWord, QTextCursor.MoveMode.KeepAnchor)
         prefix = tc.selectedText().strip()
-        if len(prefix) < 2:
+        if len(prefix) < 1:
             self._completer.popup().hide()
             return
 
         if prefix != self._completer.completionPrefix():
             self._completer.setCompletionPrefix(prefix)
             self._completer.popup().setCurrentIndex(self._completer.completionModel().index(0, 0))
+
+        # Don't show popup if there's only one match and it equals what we typed
+        if self._completer.completionCount() == 0:
+            self._completer.popup().hide()
+            return
 
         cr = self.cursorRect()
         cr.setWidth(
@@ -513,7 +562,11 @@ class ScpiEditor(QWidget):
         self._editor.setTabStopDistance(self._editor.fontMetrics().horizontalAdvance(" ") * 4)
         self._editor.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
 
-        self._highlighter = _ScpiHighlighter(self._editor.document())
+        if is_py:
+            self._highlighter = _PythonHighlighter(self._editor.document())
+            self._editor._is_python = True
+        else:
+            self._highlighter = _ScpiHighlighter(self._editor.document())
         self._editor.document().contentsChanged.connect(self._on_contents_changed)
 
         # Auto-save timer (500ms debounce)
@@ -672,9 +725,8 @@ class ScpiEditor(QWidget):
             return
         line = st["lines"][idx]
         if line == "__NOP__":
+            # Advance past this NOP (comments, directives, etc.) — one at a time
             st["idx"] += 1
-            while st["idx"] < len(st["lines"]) and st["lines"][st["idx"]] == "__NOP__":
-                st["idx"] += 1
             if st["idx"] >= len(st["lines"]):
                 self._debug_stop()
             else:
@@ -697,8 +749,6 @@ class ScpiEditor(QWidget):
             self._step_btn.setEnabled(True)
             self._cont_btn.setEnabled(True)
             self._debug_state["idx"] += 1
-            while self._debug_state["idx"] < len(self._debug_state["lines"]) and self._debug_state["lines"][self._debug_state["idx"]] == "__NOP__":
-                self._debug_state["idx"] += 1
             if self._debug_state["idx"] >= len(self._debug_state["lines"]):
                 self._debug_stop()
             else:

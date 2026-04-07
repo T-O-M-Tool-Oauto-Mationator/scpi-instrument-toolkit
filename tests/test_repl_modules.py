@@ -1423,12 +1423,15 @@ class TestExpander:
         assert len(result) == 1
         assert result[0][0] == "print hello"
 
-    def test_comment_and_blank_skipped(self):
+    def test_comment_and_blank_preserved_as_nop(self):
         from lab_instruments.repl.script_engine.expander import expand_script_lines
 
         ctx = self._make_ctx()
         result = expand_script_lines(["# comment", "", "  ", "print x"], {}, ctx)
-        assert len(result) == 1
+        # Comments and blanks are preserved as __NOP__ for debug line alignment
+        assert len(result) == 4
+        assert result[0][0] == "__NOP__"
+        assert result[3][0] == "print x"
 
     def test_set_variable(self):
         from lab_instruments.repl.script_engine.expander import expand_script_lines

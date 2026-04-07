@@ -806,7 +806,7 @@ class TestOutputEnableGating:
     def test_psu_chan_off_always_allowed(self, psu_repl):
         psu_repl.onecmd("upper_limit psu voltage 3.0")
         psu_repl._command_had_error = False
-        psu_repl.onecmd("psu chan off")
+        psu_repl.onecmd("psu chan 1 off")
         assert not psu_repl._command_had_error
 
     # --- state <device> on ---

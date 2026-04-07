@@ -170,7 +170,7 @@ class _MainWindow(QMainWindow):
         # ── Status bar ────────────────────────────────────────────────
         self._status = QLabel("Ready")
         self.statusBar().addWidget(self._status, 1)
-        self._dev_count = QLabel("Devices: 0")
+        self._dev_count = QLabel("")
         self.statusBar().addPermanentWidget(self._dev_count)
 
         # ── Work area (central widget) ─────────────────────────────────
@@ -673,7 +673,8 @@ class _MainWindow(QMainWindow):
         self._refresh_scope_panels()
         n = len(self._d.registry.devices)
         self._dev_count.setText(f"Devices: {n}")
-        self._status.setText(f"{n} device(s) \u2014 all outputs safe")
+        label = "device" if n == 1 else "devices"
+        self._status.setText(f"{n} {label} \u2014 all outputs safe")
 
     def _on_tab_closed(self, widget: QWidget) -> None:
         # Check instrument blocks

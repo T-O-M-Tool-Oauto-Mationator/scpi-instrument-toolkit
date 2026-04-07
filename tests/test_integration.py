@@ -22,15 +22,15 @@ class TestFullWorkflow_PSU:
     def test_set_measure_read_check_pass(self, make_repl):
         devices = {"psu1": MockHP_E3631A()}
         repl = make_repl(devices)
-        repl.onecmd("psu set 5.0 0.1")
-        repl.onecmd("psu meas v")
+        repl.onecmd("psu set 1 5.0 0.1")
+        repl.onecmd("psu meas 1 v")
         repl.onecmd("vout = psu read unit=V")
         assert len(repl.measurements) == 1
 
     def test_check_passes(self, make_repl):
         devices = {"psu1": MockHP_E3631A()}
         repl = make_repl(devices)
-        repl.onecmd("psu meas v")
+        repl.onecmd("psu meas 1 v")
         repl.onecmd("vout = psu read unit=V")
         repl.onecmd("check vout 4.9 5.1")
         assert len(repl.test_results) == 1
@@ -112,9 +112,9 @@ class TestFullWorkflow_MultiDevice:
             "psu2": MockMPS6010H(),
         }
         repl = make_repl(devices)
-        repl.onecmd("psu1 meas v")
+        repl.onecmd("psu1 meas 1 v")
         repl.onecmd("p1 = psu1 read unit=V")
-        repl.onecmd("psu2 meas v")
+        repl.onecmd("psu2 meas 1 v")
         repl.onecmd("p2 = psu2 read unit=V")
         labels = [m["label"] for m in repl.measurements]
         assert "p1" in labels
@@ -139,7 +139,7 @@ class TestFullWorkflow_AllMocks:
     def test_basic_command_per_device(self, make_repl):
         devices = get_mock_devices(verbose=False)
         repl = make_repl(devices)
-        repl.onecmd("psu1 set 5.0")
+        repl.onecmd("psu1 set 1 5.0")
         repl.onecmd("awg1 wave 1 sine freq=1000 amp=2.0")
         repl.onecmd("dmm1 config vdc")
         repl.onecmd("reading = dmm1 read unit=V")

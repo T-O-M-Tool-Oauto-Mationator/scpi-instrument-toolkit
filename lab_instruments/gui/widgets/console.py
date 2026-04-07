@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 from PySide6.QtCore import Qt, QThread, Signal
+from PySide6.QtGui import QTextCursor
 from PySide6.QtWidgets import (
+    QCheckBox,
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QPushButton,
     QTextEdit,
     QVBoxLayout,
     QWidget,
@@ -31,6 +34,20 @@ class _Console(QWidget):
         self._output.setFont(_mono())
         self._output.document().setMaximumBlockCount(5000)
         lay.addWidget(self._output, 1)
+
+        ctrl_row = QHBoxLayout()
+        ctrl_row.setContentsMargins(0, 0, 0, 0)
+        self._autoscroll = QCheckBox("Autoscroll")
+        self._autoscroll.setChecked(True)
+        self._autoscroll.setFont(_mono(9))
+        ctrl_row.addWidget(self._autoscroll)
+        clear_btn = QPushButton("Clear")
+        clear_btn.setFont(_mono(9))
+        clear_btn.setFixedWidth(50)
+        clear_btn.clicked.connect(self._output.clear)
+        ctrl_row.addWidget(clear_btn)
+        ctrl_row.addStretch()
+        lay.addLayout(ctrl_row)
 
         row = QHBoxLayout()
         lbl = QLabel("eset>")
@@ -100,11 +117,10 @@ class _Console(QWidget):
         worker.start()
 
     def log(self, html: str) -> None:
-        sb = self._output.verticalScrollBar()
-        at_bottom = sb.value() >= sb.maximum() - 4
         self._output.append(html)
-        if at_bottom:
-            sb.setValue(sb.maximum())
+        if self._autoscroll.isChecked():
+            self._output.moveCursor(QTextCursor.MoveOperation.End)
+            self._output.ensureCursorVisible()
 
     def log_action(self, cmd: str, result: str = "") -> None:
         self.log(f"<span style='color:#555'>[gui]</span> <b style='color:#1a6bbf'>eset&gt;</b> {_esc(cmd)}")

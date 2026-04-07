@@ -64,18 +64,18 @@ class TestPsuChannel:
 
 class TestPsuSet:
     def test_set_voltage(self, repl):
-        repl.onecmd("psu set 5.0")
+        repl.onecmd("psu set 1 5.0")
 
     def test_set_voltage_current(self, repl):
-        repl.onecmd("psu set 5.0 0.5")
+        repl.onecmd("psu set 1 5.0 0.5")
 
 
 class TestPsuMeasure:
     def test_meas_v(self, repl):
-        repl.onecmd("psu meas v")
+        repl.onecmd("psu meas 1 v")
 
     def test_meas_i(self, repl):
-        repl.onecmd("psu meas i")
+        repl.onecmd("psu meas 1 i")
 
 
 class TestPsuMeasureMultiChannel:

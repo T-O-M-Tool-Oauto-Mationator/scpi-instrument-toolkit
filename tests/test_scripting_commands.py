@@ -53,16 +53,16 @@ class TestScriptCommand:
         assert "No scripts" in out
 
     def test_script_list_with_scripts(self, repl, capsys):
-        repl.ctx.scripts = {"test_s": ["psu set 5.0"]}
+        repl.ctx.scripts = {"test_s": ["psu set 1 5.0"]}
         repl.onecmd("script list")
         out = capsys.readouterr().out
         assert "test_s" in out
 
     def test_script_show(self, repl, capsys):
-        repl.ctx.scripts = {"my_script": ["psu set 5.0", "psu on"]}
+        repl.ctx.scripts = {"my_script": ["psu set 1 5.0", "psu on"]}
         repl.onecmd("script show my_script")
         out = capsys.readouterr().out
-        assert "psu set 5.0" in out
+        assert "psu set 1 5.0" in out
 
     def test_script_show_not_found(self, repl, capsys):
         repl.ctx.scripts = {}
@@ -71,7 +71,7 @@ class TestScriptCommand:
         assert "not found" in out.lower()
 
     def test_script_run(self, repl, capsys):
-        repl.ctx.scripts = {"test_run": ["psu set 5.0"]}
+        repl.ctx.scripts = {"test_run": ["psu set 1 5.0"]}
         repl.onecmd("script run test_run")
 
     def test_script_run_not_found(self, repl, capsys):
@@ -101,7 +101,7 @@ class TestScriptCommand:
 
     def test_script_import(self, repl, capsys):
         with tempfile.NamedTemporaryFile(mode="w", suffix=".scpi", delete=False, encoding="utf-8") as f:
-            f.write("psu set 5.0\npsu on\n")
+            f.write("psu set 1 5.0\npsu on\n")
             fname = f.name
         try:
             repl.onecmd(f"script import imported_s {fname}")
@@ -192,7 +192,7 @@ class TestRecord:
 
     def test_record_status_recording(self, repl, capsys):
         repl.ctx.record_script = "live"
-        repl.ctx.scripts["live"] = ["psu on", "psu set 5.0"]
+        repl.ctx.scripts["live"] = ["psu on", "psu set 1 5.0"]
         repl.onecmd("record status")
         out = capsys.readouterr().out
         assert "live" in out

@@ -121,7 +121,7 @@ class TestInstrumentReadAssignment:
         assert entry["unit"] == "kohms"
 
     def test_psu_read_voltage(self, repl_dmm_psu):
-        repl_dmm_psu.onecmd("psu meas v")
+        repl_dmm_psu.onecmd("psu meas 1 v")
         repl_dmm_psu.onecmd("supply = psu read")
         assert "supply" in repl_dmm_psu.ctx.script_vars
         entry = repl_dmm_psu.ctx.measurements.get_by_label("supply")
@@ -130,7 +130,7 @@ class TestInstrumentReadAssignment:
         assert entry["source"] == "psu"
 
     def test_psu_read_current(self, repl_dmm_psu):
-        repl_dmm_psu.onecmd("psu meas i")
+        repl_dmm_psu.onecmd("psu meas 1 i")
         repl_dmm_psu.onecmd("supply_i = psu read")
         entry = repl_dmm_psu.ctx.measurements.get_by_label("supply_i")
         assert entry is not None

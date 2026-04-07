@@ -81,43 +81,43 @@ class TestPsuSingleChannelChan:
 
 
 class TestPsuSingleChannelSet:
-    """Cover psu set <voltage> [current] for single-channel PSU."""
+    """Cover psu set <channel> <voltage> [current] for single-channel PSU."""
 
     def test_set_voltage_only(self, make_repl):
         dev = MockMPS6010H()
         repl = make_repl({"psu1": dev})
-        repl.onecmd("psu set 12.0")
+        repl.onecmd("psu set 1 12.0")
         assert dev._voltage == 12.0
 
     def test_set_voltage_and_current(self, make_repl):
         dev = MockMPS6010H()
         repl = make_repl({"psu1": dev})
-        repl.onecmd("psu set 5.0 0.5")
+        repl.onecmd("psu set 1 5.0 0.5")
         assert dev._voltage == 5.0
         assert dev._current == 0.5
 
 
 class TestPsuSingleChannelMeas:
-    """Cover psu meas v|i for single-channel PSU."""
+    """Cover psu meas <channel> v|i for single-channel PSU."""
 
     def test_meas_voltage(self, make_repl, capsys):
         dev = MockMPS6010H()
         repl = make_repl({"psu1": dev})
-        repl.onecmd("psu meas v")
+        repl.onecmd("psu meas 1 v")
         out = capsys.readouterr().out
         assert any(c.isdigit() for c in out)
 
     def test_meas_current(self, make_repl, capsys):
         dev = MockMPS6010H()
         repl = make_repl({"psu1": dev})
-        repl.onecmd("psu meas i")
+        repl.onecmd("psu meas 1 i")
         out = capsys.readouterr().out
         assert any(c.isdigit() for c in out)
 
     def test_meas_bad_mode(self, make_repl, capsys):
         dev = MockMPS6010H()
         repl = make_repl({"psu1": dev})
-        repl.onecmd("psu meas x")
+        repl.onecmd("psu meas 1 x")
         out = capsys.readouterr().out
         assert "v|i" in out.lower() or "meas" in out.lower()
 
@@ -136,7 +136,7 @@ class TestPsuNoReadback:
         dev = MockMPS6010H()
         dev.SUPPORTS_READBACK = False
         repl = make_repl({"psu1": dev})
-        repl.onecmd("psu meas v")
+        repl.onecmd("psu meas 1 v")
         out = capsys.readouterr().out
         assert "no readback" in out.lower()
 
@@ -1005,7 +1005,7 @@ class TestScriptRunViaRepl:
     def test_script_run(self, make_repl, capsys):
         dev = MockMPS6010H()
         repl = make_repl({"psu1": dev})
-        repl.ctx.scripts["test"] = ["psu set 5.0"]
+        repl.ctx.scripts["test"] = ["psu set 1 5.0"]
         repl.onecmd("script run test")
         assert dev._voltage == 5.0
 
@@ -1112,25 +1112,25 @@ class TestScriptShowListRm:
 
     def test_script_list(self, make_repl, capsys):
         repl = make_repl({})
-        repl.ctx.scripts["my_test"] = ["psu set 5.0", "psu on"]
+        repl.ctx.scripts["my_test"] = ["psu set 1 5.0", "psu on"]
         repl.onecmd("script list")
         out = capsys.readouterr().out
         assert "my_test" in out
 
     def test_script_show(self, make_repl, capsys):
         repl = make_repl({})
-        repl.ctx.scripts["my_test"] = ["psu set 5.0", "psu on"]
+        repl.ctx.scripts["my_test"] = ["psu set 1 5.0", "psu on"]
         repl.onecmd("script show my_test")
         out = capsys.readouterr().out
-        assert "psu set 5.0" in out
+        assert "psu set 1 5.0" in out
 
     def test_script_rm(self, make_repl, capsys):
         repl = make_repl({})
         with tempfile.TemporaryDirectory() as td:
             repl.ctx._scripts_dir_override = td
-            repl.ctx.scripts["my_test"] = ["psu set 5.0"]
+            repl.ctx.scripts["my_test"] = ["psu set 1 5.0"]
             with open(os.path.join(td, "my_test.scpi"), "w") as f:
-                f.write("psu set 5.0\n")
+                f.write("psu set 1 5.0\n")
             repl.onecmd("script rm my_test")
             out = capsys.readouterr().out
             assert "deleted" in out.lower()
@@ -1146,7 +1146,7 @@ class TestScriptImportViaRepl:
             repl.ctx._scripts_dir_override = td
             src = os.path.join(td, "source.scpi")
             with open(src, "w") as f:
-                f.write("psu set 5.0\npsu on\n")
+                f.write("psu set 1 5.0\npsu on\n")
             repl.onecmd(f"script import my_imported {src}")
             out = capsys.readouterr().out
             assert "Imported" in out
@@ -1160,7 +1160,7 @@ class TestScriptLoadSaveViaRepl:
         repl = make_repl({})
         with tempfile.TemporaryDirectory() as td:
             repl.ctx._scripts_dir_override = td
-            repl.ctx.scripts["s1"] = ["psu set 5.0"]
+            repl.ctx.scripts["s1"] = ["psu set 1 5.0"]
             repl.onecmd("script save")
             capsys.readouterr()
             repl.ctx.scripts.clear()
@@ -1183,7 +1183,7 @@ class TestRunnerExpandedExecution:
 
         dev = MockMPS6010H()
         repl = make_repl({"psu1": dev})
-        expanded = [("psu set 10.0", "psu set 10.0")]
+        expanded = [("psu set 1 10.0", "psu set 1 10.0")]
         result = run_expanded(expanded, repl, repl.ctx, debug=False)
         assert result is False
         assert dev._voltage == 10.0
@@ -1195,7 +1195,7 @@ class TestRunnerExpandedExecution:
         repl = make_repl({"psu1": dev})
         expanded = [
             ("__NOP__", "set voltage 5.0"),
-            ("psu set 7.0", "psu set $voltage"),
+            ("psu set 1 7.0", "psu set 1 $voltage"),
         ]
         result = run_expanded(expanded, repl, repl.ctx, debug=False)
         assert result is False
@@ -1214,8 +1214,8 @@ class TestRunnerExpandedExecution:
 
         repl.onecmd = fail_onecmd
         expanded = [
-            ("psu set 5.0", "psu set 5.0"),
-            ("psu set 10.0", "psu set 10.0"),
+            ("psu set 1 5.0", "psu set 1 5.0"),
+            ("psu set 1 10.0", "psu set 1 10.0"),
         ]
         result = run_expanded(expanded, repl, repl.ctx, debug=False)
         assert result is True

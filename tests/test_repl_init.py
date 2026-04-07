@@ -233,7 +233,7 @@ class TestMain:
         monkeypatch.setattr(sys, "argv", ["scpi-repl", "my_test_script"])
         monkeypatch.setattr(repl_mod, "_check_for_updates", lambda force=False: False)
         mock_class, mock_inst = _make_repl_class(monkeypatch)
-        mock_inst.scripts = {"my_test_script": ["psu set 5.0"]}
+        mock_inst.scripts = {"my_test_script": ["psu set 1 5.0"]}
         repl_mod.main()
         mock_inst._run_script_lines.assert_called_once()
 

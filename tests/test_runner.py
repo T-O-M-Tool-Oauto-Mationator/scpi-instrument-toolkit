@@ -56,15 +56,15 @@ class TestRunExpandedBasic:
     def test_single_command_executed(self):
         ctx = FakeCtx()
         shell = FakeShell()
-        run_expanded([("psu set 5.0", "psu set 5.0")], shell, ctx)
-        assert shell.calls == ["psu set 5.0"]
+        run_expanded([("psu set 1 5.0", "psu set 1 5.0")], shell, ctx)
+        assert shell.calls == ["psu set 1 5.0"]
 
     def test_multiple_commands_executed_in_order(self):
         ctx = FakeCtx()
         shell = FakeShell()
-        cmds = [("psu set 5.0", "psu set 5.0"), ("smu on", "smu on"), ("scope run", "scope run")]
+        cmds = [("psu set 1 5.0", "psu set 1 5.0"), ("smu on", "smu on"), ("scope run", "scope run")]
         run_expanded(cmds, shell, ctx)
-        assert shell.calls == ["psu set 5.0", "smu on", "scope run"]
+        assert shell.calls == ["psu set 1 5.0", "smu on", "scope run"]
 
     def test_ctx_in_script_reset_after(self):
         ctx = FakeCtx()
@@ -293,9 +293,9 @@ class TestRunExpandedDebug:
     def test_debug_mode_arbitrary_cmd_passed_to_shell(self):
         ctx = FakeCtx()
         shell = FakeShell()
-        with patch("builtins.input", side_effect=["psu set 5.0", "q"]):
+        with patch("builtins.input", side_effect=["psu set 1 5.0", "q"]):
             run_expanded([("cmd1", "cmd1")], shell, ctx, debug=True)
-        assert "psu set 5.0" in shell.calls
+        assert "psu set 1 5.0" in shell.calls
 
     def test_debug_mode_keyboard_interrupt_in_prompt(self):
         ctx = FakeCtx()
