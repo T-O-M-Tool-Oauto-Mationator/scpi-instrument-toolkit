@@ -118,6 +118,20 @@ class InstrumentRepl(cmd.Cmd):
         except Exception:
             pass
 
+        # Fix readline history position: reset to end after each command
+        # so Down arrow shows nothing and Up shows last command (standard terminal behavior)
+        try:
+            import ctypes
+            import ctypes.util
+            import readline
+
+            _rl_name = ctypes.util.find_library("readline")
+            if _rl_name:
+                _rl = ctypes.CDLL(_rl_name)
+                readline.set_pre_input_hook(_rl.using_history)
+        except Exception:
+            pass
+
         # Register cleanup
         atexit.register(self._cleanup_on_exit)
         signal.signal(signal.SIGINT, self._cleanup_on_interrupt)
