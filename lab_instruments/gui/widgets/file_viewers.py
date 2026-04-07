@@ -333,41 +333,153 @@ class XlsxViewer(QWidget):
 
 
 class PptxViewer(QWidget):
-    """Displays .pptx slide text content."""
+    """Renders .pptx slides as images with prev/next navigation.
+
+    Uses python-pptx to read shapes and paints them onto a QImage canvas
+    with proper positioning, text rendering, and embedded image support.
+    """
 
     def __init__(self, file_path: str, parent: QWidget | None = None) -> None:
         super().__init__(parent)
+        self._slides: list[QPixmap] = []
+        self._page = 0
+
         lay = QVBoxLayout(self)
         lay.setContentsMargins(0, 0, 0, 0)
 
-        from PySide6.QtWidgets import QTextEdit
-        self._text = QTextEdit()
-        self._text.setReadOnly(True)
-        lay.addWidget(self._text, 1)
+        # Toolbar
+        tb = QHBoxLayout()
+        tb.setContentsMargins(4, 4, 4, 4)
+        self._prev_btn = QPushButton("< Prev")
+        self._prev_btn.clicked.connect(self._prev)
+        tb.addWidget(self._prev_btn)
+        self._next_btn = QPushButton("Next >")
+        self._next_btn.clicked.connect(self._next)
+        tb.addWidget(self._next_btn)
+        tb.addStretch()
+        self._info = QLabel("")
+        self._info.setStyleSheet("font-size: 10px;")
+        tb.addWidget(self._info)
+        lay.addLayout(tb)
+
+        self._scroll = QScrollArea()
+        self._scroll.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._scroll.setWidgetResizable(True)
+        self._label = QLabel()
+        self._label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._scroll.setWidget(self._label)
+        lay.addWidget(self._scroll, 1)
 
         try:
-            from pptx import Presentation
-            prs = Presentation(file_path)
-            html_parts = []
-            for i, slide in enumerate(prs.slides, 1):
-                html_parts.append(f"<h2>Slide {i}</h2>")
-                for shape in slide.shapes:
-                    if shape.has_text_frame:
-                        for para in shape.text_frame.paragraphs:
-                            text = para.text.strip()
-                            if text:
-                                html_parts.append(f"<p>{text}</p>")
-                    if shape.has_table:
-                        html_parts.append("<table border='1' cellpadding='4' cellspacing='0'>")
-                        for row in shape.table.rows:
-                            html_parts.append("<tr>")
-                            for cell in row.cells:
-                                html_parts.append(f"<td>{cell.text}</td>")
-                            html_parts.append("</tr>")
-                        html_parts.append("</table>")
-                html_parts.append("<hr>")
-            self._text.setHtml("\n".join(html_parts))
+            self._render_all(file_path)
+            if self._slides:
+                self._show_slide()
         except ImportError:
-            self._text.setPlainText("Install python-pptx to view .pptx files:\npip install python-pptx")
+            self._label.setText("Install python-pptx to view .pptx files:\npip install python-pptx")
         except Exception as exc:
-            self._text.setPlainText(f"Error: {exc}")
+            self._label.setText(f"Error: {exc}")
+
+    def _render_all(self, file_path: str) -> None:
+        from pptx import Presentation
+        from pptx.util import Emu
+        from PySide6.QtGui import QColor, QFont, QPainter
+
+        prs = Presentation(file_path)
+        sw = prs.slide_width or Emu(9144000)   # default 10"
+        sh = prs.slide_height or Emu(6858000)  # default 7.5"
+
+        # Scale: 1 inch = 914400 EMU, render at ~1.5x for readability
+        scale = 1.5
+        px_w = int(sw / 914400 * 96 * scale)
+        px_h = int(sh / 914400 * 96 * scale)
+
+        for slide in prs.slides:
+            img = QImage(px_w, px_h, QImage.Format.Format_ARGB32)
+            img.fill(QColor(255, 255, 255))
+            painter = QPainter(img)
+            painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+            for shape in slide.shapes:
+                x = int(shape.left / 914400 * 96 * scale) if shape.left else 0
+                y = int(shape.top / 914400 * 96 * scale) if shape.top else 0
+                w = int(shape.width / 914400 * 96 * scale) if shape.width else 0
+                h = int(shape.height / 914400 * 96 * scale) if shape.height else 0
+
+                # Draw embedded images
+                if shape.shape_type is not None and hasattr(shape, "image"):
+                    try:
+                        blob = shape.image.blob
+                        pix = QPixmap()
+                        pix.loadFromData(blob)
+                        if not pix.isNull():
+                            painter.drawPixmap(x, y, w, h, pix)
+                            continue
+                    except Exception:
+                        pass
+
+                # Draw text
+                if shape.has_text_frame:
+                    ty = y + 4
+                    for para in shape.text_frame.paragraphs:
+                        text = para.text.strip()
+                        if not text:
+                            ty += 16
+                            continue
+                        # Estimate font size from paragraph runs
+                        font_size = 14
+                        bold = False
+                        for run in para.runs:
+                            if run.font.size:
+                                font_size = int(run.font.size / 12700 * scale)
+                            if run.font.bold:
+                                bold = True
+                        font = QFont("Arial", max(8, min(font_size, 48)))
+                        font.setBold(bold)
+                        painter.setFont(font)
+                        painter.setPen(QColor(0, 0, 0))
+                        from PySide6.QtCore import QRect
+                        rect = QRect(x + 4, ty, w - 8, font_size + 8)
+                        painter.drawText(rect, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop, text)
+                        ty += font_size + 6
+
+                # Draw tables
+                if shape.has_table:
+                    table = shape.table
+                    nrows = len(table.rows)
+                    ncols = len(table.columns)
+                    if nrows > 0 and ncols > 0:
+                        cw = w // ncols
+                        rh = h // nrows
+                        painter.setPen(QColor(100, 100, 100))
+                        font = QFont("Arial", int(10 * scale))
+                        painter.setFont(font)
+                        for ri, row in enumerate(table.rows):
+                            for ci, cell in enumerate(row.cells):
+                                cx = x + ci * cw
+                                cy = y + ri * rh
+                                painter.drawRect(cx, cy, cw, rh)
+                                from PySide6.QtCore import QRect
+                                painter.drawText(QRect(cx + 2, cy + 2, cw - 4, rh - 4),
+                                                 Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
+                                                 cell.text)
+
+            painter.end()
+            self._slides.append(QPixmap.fromImage(img))
+
+    def _show_slide(self) -> None:
+        if not self._slides:
+            return
+        self._label.setPixmap(self._slides[self._page])
+        self._info.setText(f"Slide {self._page + 1} / {len(self._slides)}")
+        self._prev_btn.setEnabled(self._page > 0)
+        self._next_btn.setEnabled(self._page < len(self._slides) - 1)
+
+    def _prev(self) -> None:
+        if self._page > 0:
+            self._page -= 1
+            self._show_slide()
+
+    def _next(self) -> None:
+        if self._page < len(self._slides) - 1:
+            self._page += 1
+            self._show_slide()
