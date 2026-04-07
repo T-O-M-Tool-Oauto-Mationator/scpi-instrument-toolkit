@@ -91,6 +91,8 @@ See [docs/troubleshooting.md](docs/troubleshooting.md) if you run into issues.
 | JDS6600 | Function Generator |
 | NI PXIe-4139 | SMU |
 
+> **BQ76920 battery monitor IC:** for Python drivers and register-level documentation, see [CesMag/BQ76920_Bridge](https://github.com/CesMag/BQ76920_Bridge).
+
 ---
 
 ## Installation
