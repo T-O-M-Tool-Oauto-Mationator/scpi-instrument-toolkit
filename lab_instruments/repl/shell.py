@@ -451,11 +451,19 @@ class InstrumentRepl(cmd.Cmd):
         cmd_token = parts[0]
         rest = parts[1] if len(parts) > 1 else ""
 
-        if cmd_token in self.ctx.registry.devices:
+        # Resolve the device name: exact match, or "psu1" -> "psu" when only one exists
+        resolved = cmd_token
+        if cmd_token not in self.ctx.registry.devices:
             base_type = re.sub(r"\d+$", "", cmd_token)
+            if base_type != cmd_token and base_type in self.ctx.registry.devices:
+                # "psu1" typed but device is registered as "psu" (only one of its type)
+                resolved = base_type
+
+        if resolved in self.ctx.registry.devices:
+            base_type = re.sub(r"\d+$", "", resolved)
             handler = getattr(self, f"do_{base_type}", None)
             if handler:
-                self.ctx.registry._device_override = cmd_token
+                self.ctx.registry._device_override = resolved
                 try:
                     handler(rest)
                 finally:

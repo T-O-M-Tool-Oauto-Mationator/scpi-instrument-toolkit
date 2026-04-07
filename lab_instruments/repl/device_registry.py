@@ -38,8 +38,13 @@ class DeviceRegistry:
 
         Uses _device_override if set (from numbered-device routing like 'psu1 set 5').
         """
-        if self._device_override and self._device_override in self.devices:
-            return self._device_override
+        if self._device_override:
+            if self._device_override in self.devices:
+                return self._device_override
+            # "psu1" override when device is registered as "psu" (single of its type)
+            base = re.sub(r"\d+$", "", self._device_override)
+            if base != self._device_override and base in self.devices:
+                return base
 
         pattern = re.compile(rf"^{re.escape(device_type)}\d*$")
         candidates = [name for name in self.devices if pattern.match(name)]
