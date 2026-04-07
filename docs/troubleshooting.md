@@ -149,10 +149,11 @@ $g=(Get-ChildItem "$env:LOCALAPPDATA\GitHubDesktop\app-*\resources\app\git\cmd\g
 
 The EV2300 USB-to-I2C bridge can get into a bad state. Run `ev2300 fix` in the REPL for step-by-step recovery, or follow these steps:
 
-1. Press the **BOOT** button on the BQ EVM board
-2. `disconnect ev2300`
-3. `scan`
-4. Retry your command
+1. Make sure the BQ EVM board is powered (e.g. PSU set to 18V)
+2. Press the **BOOT** button on the BQ EVM board
+3. `disconnect ev2300`
+4. `scan`
+5. Retry your command
 
 ### EV2300 detected but cannot connect
 
