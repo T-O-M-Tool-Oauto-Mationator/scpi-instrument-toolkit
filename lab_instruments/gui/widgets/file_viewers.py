@@ -6,6 +6,7 @@ import contextlib
 import csv
 import hashlib
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -26,7 +27,7 @@ def _silence_mupdf():
         os.close(saved)
 
 from PySide6.QtCore import Qt, QThread, Signal
-from PySide6.QtGui import QImage, QKeySequence, QPixmap, QShortcut, QTextDocument
+from PySide6.QtGui import QColor, QImage, QKeySequence, QPixmap, QShortcut, QTextCharFormat, QTextCursor, QTextDocument
 from PySide6.QtWidgets import (
     QComboBox,
     QHBoxLayout,
@@ -39,6 +40,7 @@ from PySide6.QtWidgets import (
     QSpacerItem,
     QTableWidget,
     QTableWidgetItem,
+    QTextEdit,
     QVBoxLayout,
     QWidget,
 )
@@ -104,6 +106,158 @@ class _FindBar(QWidget):
     def keyPressEvent(self, event) -> None:  # noqa: N802
         if event.key() == Qt.Key.Key_Escape:
             self.hide()
+        else:
+            super().keyPressEvent(event)
+
+
+class _TextFindReplaceBar(QWidget):
+    """Find-and-replace bar for editable text viewers.
+
+    Signals
+    -------
+    search_changed(pattern, use_regex, case_sensitive)
+        Emitted whenever the search text or options change.
+    find_next_requested / find_prev_requested
+        Emitted when the user requests navigation.
+    replace_one_requested(replacement)
+        Emitted when the "Replace" button is clicked.
+    replace_all_requested(replacement)
+        Emitted when the "Replace All" button is clicked.
+    closed
+        Emitted when the bar is hidden (Esc or ✕).
+    """
+
+    search_changed = Signal(str, bool, bool)  # pattern, use_regex, case_sensitive
+    find_next_requested = Signal()
+    find_prev_requested = Signal()
+    replace_one_requested = Signal(str)
+    replace_all_requested = Signal(str)
+    closed = Signal()
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(4, 2, 4, 2)
+        outer.setSpacing(2)
+
+        # ── find row ─────────────────────────────────────────────────────────
+        find_row = QHBoxLayout()
+        find_row.setContentsMargins(0, 0, 0, 0)
+        find_row.setSpacing(4)
+
+        self._find_input = QLineEdit()
+        self._find_input.setPlaceholderText("Find…  (Esc to close)")
+        self._find_input.setMaximumWidth(300)
+        find_row.addWidget(self._find_input)
+
+        self._regex_btn = QPushButton(".*")
+        self._regex_btn.setFixedWidth(32)
+        self._regex_btn.setCheckable(True)
+        self._regex_btn.setToolTip("Enable regex search")
+        find_row.addWidget(self._regex_btn)
+
+        self._case_btn = QPushButton("Aa")
+        self._case_btn.setFixedWidth(32)
+        self._case_btn.setCheckable(True)
+        self._case_btn.setToolTip("Case-sensitive search")
+        find_row.addWidget(self._case_btn)
+
+        prev_btn = QPushButton("↑")
+        prev_btn.setFixedWidth(26)
+        prev_btn.setToolTip("Previous match")
+        prev_btn.clicked.connect(self.find_prev_requested)
+        find_row.addWidget(prev_btn)
+
+        next_btn = QPushButton("↓")
+        next_btn.setFixedWidth(26)
+        next_btn.setToolTip("Next match")
+        next_btn.clicked.connect(self.find_next_requested)
+        find_row.addWidget(next_btn)
+
+        self._status = QLabel("")
+        self._status.setStyleSheet("font-size: 10px; color: gray;")
+        find_row.addWidget(self._status)
+
+        find_row.addStretch()
+
+        close_btn = QPushButton("✕")
+        close_btn.setFixedWidth(26)
+        close_btn.clicked.connect(self._close)
+        find_row.addWidget(close_btn)
+
+        outer.addLayout(find_row)
+
+        # ── replace row (hidden until Ctrl+H) ────────────────────────────────
+        self._replace_row_widget = QWidget()
+        repl_row = QHBoxLayout(self._replace_row_widget)
+        repl_row.setContentsMargins(0, 0, 0, 0)
+        repl_row.setSpacing(4)
+
+        self._replace_input = QLineEdit()
+        self._replace_input.setPlaceholderText("Replace with…")
+        self._replace_input.setMaximumWidth(300)
+        repl_row.addWidget(self._replace_input)
+
+        repl_btn = QPushButton("Replace")
+        repl_btn.clicked.connect(lambda: self.replace_one_requested.emit(self._replace_input.text()))
+        repl_row.addWidget(repl_btn)
+
+        repl_all_btn = QPushButton("Replace All")
+        repl_all_btn.clicked.connect(lambda: self.replace_all_requested.emit(self._replace_input.text()))
+        repl_row.addWidget(repl_all_btn)
+
+        repl_row.addStretch()
+        outer.addWidget(self._replace_row_widget)
+        self._replace_row_widget.hide()
+
+        # ── wire up signals ───────────────────────────────────────────────────
+        self._find_input.textChanged.connect(self._emit_search_changed)
+        self._find_input.returnPressed.connect(self.find_next_requested)
+        self._regex_btn.toggled.connect(self._emit_search_changed)
+        self._case_btn.toggled.connect(self._emit_search_changed)
+
+        self.hide()
+
+    # ── public API ────────────────────────────────────────────────────────────
+
+    def open_find(self) -> None:
+        """Show bar with focus on find field; replace row stays hidden."""
+        self._replace_row_widget.hide()
+        self.show()
+        self._find_input.setFocus()
+        self._find_input.selectAll()
+
+    def open_replace(self) -> None:
+        """Show bar with both find and replace rows."""
+        self._replace_row_widget.show()
+        self.show()
+        self._find_input.setFocus()
+        self._find_input.selectAll()
+
+    def pattern(self) -> str:
+        return self._find_input.text()
+
+    def use_regex(self) -> bool:
+        return self._regex_btn.isChecked()
+
+    def case_sensitive(self) -> bool:
+        return self._case_btn.isChecked()
+
+    def set_status(self, text: str) -> None:
+        self._status.setText(text)
+
+    # ── internal helpers ─────────────────────────────────────────────────────
+
+    def _emit_search_changed(self, *_) -> None:
+        self.search_changed.emit(self.pattern(), self.use_regex(), self.case_sensitive())
+
+    def _close(self) -> None:
+        self.hide()
+        self.closed.emit()
+
+    def keyPressEvent(self, event) -> None:  # noqa: N802
+        if event.key() == Qt.Key.Key_Escape:
+            self._close()
         else:
             super().keyPressEvent(event)
 
@@ -264,28 +418,41 @@ class CsvViewer(QWidget):
 
 
 class TextViewer(QWidget):
-    """Read-only plain text viewer with monospace font."""
+    """Editable plain text viewer with find+replace (including regex support)."""
+
+    # Background colour for non-current matches
+    _MATCH_BG = QColor("#ffe599")
+    # Background colour for the current (active) match
+    _CURRENT_BG = QColor("#f4a900")
 
     def __init__(self, file_path: str, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._path = file_path
+        self._matches: list[tuple[int, int]] = []  # (start, end) char offsets
+        self._match_idx: int = -1
 
         lay = QVBoxLayout(self)
         lay.setContentsMargins(0, 0, 0, 0)
 
         self._editor = QPlainTextEdit()
-        self._editor.setReadOnly(True)
+        # Editable — no setReadOnly
         self._editor.setFont(_mono())
         self._editor.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
         lay.addWidget(self._editor, 1)
 
-        self._find_bar = _FindBar()
-        self._find_bar.find_next.connect(self._find)
-        self._find_bar.find_prev.connect(lambda t: self._find(t, backward=True))
-        self._find_bar.hide_event = lambda: self._editor.setFocus()
+        self._find_bar = _TextFindReplaceBar()
+        self._find_bar.search_changed.connect(self._on_search_changed)
+        self._find_bar.find_next_requested.connect(self._find_next)
+        self._find_bar.find_prev_requested.connect(self._find_prev)
+        self._find_bar.replace_one_requested.connect(self._replace_one)
+        self._find_bar.replace_all_requested.connect(self._replace_all)
+        self._find_bar.closed.connect(self._on_bar_closed)
         lay.addWidget(self._find_bar)
 
-        QShortcut(QKeySequence.StandardKey.Find, self).activated.connect(self._find_bar.open)
+        # Keyboard shortcuts
+        QShortcut(QKeySequence.StandardKey.Find, self).activated.connect(self._find_bar.open_find)
+        QShortcut(QKeySequence("Ctrl+H"), self).activated.connect(self._find_bar.open_replace)
+        QShortcut(QKeySequence.StandardKey.Save, self).activated.connect(self._save)
 
         try:
             with open(file_path, encoding="utf-8", errors="replace") as f:
@@ -293,21 +460,200 @@ class TextViewer(QWidget):
         except Exception as exc:
             self._editor.setPlainText(f"Error reading file: {exc}")
 
-    def _find(self, text: str, backward: bool = False) -> None:
-        if not text:
+    # ── file save ─────────────────────────────────────────────────────────────
+
+    def _save(self) -> None:
+        try:
+            with open(self._path, "w", encoding="utf-8") as f:
+                f.write(self._editor.toPlainText())
+        except Exception as exc:
+            self._find_bar.set_status(f"Save error: {exc}")
+
+    # ── search changed (re-scan matches) ─────────────────────────────────────
+
+    def _on_search_changed(self, pattern: str, use_regex: bool, case_sensitive: bool) -> None:
+        self._update_matches(pattern, use_regex, case_sensitive)
+
+    def _update_matches(self, pattern: str | None = None, use_regex: bool | None = None,
+                        case_sensitive: bool | None = None) -> None:
+        """Rebuild match list from current bar settings and highlight all."""
+        if pattern is None:
+            pattern = self._find_bar.pattern()
+        if use_regex is None:
+            use_regex = self._find_bar.use_regex()
+        if case_sensitive is None:
+            case_sensitive = self._find_bar.case_sensitive()
+
+        self._matches = []
+        self._match_idx = -1
+
+        if not pattern:
+            self._highlight_all()
             self._find_bar.set_status("")
             return
-        flags = QTextDocument.FindFlag.FindBackward if backward else QTextDocument.FindFlag(0)
-        found = self._editor.find(text, flags)
-        if not found:
-            # Wrap around
-            cur = self._editor.textCursor()
-            cur.movePosition(
-                cur.MoveOperation.End if backward else cur.MoveOperation.Start
-            )
-            self._editor.setTextCursor(cur)
-            found = self._editor.find(text, flags)
-        self._find_bar.set_status("" if found else "No results")
+
+        text = self._editor.toPlainText()
+
+        if use_regex:
+            flags = 0 if case_sensitive else re.IGNORECASE
+            try:
+                compiled = re.compile(pattern, flags)
+            except re.error as exc:
+                self._find_bar.set_status(f"Regex error: {exc}")
+                self._highlight_all()
+                return
+            self._matches = [(m.start(), m.end()) for m in compiled.finditer(text)]
+        else:
+            search = pattern if case_sensitive else pattern.lower()
+            haystack = text if case_sensitive else text.lower()
+            start = 0
+            while True:
+                idx = haystack.find(search, start)
+                if idx == -1:
+                    break
+                self._matches.append((idx, idx + len(search)))
+                start = idx + max(1, len(search))
+
+        if self._matches:
+            self._match_idx = 0
+            self._go_to_match(0)
+        else:
+            self._highlight_all()
+            self._find_bar.set_status("No results")
+
+    # ── navigation ────────────────────────────────────────────────────────────
+
+    def _find_next(self) -> None:
+        if not self._matches:
+            self._update_matches()
+            return
+        self._match_idx = (self._match_idx + 1) % len(self._matches)
+        self._go_to_match(self._match_idx)
+
+    def _find_prev(self) -> None:
+        if not self._matches:
+            self._update_matches()
+            return
+        self._match_idx = (self._match_idx - 1) % len(self._matches)
+        self._go_to_match(self._match_idx)
+
+    def _go_to_match(self, idx: int) -> None:
+        if not self._matches:
+            return
+        start, end = self._matches[idx]
+        doc = self._editor.document()
+        cursor = QTextCursor(doc)
+        cursor.setPosition(start)
+        cursor.setPosition(end, QTextCursor.MoveMode.KeepAnchor)
+        self._editor.setTextCursor(cursor)
+        self._editor.ensureCursorVisible()
+        self._highlight_all()
+        self._find_bar.set_status(f"{idx + 1} of {len(self._matches)}")
+
+    # ── highlighting ─────────────────────────────────────────────────────────
+
+    def _highlight_all(self) -> None:
+        """Apply extra selections: pale yellow for all matches, amber for current."""
+        selections: list[QTextEdit.ExtraSelection] = []
+        doc = self._editor.document()
+
+        for i, (start, end) in enumerate(self._matches):
+            sel = QTextEdit.ExtraSelection()
+            fmt = QTextCharFormat()
+            if i == self._match_idx:
+                fmt.setBackground(self._CURRENT_BG)
+            else:
+                fmt.setBackground(self._MATCH_BG)
+            sel.format = fmt
+            cur = QTextCursor(doc)
+            cur.setPosition(start)
+            cur.setPosition(end, QTextCursor.MoveMode.KeepAnchor)
+            sel.cursor = cur
+            selections.append(sel)
+
+        self._editor.setExtraSelections(selections)
+
+    # ── replace ───────────────────────────────────────────────────────────────
+
+    def _replace_one(self, replacement: str) -> None:
+        """Replace the current match and advance to the next."""
+        if not self._matches or self._match_idx < 0:
+            self._update_matches()
+            return
+        start, end = self._matches[self._match_idx]
+        pattern = self._find_bar.pattern()
+        use_regex = self._find_bar.use_regex()
+        case_sensitive = self._find_bar.case_sensitive()
+
+        if use_regex:
+            flags = 0 if case_sensitive else re.IGNORECASE
+            try:
+                compiled = re.compile(pattern, flags)
+            except re.error:
+                return
+            text = self._editor.toPlainText()
+            matched_text = text[start:end]
+            try:
+                replacement_text = compiled.sub(replacement, matched_text, count=1)
+            except re.error:
+                return
+        else:
+            replacement_text = replacement
+
+        doc = self._editor.document()
+        cursor = QTextCursor(doc)
+        cursor.setPosition(start)
+        cursor.setPosition(end, QTextCursor.MoveMode.KeepAnchor)
+        cursor.insertText(replacement_text)
+
+        # Re-scan and advance
+        self._update_matches()
+        if self._matches:
+            self._find_next()
+
+    def _replace_all(self, replacement: str) -> None:
+        """Replace all matches in the document."""
+        pattern = self._find_bar.pattern()
+        use_regex = self._find_bar.use_regex()
+        case_sensitive = self._find_bar.case_sensitive()
+
+        if not pattern:
+            return
+
+        text = self._editor.toPlainText()
+
+        if use_regex:
+            flags = 0 if case_sensitive else re.IGNORECASE
+            try:
+                compiled = re.compile(pattern, flags)
+                count = len(compiled.findall(text))
+                new_text = compiled.sub(replacement, text)
+            except re.error as exc:
+                self._find_bar.set_status(f"Regex error: {exc}")
+                return
+        else:
+            search = pattern if case_sensitive else pattern.lower()
+            haystack = text if case_sensitive else text.lower()
+            count = haystack.count(search)
+            if case_sensitive:
+                new_text = text.replace(pattern, replacement)
+            else:
+                # Case-insensitive replace: rebuild via regex literal
+                new_text = re.compile(re.escape(pattern), re.IGNORECASE).sub(replacement, text)
+
+        self._editor.setPlainText(new_text)
+        self._matches = []
+        self._match_idx = -1
+        self._highlight_all()
+        self._find_bar.set_status(f"Replaced {count} occurrence{'s' if count != 1 else ''}")
+
+    # ── bar closed ────────────────────────────────────────────────────────────
+
+    def _on_bar_closed(self) -> None:
+        self._matches = []
+        self._match_idx = -1
+        self._editor.setExtraSelections([])
+        self._editor.setFocus()
 
 
 class PdfViewer(QWidget):
