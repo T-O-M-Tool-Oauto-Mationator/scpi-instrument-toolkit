@@ -250,3 +250,346 @@ class TestSafeEvalOperators:
 
         repl.onecmd("y = float(42)")
         assert float(repl.ctx.script_vars["y"]) == 42.0
+
+
+# ---------------------------------------------------------------------------
+# String functions: str(), hex(), bin(), oct(), ord(), chr()
+# ---------------------------------------------------------------------------
+
+
+class TestStringFunctions:
+    def test_str_of_number(self, repl):
+        repl.onecmd("x = str(42)")
+        assert repl.ctx.script_vars["x"] == "42"
+
+    def test_str_of_float(self, repl):
+        repl.onecmd("x = str(3.14)")
+        assert repl.ctx.script_vars["x"] == "3.14"
+
+    def test_hex_conversion(self, repl):
+        repl.onecmd("x = hex(255)")
+        assert repl.ctx.script_vars["x"] == "0xff"
+
+    def test_hex_of_zero(self, repl):
+        repl.onecmd("x = hex(0)")
+        assert repl.ctx.script_vars["x"] == "0x0"
+
+    def test_bin_conversion(self, repl):
+        repl.onecmd("x = bin(10)")
+        assert repl.ctx.script_vars["x"] == "0b1010"
+
+    def test_oct_conversion(self, repl):
+        repl.onecmd("x = oct(8)")
+        assert repl.ctx.script_vars["x"] == "0o10"
+
+    def test_ord_conversion(self, repl):
+        repl.onecmd("x = ord('A')")
+        assert repl.ctx.script_vars["x"] == "65"
+
+    def test_chr_conversion(self, repl):
+        repl.onecmd("x = chr(65)")
+        assert repl.ctx.script_vars["x"] == "A"
+
+    def test_bool_true(self, repl):
+        repl.onecmd("x = bool(1)")
+        assert repl.ctx.script_vars["x"] == "True"
+
+    def test_bool_false(self, repl):
+        repl.onecmd("x = bool(0)")
+        assert repl.ctx.script_vars["x"] == "False"
+
+
+# ---------------------------------------------------------------------------
+# Math functions: sqrt, sin, cos, log, etc, pi, e
+# ---------------------------------------------------------------------------
+
+
+class TestMathFunctions:
+    def test_sqrt(self, repl):
+        repl.onecmd("x = sqrt(16)")
+        assert float(repl.ctx.script_vars["x"]) == 4.0
+
+    def test_sqrt_non_perfect(self, repl):
+        repl.onecmd("x = sqrt(2)")
+        assert abs(float(repl.ctx.script_vars["x"]) - 1.41421356) < 1e-6
+
+    def test_sin_zero(self, repl):
+        repl.onecmd("x = sin(0)")
+        assert float(repl.ctx.script_vars["x"]) == 0.0
+
+    def test_cos_zero(self, repl):
+        repl.onecmd("x = cos(0)")
+        assert float(repl.ctx.script_vars["x"]) == 1.0
+
+    def test_sin_pi_half(self, repl):
+        repl.onecmd("x = sin(pi / 2)")
+        assert abs(float(repl.ctx.script_vars["x"]) - 1.0) < 1e-9
+
+    def test_cos_pi(self, repl):
+        repl.onecmd("x = cos(pi)")
+        assert abs(float(repl.ctx.script_vars["x"]) - (-1.0)) < 1e-9
+
+    def test_tan(self, repl):
+        repl.onecmd("x = tan(0)")
+        assert float(repl.ctx.script_vars["x"]) == 0.0
+
+    def test_asin(self, repl):
+        repl.onecmd("x = asin(1)")
+        import math
+        assert abs(float(repl.ctx.script_vars["x"]) - math.pi / 2) < 1e-9
+
+    def test_acos(self, repl):
+        repl.onecmd("x = acos(1)")
+        assert float(repl.ctx.script_vars["x"]) == 0.0
+
+    def test_atan(self, repl):
+        repl.onecmd("x = atan(0)")
+        assert float(repl.ctx.script_vars["x"]) == 0.0
+
+    def test_atan2(self, repl):
+        repl.onecmd("x = atan2(1, 1)")
+        import math
+        assert abs(float(repl.ctx.script_vars["x"]) - math.pi / 4) < 1e-9
+
+    def test_log_natural(self, repl):
+        repl.onecmd("x = log(e)")
+        assert abs(float(repl.ctx.script_vars["x"]) - 1.0) < 1e-9
+
+    def test_log2(self, repl):
+        repl.onecmd("x = log2(8)")
+        assert float(repl.ctx.script_vars["x"]) == 3.0
+
+    def test_log10(self, repl):
+        repl.onecmd("x = log10(1000)")
+        assert float(repl.ctx.script_vars["x"]) == 3.0
+
+    def test_exp(self, repl):
+        repl.onecmd("x = exp(0)")
+        assert float(repl.ctx.script_vars["x"]) == 1.0
+
+    def test_ceil(self, repl):
+        repl.onecmd("x = ceil(3.2)")
+        assert float(repl.ctx.script_vars["x"]) == 4.0
+
+    def test_floor(self, repl):
+        repl.onecmd("x = floor(3.9)")
+        assert float(repl.ctx.script_vars["x"]) == 3.0
+
+    def test_hypot(self, repl):
+        repl.onecmd("x = hypot(3, 4)")
+        assert float(repl.ctx.script_vars["x"]) == 5.0
+
+    def test_degrees(self, repl):
+        import math
+        repl.onecmd("x = degrees(pi)")
+        assert abs(float(repl.ctx.script_vars["x"]) - 180.0) < 1e-9
+
+    def test_radians(self, repl):
+        import math
+        repl.onecmd("x = radians(180)")
+        assert abs(float(repl.ctx.script_vars["x"]) - math.pi) < 1e-9
+
+    def test_pi_constant(self, repl):
+        import math
+        repl.onecmd("x = pi")
+        assert abs(float(repl.ctx.script_vars["x"]) - math.pi) < 1e-9
+
+    def test_e_constant(self, repl):
+        import math
+        repl.onecmd("x = e")
+        assert abs(float(repl.ctx.script_vars["x"]) - math.e) < 1e-9
+
+    def test_combined_math(self, repl):
+        """sqrt(sin(x)**2 + cos(x)**2) should be 1.0 for any x."""
+        repl.onecmd("x = sqrt(sin(1) ** 2 + cos(1) ** 2)")
+        assert abs(float(repl.ctx.script_vars["x"]) - 1.0) < 1e-9
+
+
+# ---------------------------------------------------------------------------
+# Comparisons: ==, !=, <, <=, >, >=
+# ---------------------------------------------------------------------------
+
+
+class TestComparisons:
+    def test_equal_true(self, repl):
+        repl.onecmd("x = 5 == 5")
+        assert repl.ctx.script_vars["x"] == "True"
+
+    def test_equal_false(self, repl):
+        repl.onecmd("x = 5 == 6")
+        assert repl.ctx.script_vars["x"] == "False"
+
+    def test_not_equal_true(self, repl):
+        repl.onecmd("x = 5 != 6")
+        assert repl.ctx.script_vars["x"] == "True"
+
+    def test_not_equal_false(self, repl):
+        repl.onecmd("x = 5 != 5")
+        assert repl.ctx.script_vars["x"] == "False"
+
+    def test_less_than_true(self, repl):
+        repl.onecmd("x = 3 < 5")
+        assert repl.ctx.script_vars["x"] == "True"
+
+    def test_less_than_false(self, repl):
+        repl.onecmd("x = 5 < 3")
+        assert repl.ctx.script_vars["x"] == "False"
+
+    def test_less_equal_true(self, repl):
+        repl.onecmd("x = 5 <= 5")
+        assert repl.ctx.script_vars["x"] == "True"
+
+    def test_greater_than_true(self, repl):
+        repl.onecmd("x = 7 > 3")
+        assert repl.ctx.script_vars["x"] == "True"
+
+    def test_greater_equal_true(self, repl):
+        repl.onecmd("x = 7 >= 7")
+        assert repl.ctx.script_vars["x"] == "True"
+
+    def test_chained_comparison(self, repl):
+        repl.onecmd("x = 1 < 2 < 3")
+        assert repl.ctx.script_vars["x"] == "True"
+
+    def test_comparison_with_vars(self, repl):
+        repl.onecmd("a = 10")
+        repl.onecmd("b = 20")
+        repl.onecmd("x = a < b")
+        assert repl.ctx.script_vars["x"] == "True"
+
+
+# ---------------------------------------------------------------------------
+# Boolean operators: and, or, not
+# ---------------------------------------------------------------------------
+
+
+class TestBooleanOps:
+    def test_and_true(self, repl):
+        repl.onecmd("x = True and True")
+        assert repl.ctx.script_vars["x"] == "True"
+
+    def test_and_false(self, repl):
+        repl.onecmd("x = True and False")
+        assert repl.ctx.script_vars["x"] == "False"
+
+    def test_or_true(self, repl):
+        repl.onecmd("x = False or True")
+        assert repl.ctx.script_vars["x"] == "True"
+
+    def test_or_false(self, repl):
+        repl.onecmd("x = False or False")
+        assert repl.ctx.script_vars["x"] == "False"
+
+    def test_not_true(self, repl):
+        repl.onecmd("x = not False")
+        assert repl.ctx.script_vars["x"] == "True"
+
+    def test_not_false(self, repl):
+        repl.onecmd("x = not True")
+        assert repl.ctx.script_vars["x"] == "False"
+
+    def test_combined_boolean(self, repl):
+        repl.onecmd("x = (True and False) or True")
+        assert repl.ctx.script_vars["x"] == "True"
+
+    def test_boolean_with_comparisons(self, repl):
+        repl.onecmd("a = 5")
+        repl.onecmd("b = 10")
+        repl.onecmd("x = a < b and b > 0")
+        assert repl.ctx.script_vars["x"] == "True"
+
+
+# ---------------------------------------------------------------------------
+# Ternary: a if cond else b
+# ---------------------------------------------------------------------------
+
+
+class TestTernary:
+    def test_ternary_true_branch(self, repl):
+        repl.onecmd("x = 10 if True else 20")
+        assert float(repl.ctx.script_vars["x"]) == 10.0
+
+    def test_ternary_false_branch(self, repl):
+        repl.onecmd("x = 10 if False else 20")
+        assert float(repl.ctx.script_vars["x"]) == 20.0
+
+    def test_ternary_with_comparison(self, repl):
+        repl.onecmd("a = 5")
+        repl.onecmd("x = 100 if a > 3 else 0")
+        assert float(repl.ctx.script_vars["x"]) == 100.0
+
+    def test_ternary_with_comparison_false(self, repl):
+        repl.onecmd("a = 1")
+        repl.onecmd("x = 100 if a > 3 else 0")
+        assert float(repl.ctx.script_vars["x"]) == 0.0
+
+    def test_ternary_with_expressions(self, repl):
+        repl.onecmd("a = 7")
+        repl.onecmd("x = a * 2 if a > 5 else a * 3")
+        assert float(repl.ctx.script_vars["x"]) == 14.0
+
+
+# ---------------------------------------------------------------------------
+# Containers: [list], (tuple), len(), sum()
+# ---------------------------------------------------------------------------
+
+
+class TestContainers:
+    def test_list_literal(self, repl):
+        repl.onecmd("x = [1, 2, 3]")
+        assert repl.ctx.script_vars["x"] == "[1, 2, 3]"
+
+    def test_tuple_literal(self, repl):
+        repl.onecmd("x = (1, 2)")
+        assert repl.ctx.script_vars["x"] == "(1, 2)"
+
+    def test_len_of_list(self, repl):
+        repl.onecmd("x = len([10, 20, 30, 40])")
+        assert repl.ctx.script_vars["x"] == "4"
+
+    def test_sum_of_list(self, repl):
+        repl.onecmd("x = sum([1, 2, 3, 4, 5])")
+        assert repl.ctx.script_vars["x"] == "15"
+
+    def test_min_of_list(self, repl):
+        repl.onecmd("x = min([5, 3, 8, 1])")
+        assert repl.ctx.script_vars["x"] == "1"
+
+    def test_max_of_list(self, repl):
+        repl.onecmd("x = max([5, 3, 8, 1])")
+        assert repl.ctx.script_vars["x"] == "8"
+
+    def test_subscript_list(self, repl):
+        repl.onecmd("x = [10, 20, 30][1]")
+        assert repl.ctx.script_vars["x"] == "20"
+
+    def test_keyword_arg_round(self, repl):
+        repl.onecmd("x = round(3.14159, ndigits=2)")
+        assert float(repl.ctx.script_vars["x"]) == 3.14
+
+
+# ---------------------------------------------------------------------------
+# Bitwise operators: ~, |, &, <<, >>
+# ---------------------------------------------------------------------------
+
+
+class TestBitwiseOps:
+    def test_bitwise_or(self, repl):
+        repl.onecmd("x = 0b1010 | 0b0101")
+        assert int(float(repl.ctx.script_vars["x"])) == 0b1111
+
+    def test_bitwise_and(self, repl):
+        repl.onecmd("x = 0b1111 & 0b1010")
+        assert int(float(repl.ctx.script_vars["x"])) == 0b1010
+
+    def test_left_shift(self, repl):
+        repl.onecmd("x = 1 << 4")
+        assert int(float(repl.ctx.script_vars["x"])) == 16
+
+    def test_right_shift(self, repl):
+        repl.onecmd("x = 16 >> 2")
+        assert int(float(repl.ctx.script_vars["x"])) == 4
+
+    def test_bitwise_invert(self, repl):
+        repl.onecmd("x = ~0")
+        assert int(float(repl.ctx.script_vars["x"])) == -1
