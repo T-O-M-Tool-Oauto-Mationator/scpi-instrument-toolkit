@@ -24,7 +24,7 @@ class _DevicePanel(QWidget):
         "dmm": "#c45c00",
         "scope": "#0e7a70",
         "smu": "#c0392b",
-        "ev": "#6366f1",
+        "ev2300": "#6366f1",
     }
 
     def __init__(self, d: _Dispatcher, main_win: Any, parent: QWidget | None = None) -> None:
@@ -40,6 +40,11 @@ class _DevicePanel(QWidget):
         self._scan_btn.clicked.connect(self._on_scan)
         lay.addWidget(self._scan_btn)
 
+        self._force_scan_btn = QPushButton("\u26a1  Force Rescan")
+        self._force_scan_btn.setToolTip("Disconnect all instruments and re-scan from scratch (resets outputs to 0)")
+        self._force_scan_btn.clicked.connect(self._on_force_scan)
+        lay.addWidget(self._force_scan_btn)
+
         self._list = QListWidget()
         self._list.setFont(_mono(10))
         self._list.setStyleSheet("QListWidget::item { padding: 8px 10px; }")
@@ -51,7 +56,10 @@ class _DevicePanel(QWidget):
     def _on_scan(self) -> None:
         if self._main_win and hasattr(self._main_win, "_on_scan"):
             self._main_win._on_scan()
-        # No fallback: blocking scan on main thread would freeze UI
+
+    def _on_force_scan(self) -> None:
+        if self._main_win and hasattr(self._main_win, "_on_force_scan"):
+            self._main_win._on_force_scan()
 
     def _on_item_click(self, item: QListWidgetItem) -> None:
         name = item.data(Qt.ItemDataRole.UserRole)
@@ -89,8 +97,7 @@ class _DevicePanel(QWidget):
             return
         for name in sorted(devices):
             disp = self._d.registry.display_name(name)
-            base = re.sub(r"\d+$", "", name)
-            self._TYPE_COLORS.get(base, "")
+            base = self._d.registry.base_type(name)
             item = QListWidgetItem(f"  {name}\n  {disp}")
             item.setData(Qt.ItemDataRole.UserRole, name)
             item.setToolTip(f"{name}  \u2014  {disp}  ({base.upper()})")

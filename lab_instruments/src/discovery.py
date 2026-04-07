@@ -544,14 +544,16 @@ class InstrumentDiscovery:
         for res in resources:
             if res in existing_by_resource:
                 name, drv = existing_by_resource[res]
-                # Derive the generic type from the name (e.g. "psu1" -> "psu")
-                generic = name.rstrip("0123456789")
-                # Find the model_key for this driver class
+                # Find the model_key and generic name from the driver class
                 model_key = ""
+                generic = ""
                 for key, cls in self.MODEL_MAP.items():
                     if isinstance(drv, cls):
                         model_key = key
+                        generic = self.NAME_MAP.get(key, "")
                         break
+                if not generic:
+                    generic = name.rstrip("0123456789") or name
                 if verbose:
                     self._safe_print(f"Keeping {res}... already connected as '{name}'")
                 kept_results.append((generic, drv, model_key, ""))
@@ -573,6 +575,23 @@ class InstrumentDiscovery:
                     except Exception as e:
                         if verbose:
                             self._safe_print(f"{ColorPrinter.RED}Thread error during scan: {e}{ColorPrinter.RESET}")
+
+        # Add kept non-VISA devices (PXI, EV2300 HID) that weren't in the VISA
+        # resource list and therefore weren't added to kept_results above.
+        for res_name, (name, drv) in existing_by_resource.items():
+            # Skip if already in kept_results (VISA devices handled above)
+            if any(d is drv for _, d, _, _ in results):
+                continue
+            model_key = ""
+            generic = ""
+            for key, cls in self.MODEL_MAP.items():
+                if isinstance(drv, cls):
+                    model_key = key
+                    generic = self.NAME_MAP.get(key, "")
+                    break
+            if not generic:
+                generic = name.rstrip("0123456789") or name
+            results.append((generic, drv, model_key, ""))
 
         # Probe PXI slots for NI-DCPower devices (SMUs) — skip already-connected slots
         nidcpower_results = self._probe_nidcpower(verbose, skip_resources=existing_by_resource)

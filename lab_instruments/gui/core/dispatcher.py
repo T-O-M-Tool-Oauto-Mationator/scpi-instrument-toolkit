@@ -9,12 +9,42 @@ import signal
 import threading
 from typing import Any
 
+from PySide6.QtCore import QMetaObject, QObject, Qt, Signal, Slot
+from PySide6.QtWidgets import QInputDialog
+
 from lab_instruments.repl.capabilities import Capability
 from lab_instruments.repl.shell import InstrumentRepl
 
 
-class _Dispatcher:
-    def __init__(self, mock: bool = False) -> None:
+class _InputBridge(QObject):
+    """Thread-safe bridge for showing an input dialog from a background thread."""
+
+    request = Signal(str)  # prompt text
+    response = Signal(str)  # user's answer
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._event = threading.Event()
+        self._result = ""
+        self.request.connect(self._show_dialog, Qt.ConnectionType.BlockingQueuedConnection)
+
+    @Slot(str)
+    def _show_dialog(self, prompt: str) -> None:
+        from PySide6.QtWidgets import QApplication
+        parent = QApplication.activeWindow()
+        text, ok = QInputDialog.getText(parent, "Input Required", prompt or "Enter value:")
+        self._result = text if ok else ""
+
+    def ask(self, prompt: str) -> str:
+        """Call from any thread — blocks until user responds."""
+        self._result = ""
+        self.request.emit(prompt)
+        return self._result
+
+
+class _Dispatcher(QObject):
+    def __init__(self, mock: bool = False, parent=None) -> None:
+        super().__init__(parent)
         saved_int = signal.getsignal(signal.SIGINT)
         saved_term = signal.getsignal(signal.SIGTERM) if hasattr(signal, "SIGTERM") else None
 
@@ -27,6 +57,7 @@ class _Dispatcher:
 
         self._repl = InstrumentRepl(auto_scan=False)
         self._lock = threading.Lock()
+        self._input_bridge = _InputBridge(self)
 
         signal.signal(signal.SIGINT, saved_int)
         if saved_term is not None:
@@ -45,12 +76,11 @@ class _Dispatcher:
         with self._lock:
             buf = io.StringIO()
 
-            def _no_input(prompt=""):
-                buf.write(f"\n[GUI] '{str(prompt).strip()}' — interactive input not supported in GUI mode.\n")
-                return ""
+            def _gui_input(prompt=""):
+                return self._input_bridge.ask(str(prompt).strip())
 
             old_input = _builtins.input
-            _builtins.input = _no_input
+            _builtins.input = _gui_input
             old_repl_stdout = self._repl.stdout
             self._repl.stdout = buf
             try:

@@ -10,7 +10,8 @@ from lab_instruments.src.terminal import ColorPrinter
 from ..syntax import safe_eval, substitute_expand
 
 # Matches Python-style assignment: identifier = expression
-_ASSIGN_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_.]*)\s*=\s*(.+)$")
+# The (?!=) prevents matching lines like "print ============"
+_ASSIGN_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_.]*)\s*=(?!=)\s*(.+)$")
 
 # Matches instrument read RHS: <instrument> read [unit=X]
 _INSTR_READ_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*)\s+(?:read|meas)(?:\s+(.*))?$")
@@ -43,6 +44,7 @@ def expand_script_lines(
         raw_line = lines[idx].strip()
         idx += 1
         if not raw_line or raw_line.startswith("#"):
+            expanded.append(("__NOP__", _loop_ctx + raw_line))
             continue
         try:
             tokens = shlex.split(raw_line)
@@ -192,6 +194,7 @@ def expand_script_lines(
             continue
 
         if head == "end":
+            expanded.append(("__NOP__", _loop_ctx + raw_line))
             continue
 
         if head in ("lower_limit", "upper_limit") and len(tokens) >= 3:

@@ -5,6 +5,7 @@ import json
 import os
 import pathlib
 import subprocess
+import sys
 import tempfile
 import time
 import traceback
@@ -237,15 +238,28 @@ class ScriptingCommands(BaseCommand):
             return
         exec_globals = {
             "__name__": "__main__",
-            "__file__": filename,
+            "__file__": os.path.abspath(filename),
             "repl": self.shell,
             "devices": self.registry.devices,
             "measurements": self.measurements.entries,
             "ColorPrinter": ColorPrinter,
             "os": os,
+            "sys": sys,
             "json": json,
             "time": time,
         }
+        # Pre-import lab_instruments so scripts can use it without boilerplate
+        try:
+            import lab_instruments
+            exec_globals["lab_instruments"] = lab_instruments
+        except ImportError:
+            pass
+        # Add the script's directory to sys.path so local imports work
+        script_dir = os.path.dirname(os.path.abspath(filename))
+        path_added = False
+        if script_dir not in sys.path:
+            sys.path.insert(0, script_dir)
+            path_added = True
         try:
             ColorPrinter.info(f"Executing {filename}...")
             exec(script_code, exec_globals)
@@ -253,6 +267,12 @@ class ScriptingCommands(BaseCommand):
         except Exception as exc:
             ColorPrinter.error(f"Script execution failed: {exc}")
             traceback.print_exc()
+        finally:
+            if path_added:
+                try:
+                    sys.path.remove(script_dir)
+                except ValueError:
+                    pass
 
     def do_upper_limit(self, arg: str) -> None:
         if not arg:

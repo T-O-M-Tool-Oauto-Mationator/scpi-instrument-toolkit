@@ -51,8 +51,8 @@ class _PSUChannel(QGroupBox):
         meas = QHBoxLayout()
         meas.setSpacing(5)
 
-        for attr, _unit, color in [("v_display", "V", "#1e7a1e"), ("i_display", "A", "#c45c00")]:
-            disp = QLabel("0.000")
+        for attr, unit, color in [("v_display", "V", "#1e7a1e"), ("i_display", "A", "#c45c00")]:
+            disp = QLabel(f"0.000 {unit}")
             disp.setFont(_mono(18))
             disp.setStyleSheet(f"color: {color}; border-radius: 5px; padding: 4px 8px")
             disp.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
@@ -77,7 +77,7 @@ class _PSUChannel(QGroupBox):
         self.i_spin.setRange(0, self._max_i)
         self.i_spin.setDecimals(4)
         self.i_spin.setSingleStep(0.01)
-        self.i_spin.setValue(0.1)
+        self.i_spin.setValue(0.0)
         self.i_spin.setSuffix(" A")
         self.i_spin.setMinimumWidth(88)
         sp_row.addWidget(self.i_spin, 1)
@@ -417,7 +417,22 @@ class _PSUBlock(QFrame):
                 global_state = dev.get_output_state()
         for ch_num, w in self._chs.items():
             ch_key = self._ch_keys.get(ch_num)
-            state = global_state if multi else None
+            if multi and global_state is not None:
+                # For PSUs with a global output enable (e.g. E3631A), a channel
+                # is effectively "on" only if the global output is on AND the
+                # channel has a non-zero voltage setpoint.
+                ch_on = global_state
+                if global_state:
+                    try:
+                        if ch_key and hasattr(dev, "select_channel"):
+                            dev.select_channel(ch_key)
+                        v = dev.get_voltage_setpoint()
+                        ch_on = global_state and (v is not None and abs(v) > 0.001)
+                    except Exception:
+                        pass
+                state = ch_on
+            else:
+                state = None
             if state is not None:
                 self._ch_output[ch_num] = state
             w.sync_from_device(dev, state, ch_key)
@@ -429,11 +444,7 @@ class _PSUBlock(QFrame):
         if not w:
             return
         v, i = w.v_spin.value(), w.i_spin.value()
-        multi = self._d.has_cap(self._psu, "multi_channel")
-        if multi:
-            self._run(f"psu set {ch_num} {v} {i}")
-        else:
-            self._run(f"psu set {v} {i}")
+        self._run(f"psu set {ch_num} {v} {i}")
         self._status.setText(f"Applied: {v}V @ {i}A")
         self._status.setStyleSheet("color: #155724; font-size: 10px;")
         self._poll()
@@ -457,12 +468,8 @@ class _PSUBlock(QFrame):
         self._status.setStyleSheet("color: darkorange; font-size: 10px;")
 
     def _output(self, ch_num: int, on: bool) -> None:
-        multi = self._d.has_cap(self._psu, "multi_channel")
         state = "on" if on else "off"
-        if multi:
-            self._run(f"psu chan {ch_num} {state}")
-        else:
-            self._run(f"psu chan {state}")
+        self._run(f"psu chan {ch_num} {state}")
         self._poll()
 
     @Slot()

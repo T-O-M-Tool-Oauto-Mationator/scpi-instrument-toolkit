@@ -133,6 +133,13 @@ class DeviceRegistry:
 
         return msg
 
+    # Known base types whose names contain digits (e.g. "ev2300").
+    # These must not be truncated by the trailing-digit strip.
+    _KNOWN_TYPES = ("ev2300",)
+
     def base_type(self, device_name: str) -> str:
-        """Return the base device type ('psu', 'awg', etc.) from a name like 'psu1'."""
+        """Return the base device type ('psu', 'awg', 'ev2300', etc.) from a name like 'psu1'."""
+        for t in self._KNOWN_TYPES:
+            if device_name == t or device_name.startswith(t + "_"):
+                return t
         return re.sub(r"\d+$", "", device_name)

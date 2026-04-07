@@ -9,8 +9,9 @@ import io
 import os
 import re
 import sys
+import threading
 
-from PySide6.QtCore import QObject, QSettings, Qt, QThread, QTimer, Signal, Slot
+from PySide6.QtCore import QObject, QSettings, Qt, QTimer, Signal, Slot
 from PySide6.QtGui import QAction, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication,
@@ -19,6 +20,7 @@ from PySide6.QtWidgets import (
     QInputDialog,
     QLabel,
     QMainWindow,
+    QMessageBox,
     QWidget,
 )
 
@@ -46,22 +48,19 @@ from .widgets.work_area import _WorkArea
 # -- Background worker for blocking operations --------------------------------
 
 
-class _Worker(QObject):
-    """Runs a callable in a QThread and signals completion."""
+class _BgSignal(QObject):
+    """Bridge to deliver a background thread result to the main Qt thread."""
 
-    finished = Signal(str)  # result string
+    finished = Signal(str)
 
-    def __init__(self, fn, parent=None):
-        super().__init__(parent)
-        self._fn = fn
 
-    @Slot()
-    def run(self):
-        try:
-            result = self._fn()
-            self.finished.emit(result or "")
-        except Exception as exc:
-            self.finished.emit(f"[ERROR] {exc}")
+def _run_bg(fn, signal):
+    """Target for threading.Thread: run *fn* and emit result via *signal*."""
+    try:
+        result = fn()
+        signal.finished.emit(result or "")
+    except Exception as exc:
+        signal.finished.emit(f"[ERROR] {exc}")
 
 
 # -- Main window -------------------------------------------------------------
@@ -132,16 +131,31 @@ class _MainWindow(QMainWindow):
 
         self._view_menu = mb.addMenu("&View")
 
+        # ── Examples menu ─────────────────────────────────────────────
+        em = mb.addMenu("&Examples")
+        try:
+            from lab_instruments.examples import EXAMPLES as _EXAMPLES
+            scpi_menu = em.addMenu("SCPI Scripts")
+            py_menu = em.addMenu("Python Scripts")
+            for ex_name, ex_info in _EXAMPLES.items():
+                is_python = ex_info.get("type") == "python"
+                display = ex_name
+                desc = ex_info.get("description", "").removeprefix("Python: ")
+                act = QAction(f"{display}  —  {desc}", self)
+                act.triggered.connect(lambda checked, n=ex_name: self._import_example(n))
+                (py_menu if is_python else scpi_menu).addAction(act)
+        except ImportError:
+            na = QAction("(no examples available)", self)
+            na.setEnabled(False)
+            em.addAction(na)
+
+        # ── Help menu ─────────────────────────────────────────────────
         hm = mb.addMenu("&Help")
         _pkg_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         _repl_docs = os.path.join(_pkg_root, "site")
-        _api_docs = os.path.join(_pkg_root, "site-library")
-        ra = QAction("REPL Command Reference", self)
-        ra.triggered.connect(lambda: self._open_docs(_repl_docs, "REPL Docs"))
+        ra = QAction("Documentation", self)
+        ra.triggered.connect(lambda: self._open_docs(_repl_docs, "Docs"))
         hm.addAction(ra)
-        aa = QAction("Python API Reference", self)
-        aa.triggered.connect(lambda: self._open_docs(_api_docs, "API Docs"))
-        hm.addAction(aa)
 
         # ── Toolbar ───────────────────────────────────────────────────
         tb = self.addToolBar("Main")
@@ -166,6 +180,7 @@ class _MainWindow(QMainWindow):
         # ── Console dock (bottom) ──────────────────────────────────────
         self._console = _Console(d)
         _console_dock = QDockWidget("Console", self)
+        _console_dock.setObjectName("ConsoleDock")
         _console_dock.setWidget(self._console)
         _console_dock.setAllowedAreas(Qt.DockWidgetArea.BottomDockWidgetArea | Qt.DockWidgetArea.TopDockWidgetArea)
         self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, _console_dock)
@@ -174,6 +189,7 @@ class _MainWindow(QMainWindow):
         # ── Device list dock (left) ────────────────────────────────────
         self._device_panel = _DevicePanel(d, self)
         _devices_dock = QDockWidget("Devices", self)
+        _devices_dock.setObjectName("DevicesDock")
         _devices_dock.setWidget(self._device_panel)
         _devices_dock.setAllowedAreas(Qt.DockWidgetArea.LeftDockWidgetArea | Qt.DockWidgetArea.RightDockWidgetArea)
         self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, _devices_dock)
@@ -185,6 +201,7 @@ class _MainWindow(QMainWindow):
         self._file_explorer.run_script.connect(self._run_script)
         self._file_explorer.debug_script.connect(self._debug_script)
         _explorer_dock = QDockWidget("Explorer", self)
+        _explorer_dock.setObjectName("ExplorerDock")
         _explorer_dock.setWidget(self._file_explorer)
         _explorer_dock.setAllowedAreas(Qt.DockWidgetArea.LeftDockWidgetArea | Qt.DockWidgetArea.RightDockWidgetArea)
         self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, _explorer_dock)
@@ -220,37 +237,19 @@ class _MainWindow(QMainWindow):
     # -- Background worker helper -----------------------------------------------
 
     def _run_in_background(self, fn, on_done=None, status_msg="Working..."):
-        """Run *fn* in a QThread. Calls *on_done(result_str)* on completion."""
+        """Run *fn* on a background thread. Calls *on_done(result_str)* on the main thread."""
         self._status.setText(status_msg)
-        thread = QThread(self)
-        worker = _Worker(fn)
-        worker.moveToThread(thread)
-        thread.started.connect(worker.run)
 
-        # Keep references alive so the worker isn't garbage-collected before
-        # the thread finishes — otherwise finished signal is never emitted.
-        if not hasattr(self, "_bg_workers"):
-            self._bg_workers = []
-        self._bg_workers.append((thread, worker))
+        sig = _BgSignal(self)  # parent=self keeps it alive
 
-        def _finished(result):
+        def _on_finished(result):
             if on_done:
                 on_done(result)
-            thread.quit()
+            sig.deleteLater()
 
-        def _cleanup():
-            try:
-                self._bg_workers.remove((thread, worker))
-            except ValueError:
-                pass
-
-        # QueuedConnection ensures _finished runs on the main thread even if
-        # PySide6 would otherwise use a DirectConnection for plain callables.
-        worker.finished.connect(_finished, Qt.ConnectionType.QueuedConnection)
-        thread.finished.connect(_cleanup)
-        thread.finished.connect(thread.deleteLater)
-        thread.finished.connect(worker.deleteLater)
-        thread.start()
+        sig.finished.connect(_on_finished, Qt.ConnectionType.QueuedConnection)
+        t = threading.Thread(target=_run_bg, args=(fn, sig), daemon=True)
+        t.start()
 
     # -- Workspace / file handling -------------------------------------------
 
@@ -296,6 +295,42 @@ class _MainWindow(QMainWindow):
         Workspace.save_last_folder(folder)
         self._file_explorer.set_root(folder)
         self._status.setText(f"Opened: {folder}")
+
+    def _import_example(self, name: str) -> None:
+        """Copy a bundled example to the workspace examples/ folder and open it."""
+        from lab_instruments.examples import EXAMPLES
+        info = EXAMPLES.get(name)
+        if not info:
+            self._status.setText(f"Example '{name}' not found")
+            return
+        folder = self._workspace.folder
+        if not folder:
+            folder = os.path.expanduser("~")
+        is_python = info.get("type") == "python"
+        subdir = "python" if is_python else "scpi"
+        ext = ".py" if is_python else ".scpi"
+        examples_dir = os.path.join(folder, "examples", subdir)
+        os.makedirs(examples_dir, exist_ok=True)
+        path = os.path.join(examples_dir, f"{name}{ext}")
+        if os.path.exists(path):
+            reply = QMessageBox.question(
+                self, "Replace example?",
+                f"{os.path.basename(path)} already exists in your workspace.\n\n"
+                "Replace it with the bundled version? Your changes will be lost.",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            if reply != QMessageBox.StandardButton.Yes:
+                self.open_file(path)
+                return
+        with open(path, "w", encoding="utf-8") as f:
+            if is_python:
+                f.write(info.get("code", ""))
+            else:
+                f.write("\n".join(info.get("lines", [])) + "\n")
+        self._file_explorer.set_root(folder)
+        self._status.setText(f"Imported example: {name}")
+        self.open_file(path)
 
     def open_file(self, path: str) -> None:
         """Open a file in the work area. Dispatches by extension."""
@@ -654,17 +689,16 @@ class _MainWindow(QMainWindow):
         self._on_tab_closed_file(widget)
 
     def _on_device_selected(self, name: str) -> None:
-        base = re.sub(r"\d+$", "", name)
+        base = self._d.registry.base_type(name)
         block_map = {
             "psu": (self._psu_blocks, self._psu_closed),
             "smu": (self._smu_blocks, self._smu_closed),
             "awg": (self._awg_blocks, self._awg_closed),
             "dmm": (self._dmm_blocks, self._dmm_closed),
             "scope": (self._scope_blocks, self._scope_closed),
+            "ev2300": (self._ev_blocks, self._ev_closed),
         }
         entry = block_map.get(base)
-        if entry is None and (name == "ev2300" or name.startswith("ev2300_")):
-            entry = (self._ev_blocks, self._ev_closed)
         if entry is None:
             return
         blocks, closed = entry
@@ -713,7 +747,8 @@ class _MainWindow(QMainWindow):
         self._auto_open_blocks()
         n = len(self._d.registry.devices)
         self._dev_count.setText(f"Devices: {n}")
-        self._status.setText(f"Scan complete: {n} device(s)")
+        label = "device" if n == 1 else "devices"
+        self._status.setText(f"Scan complete: {n} {label}")
 
     def _auto_open_blocks(self) -> None:
         """Open instrument blocks that are in the closed set (newly detected)."""
@@ -734,10 +769,11 @@ class _MainWindow(QMainWindow):
 
     def _on_scan(self) -> None:
         """Non-blocking scan. Disables all interactive controls while running."""
-        self._status.setText("Scanning...")
+        self._status.setText("Scanning for instruments...")
         # Disable console and all instrument blocks to prevent lock contention
         self._console._input.setEnabled(False)
         self._device_panel._scan_btn.setEnabled(False)
+        self._device_panel._force_scan_btn.setEnabled(False)
         for blocks in [self._psu_blocks, self._smu_blocks, self._awg_blocks,
                        self._dmm_blocks, self._ev_blocks, self._scope_blocks]:
             for block in blocks.values():
@@ -749,6 +785,7 @@ class _MainWindow(QMainWindow):
         def _scan_done(result):
             self._console._input.setEnabled(True)
             self._device_panel._scan_btn.setEnabled(True)
+            self._device_panel._force_scan_btn.setEnabled(True)
             for blocks in [self._psu_blocks, self._smu_blocks, self._awg_blocks,
                            self._dmm_blocks, self._ev_blocks, self._scope_blocks]:
                 for block in blocks.values():
@@ -762,6 +799,38 @@ class _MainWindow(QMainWindow):
                 self._after_scan()
 
         self._run_in_background(_do_scan, _scan_done, "Scanning for instruments...")
+
+    def _on_force_scan(self) -> None:
+        """Force rescan — disconnect all instruments and re-scan from scratch."""
+        self._status.setText("Force rescanning...")
+        self._console._input.setEnabled(False)
+        self._device_panel._scan_btn.setEnabled(False)
+        self._device_panel._force_scan_btn.setEnabled(False)
+        for blocks in [self._psu_blocks, self._smu_blocks, self._awg_blocks,
+                       self._dmm_blocks, self._ev_blocks, self._scope_blocks]:
+            for block in blocks.values():
+                block.setEnabled(False)
+
+        def _do_force_scan():
+            return self._d.run("force_scan")
+
+        def _force_scan_done(result):
+            self._console._input.setEnabled(True)
+            self._device_panel._scan_btn.setEnabled(True)
+            self._device_panel._force_scan_btn.setEnabled(True)
+            for blocks in [self._psu_blocks, self._smu_blocks, self._awg_blocks,
+                           self._dmm_blocks, self._ev_blocks, self._scope_blocks]:
+                for block in blocks.values():
+                    block.setEnabled(True)
+            if result.startswith("[ERROR]"):
+                self._status.setText("Force rescan failed")
+                self._console.log(f"<span style='color:#c0392b'>{_esc(result)}</span>")
+            else:
+                self._console.log_action("force_scan", result)
+                self._device_panel.refresh()
+                self._after_scan()
+
+        self._run_in_background(_do_force_scan, _force_scan_done, "Force rescanning (resetting all outputs)...")
 
     def _on_estop(self) -> None:
         # Route through dispatcher so the lock is respected
@@ -803,12 +872,24 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--mock", action="store_true", help="Use mock instruments")
     args = parser.parse_args(argv)
 
+    import signal
     app = QApplication(sys.argv)
     app.setApplicationName("SCPI Instrument Toolkit")
+
+    # Let Ctrl+C in the terminal kill the app
+    signal.signal(signal.SIGINT, lambda *_: app.quit())
+    # Qt needs a timer to process Python signals
+    timer = QTimer()
+    timer.timeout.connect(lambda: None)
+    timer.start(200)
 
     d = _Dispatcher(mock=args.mock)
     win = _MainWindow(d)
     win.resize(1400, 820)
     win.show()
+
+    # Kick off an initial scan after the window is visible
+    if not args.mock:
+        QTimer.singleShot(100, win._on_scan)
 
     sys.exit(app.exec())

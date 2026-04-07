@@ -662,8 +662,8 @@ class ScpiEditor(QWidget):
             self._debug_stop()
 
     def _debug_step(self) -> None:
-        """Execute current line and advance."""
-        if not self._debug_state:
+        """Execute current line and advance. Runs command in background so sleep doesn't freeze UI."""
+        if not self._debug_state or self._debug_state.get("busy"):
             return
         st = self._debug_state
         idx = st["idx"]
@@ -671,17 +671,44 @@ class ScpiEditor(QWidget):
             self._debug_stop()
             return
         line = st["lines"][idx]
-        # Execute (skip __NOP__)
-        if line != "__NOP__":
-            self._debug_exec_line(line)
-        st["idx"] += 1
-        # Skip __NOP__ lines automatically
-        while st["idx"] < len(st["lines"]) and st["lines"][st["idx"]] == "__NOP__":
+        if line == "__NOP__":
             st["idx"] += 1
-        if st["idx"] >= len(st["lines"]):
-            self._debug_stop()
-        else:
-            self._debug_update_position()
+            while st["idx"] < len(st["lines"]) and st["lines"][st["idx"]] == "__NOP__":
+                st["idx"] += 1
+            if st["idx"] >= len(st["lines"]):
+                self._debug_stop()
+            else:
+                self._debug_update_position()
+            return
+        # Disable step button while command runs
+        st["busy"] = True
+        self._step_btn.setEnabled(False)
+        self._cont_btn.setEnabled(False)
+
+        import threading
+
+        def _run():
+            self._debug_exec_line(line)
+
+        def _done():
+            if not self._debug_state:
+                return
+            self._debug_state["busy"] = False
+            self._step_btn.setEnabled(True)
+            self._cont_btn.setEnabled(True)
+            self._debug_state["idx"] += 1
+            while self._debug_state["idx"] < len(self._debug_state["lines"]) and self._debug_state["lines"][self._debug_state["idx"]] == "__NOP__":
+                self._debug_state["idx"] += 1
+            if self._debug_state["idx"] >= len(self._debug_state["lines"]):
+                self._debug_stop()
+            else:
+                self._debug_update_position()
+
+        from ..app import _BgSignal
+        sig = _BgSignal(self)
+        sig.finished.connect(lambda _: _done())
+        t = threading.Thread(target=lambda: (_run(), sig.finished.emit("")), daemon=True)
+        t.start()
 
     def _debug_continue(self) -> None:
         """Execute until next breakpoint or end (QTimer-based to keep event loop alive)."""
