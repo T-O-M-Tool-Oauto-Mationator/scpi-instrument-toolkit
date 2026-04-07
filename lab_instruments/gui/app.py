@@ -227,14 +227,27 @@ class _MainWindow(QMainWindow):
         worker.moveToThread(thread)
         thread.started.connect(worker.run)
 
+        # Keep references alive so the worker isn't garbage-collected before
+        # the thread finishes — otherwise finished signal is never emitted.
+        if not hasattr(self, "_bg_workers"):
+            self._bg_workers = []
+        self._bg_workers.append((thread, worker))
+
         def _finished(result):
             if on_done:
                 on_done(result)
             thread.quit()
 
+        def _cleanup():
+            try:
+                self._bg_workers.remove((thread, worker))
+            except ValueError:
+                pass
+
         # QueuedConnection ensures _finished runs on the main thread even if
         # PySide6 would otherwise use a DirectConnection for plain callables.
         worker.finished.connect(_finished, Qt.ConnectionType.QueuedConnection)
+        thread.finished.connect(_cleanup)
         thread.finished.connect(thread.deleteLater)
         thread.finished.connect(worker.deleteLater)
         thread.start()
