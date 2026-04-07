@@ -925,13 +925,12 @@ class _MainWindow(QMainWindow):
         # Skip entirely if a background op (scan, script) is running to avoid racing on hardware
         if self._d.is_busy():
             return
+        import contextlib
+
         for blocks in [self._psu_blocks, self._smu_blocks, self._awg_blocks, self._dmm_blocks, self._scope_blocks]:
             for block in blocks.values():
-                try:
+                with contextlib.suppress(RuntimeError):
                     block._poll()
-                except RuntimeError:
-                    # C++ widget already deleted (tab/block removed) — skip
-                    pass
         n = len(self._d.registry.devices)
         if n != self._last_device_count:
             self._last_device_count = n
