@@ -230,7 +230,8 @@ class PdfViewer(QWidget):
 
         page = self._doc[self._page]
         mat = fitz.Matrix(2.0, 2.0)  # 2x zoom for readability
-        pix = page.get_pixmap(matrix=mat)
+        with _silence_mupdf():
+            pix = page.get_pixmap(matrix=mat)
         img = QImage(pix.samples, pix.width, pix.height, pix.stride, QImage.Format.Format_RGB888)
         self._label.setPixmap(QPixmap.fromImage(img))
         self._info.setText(f"Page {self._page + 1} / {self._page_count}")
@@ -370,7 +371,8 @@ class _OfficeConversionWorker(QThread):
             for i, page in enumerate(doc):
                 self.progress.emit(f"Rendering page {i + 1} of {len(doc)}...")
                 mat = fitz.Matrix(2.0, 2.0)  # 144 DPI
-                pix = page.get_pixmap(matrix=mat, alpha=False)
+                with _silence_mupdf():
+                    pix = page.get_pixmap(matrix=mat, alpha=False)
                 img = QImage(
                     pix.samples,
                     pix.width,
@@ -667,7 +669,8 @@ class _PreconvertWorker(QThread):
                 doc = fitz.open(str(pdfs[0]))
             for i, page in enumerate(doc):
                 mat = fitz.Matrix(2.0, 2.0)
-                pix = page.get_pixmap(matrix=mat, alpha=False)
+                with _silence_mupdf():
+                    pix = page.get_pixmap(matrix=mat, alpha=False)
                 img = QImage(
                     pix.samples,
                     pix.width,
