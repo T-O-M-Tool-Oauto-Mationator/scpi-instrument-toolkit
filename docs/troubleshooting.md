@@ -155,6 +155,8 @@ The EV2300 USB-to-I2C bridge can get into a bad state. Run `ev2300 fix` in the R
 4. `scan`
 5. Retry your command
 
+If it still doesn't work, unplug the EV2300 USB cable, plug it back in, then `disconnect ev2300`, `scan`, and retry.
+
 ### EV2300 detected but cannot connect
 
 Another program (e.g. **BQ Studio**) likely has the EV2300 HID handle open. Close it and run `scan` again. Only one program can use the EV2300 at a time.
