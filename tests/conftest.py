@@ -287,8 +287,8 @@ def ev2300():
         buf[5] = 0x00
         buf[6] = 2  # payload len
         buf[7] = 0x10  # i2c_addr byte
-        buf[8] = 0x34  # low byte of value
-        buf[9] = 0x12  # high byte of value (value = 0x1234)
+        buf[8] = 0x12  # high byte of value (big-endian, value = 0x1234)
+        buf[9] = 0x34  # low byte of value
         # parse_response checks: raw[length-1] == crc8(raw[2:length-1])
         buf[11] = crc8(buf[2:11])
         buf[10] = 0x55  # not used in this position for this length

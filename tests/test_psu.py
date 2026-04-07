@@ -27,43 +27,55 @@ class TestHPE3631A_EnableOutput:
 
 class TestHPE3631A_SelectChannel:
     def test_select_p6v(self, hp_e3631a):
+        from lab_instruments.src.hp_e3631a import HP_E3631A
+
         psu, mi = hp_e3631a
-        psu.select_channel("positive_6_volts_channel")
+        psu.select_channel(HP_E3631A.Channel.POSITIVE_6V)
         mi.write.assert_called_with("INSTRUMENT:SELECT P6V")
 
     def test_select_p25v(self, hp_e3631a):
+        from lab_instruments.src.hp_e3631a import HP_E3631A
+
         psu, mi = hp_e3631a
-        psu.select_channel("positive_25_volts_channel")
+        psu.select_channel(HP_E3631A.Channel.POSITIVE_25V)
         mi.write.assert_called_with("INSTRUMENT:SELECT P25V")
 
     def test_select_n25v(self, hp_e3631a):
+        from lab_instruments.src.hp_e3631a import HP_E3631A
+
         psu, mi = hp_e3631a
-        psu.select_channel("negative_25_volts_channel")
+        psu.select_channel(HP_E3631A.Channel.NEGATIVE_25V)
         mi.write.assert_called_with("INSTRUMENT:SELECT N25V")
 
     def test_invalid_channel_raises(self, hp_e3631a):
         psu, mi = hp_e3631a
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeError):
             psu.select_channel("bad")
 
 
 class TestHPE3631A_SetOutputChannel:
     def test_explicit_current(self, hp_e3631a):
+        from lab_instruments.src.hp_e3631a import HP_E3631A
+
         psu, mi = hp_e3631a
-        psu.set_output_channel("positive_6_volts_channel", 3.3, 0.5)
+        psu.set_output_channel(HP_E3631A.Channel.POSITIVE_6V, 3.3, 0.5)
         mi.write.assert_called_with("APPLY P6V, 3.3, 0.5")
 
     def test_default_current_p6v(self, hp_e3631a):
+        from lab_instruments.src.hp_e3631a import HP_E3631A
+
         psu, mi = hp_e3631a
-        psu.set_output_channel("positive_6_volts_channel", 5.0)
-        # Default current limit for P6V is 1
-        mi.write.assert_called_with("APPLY P6V, 5.0, 1")
+        psu.set_output_channel(HP_E3631A.Channel.POSITIVE_6V, 5.0)
+        # Default current limit for P6V is 1.0
+        mi.write.assert_called_with("APPLY P6V, 5.0, 1.0")
 
 
 class TestHPE3631A_SetVoltage:
     def test_select_before_voltage(self, hp_e3631a):
+        from lab_instruments.src.hp_e3631a import HP_E3631A
+
         psu, mi = hp_e3631a
-        psu.set_voltage("positive_6_volts_channel", 3.3)
+        psu.set_voltage(HP_E3631A.Channel.POSITIVE_6V, 3.3)
         cmds = _writes(mi)
         assert "INSTRUMENT:SELECT P6V" in cmds
         assert "VOLTAGE 3.3" in cmds
@@ -72,15 +84,19 @@ class TestHPE3631A_SetVoltage:
 
 class TestHPE3631A_MeasureVoltage:
     def test_returns_float(self, hp_e3631a):
+        from lab_instruments.src.hp_e3631a import HP_E3631A
+
         psu, mi = hp_e3631a
         mi.query.return_value = "5.0023"
-        result = psu.measure_voltage("positive_6_volts_channel")
+        result = psu.measure_voltage(HP_E3631A.Channel.POSITIVE_6V)
         assert result == pytest.approx(5.0023, rel=1e-6)
 
     def test_select_before_query(self, hp_e3631a):
+        from lab_instruments.src.hp_e3631a import HP_E3631A
+
         psu, mi = hp_e3631a
         mi.query.return_value = "5.0"
-        psu.measure_voltage("positive_6_volts_channel")
+        psu.measure_voltage(HP_E3631A.Channel.POSITIVE_6V)
         # select_channel sends a write, measure_voltage sends a query
         assert "INSTRUMENT:SELECT P6V" in _writes(mi)
         mi.query.assert_called_with("MEASURE:VOLTAGE?")

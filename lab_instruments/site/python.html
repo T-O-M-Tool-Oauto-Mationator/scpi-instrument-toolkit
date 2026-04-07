@@ -14,7 +14,7 @@
         <link rel="prev" href="logging.html">
       
       
-        <link rel="next" href="api/psu.html">
+        <link rel="next" href="api/enums.html">
       
       
         
@@ -315,6 +315,25 @@
         </a>
       </li>
     
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="labview.html" class="md-tabs__link">
+        
+  
+  
+    
+  
+  LabVIEW Bridge
+
+      </a>
+    </li>
   
 
       
@@ -1036,6 +1055,67 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#instrument-enums" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Instrument enums
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Instrument enums">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#waveformtype-awg-waveform-shapes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        WaveformType — AWG waveform shapes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dmmmode-measurement-modes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DMMMode — measurement modes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#couplingmode-oscilloscope-input-coupling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CouplingMode — oscilloscope input coupling
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#triggeredge-trigger-slope" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TriggerEdge — trigger slope
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#using-find_all-in-scripts" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1061,6 +1141,34 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="api/enums.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Enumerations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -1276,6 +1384,33 @@
   
   
     <li class="md-nav__item">
+      <a href="labview.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LabVIEW Bridge
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="architecture.html" class="md-nav__link">
         
   
@@ -1411,6 +1546,67 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#instrument-enums" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Instrument enums
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Instrument enums">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#waveformtype-awg-waveform-shapes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        WaveformType — AWG waveform shapes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dmmmode-measurement-modes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DMMMode — measurement modes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#couplingmode-oscilloscope-input-coupling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CouplingMode — oscilloscope input coupling
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#triggeredge-trigger-slope" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TriggerEdge — trigger slope
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#using-find_all-in-scripts" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1499,80 +1695,150 @@
 </code></pre></div>
 <p>Passing a plain string or integer raises <code>TypeError</code> immediately with a clear message telling you the valid members — no silent misbehaviour.</p>
 <h3 id="single-channel-instruments">Single-channel instruments<a class="headerlink" href="#single-channel-instruments" title="Permanent link">&para;</a></h3>
-<p>Single-channel instruments (e.g. <code>MATRIX_MPS6010H</code>, <code>HP_34401A</code>) take no channel argument:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">dmm</span> <span class="o">=</span> <span class="n">instruments</span><span class="p">[</span><span class="s2">&quot;dmm&quot;</span><span class="p">]</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="n">v</span> <span class="o">=</span> <span class="n">dmm</span><span class="o">.</span><span class="n">measure_voltage</span><span class="p">()</span>   <span class="c1"># no channel needed</span>
+<p>Single-channel instruments (e.g. <code>MATRIX_MPS6010H</code>) take no channel argument:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">lab_instruments</span><span class="w"> </span><span class="kn">import</span> <span class="n">find_all</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="n">instr</span> <span class="o">=</span> <span class="n">find_all</span><span class="p">()</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="n">psu</span> <span class="o">=</span> <span class="n">instr</span><span class="p">[</span><span class="s2">&quot;psu&quot;</span><span class="p">]</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="n">v</span> <span class="o">=</span> <span class="n">psu</span><span class="o">.</span><span class="n">measure_voltage</span><span class="p">()</span>   <span class="c1"># no channel argument needed</span>
+</code></pre></div>
+<hr />
+<h2 id="instrument-enums">Instrument enums<a class="headerlink" href="#instrument-enums" title="Permanent link">&para;</a></h2>
+<p>Domain-specific parameters (waveform type, DMM mode, coupling, trigger edge) are typed enumerations. Pass them directly to driver methods — they compare equal to their string values so no conversion is needed.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">lab_instruments</span><span class="w"> </span><span class="kn">import</span> <span class="n">WaveformType</span><span class="p">,</span> <span class="n">DMMMode</span><span class="p">,</span> <span class="n">CouplingMode</span><span class="p">,</span> <span class="n">TriggerEdge</span>
+</code></pre></div>
+<h3 id="waveformtype-awg-waveform-shapes">WaveformType — AWG waveform shapes<a class="headerlink" href="#waveformtype-awg-waveform-shapes" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">lab_instruments</span><span class="w"> </span><span class="kn">import</span> <span class="n">find_all</span><span class="p">,</span> <span class="n">WaveformType</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="n">instr</span> <span class="o">=</span> <span class="n">find_all</span><span class="p">()</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="n">awg</span> <span class="o">=</span> <span class="n">instr</span><span class="p">[</span><span class="s2">&quot;awg&quot;</span><span class="p">]</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="n">awg</span><span class="o">.</span><span class="n">set_waveform</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">WaveformType</span><span class="o">.</span><span class="n">SIN</span><span class="p">,</span> <span class="n">frequency</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">amplitude</span><span class="o">=</span><span class="mf">2.0</span><span class="p">)</span>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="n">awg</span><span class="o">.</span><span class="n">set_waveform</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">WaveformType</span><span class="o">.</span><span class="n">SQU</span><span class="p">,</span> <span class="n">frequency</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span> <span class="n">amplitude</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
+</code></pre></div>
+<p>Resolve user input at runtime with <code>from_alias</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="n">WaveformType</span><span class="o">.</span><span class="n">from_alias</span><span class="p">(</span><span class="s2">&quot;sine&quot;</span><span class="p">)</span>    <span class="c1"># → WaveformType.SIN</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="n">WaveformType</span><span class="o">.</span><span class="n">from_alias</span><span class="p">(</span><span class="s2">&quot;square&quot;</span><span class="p">)</span>  <span class="c1"># → WaveformType.SQU</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="n">WaveformType</span><span class="o">.</span><span class="n">from_alias</span><span class="p">(</span><span class="s2">&quot;SIN&quot;</span><span class="p">)</span>     <span class="c1"># → WaveformType.SIN</span>
+</code></pre></div>
+<h3 id="dmmmode-measurement-modes">DMMMode — measurement modes<a class="headerlink" href="#dmmmode-measurement-modes" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">lab_instruments</span><span class="w"> </span><span class="kn">import</span> <span class="n">find_all</span><span class="p">,</span> <span class="n">DMMMode</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="n">instr</span> <span class="o">=</span> <span class="n">find_all</span><span class="p">()</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="n">dmm</span> <span class="o">=</span> <span class="n">instr</span><span class="p">[</span><span class="s2">&quot;dmm&quot;</span><span class="p">]</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="n">dmm</span><span class="o">.</span><span class="n">configure_dc_voltage</span><span class="p">()</span>              <span class="c1"># configure then read separately</span>
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="n">v</span> <span class="o">=</span> <span class="n">dmm</span><span class="o">.</span><span class="n">measure_dc_voltage</span><span class="p">()</span>           <span class="c1"># configure + read in one call</span>
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a><span class="n">r</span> <span class="o">=</span> <span class="n">dmm</span><span class="o">.</span><span class="n">measure_resistance_2wire</span><span class="p">()</span>
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a><span class="c1"># Resolve REPL shorthand to a DMMMode member</span>
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a><span class="n">mode</span> <span class="o">=</span> <span class="n">DMMMode</span><span class="o">.</span><span class="n">from_alias</span><span class="p">(</span><span class="s2">&quot;vdc&quot;</span><span class="p">)</span>        <span class="c1"># → DMMMode.DC_VOLTAGE</span>
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a><span class="n">method_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;measure_</span><span class="si">{</span><span class="n">mode</span><span class="si">}</span><span class="s2">&quot;</span>         <span class="c1"># → &quot;measure_dc_voltage&quot;</span>
+</code></pre></div>
+<h3 id="couplingmode-oscilloscope-input-coupling">CouplingMode — oscilloscope input coupling<a class="headerlink" href="#couplingmode-oscilloscope-input-coupling" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">lab_instruments</span><span class="w"> </span><span class="kn">import</span> <span class="n">find_all</span><span class="p">,</span> <span class="n">CouplingMode</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="n">instr</span> <span class="o">=</span> <span class="n">find_all</span><span class="p">()</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="n">scope</span> <span class="o">=</span> <span class="n">instr</span><span class="p">[</span><span class="s2">&quot;scope&quot;</span><span class="p">]</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="n">scope</span><span class="o">.</span><span class="n">set_coupling</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">CouplingMode</span><span class="o">.</span><span class="n">DC</span><span class="p">)</span>
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="n">scope</span><span class="o">.</span><span class="n">set_coupling</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">CouplingMode</span><span class="o">.</span><span class="n">AC</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="triggeredge-trigger-slope">TriggerEdge — trigger slope<a class="headerlink" href="#triggeredge-trigger-slope" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">lab_instruments</span><span class="w"> </span><span class="kn">import</span> <span class="n">TriggerEdge</span><span class="p">,</span> <span class="n">TriggerMode</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="n">scope</span><span class="o">.</span><span class="n">configure_trigger</span><span class="p">(</span><span class="n">channel</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">slope</span><span class="o">=</span><span class="n">TriggerEdge</span><span class="o">.</span><span class="n">RISE</span><span class="p">)</span>
 </code></pre></div>
 <hr />
 <h2 id="using-find_all-in-scripts">Using <code>find_all()</code> in scripts<a class="headerlink" href="#using-find_all-in-scripts" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">lab_instruments</span><span class="w"> </span><span class="kn">import</span> <span class="n">find_all</span><span class="p">,</span> <span class="n">HP_E3631A</span><span class="p">,</span> <span class="n">HP_34401A</span>
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="n">instr</span> <span class="o">=</span> <span class="n">find_all</span><span class="p">()</span>
-<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>
-<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="n">psu</span><span class="p">:</span> <span class="n">HP_E3631A</span> <span class="o">=</span> <span class="n">instr</span><span class="p">[</span><span class="s2">&quot;psu&quot;</span><span class="p">]</span>
-<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="n">dmm</span><span class="p">:</span> <span class="n">HP_34401A</span> <span class="o">=</span> <span class="n">instr</span><span class="p">[</span><span class="s2">&quot;dmm&quot;</span><span class="p">]</span>
-<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>
-<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="n">psu</span><span class="o">.</span><span class="n">set_output_channel</span><span class="p">(</span><span class="n">HP_E3631A</span><span class="o">.</span><span class="n">Channel</span><span class="o">.</span><span class="n">POSITIVE_6V</span><span class="p">,</span> <span class="n">voltage</span><span class="o">=</span><span class="mf">5.0</span><span class="p">)</span>
-<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="n">psu</span><span class="o">.</span><span class="n">enable_output</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
-<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>
-<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a><span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
-<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a><span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.5</span><span class="p">)</span>
-<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>
-<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a><span class="n">v_psu</span> <span class="o">=</span> <span class="n">psu</span><span class="o">.</span><span class="n">measure_voltage</span><span class="p">(</span><span class="n">HP_E3631A</span><span class="o">.</span><span class="n">Channel</span><span class="o">.</span><span class="n">POSITIVE_6V</span><span class="p">)</span>
-<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a><span class="n">v_dmm</span> <span class="o">=</span> <span class="n">dmm</span><span class="o">.</span><span class="n">measure_voltage</span><span class="p">()</span>
-<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a>
-<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;PSU reads: </span><span class="si">{</span><span class="n">v_psu</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2"> V&quot;</span><span class="p">)</span>
-<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;DMM reads: </span><span class="si">{</span><span class="n">v_dmm</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2"> V&quot;</span><span class="p">)</span>
-<a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error:     </span><span class="si">{</span><span class="nb">abs</span><span class="p">(</span><span class="n">v_psu</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">v_dmm</span><span class="p">)</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">1000</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> mV&quot;</span><span class="p">)</span>
-<a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a>
-<a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a><span class="n">psu</span><span class="o">.</span><span class="n">enable_output</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">lab_instruments</span><span class="w"> </span><span class="kn">import</span> <span class="n">find_all</span><span class="p">,</span> <span class="n">HP_E3631A</span><span class="p">,</span> <span class="n">HP_34401A</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="n">instr</span> <span class="o">=</span> <span class="n">find_all</span><span class="p">()</span>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="n">psu</span><span class="p">:</span> <span class="n">HP_E3631A</span> <span class="o">=</span> <span class="n">instr</span><span class="p">[</span><span class="s2">&quot;psu&quot;</span><span class="p">]</span>
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a><span class="n">dmm</span><span class="p">:</span> <span class="n">HP_34401A</span> <span class="o">=</span> <span class="n">instr</span><span class="p">[</span><span class="s2">&quot;dmm&quot;</span><span class="p">]</span>
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a><span class="n">psu</span><span class="o">.</span><span class="n">set_output_channel</span><span class="p">(</span><span class="n">HP_E3631A</span><span class="o">.</span><span class="n">Channel</span><span class="o">.</span><span class="n">POSITIVE_6V</span><span class="p">,</span> <span class="n">voltage</span><span class="o">=</span><span class="mf">5.0</span><span class="p">)</span>
+<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a><span class="n">psu</span><span class="o">.</span><span class="n">enable_output</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>
+<a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a><span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a><span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.5</span><span class="p">)</span>
+<a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a>
+<a id="__codelineno-11-14" name="__codelineno-11-14" href="#__codelineno-11-14"></a><span class="n">v_psu</span> <span class="o">=</span> <span class="n">psu</span><span class="o">.</span><span class="n">measure_voltage</span><span class="p">(</span><span class="n">HP_E3631A</span><span class="o">.</span><span class="n">Channel</span><span class="o">.</span><span class="n">POSITIVE_6V</span><span class="p">)</span>
+<a id="__codelineno-11-15" name="__codelineno-11-15" href="#__codelineno-11-15"></a><span class="n">v_dmm</span> <span class="o">=</span> <span class="n">dmm</span><span class="o">.</span><span class="n">measure_dc_voltage</span><span class="p">()</span>
+<a id="__codelineno-11-16" name="__codelineno-11-16" href="#__codelineno-11-16"></a>
+<a id="__codelineno-11-17" name="__codelineno-11-17" href="#__codelineno-11-17"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;PSU reads: </span><span class="si">{</span><span class="n">v_psu</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2"> V&quot;</span><span class="p">)</span>
+<a id="__codelineno-11-18" name="__codelineno-11-18" href="#__codelineno-11-18"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;DMM reads: </span><span class="si">{</span><span class="n">v_dmm</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2"> V&quot;</span><span class="p">)</span>
+<a id="__codelineno-11-19" name="__codelineno-11-19" href="#__codelineno-11-19"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error:     </span><span class="si">{</span><span class="nb">abs</span><span class="p">(</span><span class="n">v_psu</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">v_dmm</span><span class="p">)</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">1000</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> mV&quot;</span><span class="p">)</span>
+<a id="__codelineno-11-20" name="__codelineno-11-20" href="#__codelineno-11-20"></a>
+<a id="__codelineno-11-21" name="__codelineno-11-21" href="#__codelineno-11-21"></a><span class="n">psu</span><span class="o">.</span><span class="n">enable_output</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
 </code></pre></div>
 <hr />
 <h2 id="where-to-find-more">Where to find more<a class="headerlink" href="#where-to-find-more" title="Permanent link">&para;</a></h2>
-<p>The driver source files are the canonical reference for every method, valid range, and error condition:</p>
+<p>See the <a href="api/base.html">API reference</a> for full method signatures generated directly from driver source. All drivers are documented with Google-style docstrings.</p>
 <table>
 <thead>
 <tr>
 <th>Driver</th>
-<th>File</th>
+<th>Instrument</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>HP_E3631A</code></td>
-<td><code>lab_instruments/src/hp_e3631a.py</code></td>
-</tr>
-<tr>
-<td><code>MATRIX_MPS6010H</code></td>
-<td><code>lab_instruments/src/matrix_mps6010h.py</code></td>
-</tr>
-<tr>
-<td><code>HP_34401A</code></td>
-<td><code>lab_instruments/src/hp_34401a.py</code></td>
+<td>Triple-output PSU (+6 V / ±25 V)</td>
 </tr>
 <tr>
 <td><code>Keysight_EDU36311A</code></td>
-<td><code>lab_instruments/src/keysight_edu36311a.py</code></td>
+<td>Triple-output PSU (+6 V / ±30 V)</td>
+</tr>
+<tr>
+<td><code>MATRIX_MPS6010H</code></td>
+<td>Single-channel PSU (0–60 V / 0–10 A)</td>
+</tr>
+<tr>
+<td><code>HP_34401A</code></td>
+<td>6.5-digit bench DMM</td>
 </tr>
 <tr>
 <td><code>Keysight_EDU34450A</code></td>
-<td><code>lab_instruments/src/keysight_edu34450a.py</code></td>
+<td>5.5-digit bench DMM</td>
+</tr>
+<tr>
+<td><code>Owon_XDM1041</code></td>
+<td>7.5-digit bench DMM</td>
 </tr>
 <tr>
 <td><code>Rigol_DHO804</code></td>
-<td><code>lab_instruments/src/rigol_dho804.py</code></td>
+<td>4-channel oscilloscope</td>
 </tr>
 <tr>
 <td><code>Tektronix_MSO2024</code></td>
-<td><code>lab_instruments/src/tektronix_mso2024.py</code></td>
+<td>4-channel mixed-signal oscilloscope</td>
+</tr>
+<tr>
+<td><code>Keysight_DSOX1204G</code></td>
+<td>4-channel oscilloscope</td>
 </tr>
 <tr>
 <td><code>Keysight_EDU33212A</code></td>
-<td><code>lab_instruments/src/keysight_edu33212a.py</code></td>
+<td>Dual-channel arbitrary waveform generator</td>
+</tr>
+<tr>
+<td><code>BK_4063</code></td>
+<td>Dual-channel arbitrary waveform generator</td>
+</tr>
+<tr>
+<td><code>JDS6600_Generator</code></td>
+<td>DDS signal generator (serial/USB)</td>
 </tr>
 <tr>
 <td><code>NI_PXIe_4139</code></td>
-<td><code>lab_instruments/src/ni_pxie_4139.py</code></td>
+<td>Source measure unit (SMU)</td>
+</tr>
+<tr>
+<td><code>TI_EV2300</code></td>
+<td>USB-to-I2C/SMBus adapter</td>
 </tr>
 </tbody>
 </table>

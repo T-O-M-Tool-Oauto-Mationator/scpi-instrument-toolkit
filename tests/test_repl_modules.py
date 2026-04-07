@@ -426,7 +426,7 @@ class TestDeviceRegistry:
         reg = self._make_registry({"psu1": dev})
         chs = reg.channels_for(dev, "psu")
         assert len(chs) == 3
-        assert sorted(chs) == sorted(dev.CHANNEL_MAP.keys())
+        assert sorted(chs) == [1, 2, 3]
 
     def test_channels_for_psu_single(self):
         dev = MockMPS6010H()

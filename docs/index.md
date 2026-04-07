@@ -120,4 +120,5 @@ examples          # list bundled example scripts
 | [Examples](examples.md) | Bundled example workflows with explanations |
 | [Log & Calc](logging.md) | Measurement log, CSV export, derived calculations |
 | [Instruments](instruments.md) | Supported models and connection setup |
+| [LabVIEW Bridge](labview.md) | Calling instrument drivers from LabVIEW Python Nodes |
 | [Troubleshooting](troubleshooting.md) | PATH issues, NI-VISA errors, managed machine workarounds |
