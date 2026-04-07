@@ -73,7 +73,7 @@ class _DevicePanel(QWidget):
 
     def _disconnect_device(self, name: str) -> None:
         # Route through the dispatcher so the lock is respected
-        self._d.run(f"unscan {name}")
+        self._d.run(f"disconnect {name}")
         if self._main_win:
             self._main_win._after_scan()
             self._main_win._console.log_action(f"disconnect {name}", f"{name} disconnected")

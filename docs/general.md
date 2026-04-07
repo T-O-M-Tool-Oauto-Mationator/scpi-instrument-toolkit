@@ -14,17 +14,34 @@ scan
 
 Instruments are identified by querying `*IDN?` and matched against the [supported instrument list](instruments.md). They are assigned names like `psu1`, `dmm1`, `scope1`, `awg1`. If multiple of the same type are found they are numbered: `psu1`, `psu2`, etc.
 
+Already-connected instruments keep their current state — a re-scan will **not** turn off a PSU that is actively sourcing. Only newly discovered instruments are initialised to safe defaults.
+
 !!! tip
     You don't need to run `scan` manually on startup — the REPL scans automatically when it launches.
 
 ---
 
-## unscan
+## force_scan
+
+Disconnect all instruments, re-scan from scratch, and reset every output to safe defaults (0 V, off).
+
+```
+force_scan
+```
+
+Use this when you want a clean slate — for example, at the start of a new test sequence where you need all instruments back to a known-safe state.
+
+!!! warning
+    This will turn off all instrument outputs. If a PSU is actively sourcing, its output will be disabled and zeroed.
+
+---
+
+## disconnect
 
 Remove a connected instrument from the current session without rescanning.
 
 ```
-unscan <name>
+disconnect <name>
 ```
 
 | Parameter | Required | Description |
@@ -34,7 +51,7 @@ unscan <name>
 The device is removed from the REPL's device list. If it was the active selection, the selection is cleared. Use `scan` to rediscover it.
 
 ```
-unscan psu1    # remove psu1 from the session
+disconnect psu1    # remove psu1 from the session
 ```
 
 !!! note

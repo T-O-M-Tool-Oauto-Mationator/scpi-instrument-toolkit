@@ -673,9 +673,14 @@ class InstrumentRepl(cmd.Cmd):
         self._wait_for_scan()
         self._general.do_scan(arg, self.discovery, self._scan_done)
 
-    def do_unscan(self, arg):
-        """unscan <name>: remove a scanned device from the session"""
-        self._general.do_unscan(arg)
+    def do_force_scan(self, arg):
+        """force-scan: disconnect all and re-scan from scratch (resets outputs to 0)"""
+        self._wait_for_scan()
+        self._general.do_force_scan(arg, self.discovery, self._scan_done)
+
+    def do_disconnect(self, arg):
+        """disconnect <name>: remove a scanned device from the session"""
+        self._general.do_disconnect(arg)
 
     def do_list(self, arg):
         """list: show connected instruments"""
@@ -926,6 +931,7 @@ class InstrumentRepl(cmd.Cmd):
             if arg.strip().lower() == "all":
                 for cmd_name in [
                     "scan",
+                    "force_scan",
                     "list",
                     "use",
                     "status",
@@ -997,7 +1003,8 @@ class InstrumentRepl(cmd.Cmd):
 
         section("GENERAL")
         cmd_line("scan", "discover and connect to instruments")
-        cmd_line("unscan", "remove a device from the session  (unscan <name>)")
+        cmd_line("force_scan", "re-scan from scratch, reset all outputs to 0")
+        cmd_line("disconnect", "remove a device from the session  (disconnect <name>)")
         cmd_line("reload", "restart the REPL process")
         cmd_line("list", "show connected instruments")
         cmd_line("use", "set active instrument  (use <name>)")
@@ -1079,6 +1086,21 @@ class InstrumentRepl(cmd.Cmd):
                 "  - discover and connect to all VISA instruments",
                 "  - instruments are assigned names: psu1, awg1, dmm1, scope1, …",
                 "  - re-run at any time to pick up newly connected devices",
+                "  - already-connected instruments keep their current state",
+                "",
+                "  see also: force_scan (resets all outputs to 0)",
+            ]
+        )
+
+    def help_force_scan(self):
+        self._general.print_colored_usage(
+            [
+                "# FORCE_SCAN",
+                "",
+                "force_scan",
+                "  - disconnect all instruments and re-scan from scratch",
+                "  - all outputs are set to safe defaults (0 V, off)",
+                "  - use when you want a clean slate",
             ]
         )
 
