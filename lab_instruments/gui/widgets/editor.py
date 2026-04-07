@@ -684,24 +684,35 @@ class ScpiEditor(QWidget):
             self._debug_update_position()
 
     def _debug_continue(self) -> None:
-        """Execute until next breakpoint or end."""
+        """Execute until next breakpoint or end (QTimer-based to keep event loop alive)."""
         if not self._debug_state:
             return
-        st = self._debug_state
-        # Execute current line first
         self._debug_step()
-        # Keep stepping until breakpoint or end
-        while self._debugging and st["idx"] < len(st["lines"]):
-            if (st["idx"] + 1) in st["breakpoints"]:
-                self._debug_update_position()
-                return
-            line = st["lines"][st["idx"]]
-            if line != "__NOP__":
-                self._debug_exec_line(line)
+        self._debug_schedule_continue()
+
+    def _debug_schedule_continue(self) -> None:
+        QTimer.singleShot(0, self._debug_continue_step)
+
+    def _debug_continue_step(self) -> None:
+        if not self._debugging or not self._debug_state:
+            return
+        st = self._debug_state
+        if st["idx"] >= len(st["lines"]):
+            self._debug_stop()
+            return
+        if (st["idx"] + 1) in st["breakpoints"]:
+            self._debug_update_position()
+            return
+        line = st["lines"][st["idx"]]
+        if line != "__NOP__":
+            self._debug_exec_line(line)
+        st["idx"] += 1
+        while st["idx"] < len(st["lines"]) and st["lines"][st["idx"]] == "__NOP__":
             st["idx"] += 1
-            while st["idx"] < len(st["lines"]) and st["lines"][st["idx"]] == "__NOP__":
-                st["idx"] += 1
-        self._debug_stop()
+        if st["idx"] >= len(st["lines"]):
+            self._debug_stop()
+        else:
+            self._debug_schedule_continue()
 
     def _debug_back(self) -> None:
         """Move back one line (state NOT reversed)."""

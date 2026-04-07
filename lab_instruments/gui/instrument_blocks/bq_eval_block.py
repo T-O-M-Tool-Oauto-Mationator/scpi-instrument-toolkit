@@ -9,7 +9,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import QObject, Qt, QThread, QTimer, Signal, Slot
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -160,6 +160,37 @@ _BIT_UNKNOWN_SS = (
     "border-radius: 3px; padding: 2px 4px; font-size: 10px; font-weight: bold; "
     "min-width: 52px; }"
 )
+
+
+class _IoData:
+    """Holds raw data collected during a background I/O read cycle (no UI refs)."""
+
+    __slots__ = ("g1", "g2", "off", "reg_values", "vti_values")
+
+    def __init__(self) -> None:
+        self.g1: int | None = None
+        self.g2: int | None = None
+        self.off: int | None = None
+        self.reg_values: dict[int, int] = {}
+        self.vti_values: dict[int, int] = {}
+
+
+class _BQIoWorker(QObject):
+    """Executes BQ I/O reads on a worker thread and signals completion."""
+
+    done = Signal(object)  # emits _IoData
+
+    def __init__(self, fetch_fn, parent=None) -> None:
+        super().__init__(parent)
+        self._fetch_fn = fetch_fn
+
+    @Slot()
+    def run(self) -> None:
+        try:
+            result = self._fetch_fn()
+        except Exception:
+            result = _IoData()
+        self.done.emit(result)
 
 
 class _BQEvalBlock(QFrame):
@@ -587,18 +618,41 @@ class _BQEvalBlock(QFrame):
         except ValueError:
             self._rw_result.setText("Invalid address")
             return
-        val = self._read_byte(addr)
-        if val is not None:
-            self._rw_data.setText(f"0x{val:02X}")
-            self._rw_result.setText(f"Read: 0x{val:02X} ({val})")
-            self._rw_result.setStyleSheet("color: #155724; font-size: 10px;")
-            # Update cache if it's a known register
-            if addr in self._reg_hex_edits:
-                self._register_cache[addr] = val
-                self._update_register_display(addr)
-        else:
-            self._rw_result.setText("Read failed")
-            self._rw_result.setStyleSheet("color: #c0392b; font-size: 10px;")
+        rw_btn = getattr(self, "_rw_read_btn", None)
+        if rw_btn:
+            rw_btn.setEnabled(False)
+
+        def _io() -> _IoData:
+            data = _IoData()
+            val = self._read_byte(addr)
+            if val is not None:
+                data.reg_values[addr] = val
+            return data
+
+        def _apply(data: _IoData) -> None:
+            if rw_btn:
+                rw_btn.setEnabled(True)
+            val = data.reg_values.get(addr)
+            if val is not None:
+                self._rw_data.setText(f"0x{val:02X}")
+                self._rw_result.setText(f"Read: 0x{val:02X} ({val})")
+                self._rw_result.setStyleSheet("color: #155724; font-size: 10px;")
+                if addr in self._reg_hex_edits:
+                    self._register_cache[addr] = val
+                    self._update_register_display(addr)
+            else:
+                self._rw_result.setText("Read failed")
+                self._rw_result.setStyleSheet("color: #c0392b; font-size: 10px;")
+
+        thread = QThread(self)
+        worker = _BQIoWorker(_io)
+        worker.moveToThread(thread)
+        thread.started.connect(worker.run)
+        worker.done.connect(_apply, Qt.ConnectionType.QueuedConnection)
+        worker.done.connect(lambda _: thread.quit(), Qt.ConnectionType.QueuedConnection)
+        thread.finished.connect(thread.deleteLater)
+        thread.finished.connect(worker.deleteLater)
+        thread.start()
 
     def _rw_write_byte(self) -> None:
         try:
@@ -607,52 +661,105 @@ class _BQEvalBlock(QFrame):
         except ValueError:
             self._rw_result.setText("Invalid address/data")
             return
-        ok = self._write_byte(addr, data)
-        if ok:
-            self._rw_result.setText(f"Wrote 0x{data:02X} to 0x{addr:02X}")
-            self._rw_result.setStyleSheet("color: #155724; font-size: 10px;")
-            if addr in self._reg_hex_edits:
-                self._register_cache[addr] = data
-                self._update_register_display(addr)
-        else:
-            self._rw_result.setText("Write failed")
-            self._rw_result.setStyleSheet("color: #c0392b; font-size: 10px;")
+        rw_btn = getattr(self, "_rw_write_btn", None)
+        if rw_btn:
+            rw_btn.setEnabled(False)
+
+        def _io() -> _IoData:
+            result = _IoData()
+            ok = self._write_byte(addr, data)
+            if ok:
+                result.reg_values[addr] = data
+            return result
+
+        def _apply(result: _IoData) -> None:
+            if rw_btn:
+                rw_btn.setEnabled(True)
+            if addr in result.reg_values:
+                self._rw_result.setText(f"Wrote 0x{data:02X} to 0x{addr:02X}")
+                self._rw_result.setStyleSheet("color: #155724; font-size: 10px;")
+                if addr in self._reg_hex_edits:
+                    self._register_cache[addr] = data
+                    self._update_register_display(addr)
+            else:
+                self._rw_result.setText("Write failed")
+                self._rw_result.setStyleSheet("color: #c0392b; font-size: 10px;")
+
+        thread = QThread(self)
+        worker = _BQIoWorker(_io)
+        worker.moveToThread(thread)
+        thread.started.connect(worker.run)
+        worker.done.connect(_apply, Qt.ConnectionType.QueuedConnection)
+        worker.done.connect(lambda _: thread.quit(), Qt.ConnectionType.QueuedConnection)
+        thread.finished.connect(thread.deleteLater)
+        thread.finished.connect(worker.deleteLater)
+        thread.start()
 
     # -- Actions: Read All Registers -------------------------------------------
 
-    def _read_all_registers(self) -> None:
-        # Read ADC gain/offset first
-        g1 = self._read_byte(REG_ADCGAIN1)
-        g2 = self._read_byte(REG_ADCGAIN2)
-        off = self._read_byte(REG_ADCOFFSET)
-        if g1 is not None and g2 is not None:
-            gain_uV = 365 + (((g1 & 0x0C) << 1) | ((g2 & 0xE0) >> 5))
-            self._adc_gain_input.setText(str(gain_uV))
-        if off is not None:
-            offset_mV = struct.unpack("b", bytes([off]))[0]
-            self._adc_offset_input.setText(str(offset_mV))
-
-        # Read all config registers (byte reads)
+    def _fetch_all_io(self) -> _IoData:
+        """Perform all HID I/O reads with NO Qt widget calls. Safe from a background thread."""
+        data = _IoData()
+        data.g1 = self._read_byte(REG_ADCGAIN1)
+        data.g2 = self._read_byte(REG_ADCGAIN2)
+        data.off = self._read_byte(REG_ADCOFFSET)
         for rdef in REGISTER_DEFS:
             val = self._read_byte(rdef.addr)
             if val is not None:
-                self._register_cache[rdef.addr] = val
-                self._update_register_display(rdef.addr)
-
-        # Sync base config combos from register cache
-        self._sync_combos_from_cache()
-
-        # Read voltage/temp/CC registers (word reads)
+                data.reg_values[rdef.addr] = val
         for reg in VTI_REGS:
             val = self._read_word(reg)
             if val is not None:
-                self._vti_cache[reg] = val
+                data.vti_values[reg] = val
+        return data
 
+    def _apply_io_data(self, data: _IoData, log: bool = True) -> None:
+        """Apply results from an I/O cycle to the UI. Must run on the main thread."""
+        if data.g1 is not None and data.g2 is not None:
+            gain_uV = 365 + (((data.g1 & 0x0C) << 1) | ((data.g2 & 0xE0) >> 5))
+            self._adc_gain_input.setText(str(gain_uV))
+        if data.off is not None:
+            offset_mV = struct.unpack("b", bytes([data.off]))[0]
+            self._adc_offset_input.setText(str(offset_mV))
+        for addr, val in data.reg_values.items():
+            self._register_cache[addr] = val
+            self._update_register_display(addr)
+        self._sync_combos_from_cache()
+        for reg, val in data.vti_values.items():
+            self._vti_cache[reg] = val
         self._update_vti_table()
+        if log:
+            con = self._con()
+            if con:
+                con.log_action(f"{self._ev} read_device", "All registers read")
 
-        con = self._con()
-        if con:
-            con.log_action(f"{self._ev} read_device", "All registers read")
+    def _run_io_bg(self, btn: QPushButton | None = None, log: bool = True) -> None:
+        """Run a full I/O read cycle in a background thread, apply results on main thread."""
+        if getattr(self, "_scan_io_running", False):
+            return
+        self._scan_io_running = True
+        if btn is not None:
+            btn.setEnabled(False)
+        thread = QThread(self)
+        worker = _BQIoWorker(self._fetch_all_io)
+        worker.moveToThread(thread)
+        thread.started.connect(worker.run)
+
+        def _done(data: _IoData) -> None:
+            self._scan_io_running = False
+            if btn is not None:
+                btn.setEnabled(True)
+            self._apply_io_data(data, log=log)
+            thread.quit()
+
+        worker.done.connect(_done, Qt.ConnectionType.QueuedConnection)
+        thread.finished.connect(thread.deleteLater)
+        thread.finished.connect(worker.deleteLater)
+        thread.start()
+
+    def _read_all_registers(self) -> None:
+        """Trigger a background I/O read. Called from 'Read Device' button."""
+        self._run_io_bg(btn=getattr(self, "_read_btn", None), log=True)
 
     def _sync_combos_from_cache(self) -> None:
         """Update combo boxes to reflect cached register values."""
@@ -709,13 +816,29 @@ class _BQEvalBlock(QFrame):
         self._scan_btn.setEnabled(True)
 
     def _scan_tick(self) -> None:
-        self._read_all_registers()
-        if self._logging and self._log_writer:
-            row = [time.strftime("%H:%M:%S")]
-            for reg in VTI_REGS:
-                raw = self._vti_cache.get(reg)
-                row.append(str(raw) if raw is not None else "")
-            self._log_writer.writerow(row)
+        if getattr(self, "_scan_io_running", False):
+            return  # previous tick still running, skip
+        self._scan_io_running = True
+        thread = QThread(self)
+        worker = _BQIoWorker(self._fetch_all_io)
+        worker.moveToThread(thread)
+        thread.started.connect(worker.run)
+
+        def _done(data: _IoData) -> None:
+            self._scan_io_running = False
+            self._apply_io_data(data, log=False)
+            if self._logging and self._log_writer:
+                row = [time.strftime("%H:%M:%S")]
+                for reg in VTI_REGS:
+                    raw = self._vti_cache.get(reg)
+                    row.append(str(raw) if raw is not None else "")
+                self._log_writer.writerow(row)
+            thread.quit()
+
+        worker.done.connect(_done, Qt.ConnectionType.QueuedConnection)
+        thread.finished.connect(thread.deleteLater)
+        thread.finished.connect(worker.deleteLater)
+        thread.start()
 
     # -- Actions: Logging ------------------------------------------------------
 

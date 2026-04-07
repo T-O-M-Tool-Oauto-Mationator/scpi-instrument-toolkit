@@ -51,10 +51,7 @@ class _DevicePanel(QWidget):
     def _on_scan(self) -> None:
         if self._main_win and hasattr(self._main_win, "_on_scan"):
             self._main_win._on_scan()
-        else:
-            # Fallback: blocking scan
-            self._d.run("scan")
-            self.refresh()
+        # No fallback: blocking scan on main thread would freeze UI
 
     def _on_item_click(self, item: QListWidgetItem) -> None:
         name = item.data(Qt.ItemDataRole.UserRole)
@@ -75,10 +72,8 @@ class _DevicePanel(QWidget):
             self._disconnect_device(name)
 
     def _disconnect_device(self, name: str) -> None:
-        dev = self._d.device(name)
-        if dev and hasattr(dev, "disconnect"):
-            dev.disconnect()
-        self._d.registry.devices.pop(name, None)
+        # Route through the dispatcher so the lock is respected
+        self._d.run(f"unscan {name}")
         if self._main_win:
             self._main_win._after_scan()
             self._main_win._console.log_action(f"disconnect {name}", f"{name} disconnected")

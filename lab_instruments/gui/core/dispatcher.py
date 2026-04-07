@@ -71,9 +71,17 @@ class _Dispatcher:
     def device(self, name: str) -> Any | None:
         return self.registry.devices.get(name)
 
+    def is_busy(self) -> bool:
+        """Return True if the dispatcher lock is currently held by a background thread."""
+        acquired = self._lock.acquire(blocking=False)
+        if acquired:
+            self._lock.release()
+        return not acquired
+
     def devices_of_type(self, base: str) -> list[tuple[str, str]]:
+        devices = dict(self.registry.devices)  # snapshot to avoid race with scan worker
         result = []
-        for name in sorted(self.registry.devices):
+        for name in sorted(devices):
             if re.sub(r"\d+$", "", name) == base:
                 result.append((name, self.registry.display_name(name)))
         return result

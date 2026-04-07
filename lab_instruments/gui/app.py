@@ -26,7 +26,7 @@ from lab_instruments.repl.script_engine.expander import expand_script_lines
 from lab_instruments.repl.script_engine.runner import run_expanded
 
 from .core.dispatcher import _Dispatcher
-from .core.helpers import _ansi_to_html
+from .core.helpers import _ansi_to_html, _esc
 from .core.workspace import Workspace
 from .dialogs.command_palette import ActionItem, CommandPalette
 from .instrument_blocks.awg_block import _AWGBlock
@@ -88,6 +88,7 @@ class _MainWindow(QMainWindow):
         self._scope_closed: set[str] = set()
         self._open_files: dict[str, QWidget] = {}
         self._docs_tabs: dict[str, QWidget] = {}
+        self._last_device_count: int = 0
         self._workspace = Workspace()
 
         # Restore last workspace folder
@@ -230,11 +231,12 @@ class _MainWindow(QMainWindow):
             if on_done:
                 on_done(result)
             thread.quit()
-            thread.wait()
-            thread.deleteLater()
-            worker.deleteLater()
 
-        worker.finished.connect(_finished)
+        # QueuedConnection ensures _finished runs on the main thread even if
+        # PySide6 would otherwise use a DirectConnection for plain callables.
+        worker.finished.connect(_finished, Qt.ConnectionType.QueuedConnection)
+        thread.finished.connect(thread.deleteLater)
+        thread.finished.connect(worker.deleteLater)
         thread.start()
 
     # -- Workspace / file handling -------------------------------------------
@@ -345,11 +347,16 @@ class _MainWindow(QMainWindow):
         self._console.log_action(f"script {mode} {name}", f"Running {name}...")
 
         if ext == ".py":
-            output = self._d.run(f"python {path}")
-            if output.strip():
-                self._console.log(_ansi_to_html(output))
-            self._console.log(f"<span style='color:#155724'>[DONE] {name}</span>")
-            self._on_console_command()
+            self._console._input.setEnabled(False)
+
+            def _py_done(output):
+                if output.strip():
+                    self._console.log(_ansi_to_html(output))
+                self._console.log(f"<span style='color:#155724'>[DONE] {name}</span>")
+                self._console._input.setEnabled(True)
+                self._on_console_command()
+
+            self._run_in_background(lambda: self._d.run(f"python {path}"), _py_done, f"Running {name}...")
             return
 
         # .scpi files
@@ -394,30 +401,26 @@ class _MainWindow(QMainWindow):
                 editor.start_debug(clean_lines, clean_sources, breakpoints)
                 return
 
-        # Normal run (not debug)
-        try:
-            buf = io.StringIO()
-            old_stdout = self._d._repl.stdout
-            self._d._repl.stdout = buf
-            with contextlib.redirect_stdout(buf):
-                run_expanded(expanded, self._d._repl, self._d._repl.ctx, debug=False)
-            self._d._repl.stdout = old_stdout
+        # Normal run (not debug) — dispatch to background thread via dispatcher
+        # Expanded lines are already resolved; join as multi-line command for _d.run()
+        cmd_str = "\n".join(cmd for cmd, _ in expanded if cmd.strip() and cmd != "__BREAKPOINT__" and cmd != "__NOP__")
+        self._console._input.setEnabled(False)
 
-            output = buf.getvalue()
+        def _scpi_done(output):
             if output.strip():
                 self._console.log(_ansi_to_html(output))
             self._console.log(f"<span style='color:#155724'>[DONE] {name}</span>")
-        except Exception as exc:
-            self._console.log(f"<span style='color:#c0392b'>[ERROR] {exc}</span>")
+            self._console._input.setEnabled(True)
+            self._on_console_command()
 
-        self._on_console_command()
+        self._run_in_background(lambda: self._d.run(cmd_str), _scpi_done, f"Running {name}...")
 
     # -- Keybind handlers ----------------------------------------------------
 
     def _current_editor(self):
         """Return the currently focused ScpiEditor, or None."""
         for group in self._work_area.all_groups():
-            idx = group._strip._current if hasattr(group, "_strip") else -1
+            idx = group._tab_strip._current if hasattr(group, "_tab_strip") else -1
             if 0 <= idx < len(group._widgets):
                 _, w = group._widgets[idx]
                 if isinstance(w, ScpiEditor):
@@ -431,8 +434,8 @@ class _MainWindow(QMainWindow):
 
     def _close_current_tab(self) -> None:
         for group in self._work_area.all_groups():
-            if group._strip._current >= 0 and group._strip.count() > 0:
-                group.close_tab(group._strip._current)
+            if hasattr(group, "_tab_strip") and group._tab_strip._current >= 0 and group._tab_strip.count() > 0:
+                group.close_tab(group._tab_strip._current)
                 return
 
     def _goto_line(self) -> None:
@@ -666,12 +669,16 @@ class _MainWindow(QMainWindow):
 
     @Slot()
     def _on_console_command(self) -> None:
-        """Refresh all instrument blocks immediately after any console command."""
+        """Refresh all instrument blocks after any console command."""
+        # Skip entirely if a background op (scan, script) is running to avoid racing on hardware
+        if self._d.is_busy():
+            return
         for blocks in [self._psu_blocks, self._smu_blocks, self._awg_blocks, self._dmm_blocks, self._scope_blocks]:
             for block in blocks.values():
                 block._poll()
         n = len(self._d.registry.devices)
-        if n != int(self._dev_count.text().split(": ", 1)[-1]):
+        if n != self._last_device_count:
+            self._last_device_count = n
             self._refresh_psu_panels()
             self._refresh_smu_panels()
             self._refresh_awg_panels()
@@ -713,26 +720,46 @@ class _MainWindow(QMainWindow):
                     closed.discard(name)
 
     def _on_scan(self) -> None:
-        """Non-blocking scan using a background thread."""
+        """Non-blocking scan. Disables all interactive controls while running."""
         self._status.setText("Scanning...")
+        # Disable console and all instrument blocks to prevent lock contention
+        self._console._input.setEnabled(False)
+        self._device_panel._scan_btn.setEnabled(False)
+        for blocks in [self._psu_blocks, self._smu_blocks, self._awg_blocks,
+                       self._dmm_blocks, self._ev_blocks, self._scope_blocks]:
+            for block in blocks.values():
+                block.setEnabled(False)
 
         def _do_scan():
             return self._d.run("scan")
 
         def _scan_done(result):
-            self._console.log_action("scan", result)
-            self._device_panel.refresh()
-            self._after_scan()
+            self._console._input.setEnabled(True)
+            self._device_panel._scan_btn.setEnabled(True)
+            for blocks in [self._psu_blocks, self._smu_blocks, self._awg_blocks,
+                           self._dmm_blocks, self._ev_blocks, self._scope_blocks]:
+                for block in blocks.values():
+                    block.setEnabled(True)
+            if result.startswith("[ERROR]"):
+                self._status.setText("Scan failed")
+                self._console.log(f"<span style='color:#c0392b'>{_esc(result)}</span>")
+            else:
+                self._console.log_action("scan", result)
+                self._device_panel.refresh()
+                self._after_scan()
 
         self._run_in_background(_do_scan, _scan_done, "Scanning for instruments...")
 
     def _on_estop(self) -> None:
-        self._d._repl._general.safe_all()
+        # Route through dispatcher so the lock is respected
+        self._d.run("state safe")
         self._console.log_action("safe_all", "All outputs disabled")
         self._status.setText("E-STOP: all outputs disabled")
-        for blocks in [self._psu_blocks, self._smu_blocks, self._awg_blocks, self._dmm_blocks, self._scope_blocks]:
-            for block in blocks.values():
-                block._poll()
+        # Defer poll briefly — safe_all just released the lock and instruments need a moment
+        if not self._d.is_busy():
+            for blocks in [self._psu_blocks, self._smu_blocks, self._awg_blocks, self._dmm_blocks, self._scope_blocks]:
+                for block in blocks.values():
+                    block._poll()
 
     def closeEvent(self, event) -> None:  # noqa: N802
         s = QSettings("SCPIToolkit", "GUI")

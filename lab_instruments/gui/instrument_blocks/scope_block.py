@@ -334,6 +334,8 @@ class _ScopeBlock(QFrame):
 
     @Slot()
     def _poll(self) -> None:
+        if self._d.is_busy():
+            return
         dev = self._d.device(self._scope)
         if not dev:
             return

@@ -86,7 +86,7 @@ class _Console(QWidget):
             def run(self):
                 self.result = self._d.run(self._cmd)
 
-        worker = _CmdWorker(self._d, cmd, self)
+        worker = _CmdWorker(self._d, cmd)
 
         def _done():
             if worker.result.strip():
@@ -94,9 +94,9 @@ class _Console(QWidget):
             self._input.setEnabled(True)
             self._input.setFocus()
             self.command_ran.emit()
-            worker.deleteLater()
 
-        worker.finished.connect(_done)
+        worker.finished.connect(_done, Qt.ConnectionType.QueuedConnection)
+        worker.finished.connect(worker.deleteLater)
         worker.start()
 
     def log(self, html: str) -> None:

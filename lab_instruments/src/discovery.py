@@ -504,7 +504,7 @@ class InstrumentDiscovery:
         # Post-process: handle naming and type counts
         # Sort results by resource name to ensure deterministic naming (e.g. ASRL1 is psu1, ASRL4 is psu2)
         # Result format: (generic, driver, model_key, idn)
-        results.sort(key=lambda x: x[1].resource_name)
+        results.sort(key=lambda x: str(x[1].resource_name))
 
         final_drivers: dict[str, Any] = {}
         type_counts: dict[str, int] = {}

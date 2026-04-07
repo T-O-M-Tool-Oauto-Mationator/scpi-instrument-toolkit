@@ -233,6 +233,8 @@ class _SMUBlock(QFrame):
 
     @Slot()
     def _poll(self) -> None:
+        if self._d.is_busy():
+            return
         dev = self._d.device(self._smu)
         if not dev:
             return
