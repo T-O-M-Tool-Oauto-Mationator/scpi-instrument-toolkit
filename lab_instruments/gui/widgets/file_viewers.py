@@ -449,8 +449,12 @@ class TextViewer(QWidget):
         lay.addWidget(self._find_bar)
 
         # Keyboard shortcuts
-        QShortcut(QKeySequence.StandardKey.Find, self).activated.connect(self._find_bar.open_find)
-        QShortcut(QKeySequence("Ctrl+H"), self).activated.connect(self._find_bar.open_replace)
+        _find_sc = QShortcut(QKeySequence.StandardKey.Find, self)
+        _find_sc.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
+        _find_sc.activated.connect(self._find_bar.open_find)
+        _repl_sc = QShortcut(QKeySequence("Ctrl+H"), self)
+        _repl_sc.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
+        _repl_sc.activated.connect(self._find_bar.open_replace)
         QShortcut(QKeySequence.StandardKey.Save, self).activated.connect(self._save)
 
         try:
@@ -687,14 +691,14 @@ class PdfViewer(QWidget):
 
         fit_w_btn = QPushButton("Fit W")
         fit_w_btn.setFixedWidth(46)
-        fit_w_btn.setToolTip("Fit width (F)")
+        fit_w_btn.setToolTip("Fit width (W)")
         fit_w_btn.clicked.connect(self._fit_width)
         tb.addWidget(fit_w_btn)
 
-        fit_btn = QPushButton("Fit")
-        fit_btn.setFixedWidth(36)
-        fit_btn.setToolTip("Fit whole page")
-        fit_btn.clicked.connect(self._fit_page)
+        fit_h_btn = QPushButton("Fit H")
+        fit_h_btn.setFixedWidth(46)
+        fit_h_btn.setToolTip("Fit height (H)")
+        fit_h_btn.clicked.connect(self._fit_height)
         tb.addWidget(fit_btn)
 
         zoom_out_btn = QPushButton("−")
@@ -771,7 +775,7 @@ class PdfViewer(QWidget):
             self._page += 1
             self._render()
 
-    # _zoom_fit values: None = manual, 'width' = fit width, 'page' = fit page
+    # _zoom_fit values: None = manual, 'width' = fit width, 'height' = fit height
     def _fit_width(self) -> None:
         if not self._page_count:
             return
@@ -783,7 +787,7 @@ class PdfViewer(QWidget):
             self._zoom_fit = "width"
             self._render()
 
-    def _fit_page(self) -> None:
+    def _fit_height(self) -> None:
         if not self._page_count:
             return
         import fitz  # noqa: F811
@@ -792,14 +796,14 @@ class PdfViewer(QWidget):
         page = self._doc[self._page]
         if vp_w > 0 and vp_h > 0 and page.rect.width > 0 and page.rect.height > 0:
             self._zoom_scale = min(vp_w / page.rect.width, vp_h / page.rect.height)
-            self._zoom_fit = "page"
+            self._zoom_fit = "height"
             self._render()
 
     def resizeEvent(self, event) -> None:  # noqa: N802
         if self._zoom_fit == "width" and self._page_count:
             self._fit_width()
-        elif self._zoom_fit == "page" and self._page_count:
-            self._fit_page()
+        elif self._zoom_fit == "height" and self._page_count:
+            self._fit_height()
         super().resizeEvent(event)
 
     def eventFilter(self, obj, event) -> bool:  # noqa: N802
@@ -822,11 +826,11 @@ class PdfViewer(QWidget):
             if key == Qt.Key.Key_Minus:
                 self._zoom_by(1 / self._ZOOM_STEP)
                 return True
-            if key == Qt.Key.Key_F:
+            if key == Qt.Key.Key_W:
                 self._fit_width()
                 return True
-            if key == Qt.Key.Key_G:
-                self._fit_page()
+            if key == Qt.Key.Key_H:
+                self._fit_height()
                 return True
         return super().eventFilter(obj, event)
 
@@ -840,10 +844,10 @@ class PdfViewer(QWidget):
             self._zoom_by(self._ZOOM_STEP)
         elif key == Qt.Key.Key_Minus:
             self._zoom_by(1 / self._ZOOM_STEP)
-        elif key == Qt.Key.Key_F:
+        elif key == Qt.Key.Key_W:
             self._fit_width()
-        elif key == Qt.Key.Key_G:
-            self._fit_page()
+        elif key == Qt.Key.Key_H:
+            self._fit_height()
         else:
             super().keyPressEvent(event)
 
@@ -1035,14 +1039,14 @@ class _OfficeViewerBase(QWidget):
 
         fit_w_btn = QPushButton("Fit W")
         fit_w_btn.setFixedWidth(46)
-        fit_w_btn.setToolTip("Fit width (F)")
+        fit_w_btn.setToolTip("Fit width (W)")
         fit_w_btn.clicked.connect(self._fit_width)
         tb.addWidget(fit_w_btn)
 
-        fit_btn = QPushButton("Fit")
-        fit_btn.setFixedWidth(36)
-        fit_btn.setToolTip("Fit whole page (G)")
-        fit_btn.clicked.connect(self._fit_page)
+        fit_h_btn = QPushButton("Fit H")
+        fit_h_btn.setFixedWidth(46)
+        fit_h_btn.setToolTip("Fit height (H)")
+        fit_h_btn.clicked.connect(self._fit_height)
         tb.addWidget(fit_btn)
 
         zoom_out_btn = QPushButton("−")
@@ -1133,7 +1137,7 @@ class _OfficeViewerBase(QWidget):
             self._zoom_fit = "width"
             self._apply_zoom()
 
-    def _fit_page(self) -> None:
+    def _fit_height(self) -> None:
         if not self._pages:
             return
         vp_w = self._scroll.viewport().width() - 4
@@ -1141,7 +1145,7 @@ class _OfficeViewerBase(QWidget):
         src = self._pages[self._current]
         if vp_w > 0 and vp_h > 0 and src.width() > 0 and src.height() > 0:
             self._zoom_pct = min(vp_w / src.width(), vp_h / src.height()) * 100
-            self._zoom_fit = "page"
+            self._zoom_fit = "height"
             self._apply_zoom()
 
     def _zoom_by(self, factor: float) -> None:
@@ -1157,7 +1161,7 @@ class _OfficeViewerBase(QWidget):
             vp_w = self._scroll.viewport().width() - 4
             if vp_w > 0 and src.width() > 0:
                 self._zoom_pct = vp_w / src.width() * 100
-        elif self._zoom_fit == "page":
+        elif self._zoom_fit == "height":
             vp_w = self._scroll.viewport().width() - 4
             vp_h = self._scroll.viewport().height() - 4
             if vp_w > 0 and vp_h > 0 and src.width() > 0 and src.height() > 0:
@@ -1209,11 +1213,11 @@ class _OfficeViewerBase(QWidget):
             if key == Qt.Key.Key_Minus:
                 self._zoom_by(1 / self._ZOOM_STEP)
                 return True
-            if key == Qt.Key.Key_F:
+            if key == Qt.Key.Key_W:
                 self._fit_width()
                 return True
-            if key == Qt.Key.Key_G:
-                self._fit_page()
+            if key == Qt.Key.Key_H:
+                self._fit_height()
                 return True
         return super().eventFilter(obj, event)
 
@@ -1231,10 +1235,10 @@ class _OfficeViewerBase(QWidget):
             self._zoom_by(self._ZOOM_STEP)
         elif key == Qt.Key.Key_Minus:
             self._zoom_by(1 / self._ZOOM_STEP)
-        elif key == Qt.Key.Key_F:
+        elif key == Qt.Key.Key_W:
             self._fit_width()
-        elif key == Qt.Key.Key_G:
-            self._fit_page()
+        elif key == Qt.Key.Key_H:
+            self._fit_height()
         else:
             super().keyPressEvent(event)
 

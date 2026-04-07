@@ -50,6 +50,7 @@ from .widgets.file_viewers import (
     PptxViewer,
     TextViewer,
     XlsxViewer,
+    _OfficeViewerBase,
     preconvert_office_files,
 )
 from .widgets.work_area import _WorkArea
@@ -158,6 +159,34 @@ class _MainWindow(QMainWindow):
             na = QAction("(no examples available)", self)
             na.setEnabled(False)
             em.addAction(na)
+
+        # ── Viewer menu ───────────────────────────────────────────────
+        vm = mb.addMenu("&Viewer")
+
+        def _va(label: str, shortcut: str | None, fn) -> QAction:
+            a = QAction(label, self)
+            if shortcut:
+                a.setShortcut(shortcut)
+            a.triggered.connect(fn)
+            return a
+
+        vm.addSection("Navigation  (PDF / DOCX / PPTX)")
+        vm.addAction(_va("Previous Page", "Left", lambda: self._viewer_call("_prev")))
+        vm.addAction(_va("Next Page", "Right", lambda: self._viewer_call("_next")))
+        vm.addAction(_va("First Page", "Home", lambda: self._viewer_call("_go_to", 0)))
+
+        vm.addSeparator()
+        vm.addSection("Zoom  (PDF / DOCX / PPTX / Image)")
+        vm.addAction(_va("Zoom In", "=", self._viewer_zoom_in))
+        vm.addAction(_va("Zoom Out", "-", self._viewer_zoom_out))
+        vm.addAction(_va("Fit Width  [W]", None, lambda: self._viewer_call("_fit_width")))
+        vm.addAction(_va("Fit Height  [H]", None, lambda: self._viewer_call("_fit_height")))
+        vm.addAction(_va("Fit  [F]", None, lambda: self._viewer_call("_zoom", 0)))
+
+        vm.addSeparator()
+        vm.addSection("Search  (Text / CSV / XLSX)")
+        vm.addAction(_va("Find…", "Ctrl+F", self._viewer_find))
+        vm.addAction(_va("Find && Replace…", "Ctrl+H", self._viewer_find_replace))
 
         # ── Help menu ─────────────────────────────────────────────────
         hm = mb.addMenu("&Help")
@@ -529,6 +558,49 @@ class _MainWindow(QMainWindow):
         ed = self._current_editor()
         if ed and ed.save():
             self._status.setText(f"Saved: {ed.file_path()}")
+
+    # ── Viewer dispatch helpers ────────────────────────────────────────────────
+
+    def _focused_viewer(self):
+        """Walk focus chain to find the innermost known viewer widget."""
+        _types = (PdfViewer, _OfficeViewerBase, ImageViewer, TextViewer, CsvViewer, XlsxViewer)
+        w = QApplication.focusWidget()
+        while w:
+            if isinstance(w, _types):
+                return w
+            w = w.parent()
+        return None
+
+    def _viewer_call(self, method: str, *args) -> None:
+        v = self._focused_viewer()
+        if v and hasattr(v, method):
+            getattr(v, method)(*args)
+
+    def _viewer_zoom_in(self) -> None:
+        v = self._focused_viewer()
+        if isinstance(v, (PdfViewer, _OfficeViewerBase)):
+            v._zoom_by(1.25)
+        elif isinstance(v, ImageViewer):
+            v._zoom(0.25)
+
+    def _viewer_zoom_out(self) -> None:
+        v = self._focused_viewer()
+        if isinstance(v, (PdfViewer, _OfficeViewerBase)):
+            v._zoom_by(1 / 1.25)
+        elif isinstance(v, ImageViewer):
+            v._zoom(-0.25)
+
+    def _viewer_find(self) -> None:
+        v = self._focused_viewer()
+        if isinstance(v, TextViewer):
+            v._find_bar.open_find()
+        elif isinstance(v, (CsvViewer, XlsxViewer)):
+            v._find_bar.open()
+
+    def _viewer_find_replace(self) -> None:
+        v = self._focused_viewer()
+        if isinstance(v, TextViewer):
+            v._find_bar.open_replace()
 
     def _close_current_tab(self) -> None:
         for group in self._work_area.all_groups():
