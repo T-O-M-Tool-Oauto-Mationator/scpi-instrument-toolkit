@@ -78,6 +78,20 @@ class _FindBar(QWidget):
         next_btn.clicked.connect(lambda: self.find_next.emit(self._input.text()))
         lay.addWidget(next_btn)
 
+        self._regex_btn = QPushButton(".*")
+        self._regex_btn.setFixedWidth(28)
+        self._regex_btn.setCheckable(True)
+        self._regex_btn.setToolTip("Use regular expression")
+        self._regex_btn.toggled.connect(lambda _: self.find_next.emit(self._input.text()))
+        lay.addWidget(self._regex_btn)
+
+        self._case_btn = QPushButton("Aa")
+        self._case_btn.setFixedWidth(28)
+        self._case_btn.setCheckable(True)
+        self._case_btn.setToolTip("Match case")
+        self._case_btn.toggled.connect(lambda _: self.find_next.emit(self._input.text()))
+        lay.addWidget(self._case_btn)
+
         self._status = QLabel("")
         self._status.setStyleSheet("font-size: 10px; color: gray;")
         lay.addWidget(self._status)
@@ -98,6 +112,12 @@ class _FindBar(QWidget):
 
     def text(self) -> str:
         return self._input.text()
+
+    def use_regex(self) -> bool:
+        return self._regex_btn.isChecked()
+
+    def case_sensitive(self) -> bool:
+        return self._case_btn.isChecked()
 
     def set_status(self, text: str) -> None:
         self._status.setText(text)
@@ -399,12 +419,29 @@ class CsvViewer(QWidget):
             self._matches = []
             self._find_bar.set_status("")
             return
-        self._matches = [
-            (r, c)
-            for r in range(self._table.rowCount())
-            for c in range(self._table.columnCount())
-            if (item := self._table.item(r, c)) and text.lower() in item.text().lower()
-        ]
+        use_regex = self._find_bar.use_regex()
+        case_sensitive = self._find_bar.case_sensitive()
+        matches = []
+        for r in range(self._table.rowCount()):
+            for c in range(self._table.columnCount()):
+                item = self._table.item(r, c)
+                if not item:
+                    continue
+                cell = item.text()
+                if use_regex:
+                    flags = 0 if case_sensitive else re.IGNORECASE
+                    try:
+                        if re.search(text, cell, flags):
+                            matches.append((r, c))
+                    except re.error:
+                        self._find_bar.set_status("Regex error")
+                        return
+                else:
+                    needle = text if case_sensitive else text.lower()
+                    haystack = cell if case_sensitive else cell.lower()
+                    if needle in haystack:
+                        matches.append((r, c))
+        self._matches = matches
         if not self._matches:
             self._find_bar.set_status("No results")
             return
@@ -1333,12 +1370,29 @@ class XlsxViewer(QWidget):
             self._matches = []
             self._find_bar.set_status("")
             return
-        self._matches = [
-            (r, c)
-            for r in range(self._table.rowCount())
-            for c in range(self._table.columnCount())
-            if (item := self._table.item(r, c)) and text.lower() in item.text().lower()
-        ]
+        use_regex = self._find_bar.use_regex()
+        case_sensitive = self._find_bar.case_sensitive()
+        matches = []
+        for r in range(self._table.rowCount()):
+            for c in range(self._table.columnCount()):
+                item = self._table.item(r, c)
+                if not item:
+                    continue
+                cell = item.text()
+                if use_regex:
+                    flags = 0 if case_sensitive else re.IGNORECASE
+                    try:
+                        if re.search(text, cell, flags):
+                            matches.append((r, c))
+                    except re.error:
+                        self._find_bar.set_status("Regex error")
+                        return
+                else:
+                    needle = text if case_sensitive else text.lower()
+                    haystack = cell if case_sensitive else cell.lower()
+                    if needle in haystack:
+                        matches.append((r, c))
+        self._matches = matches
         if not self._matches:
             self._find_bar.set_status("No results")
             return
