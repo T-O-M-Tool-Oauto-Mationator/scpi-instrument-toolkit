@@ -888,6 +888,8 @@ def main(argv: list[str] | None = None) -> None:
     args = parser.parse_args(argv)
 
     import signal
+    # Suppress harmless Qt font database warnings on Windows
+    os.environ.setdefault("QT_LOGGING_RULES", "qt.text.font.db=false")
     app = QApplication(sys.argv)
     app.setApplicationName("SCPI Instrument Toolkit")
 
