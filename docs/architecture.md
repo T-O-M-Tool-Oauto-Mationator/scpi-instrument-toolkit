@@ -4,6 +4,10 @@ This page shows how the toolkit is layered, from hardware at the center out to t
 
 ---
 
+![Architecture diagram](img/architecture.png)
+
+---
+
 ## The Onion
 
 ```
@@ -141,7 +145,7 @@ All four frontends consume the driver layer (Layer 2) directly or via the REPL l
 |----------|-------------|------|
 | **REPL / CLI** (`scpi-repl`) | `shell.py` → `cmd.Cmd` loop | Layer 3 (commands) |
 | **GUI** (`scpi-gui`) | `gui/app.py` → Tkinter | Layer 3 (commands) + driver layer directly for live widgets |
-| **LabVIEW bridge** | `labview_bridge.py` | Layer 2 directly — flat module-level functions, LabVIEW-compatible types |
+| **LabVIEW bridge** | `labview_bridge.py` | Layer 3 — flat module-level functions that invoke REPL commands, LabVIEW-compatible types |
 | **Python scripts** | `from lab_instruments.src import ...` | Layer 2 directly |
 
 ---
@@ -149,6 +153,6 @@ All four frontends consume the driver layer (Layer 2) directly or via the REPL l
 ## What bypasses what
 
 - The **GUI** talks to instrument blocks (Layer 3) for command dispatch but reads driver objects directly for live polling (voltage readback, waveform capture).
-- The **LabVIEW bridge** skips Layer 3 entirely — it wraps Layer 2 driver methods in module-level functions that LabVIEW's Python Node can call with primitive types.
+- The **LabVIEW bridge** goes through Layer 3 — it exposes flat module-level functions that LabVIEW's Python Node can call with primitive types, and those functions invoke the same REPL command handlers. This means instrument logic, safety checks, and scripting stay in one place.
 - The **EV2300 and NI PXIe-4139** are optional imports everywhere — missing hardware or missing SDK produces a clean `ImportError` fallback, not a crash.
 - **Mocks** live at Layer 2 and replace real driver instances, so Layers 3 and 4 are fully testable without hardware.
