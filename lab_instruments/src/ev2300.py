@@ -834,13 +834,16 @@ class _EV2300Core:
             return {"ok": True, "status": 0, "status_text": "OK"}
 
         if write_submit:
-            # Read and discard the write-command ACK (0x4E for WRITE_BYTE, 0x44/0x45 for
-            # WRITE_WORD/WRITE_BLOCK, 0xC0 for SEND_BYTE).  If it never arrives the
-            # device is unresponsive; abort rather than sending SUBMIT blind.
-            time.sleep(0.01)
-            ack = self.read_report()
-            if ack is None:
-                return {"ok": False, "status_text": "Write ACK timeout"}
+            # WRITE_WORD (0x04), WRITE_BLOCK (0x05), SEND_BYTE (0x06) produce
+            # a 0x46 ACK before SUBMIT.  WRITE_BYTE (0x07) is SILENT -- the real
+            # EV2300 sends no response, so reading here would block forever on
+            # Windows (blocking ReadFile with no timeout).  Skip ACK drain for 0x07.
+            cmd_byte = packet[2]
+            if cmd_byte != CMD_WRITE_BYTE:
+                time.sleep(0.01)
+                ack = self.read_report()
+                if ack is None:
+                    return {"ok": False, "status_text": "Write ACK timeout"}
 
             submit = self.build_packet(CMD_SUBMIT)
             if not self.write_report(submit):
