@@ -67,9 +67,9 @@ markdown_extensions:
 nav:
   - Home: index.md
   - Installation: install.md
-  - Python API: python.md
-  - General Commands: general.md
-  - Instruments:
+  - Supported Instruments: instruments.md
+  - REPL:
+    - General Commands: general.md
     - Power Supply (PSU): psu.md
     - Function Generator (AWG): awg.md
     - Multimeter (DMM): dmm.md
@@ -77,13 +77,11 @@ nav:
     - Source Measure Unit (SMU): smu.md
     - USB-to-I2C Adapter (EV2300): ev2300.md
     - NI PXIe-4139 Setup: ni_pxie.md
-  - Scripting:
-    - Scripts & Directives: scripting.md
+    - Scripting: scripting.md
     - Example Workflows: examples.md
-  - Log & Calc: logging.md
-  - Supported Instruments: instruments.md
-  - Troubleshooting: troubleshooting.md
-  - API Reference:
+    - Log & Calc: logging.md
+  - Python API:
+    - Quickstart: python.md
     - Power Supplies: api/psu.md
     - Multimeters: api/dmm.md
     - Function Generators: api/awg.md
@@ -91,3 +89,4 @@ nav:
     - Source Measure Unit: api/smu.md
     - USB-to-I2C (EV2300): api/ev2300.md
     - Base Class: api/base.md
+  - Troubleshooting: troubleshooting.md
