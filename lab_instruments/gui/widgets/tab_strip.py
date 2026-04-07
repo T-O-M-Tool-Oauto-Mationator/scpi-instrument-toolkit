@@ -159,14 +159,23 @@ class _TabStrip(QWidget):
         if idx < 0:
             return
         menu = QMenu(self)
-        pop_out = menu.addAction("Pop Out")
-        menu.addSeparator()
         close = menu.addAction("Close")
+        close_others = menu.addAction("Close Others")
+        close_right = menu.addAction("Close to the Right")
+        close_all = menu.addAction("Close All")
+        menu.addSeparator()
+        pop_out = menu.addAction("Pop Out")
         action = menu.exec(event.globalPos())
-        if action == pop_out:
-            self._pop_out_tab(idx)
-        elif action == close:
+        if action == close:
             self._group.close_tab(idx)
+        elif action == close_others:
+            self._close_others(idx)
+        elif action == close_right:
+            self._close_to_right(idx)
+        elif action == close_all:
+            self._close_all()
+        elif action == pop_out:
+            self._pop_out_tab(idx)
 
     def _pop_out_tab(self, idx: int) -> None:
         if not 0 <= idx < len(self._group._widgets):
@@ -187,6 +196,26 @@ class _TabStrip(QWidget):
                 w = w.parent()
             except Exception:
                 break
+
+    def _close_others(self, keep_idx: int) -> None:
+        """Close all tabs except the one at keep_idx."""
+        # Close from the end to avoid index shifting issues
+        for i in range(self._group.count() - 1, -1, -1):
+            if i != keep_idx:
+                self._group.close_tab(i)
+                # Adjust keep_idx if we closed a tab before it
+                if i < keep_idx:
+                    keep_idx -= 1
+
+    def _close_to_right(self, idx: int) -> None:
+        """Close all tabs to the right of idx."""
+        for i in range(self._group.count() - 1, idx, -1):
+            self._group.close_tab(i)
+
+    def _close_all(self) -> None:
+        """Close all tabs in this group."""
+        for i in range(self._group.count() - 1, -1, -1):
+            self._group.close_tab(i)
 
     def mousePressEvent(self, event) -> None:  # noqa: N802
         if event.button() == Qt.MouseButton.LeftButton:
