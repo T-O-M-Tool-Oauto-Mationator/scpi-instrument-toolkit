@@ -416,7 +416,12 @@ class _MainWindow(QMainWindow):
             return
 
         try:
-            expanded = expand_script_lines(raw_lines, {}, self._d._repl.ctx)
+            expand_buf = io.StringIO()
+            with contextlib.redirect_stdout(expand_buf):
+                expanded = expand_script_lines(raw_lines, {}, self._d._repl.ctx)
+            expand_output = expand_buf.getvalue().strip()
+            if expand_output:
+                self._console.log(_ansi_to_html(expand_output))
         except Exception as exc:
             self._console.log(f"<span style='color:#c0392b'>[ERROR] Expansion failed: {exc}</span>")
             return
