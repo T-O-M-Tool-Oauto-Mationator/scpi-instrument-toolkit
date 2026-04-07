@@ -672,8 +672,8 @@ class _MainWindow(QMainWindow):
             self._dev_count.setText(f"Devices: {n}")
             self._status.setText(f"{n} {label} \u2014 all outputs safe")
         else:
-            self._dev_count.setText("")
-            self._status.setText("Ready")
+            self._dev_count.setText("Scanning...")
+            self._status.setText("Scanning for instruments...")
 
     def _on_tab_closed(self, widget: QWidget) -> None:
         # Check instrument blocks
