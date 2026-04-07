@@ -868,13 +868,28 @@ class ScpiEditor(QWidget):
                 self._debug_schedule_continue()
             return
 
-        # Real command — execute
-        self._debug_exec_line(line)
-        st["idx"] = self._next_actionable_line(next_act + 1)
-        if st["idx"] >= len(st["lines"]):
-            self._debug_stop()
-        else:
-            self._debug_schedule_continue()
+        # Real command — execute in background thread (avoids deadlock with input/pause)
+        import threading
+        st["busy"] = True
+
+        def _run():
+            self._debug_exec_line(line)
+
+        def _done():
+            if not self._debug_state:
+                return
+            self._debug_state["busy"] = False
+            self._debug_state["idx"] = self._next_actionable_line(next_act + 1)
+            if self._debug_state["idx"] >= len(self._debug_state["lines"]):
+                self._debug_stop()
+            else:
+                self._debug_schedule_continue()
+
+        from ..app import _BgSignal
+        sig = _BgSignal(self)
+        sig.finished.connect(lambda _: _done())
+        t = threading.Thread(target=lambda: (_run(), sig.finished.emit("")), daemon=True)
+        t.start()
 
     def _debug_back(self) -> None:
         """Move back one line (state NOT reversed). Skips blank/comment NOPs."""
