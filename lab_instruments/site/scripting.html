@@ -323,6 +323,26 @@
   
   
   
+    
+    
+      <li class="md-tabs__item">
+        <a href="generated/instruments.html" class="md-tabs__link">
+          
+  
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
     <li class="md-tabs__item">
       <a href="labview.html" class="md-tabs__link">
         
@@ -1941,6 +1961,123 @@
     
   
     Base Class
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="generated/instruments.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Instruments & Capabilities
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="generated/repl-ref.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    REPL Command Reference
   
 
     
@@ -3885,7 +4022,7 @@ Supported functions: <code>abs()  min()  max()  round()</code></p>
 <a id="__codelineno-79-15" name="__codelineno-79-15" href="#__codelineno-79-15"></a>pause Connect DUT and DMM probes, then press Enter
 <a id="__codelineno-79-16" name="__codelineno-79-16" href="#__codelineno-79-16"></a>
 <a id="__codelineno-79-17" name="__codelineno-79-17" href="#__codelineno-79-17"></a># ── Optional runtime input ────────────────────
-<a id="__codelineno-79-18" name="__codelineno-79-18" href="#__codelineno-79-18"></a>input operator Operator initials:
+<a id="__codelineno-79-18" name="__codelineno-79-18" href="#__codelineno-79-18"></a>operator = input Operator initials:
 <a id="__codelineno-79-19" name="__codelineno-79-19" href="#__codelineno-79-19"></a>
 <a id="__codelineno-79-20" name="__codelineno-79-20" href="#__codelineno-79-20"></a># ── PSU on ───────────────────────────────────
 <a id="__codelineno-79-21" name="__codelineno-79-21" href="#__codelineno-79-21"></a>psu1 chan 1 on
@@ -3894,7 +4031,7 @@ Supported functions: <code>abs()  min()  max()  round()</code></p>
 <a id="__codelineno-79-24" name="__codelineno-79-24" href="#__codelineno-79-24"></a>
 <a id="__codelineno-79-25" name="__codelineno-79-25" href="#__codelineno-79-25"></a># ── Sweep ────────────────────────────────────
 <a id="__codelineno-79-26" name="__codelineno-79-26" href="#__codelineno-79-26"></a>for v 1.0 2.0 3.3 5.0 9.0 12.0
-<a id="__codelineno-79-27" name="__codelineno-79-27" href="#__codelineno-79-27"></a>  print Testing {v}V...
+<a id="__codelineno-79-27" name="__codelineno-79-27" href="#__codelineno-79-27"></a>  print &quot;Testing {v}V...&quot;
 <a id="__codelineno-79-28" name="__codelineno-79-28" href="#__codelineno-79-28"></a>  psu1 set {v}
 <a id="__codelineno-79-29" name="__codelineno-79-29" href="#__codelineno-79-29"></a>  sleep {delay}
 <a id="__codelineno-79-30" name="__codelineno-79-30" href="#__codelineno-79-30"></a>  psu_{v} = psu1 meas v unit=V

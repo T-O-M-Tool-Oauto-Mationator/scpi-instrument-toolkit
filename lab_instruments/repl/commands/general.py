@@ -77,12 +77,12 @@ class GeneralCommands(BaseCommand):
                     self._docs_server.shutdown()
                     self._docs_server = None
             except FileNotFoundError:
-                ColorPrinter.warning("mkdocs not found. Install with: pip install -e \".[docs]\"")
+                ColorPrinter.warning('mkdocs not found. Install with: pip install -e ".[docs]"')
                 return
             except subprocess.CalledProcessError as exc:
                 stderr = (exc.stderr or "")[:300]
                 ColorPrinter.error(f"mkdocs build failed: {stderr}")
-                ColorPrinter.info("Try: pip install -e \".[docs]\"")
+                ColorPrinter.info('Try: pip install -e ".[docs]"')
                 return
 
         if not (site_dir / "index.html").exists():

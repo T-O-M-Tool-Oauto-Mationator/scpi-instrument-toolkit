@@ -505,11 +505,9 @@ class InstrumentDiscovery:
 
         if force:
             # Disconnect existing drivers so they get freshly initialised
-            for name, drv in list(self.found_devices.items()):
-                try:
+            for _name, drv in list(self.found_devices.items()):
+                with contextlib.suppress(Exception):
                     drv.disconnect()
-                except Exception:
-                    pass
             self.found_devices.clear()
 
         # Build a lookup of resource_name -> (friendly_name, driver) for
@@ -564,9 +562,7 @@ class InstrumentDiscovery:
         results = list(kept_results)
         if new_resources:
             with concurrent.futures.ThreadPoolExecutor(max_workers=len(new_resources)) as executor:
-                future_to_resource = {
-                    executor.submit(self._probe_resource, res, verbose): res for res in new_resources
-                }
+                future_to_resource = {executor.submit(self._probe_resource, res, verbose): res for res in new_resources}
                 for future in concurrent.futures.as_completed(future_to_resource):
                     try:
                         res = future.result()

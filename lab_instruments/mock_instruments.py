@@ -42,10 +42,10 @@ class MockPSU(MockBase):
     def set_current_limit(self, i):
         self._current = float(i)
 
-    def set_output_channel(self, ch, v, i=None):
-        self._voltage = float(v)
-        if i is not None:
-            self._current = float(i)
+    def set_output_channel(self, ch, voltage, current_limit=None):
+        self._voltage = float(voltage)
+        if current_limit is not None:
+            self._current = float(current_limit)
 
     def measure_voltage(self, ch=None):
         return round(random.uniform(4.985, 5.015), 6)

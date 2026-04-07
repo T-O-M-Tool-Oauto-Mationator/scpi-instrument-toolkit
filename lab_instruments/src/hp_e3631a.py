@@ -39,10 +39,7 @@ class HP_E3631A(DeviceManager):
         """Raise TypeError if *channel* is not an HP_E3631A.Channel member."""
         if not isinstance(channel, cls.Channel):
             valid = ", ".join(f"HP_E3631A.Channel.{m.name}" for m in cls.Channel)
-            raise TypeError(
-                f"channel must be HP_E3631A.Channel, got {type(channel).__name__!r}. "
-                f"Valid: {valid}"
-            )
+            raise TypeError(f"channel must be HP_E3631A.Channel, got {type(channel).__name__!r}. Valid: {valid}")
 
     def __init__(self, resource_name):
         """Initialize the HP E3631A PSU."""

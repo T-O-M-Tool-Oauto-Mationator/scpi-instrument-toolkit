@@ -5,7 +5,7 @@ import os
 import time
 from typing import Any
 
-from lab_instruments.enums import CouplingMode, TriggerEdge, TriggerMode
+from lab_instruments.enums import CouplingMode, TriggerEdge
 from lab_instruments.src.terminal import ColorPrinter
 
 from ..context import ReplContext

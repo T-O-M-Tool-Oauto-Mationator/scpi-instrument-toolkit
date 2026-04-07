@@ -1,5 +1,8 @@
 # Scope — Oscilloscope
 
+!!! tip "Auto-generated reference"
+    For the definitive command list extracted directly from source code, see [REPL Command Reference](generated/repl-ref.md#scope-oscilloscope).
+
 Controls oscilloscopes over VISA.
 
 - Channels are numbered `1`–`4`. Use `all` to affect every channel at once.
@@ -637,10 +640,11 @@ scope awg chan off
 Control the built-in frequency counter.
 
 ```
-scope counter on       # enable counter
-scope counter off      # disable counter
-scope counter read     # read current frequency
-scope counter source 1 # set counter source to channel 1
+scope counter on          # enable counter
+scope counter off         # disable counter
+scope counter read        # read current frequency
+scope counter source 1    # set counter source to channel 1
+scope counter mode freq   # set mode: freq, period, or totalize
 ```
 
 ### scope dvm

@@ -113,7 +113,6 @@ finally:
 |--------|-------------|
 | `set_acquisition_type(acq_type)` | `NORMal`, `AVERage`, `PEAK`, `HRES` |
 | `set_average_count(count)` | Averaging count (power of 2) |
-| `set_memory_depth(depth)` | Memory depth: `AUTO`, `1000`, `10000`, etc. |
 | `get_sample_rate()` | Get sample rate (Sa/s) |
 
 ### Mask Testing

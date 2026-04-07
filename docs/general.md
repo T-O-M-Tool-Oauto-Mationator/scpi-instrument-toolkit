@@ -191,16 +191,26 @@ all off       # turn off all outputs
 Pause for a specified duration.
 
 ```
-sleep <seconds>
+sleep <duration>[unit]
 ```
 
 | Parameter | Required | Description |
 |-----------|----------|-------------|
-| `seconds` | required | Duration to pause. Supports fractions: `0.5` = 500 ms. |
+| `duration` | required | Duration to pause. A bare number is treated as seconds. Append a unit suffix for other scales. |
+
+| Suffix | Meaning | Example |
+|--------|---------|---------|
+| *(none)* | seconds | `sleep 1.0` |
+| `s` | seconds | `sleep 1.5s` |
+| `ms` | milliseconds | `sleep 500ms` |
+| `us` | microseconds | `sleep 100us` |
+| `m` | minutes | `sleep 2m` |
 
 ```
-sleep 1.0     # wait 1 second
-sleep 0.5     # wait 500 ms
+sleep 1.0       # wait 1 second
+sleep 0.5       # wait 500 ms
+sleep 500ms     # same — 500 ms
+sleep 100us     # 100 microseconds
 ```
 
 Also valid as a [script directive](scripting.md#timing): `sleep {delay}`

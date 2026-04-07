@@ -28,7 +28,7 @@ dmm.connect()
 
 try:
     # Set 3.3 V on the +6 V channel
-    psu.set_output_channel("positive_6_volts_channel", 3.3, current_limit=0.1)
+    psu.set_output_channel(HP_E3631A.Channel.POSITIVE_6V, 3.3, current_limit=0.1)
     psu.enable_output(True)
 
     # Measure with the DMM

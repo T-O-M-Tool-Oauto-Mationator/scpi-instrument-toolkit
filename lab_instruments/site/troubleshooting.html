@@ -319,6 +319,26 @@
   
   
   
+    
+    
+      <li class="md-tabs__item">
+        <a href="generated/instruments.html" class="md-tabs__link">
+          
+  
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
     <li class="md-tabs__item">
       <a href="labview.html" class="md-tabs__link">
         
@@ -1187,6 +1207,123 @@
   
   
   
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="generated/instruments.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Instruments & Capabilities
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="generated/repl-ref.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    REPL Command Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="labview.html" class="md-nav__link">
         
@@ -1391,6 +1528,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#resource-busy-instrument-already-in-use" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "Resource busy" / instrument already in use
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#first-time-setup-on-tamu-managed-windows-machines" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1536,6 +1684,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#resource-busy-instrument-already-in-use" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "Resource busy" / instrument already in use
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#first-time-setup-on-tamu-managed-windows-machines" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1633,6 +1792,19 @@ The fourth field (after owner) is the owning group.</p>
 <p>If you just want to explore the tool without any hardware, use mock mode — no VISA required:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="n">python</span> <span class="n">-m</span> <span class="n">lab_instruments</span> <span class="p">-</span><span class="n">-mock</span>
 </code></pre></div>
+<hr />
+<h2 id="resource-busy-instrument-already-in-use">"Resource busy" / instrument already in use<a class="headerlink" href="#resource-busy-instrument-already-in-use" title="Permanent link">&para;</a></h2>
+<p>Instrument connections are exclusive. Only one program can hold a connection to a device at a time. Common causes:</p>
+<ul>
+<li><strong>REPL + Python script open at the same time</strong> targeting the same instrument</li>
+<li><strong>REPL or Python script open while BQStudio is connected</strong> to the EV2300 (or any other TI/vendor tool that holds the USB connection)</li>
+<li><strong>A previous script that crashed</strong> without calling <code>disconnect()</code>, leaving the VISA session open</li>
+</ul>
+<p><strong>Fix:</strong> close the other program first, then retry. If a crashed script left a session open, restart your terminal -- the VISA session is tied to the Python process and will be released when the process exits.</p>
+<div class="admonition tip">
+<p class="admonition-title">Using the EV2300 with BQStudio</p>
+<p>The EV2300A USB-to-I2C adapter can only be claimed by one application at a time. If you need to use BQStudio for firmware flashing or register browsing, close the REPL or stop your script first. When you are done in BQStudio, close it before re-running your script or REPL.</p>
+</div>
 <hr />
 <h2 id="first-time-setup-on-tamu-managed-windows-machines">First-time setup on TAMU / managed Windows machines<a class="headerlink" href="#first-time-setup-on-tamu-managed-windows-machines" title="Permanent link">&para;</a></h2>
 <p>If you are starting from scratch on a managed machine, use the all-in-one setup script — it installs GitHub Desktop (including git), Python, and the toolkit in one step with no admin rights.</p>

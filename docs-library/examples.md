@@ -18,7 +18,7 @@ dmm.connect()
 
 try:
     # Set PSU to 3.3V
-    psu.set_output_channel("positive_6_volts_channel", 3.3, current_limit=0.5)
+    psu.set_output_channel(HP_E3631A.Channel.POSITIVE_6V, 3.3, current_limit=0.5)
     psu.enable_output(True)
 
     # Measure with DMM
@@ -60,11 +60,11 @@ try:
     dmm.configure_dc_voltage()
 
     for target_v in voltages:
-        psu.set_output_channel("positive_6_volts_channel", target_v, current_limit=0.5)
+        psu.set_output_channel(HP_E3631A.Channel.POSITIVE_6V, target_v, current_limit=0.5)
         time.sleep(0.5)  # Settle time
 
         measured_v = dmm.read()
-        measured_i = psu.measure_current("positive_6_volts_channel")
+        measured_i = psu.measure_current(HP_E3631A.Channel.POSITIVE_6V)
         results.append({"target": target_v, "measured_v": measured_v, "current": measured_i})
         print(f"{target_v:.1f} V -> {measured_v:.6f} V, {measured_i:.4f} A")
 
@@ -138,7 +138,7 @@ for name, inst in instruments.items():
 if "psu1" in instruments:
     psu = instruments["psu1"]
     psu.enable_output(True)
-    psu.set_output_channel("positive_6_volts_channel", 5.0)
+    psu.set_output_channel(HP_E3631A.Channel.POSITIVE_6V, 5.0)
 ```
 
 ---
@@ -199,7 +199,7 @@ scope.connect()
 
 try:
     with psu:
-        psu.set_output_channel("positive_6_volts_channel", 5.0, current_limit=1.0)
+        psu.set_output_channel(HP_E3631A.Channel.POSITIVE_6V, 5.0, current_limit=1.0)
         psu.enable_output(True)
 
         with dmm:
@@ -239,7 +239,7 @@ try:
     dmm.configure_dc_voltage()
 
     for target in [1.0, 2.0, 3.3, 5.0]:
-        psu.set_output_channel("positive_6_volts_channel", target, current_limit=0.5)
+        psu.set_output_channel(HP_E3631A.Channel.POSITIVE_6V, target, current_limit=0.5)
         time.sleep(0.5)
 
         # Take 5 readings at each voltage

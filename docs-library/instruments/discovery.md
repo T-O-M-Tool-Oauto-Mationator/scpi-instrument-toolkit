@@ -68,7 +68,7 @@ instruments = discovery.scan()
 # Access by auto-assigned name
 psu = instruments.get("psu1")
 if psu:
-    psu.set_output_channel("positive_6_volts_channel", 5.0)
+    psu.set_output_channel(HP_E3631A.Channel.POSITIVE_6V, 5.0)
 ```
 
 ### Supported Model Detection
