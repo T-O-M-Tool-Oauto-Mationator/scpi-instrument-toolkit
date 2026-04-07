@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import contextlib
 import glob
-import io
 import os
 import re
 import sys
@@ -23,7 +22,6 @@ from PySide6.QtWidgets import (
 )
 
 from lab_instruments.repl.script_engine.expander import expand_script_lines
-from lab_instruments.repl.script_engine.runner import run_expanded
 
 from .core.dispatcher import _Dispatcher
 from .core.helpers import _ansi_to_html, _esc

@@ -12,7 +12,6 @@ from __future__ import annotations
 
 from enum import Enum
 
-
 # ---------------------------------------------------------------------------
 # AWG / Function generator
 # ---------------------------------------------------------------------------
@@ -45,10 +44,10 @@ class WaveformType(str, Enum):
     # Alias resolution
     # ------------------------------------------------------------------
 
-    _aliases: dict[str, "WaveformType"]  # populated below
+    _aliases: dict[str, WaveformType]  # populated below
 
     @classmethod
-    def from_alias(cls, s: str) -> "WaveformType":
+    def from_alias(cls, s: str) -> WaveformType:
         """Resolve a user-supplied waveform string to a :class:`WaveformType`.
 
         Accepts both canonical names (``"SIN"``) and friendly aliases
@@ -126,7 +125,7 @@ class DMMMode(str, Enum):
     TEMPERATURE = "temperature"
 
     @classmethod
-    def from_alias(cls, s: str) -> "DMMMode":
+    def from_alias(cls, s: str) -> DMMMode:
         """Resolve a user-supplied mode string to a :class:`DMMMode`.
 
         Accepts both REPL shorthand (``"vdc"``, ``"res"``) and full internal

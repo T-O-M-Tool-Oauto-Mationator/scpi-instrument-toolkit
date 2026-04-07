@@ -12,22 +12,22 @@ Usage from LabVIEW:
     4. Call close_instrument("psu_1") -> returns "OK"
 """
 
+import contextlib
 import json
 import threading
 
-from .device_manager import DeviceManager
+from .bk_4063 import BK_4063
+from .hp_34401a import HP_34401A
 from .hp_e3631a import HP_E3631A
+from .jds6600_generator import JDS6600_Generator
+from .keysight_dsox1204g import Keysight_DSOX1204G
+from .keysight_edu33212a import Keysight_EDU33212A
+from .keysight_edu34450a import Keysight_EDU34450A
 from .keysight_edu36311a import Keysight_EDU36311A
 from .matrix_mps6010h import MATRIX_MPS6010H
-from .hp_34401a import HP_34401A
-from .keysight_edu34450a import Keysight_EDU34450A
 from .owon_xdm1041 import Owon_XDM1041
-from .keysight_edu33212a import Keysight_EDU33212A
-from .bk_4063 import BK_4063
-from .jds6600_generator import JDS6600_Generator
-from .tektronix_mso2024 import Tektronix_MSO2024
 from .rigol_dho804 import Rigol_DHO804
-from .keysight_dsox1204g import Keysight_DSOX1204G
+from .tektronix_mso2024 import Tektronix_MSO2024
 
 try:
     from .ni_pxie_4139 import NI_PXIe_4139
@@ -130,7 +130,7 @@ def _get(instrument_id: str) -> object:
         return _instruments[instrument_id]
     except KeyError:
         available = list(_instruments.keys()) or ["(none — open an instrument first)"]
-        raise KeyError(f"No instrument with ID '{instrument_id}'. Open instruments: {available}")
+        raise KeyError(f"No instrument with ID '{instrument_id}'. Open instruments: {available}") from None
 
 
 def _get_typed(instrument_id: str, valid_types: tuple) -> object:
@@ -321,10 +321,8 @@ def close_all() -> str:
         items = list(_instruments.items())
         _instruments.clear()
     for _, dev in items:
-        try:
+        with contextlib.suppress(Exception):
             dev.disconnect()
-        except Exception:
-            pass
     return "OK"
 
 
@@ -355,9 +353,7 @@ def psu_set_voltage(instrument_id: str, channel: int, voltage: float) -> str:
         if ch_key is None:
             raise ValueError(f"EDU36311A channel must be 1, 2, or 3. Got {channel}.")
         dev.set_voltage(ch_key, voltage)
-    elif isinstance(dev, MATRIX_MPS6010H):
-        dev.set_voltage(voltage)
-    elif NI_PXIe_4139 is not None and isinstance(dev, NI_PXIe_4139):
+    elif isinstance(dev, MATRIX_MPS6010H) or NI_PXIe_4139 is not None and isinstance(dev, NI_PXIe_4139):
         dev.set_voltage(voltage)
     return "OK"
 
@@ -379,9 +375,7 @@ def psu_set_current_limit(instrument_id: str, channel: int, current: float) -> s
         if ch_key is None:
             raise ValueError(f"EDU36311A channel must be 1, 2, or 3. Got {channel}.")
         dev.set_current_limit(ch_key, current)
-    elif isinstance(dev, MATRIX_MPS6010H):
-        dev.set_current_limit(current)
-    elif NI_PXIe_4139 is not None and isinstance(dev, NI_PXIe_4139):
+    elif isinstance(dev, MATRIX_MPS6010H) or NI_PXIe_4139 is not None and isinstance(dev, NI_PXIe_4139):
         dev.set_current_limit(current)
     return "OK"
 
@@ -405,9 +399,7 @@ def psu_set_output_channel(
         if ch_key is None:
             raise ValueError(f"EDU36311A channel must be 1, 2, or 3. Got {channel}.")
         dev.set_output_channel(ch_key, voltage, current_limit)
-    elif isinstance(dev, MATRIX_MPS6010H):
-        dev.set_output_channel(channel, voltage, current_limit)
-    elif NI_PXIe_4139 is not None and isinstance(dev, NI_PXIe_4139):
+    elif isinstance(dev, MATRIX_MPS6010H) or NI_PXIe_4139 is not None and isinstance(dev, NI_PXIe_4139):
         dev.set_output_channel(channel, voltage, current_limit)
     return "OK"
 
@@ -440,9 +432,7 @@ def psu_measure_voltage(instrument_id: str, channel: int) -> float:
         if ch_key is None:
             raise ValueError(f"EDU36311A channel must be 1, 2, or 3. Got {channel}.")
         return dev.measure_voltage(ch_key)
-    elif isinstance(dev, MATRIX_MPS6010H):
-        return dev.measure_voltage()
-    elif NI_PXIe_4139 is not None and isinstance(dev, NI_PXIe_4139):
+    elif isinstance(dev, MATRIX_MPS6010H) or NI_PXIe_4139 is not None and isinstance(dev, NI_PXIe_4139):
         return dev.measure_voltage()
     raise TypeError(f"Unsupported PSU type: {type(dev).__name__}")
 
@@ -464,9 +454,7 @@ def psu_measure_current(instrument_id: str, channel: int) -> float:
         if ch_key is None:
             raise ValueError(f"EDU36311A channel must be 1, 2, or 3. Got {channel}.")
         return dev.measure_current(ch_key)
-    elif isinstance(dev, MATRIX_MPS6010H):
-        return dev.measure_current()
-    elif NI_PXIe_4139 is not None and isinstance(dev, NI_PXIe_4139):
+    elif isinstance(dev, MATRIX_MPS6010H) or NI_PXIe_4139 is not None and isinstance(dev, NI_PXIe_4139):
         return dev.measure_current()
     raise TypeError(f"Unsupported PSU type: {type(dev).__name__}")
 

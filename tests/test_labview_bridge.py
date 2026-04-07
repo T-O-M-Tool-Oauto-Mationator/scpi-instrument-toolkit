@@ -3,10 +3,9 @@ Tests for the LabVIEW bridge module.
 """
 
 import json
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
-
 
 # ---------------------------------------------------------------------------
 # Helpers — inject a driver instance directly into the bridge cache
@@ -92,7 +91,7 @@ class TestCacheManagement:
             _get("ghost_1")
 
     def test_get_typed_wrong_type(self, hp_e3631a):
-        from lab_instruments.src.labview_bridge import _get_typed, _DMM_CLASSES
+        from lab_instruments.src.labview_bridge import _DMM_CLASSES, _get_typed
 
         psu, _ = hp_e3631a
         inst_id = _inject(psu, "psu")
@@ -352,7 +351,7 @@ class TestAWG:
 
 class TestScope:
     def test_run_stop_single(self, tektronix_mso2024):
-        from lab_instruments.src.labview_bridge import scope_run, scope_stop, scope_single
+        from lab_instruments.src.labview_bridge import scope_run, scope_single, scope_stop
 
         scope, mock_inst = tektronix_mso2024
         inst_id = _inject(scope, "scope")

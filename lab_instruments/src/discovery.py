@@ -489,11 +489,9 @@ class InstrumentDiscovery:
 
         if force:
             # Disconnect existing drivers so they get freshly initialised
-            for name, drv in list(self.found_devices.items()):
-                try:
+            for _name, drv in list(self.found_devices.items()):
+                with contextlib.suppress(Exception):
                     drv.disconnect()
-                except Exception:
-                    pass
             self.found_devices.clear()
 
         # Build a lookup of resource_name -> (friendly_name, driver) for
