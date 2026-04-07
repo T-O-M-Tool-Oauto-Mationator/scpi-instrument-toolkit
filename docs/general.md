@@ -216,17 +216,13 @@ Use `scan` to reconnect after closing.
 
 ## docs
 
-Open the full HTML command reference in your web browser.
+Open the full documentation in your web browser — REPL commands, Python API, scripting, and more.
 
 ```bash
 docs
 ```
 
 Serves the bundled MkDocs site via a local HTTP server on a random port. If the site has not been built yet and `mkdocs.yml` is present, it automatically runs `mkdocs build` first.
-
-```bash
-docs    # opens http://127.0.0.1:<port>/index.html in your default browser
-```
 
 !!! tip
     The HTTP server stays alive for the rest of the session. Calling `docs` again reuses the same port — no second server is started.
