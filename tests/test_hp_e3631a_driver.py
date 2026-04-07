@@ -7,12 +7,9 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+from lab_instruments.src.hp_e3631a import HP_E3631A
 
-CHANNELS = [
-    "positive_6_volts_channel",
-    "positive_25_volts_channel",
-    "negative_25_volts_channel",
-]
+CHANNELS = list(HP_E3631A.Channel)
 
 
 @pytest.fixture
@@ -37,7 +34,6 @@ class TestContextManager:
 
     def test_connect_calls_disable(self, mock_visa_rm):
         mock_rm, mock_inst = mock_visa_rm
-        from lab_instruments.src.hp_e3631a import HP_E3631A
 
         dev = HP_E3631A("GPIB::5::INSTR")
         dev.instrument = mock_inst
@@ -82,10 +78,15 @@ class TestSelectChannel:
             device.select_channel(ch)
             mock_inst.write.assert_called_once()
 
-    def test_select_invalid_channel(self, psu):
+    def test_select_invalid_channel_type(self, psu):
         device, mock_inst = psu
-        with pytest.raises(ValueError):
-            device.select_channel("invalid_channel")
+        with pytest.raises(TypeError):
+            device.select_channel("positive_6_volts_channel")
+
+    def test_select_invalid_channel_int(self, psu):
+        device, mock_inst = psu
+        with pytest.raises(TypeError):
+            device.select_channel(1)
 
 
 # ---------------------------------------------------------------------------
@@ -96,17 +97,24 @@ class TestSelectChannel:
 class TestSetOutputChannel:
     def test_set_output_valid(self, psu):
         device, mock_inst = psu
-        device.set_output_channel("positive_6_volts_channel", 5.0, 0.5)
+        device.set_output_channel(HP_E3631A.Channel.POSITIVE_6V, 5.0, 0.5)
         mock_inst.write.assert_called()
 
     def test_set_output_default_current(self, psu):
         device, mock_inst = psu
-        device.set_output_channel("positive_6_volts_channel", 5.0)
+        device.set_output_channel(HP_E3631A.Channel.POSITIVE_6V, 5.0)
         mock_inst.write.assert_called()
 
-    def test_set_output_invalid_channel(self, psu):
+    def test_set_output_all_channels(self, psu):
         device, mock_inst = psu
-        with pytest.raises(ValueError):
+        for ch in CHANNELS:
+            mock_inst.reset_mock()
+            device.set_output_channel(ch, 1.0)
+            mock_inst.write.assert_called()
+
+    def test_set_output_invalid_channel_type(self, psu):
+        device, mock_inst = psu
+        with pytest.raises(TypeError):
             device.set_output_channel("bad_channel", 5.0)
 
 
@@ -119,35 +127,35 @@ class TestMeasure:
     def test_measure_voltage(self, psu):
         device, mock_inst = psu
         mock_inst.query.return_value = "5.0"
-        val = device.measure_voltage("positive_6_volts_channel")
+        val = device.measure_voltage(HP_E3631A.Channel.POSITIVE_6V)
         assert isinstance(val, float)
 
-    def test_measure_voltage_invalid(self, psu):
+    def test_measure_voltage_invalid_response(self, psu):
         device, mock_inst = psu
         mock_inst.query.return_value = "NOT_A_FLOAT"
         with pytest.raises(ValueError):
-            device.measure_voltage("positive_6_volts_channel")
+            device.measure_voltage(HP_E3631A.Channel.POSITIVE_6V)
 
-    def test_measure_voltage_bad_channel(self, psu):
+    def test_measure_voltage_bad_channel_type(self, psu):
         device, mock_inst = psu
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeError):
             device.measure_voltage("bad_channel")
 
     def test_measure_current(self, psu):
         device, mock_inst = psu
         mock_inst.query.return_value = "0.1"
-        val = device.measure_current("positive_6_volts_channel")
+        val = device.measure_current(HP_E3631A.Channel.POSITIVE_6V)
         assert isinstance(val, float)
 
-    def test_measure_current_invalid(self, psu):
+    def test_measure_current_invalid_response(self, psu):
         device, mock_inst = psu
         mock_inst.query.return_value = "INVALID"
         with pytest.raises(ValueError):
-            device.measure_current("positive_6_volts_channel")
+            device.measure_current(HP_E3631A.Channel.POSITIVE_6V)
 
-    def test_measure_current_bad_channel(self, psu):
+    def test_measure_current_bad_channel_type(self, psu):
         device, mock_inst = psu
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeError):
             device.measure_current("bad_channel")
 
 
@@ -159,13 +167,23 @@ class TestMeasure:
 class TestSetVoltageCurrent:
     def test_set_voltage(self, psu):
         device, mock_inst = psu
-        device.set_voltage("positive_6_volts_channel", 3.3)
+        device.set_voltage(HP_E3631A.Channel.POSITIVE_6V, 3.3)
         mock_inst.write.assert_called()
 
     def test_set_current_limit(self, psu):
         device, mock_inst = psu
-        device.set_current_limit("positive_6_volts_channel", 0.5)
+        device.set_current_limit(HP_E3631A.Channel.POSITIVE_6V, 0.5)
         mock_inst.write.assert_called()
+
+    def test_set_voltage_bad_channel_type(self, psu):
+        device, mock_inst = psu
+        with pytest.raises(TypeError):
+            device.set_voltage("positive_6_volts_channel", 3.3)
+
+    def test_set_current_limit_bad_channel_type(self, psu):
+        device, mock_inst = psu
+        with pytest.raises(TypeError):
+            device.set_current_limit("positive_6_volts_channel", 0.5)
 
 
 # ---------------------------------------------------------------------------
@@ -174,7 +192,7 @@ class TestSetVoltageCurrent:
 
 
 class TestGetSetpoints:
-    def test_get_voltage_setpoint(self, psu):
+    def test_get_voltage_setpoint_no_channel(self, psu):
         device, mock_inst = psu
         mock_inst.query.return_value = "5.0"
         val = device.get_voltage_setpoint()
@@ -183,10 +201,15 @@ class TestGetSetpoints:
     def test_get_voltage_setpoint_with_channel(self, psu):
         device, mock_inst = psu
         mock_inst.query.return_value = "5.0"
-        val = device.get_voltage_setpoint("positive_6_volts_channel")
+        val = device.get_voltage_setpoint(HP_E3631A.Channel.POSITIVE_6V)
         assert isinstance(val, float)
 
-    def test_get_current_limit(self, psu):
+    def test_get_voltage_setpoint_bad_channel_type(self, psu):
+        device, mock_inst = psu
+        with pytest.raises(TypeError):
+            device.get_voltage_setpoint("positive_6_volts_channel")
+
+    def test_get_current_limit_no_channel(self, psu):
         device, mock_inst = psu
         mock_inst.query.return_value = "0.5"
         val = device.get_current_limit()
@@ -195,8 +218,13 @@ class TestGetSetpoints:
     def test_get_current_limit_with_channel(self, psu):
         device, mock_inst = psu
         mock_inst.query.return_value = "0.5"
-        val = device.get_current_limit("positive_6_volts_channel")
+        val = device.get_current_limit(HP_E3631A.Channel.POSITIVE_6V)
         assert isinstance(val, float)
+
+    def test_get_current_limit_bad_channel_type(self, psu):
+        device, mock_inst = psu
+        with pytest.raises(TypeError):
+            device.get_current_limit("positive_6_volts_channel")
 
     def test_get_output_state_on(self, psu):
         device, mock_inst = psu
@@ -212,6 +240,32 @@ class TestGetSetpoints:
         device, mock_inst = psu
         mock_inst.query.return_value = "ON"
         assert device.get_output_state() is True
+
+
+# ---------------------------------------------------------------------------
+# Channel enum
+# ---------------------------------------------------------------------------
+
+
+class TestChannelEnum:
+    def test_channel_from_number_covers_all(self):
+        assert set(HP_E3631A.CHANNEL_FROM_NUMBER.values()) == set(HP_E3631A.Channel)
+
+    def test_channel_from_number_keys(self):
+        assert list(HP_E3631A.CHANNEL_FROM_NUMBER.keys()) == [1, 2, 3]
+
+    def test_channel_values_are_scpi_names(self):
+        assert HP_E3631A.Channel.POSITIVE_6V.value == "P6V"
+        assert HP_E3631A.Channel.POSITIVE_25V.value == "P25V"
+        assert HP_E3631A.Channel.NEGATIVE_25V.value == "N25V"
+
+    def test_default_current_limits_keyed_by_enum(self):
+        for ch in HP_E3631A.Channel:
+            assert ch in HP_E3631A.DEFAULT_CURRENT_LIMIT
+
+    def test_channel_limits_keyed_by_enum(self):
+        for ch in HP_E3631A.Channel:
+            assert ch in HP_E3631A.CHANNEL_LIMITS
 
 
 # ---------------------------------------------------------------------------

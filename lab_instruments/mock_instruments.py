@@ -7,6 +7,8 @@ Usage:
 
 import random
 
+from lab_instruments.src.hp_e3631a import HP_E3631A as _HP_E3631A
+
 
 class MockBase:
     def disconnect(self):
@@ -809,8 +811,11 @@ class MockMultiChannelPSU(MockPSU):
 
     def __init__(self):
         super().__init__()
-        self._ch_outputs: dict = {k: False for k in self.CHANNEL_MAP}
-        self._selected_ch: str | None = None
+        if hasattr(self.__class__, "CHANNEL_FROM_NUMBER"):
+            self._ch_outputs: dict = {ch: False for ch in self.__class__.CHANNEL_FROM_NUMBER.values()}
+        else:
+            self._ch_outputs = {k: False for k in self.CHANNEL_MAP}
+        self._selected_ch = None
 
     def select_channel(self, ch: str) -> None:
         self._selected_ch = ch
@@ -837,15 +842,12 @@ class MockMultiChannelPSU(MockPSU):
 class MockHP_E3631A(MockMultiChannelPSU):
     """Mock HP E3631A triple-output power supply."""
 
-    CHANNEL_MAP = {
-        "positive_6_volts_channel": "P6V",
-        "positive_25_volts_channel": "P25V",
-        "negative_25_volts_channel": "N25V",
-    }
+    Channel = _HP_E3631A.Channel
+    CHANNEL_FROM_NUMBER = _HP_E3631A.CHANNEL_FROM_NUMBER
     CHANNEL_LIMITS = {
-        "positive_6_volts_channel": (6.0, 5.0),
-        "positive_25_volts_channel": (25.0, 1.0),
-        "negative_25_volts_channel": (25.0, 1.0),
+        _HP_E3631A.Channel.POSITIVE_6V: (6.0, 5.0),
+        _HP_E3631A.Channel.POSITIVE_25V: (25.0, 1.0),
+        _HP_E3631A.Channel.NEGATIVE_25V: (25.0, 1.0),
     }
 
 

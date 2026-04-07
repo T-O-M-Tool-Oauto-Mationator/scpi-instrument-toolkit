@@ -8,54 +8,29 @@ from ..context import ReplContext
 from .base import BaseCommand
 from .safety import SafetySystem
 
-PSU_CHANNEL_ALIASES = {
-    # Numeric fallback (used when device has no CHANNEL_MAP, e.g. mocks)
-    "1": "positive_6_volts_channel",
-    "2": "positive_25_volts_channel",
-    "3": "negative_25_volts_channel",
-    # Internal names (E3631A)
-    "positive_6_volts_channel": "positive_6_volts_channel",
-    "positive_25_volts_channel": "positive_25_volts_channel",
-    "negative_25_volts_channel": "negative_25_volts_channel",
-    # Internal names (EDU36311A)
-    "p6v_channel": "p6v_channel",
-    "p30v_channel": "p30v_channel",
-    "n30v_channel": "n30v_channel",
-}
-
 
 def _resolve_channel(dev, ch_str):
-    """Resolve a channel string to the device's internal channel key.
+    """Resolve a channel number string to the device's channel object.
 
-    Supports numeric channels (1, 2, 3) by indexing into the device's
-    CHANNEL_MAP, and named aliases via PSU_CHANNEL_ALIASES.
-    Falls back to the static alias table for devices without CHANNEL_MAP
-    (e.g. mock instruments).
+    Tries CHANNEL_FROM_NUMBER first (new enum-based protocol), then falls
+    back to positional indexing into CHANNEL_MAP (legacy string protocol).
+    Returns None if the channel number is out of range or unrecognised.
     """
-    ch_lower = ch_str.lower()
-    channel_map = getattr(dev, "CHANNEL_MAP", None)
+    # New protocol: CHANNEL_FROM_NUMBER → enum members
+    channel_from_num = getattr(dev.__class__, "CHANNEL_FROM_NUMBER", {})
+    if channel_from_num:
+        try:
+            return channel_from_num.get(int(ch_str))
+        except ValueError:
+            return None
 
-    if channel_map:
-        # Device has a CHANNEL_MAP — use it for resolution
-        # Try named alias first — only accept if the device actually has that key
-        alias = PSU_CHANNEL_ALIASES.get(ch_lower)
-        if alias and alias in channel_map:
-            return alias
-
-        # Try numeric: "1" → first key in device's CHANNEL_MAP, etc.
-        if ch_str.isdigit():
-            keys = list(channel_map.keys())
-            idx = int(ch_str) - 1
-            if 0 <= idx < len(keys):
-                return keys[idx]
-    else:
-        # No CHANNEL_MAP (mock instruments) — fall back to static aliases
-        alias = PSU_CHANNEL_ALIASES.get(ch_lower)
-        if alias:
-            return alias
-        # Accept bare numeric channels (1-3) for devices without a CHANNEL_MAP
-        if ch_str.isdigit() and 1 <= int(ch_str) <= 3:
-            return ch_str
+    # Legacy protocol: CHANNEL_MAP → positional string keys
+    old_map = getattr(dev, "CHANNEL_MAP", {})
+    if old_map and ch_str.isdigit():
+        keys = list(old_map.keys())
+        idx = int(ch_str) - 1
+        if 0 <= idx < len(keys):
+            return keys[idx]
 
     return None
 
@@ -74,7 +49,11 @@ class PsuCommand(BaseCommand):
         """
         # Detect multi-channel by whether the device has a select_channel method or CHANNEL_MAP.
         # Inspecting parameter names is fragile (mocks use 'ch', real devices may vary).
-        is_single_channel = not (hasattr(dev, "select_channel") or bool(getattr(dev, "CHANNEL_MAP", None)))
+        is_single_channel = not (
+            hasattr(dev, "select_channel")
+            or bool(getattr(dev.__class__, "CHANNEL_FROM_NUMBER", None))
+            or bool(getattr(dev, "CHANNEL_MAP", None))
+        )
 
         args = self.parse_args(arg)
         args, help_flag = self.strip_help(args)
@@ -102,7 +81,9 @@ class PsuCommand(BaseCommand):
                     if ch_str != "all":
                         channel = _resolve_channel(dev, args[1])
                         if not channel:
-                            ch_count = len(getattr(dev, "CHANNEL_MAP", {}))
+                            ch_count = len(
+                                getattr(dev.__class__, "CHANNEL_FROM_NUMBER", None) or getattr(dev, "CHANNEL_MAP", {})
+                            )
                             ColorPrinter.warning(f"Invalid channel. Use 1-{ch_count} or 'all'")
                             return
                         if hasattr(dev, "select_channel"):
@@ -235,8 +216,10 @@ class PsuCommand(BaseCommand):
                 ColorPrinter.warning("Channels: 1 (6V), 2 (25V+), 3 (25V-)")
                 return
             channel = _resolve_channel(dev, args[1])
-            if not channel:
-                ch_count = len(getattr(dev, "CHANNEL_MAP", {}))
+            if channel is None:
+                ch_count = len(
+                    getattr(dev.__class__, "CHANNEL_FROM_NUMBER", None) or getattr(dev, "CHANNEL_MAP", {})
+                )
                 ColorPrinter.warning(f"Invalid channel. Use 1-{ch_count}")
                 return
             voltage = float(args[2])
@@ -282,8 +265,10 @@ class PsuCommand(BaseCommand):
                 return
             channel = _resolve_channel(dev, args[1])
             mode = args[2].lower()
-            if not channel:
-                ch_count = len(getattr(dev, "CHANNEL_MAP", {}))
+            if channel is None:
+                ch_count = len(
+                    getattr(dev.__class__, "CHANNEL_FROM_NUMBER", None) or getattr(dev, "CHANNEL_MAP", {})
+                )
                 ColorPrinter.warning(f"Invalid channel. Use 1-{ch_count}")
                 return
             if mode in ("v", "volt", "voltage"):

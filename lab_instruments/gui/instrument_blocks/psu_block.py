@@ -348,12 +348,15 @@ class _PSUBlock(QFrame):
             return
 
         multi = self._d.has_cap(self._psu, "multi_channel")
+        ch_from_num = getattr(dev.__class__, "CHANNEL_FROM_NUMBER", None)
         ch_map = getattr(dev, "CHANNEL_MAP", None)
         ch_limits = getattr(dev, "CHANNEL_LIMITS", {})
         dev_max_v: float | None = getattr(dev, "MAX_VOLTAGE", None)
         dev_max_i: float | None = getattr(dev, "MAX_CURRENT", None)
 
-        if multi and ch_map:
+        if multi and ch_from_num:
+            defs = [(n, ch.value, ch) for n, ch in ch_from_num.items()]
+        elif multi and ch_map:
             keys = list(ch_map.keys())
             defs = [(i + 1, ch_map[k], k) for i, k in enumerate(keys)]
         elif multi:
