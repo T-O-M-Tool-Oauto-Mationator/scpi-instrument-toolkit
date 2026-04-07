@@ -41,7 +41,7 @@ $ghInstalled = winget list --id GitHub.GitHubDesktop --accept-source-agreements 
 if ($ghInstalled) {
     Write-Host "GitHub Desktop is already installed. Skipping." -ForegroundColor Yellow
 } else {
-    Write-Host "Installing GitHub Desktop (user scope, no admin)..."
+    Write-Host "Installing GitHub Desktop..."
     winget install GitHub.GitHubDesktop `
         --scope user `
         --accept-package-agreements `
@@ -66,7 +66,7 @@ $gitForWindowsInstalled = winget list --id Git.Git --accept-source-agreements 2>
 if ($gitForWindowsInstalled) {
     Write-Host "Git for Windows is already installed. Skipping." -ForegroundColor Yellow
 } else {
-    Write-Host "Installing Git for Windows (user scope, no admin)..."
+    Write-Host "Installing Git for Windows..."
     winget install Git.Git `
         --scope user `
         --accept-package-agreements `
@@ -139,7 +139,7 @@ if (Test-Path $ghExe) {
     Write-Host "GitHub CLI already installed at $ghExe. Skipping." -ForegroundColor Yellow
 } else {
     # gh winget package is machine-scope only — download portable zip instead
-    Write-Host "Downloading GitHub CLI portable zip (no admin needed)..."
+    Write-Host "Downloading GitHub CLI portable zip..."
     try {
         $ghRelease  = Invoke-RestMethod "https://api.github.com/repos/cli/cli/releases/latest"
         $ghAsset    = $ghRelease.assets | Where-Object { $_.name -like "*windows_amd64.zip" } | Select-Object -First 1
@@ -256,7 +256,7 @@ try {
 } catch {}
 
 if (-not $pythonOk) {
-    Write-Host "Installing Python 3.12 (user scope, no admin)..."
+    Write-Host "Installing Python 3.12..."
     winget install Python.Python.3.12 `
         --scope user `
         --accept-package-agreements `
@@ -315,7 +315,7 @@ if (-not $pipCmd) {
 # ---------------------------------------------------------------------------
 # Step 8: Install Claude Code
 # ---------------------------------------------------------------------------
-Write-Step 8 "Installing Claude Code..."
+Write-Step 8 "Installing the TOM-a-natior..."
 
 $claudeDir = $null
 try {
