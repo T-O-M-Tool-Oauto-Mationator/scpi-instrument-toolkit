@@ -77,7 +77,10 @@ def safe_eval(expr: str, names: dict[str, Any]) -> Any:
     numeric constants, named variables, subscript (dict[key]),
     and functions: abs, min, max, round.
     """
-    allowed_funcs = {"abs": abs, "min": min, "max": max, "round": round}
+    allowed_funcs = {"abs": abs, "min": min, "max": max, "round": round, "int": int, "float": float}
+
+    # Rewrite ^ to ** so users can write 2^3 to mean 2**3
+    expr = expr.replace("^", "**")
 
     def _eval(node: ast.AST) -> Any:
         if isinstance(node, ast.Expression):
@@ -100,8 +103,14 @@ def safe_eval(expr: str, names: dict[str, Any]) -> Any:
                 ast.Sub: lambda a, b: a - b,
                 ast.Mult: lambda a, b: a * b,
                 ast.Div: lambda a, b: a / b,
+                ast.FloorDiv: lambda a, b: a // b,
                 ast.Pow: lambda a, b: a**b,
                 ast.Mod: lambda a, b: a % b,
+                ast.BitOr: lambda a, b: int(a) | int(b),
+                ast.BitAnd: lambda a, b: int(a) & int(b),
+                ast.BitXor: lambda a, b: int(a) ^ int(b),
+                ast.LShift: lambda a, b: int(a) << int(b),
+                ast.RShift: lambda a, b: int(a) >> int(b),
             }
             op_func = ops.get(type(node.op))
             if op_func is None:
