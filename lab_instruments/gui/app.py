@@ -42,7 +42,7 @@ from .panels.file_explorer import FileExplorer
 from .widgets.console import _Console
 from .widgets.docs_viewer import DocsViewer
 from .widgets.editor import ScpiEditor
-from .widgets.file_viewers import CsvViewer, ImageViewer, TextViewer
+from .widgets.file_viewers import CsvViewer, DocxViewer, ImageViewer, PdfViewer, PptxViewer, TextViewer, XlsxViewer
 from .widgets.work_area import _WorkArea
 
 # -- Background worker for blocking operations --------------------------------
@@ -348,6 +348,14 @@ class _MainWindow(QMainWindow):
             widget = ImageViewer(path)
         elif ext == ".csv":
             widget = CsvViewer(path)
+        elif ext == ".pdf":
+            widget = PdfViewer(path)
+        elif ext in (".docx", ".doc"):
+            widget = DocxViewer(path)
+        elif ext == ".xlsx":
+            widget = XlsxViewer(path)
+        elif ext == ".pptx":
+            widget = PptxViewer(path)
         elif ext in (".scpi", ".py", ".txt", ".md", ".json", ".toml", ".cfg", ".ini", ".sh"):
             widget = ScpiEditor(path)
             widget.run_requested.connect(self._run_script)
