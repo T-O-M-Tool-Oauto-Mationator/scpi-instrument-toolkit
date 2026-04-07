@@ -48,7 +48,7 @@ class _DropOverlay(QWidget):
     def zone_at(self, pos: QPoint) -> _DZ:
         r = self.rect()
         w, h = r.width(), r.height()
-        edge_w, edge_h = max(w // 5, 40), max(h // 5, 40)  # ~20% edge zones
+        edge_w, edge_h = max(w // 5, 30), max(h // 5, 30)  # ~20% edge zones
         x, y = pos.x(), pos.y()
         if x < edge_w:
             return _DZ.LEFT
@@ -229,9 +229,11 @@ class _TabStrip(QWidget):
             self._pop_out_tab(idx)
         elif copy_path and action == copy_path:
             from PySide6.QtWidgets import QApplication
+
             QApplication.clipboard().setText(os.path.abspath(file_path))
         elif copy_rel and action == copy_rel:
             from PySide6.QtWidgets import QApplication
+
             QApplication.clipboard().setText(os.path.relpath(file_path))
 
     def _pop_out_tab(self, idx: int) -> None:
@@ -370,6 +372,10 @@ class _TabStrip(QWidget):
             local = target.mapFromGlobal(gpos)
             zone = target._overlay.zone_at(local)
             src: _PanelGroup = _DRAG_STATE["source"]
+            # Dropping on the tab strip = always CENTER (merge into group)
+            tab_local = target._tab_strip.mapFromGlobal(gpos)
+            if target._tab_strip.rect().contains(tab_local):
+                zone = _DZ.CENTER
             if target is src and src.count() == 1 and zone == _DZ.CENTER:
                 zone = None  # can't merge into self with only one tab
             target._overlay.show_for(zone)
