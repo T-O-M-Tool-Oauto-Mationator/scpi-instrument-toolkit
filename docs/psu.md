@@ -1,5 +1,8 @@
 # PSU — Power Supply
 
+!!! tip "Auto-generated reference"
+    For the definitive command list extracted directly from source code, see [REPL Command Reference](generated/repl-ref.md#psu-power-supply).
+
 Controls power supply units over VISA.
 
 - **Single-channel** PSUs (e.g. HP E3631A): channel is always `1`
@@ -193,6 +196,19 @@ psu recall <1-3>
 psu save 1      # save current settings to slot 1
 psu recall 1    # restore settings from slot 1
 ```
+
+---
+
+## psu on / psu off
+
+Enable or disable the power supply output (shorthand).
+
+```bash
+psu on     # enable output
+psu off    # disable output
+```
+
+Equivalent to `psu chan on` / `psu chan off`. Works on both single-channel and multi-channel PSUs.
 
 ---
 

@@ -34,6 +34,9 @@ theme:
 
 plugins:
   - search
+  - gen-files:
+      scripts:
+        - scripts/gen_ref_pages.py
   - mkdocstrings:
       handlers:
         python:
@@ -91,6 +94,9 @@ nav:
     - Source Measure Unit: api/smu.md
     - USB-to-I2C (EV2300): api/ev2300.md
     - Base Class: api/base.md
+  - Reference:
+    - Instruments & Capabilities: generated/instruments.md
+    - REPL Command Reference: generated/repl-ref.md
   - LabVIEW Bridge: labview.md
   - Architecture: architecture.md
   - Troubleshooting: troubleshooting.md

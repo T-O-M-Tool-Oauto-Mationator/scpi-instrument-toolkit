@@ -1,5 +1,8 @@
 # SMU — Source Measure Unit
 
+!!! tip "Auto-generated reference"
+    For the definitive command list extracted directly from source code, see [REPL Command Reference](generated/repl-ref.md#smu-source-measure-unit).
+
 Controls source measure units (SMUs) that can both source a precise voltage and simultaneously measure current (or vice versa).
 
 - Multiple SMUs are named `smu1`, `smu2`, etc.

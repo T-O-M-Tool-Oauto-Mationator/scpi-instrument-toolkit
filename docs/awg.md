@@ -1,5 +1,8 @@
 # AWG — Function Generator
 
+!!! tip "Auto-generated reference"
+    For the definitive command list extracted directly from source code, see [REPL Command Reference](generated/repl-ref.md#awg-function-generator).
+
 Controls arbitrary waveform generators and function generators.
 
 - Channels are numbered `1`, `2`, or use `all` to affect both simultaneously
