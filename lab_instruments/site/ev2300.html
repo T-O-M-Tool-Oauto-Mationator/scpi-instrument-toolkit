@@ -945,10 +945,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#typical-workflow" class="md-nav__link">
+  <a href="#typical-workflow-bq76920-battery-monitor" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Typical workflow
+        Typical workflow — BQ76920 battery monitor
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#typical-workflow-bq40z50-fuel-gauge" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Typical workflow — BQ40z50 fuel gauge
       
     </span>
   </a>
@@ -1753,10 +1764,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#typical-workflow" class="md-nav__link">
+  <a href="#typical-workflow-bq76920-battery-monitor" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Typical workflow
+        Typical workflow — BQ76920 battery monitor
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#typical-workflow-bq40z50-fuel-gauge" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Typical workflow — BQ40z50 fuel gauge
       
     </span>
   </a>
@@ -1910,9 +1932,13 @@
 </tr>
 </tbody>
 </table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>ev2300<span class="w"> </span>read_byte<span class="w"> </span>0x50<span class="w"> </span>0x00<span class="w">    </span><span class="c1"># read first byte of an EEPROM</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>ev2300<span class="w"> </span>read_byte<span class="w"> </span>0x08<span class="w"> </span>0x00<span class="w">    </span><span class="c1"># read SYS_STAT on BQ76920</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>ev2300<span class="w"> </span>read_byte<span class="w"> </span>0x08<span class="w"> </span>0x04<span class="w">    </span><span class="c1"># read SYS_CTRL1</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>ev2300<span class="w"> </span>read_byte<span class="w"> </span>0x08<span class="w"> </span>0x05<span class="w">    </span><span class="c1"># read SYS_CTRL2</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>ev2300<span class="w"> </span>read_byte<span class="w"> </span>0x08<span class="w"> </span>0x50<span class="w">    </span><span class="c1"># read ADCGAIN1</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>ev2300<span class="w"> </span>read_byte<span class="w"> </span>0x08<span class="w"> </span>0x51<span class="w">    </span><span class="c1"># read ADCOFFSET</span>
 </code></pre></div>
-<p>Returns the value in hex and decimal: <code>0x4A (74)</code>.</p>
+<p>Returns the value in hex and decimal: <code>0x10 (16)</code>.</p>
 <hr />
 <h2 id="ev2300-write_byte">ev2300 write_byte<a class="headerlink" href="#ev2300-write_byte" title="Permanent link">&para;</a></h2>
 <p>Write a single byte to an I2C device register.</p>
@@ -1948,7 +1974,11 @@
 </tr>
 </tbody>
 </table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>ev2300<span class="w"> </span>write_byte<span class="w"> </span>0x50<span class="w"> </span>0x00<span class="w"> </span>0x42<span class="w">    </span><span class="c1"># write 0x42 to EEPROM address 0</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>ev2300<span class="w"> </span>write_byte<span class="w"> </span>0x08<span class="w"> </span>0x00<span class="w"> </span>0xFF<span class="w">    </span><span class="c1"># clear all faults (SYS_STAT = 0xFF) on BQ76920</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>ev2300<span class="w"> </span>write_byte<span class="w"> </span>0x08<span class="w"> </span>0x04<span class="w"> </span>0x10<span class="w">    </span><span class="c1"># enable ADC (SYS_CTRL1 = 0x10)</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>ev2300<span class="w"> </span>write_byte<span class="w"> </span>0x08<span class="w"> </span>0x05<span class="w"> </span>0x03<span class="w">    </span><span class="c1"># enable CHG + DSG (SYS_CTRL2 = 0x03)</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>ev2300<span class="w"> </span>write_byte<span class="w"> </span>0x08<span class="w"> </span>0x09<span class="w"> </span>0xBE<span class="w">    </span><span class="c1"># set OV trip threshold</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>ev2300<span class="w"> </span>write_byte<span class="w"> </span>0x08<span class="w"> </span>0x0A<span class="w"> </span>0x97<span class="w">    </span><span class="c1"># set UV trip threshold</span>
 </code></pre></div>
 <hr />
 <h2 id="ev2300-read_block">ev2300 read_block<a class="headerlink" href="#ev2300-read_block" title="Permanent link">&para;</a></h2>
@@ -2188,23 +2218,43 @@
 <li>On <strong>macOS</strong>: install <code>hidapi</code>: <code>pip install hidapi</code></li>
 </ul>
 <hr />
-<h2 id="typical-workflow">Typical workflow<a class="headerlink" href="#typical-workflow" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a><span class="c1"># Read battery voltage from a BQ40z50 fuel gauge (I2C addr 0x16)</span>
-<a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a>ev2300<span class="w"> </span>read_word<span class="w"> </span>0x16<span class="w"> </span>0x09<span class="w">        </span><span class="c1"># Voltage() register</span>
-<a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a>
-<a id="__codelineno-23-4" name="__codelineno-23-4" href="#__codelineno-23-4"></a><span class="c1"># Read state of charge</span>
-<a id="__codelineno-23-5" name="__codelineno-23-5" href="#__codelineno-23-5"></a>ev2300<span class="w"> </span>read_word<span class="w"> </span>0x16<span class="w"> </span>0x0D<span class="w">        </span><span class="c1"># RelativeStateOfCharge()</span>
-<a id="__codelineno-23-6" name="__codelineno-23-6" href="#__codelineno-23-6"></a>
-<a id="__codelineno-23-7" name="__codelineno-23-7" href="#__codelineno-23-7"></a><span class="c1"># Read manufacturer name string</span>
-<a id="__codelineno-23-8" name="__codelineno-23-8" href="#__codelineno-23-8"></a>ev2300<span class="w"> </span>read_block<span class="w"> </span>0x16<span class="w"> </span>0x20<span class="w">       </span><span class="c1"># ManufacturerName()</span>
-<a id="__codelineno-23-9" name="__codelineno-23-9" href="#__codelineno-23-9"></a>
-<a id="__codelineno-23-10" name="__codelineno-23-10" href="#__codelineno-23-10"></a><span class="c1"># Scan all registers to discover what&#39;s available</span>
-<a id="__codelineno-23-11" name="__codelineno-23-11" href="#__codelineno-23-11"></a>ev2300<span class="w"> </span>scan<span class="w"> </span>0x16
+<h2 id="typical-workflow-bq76920-battery-monitor">Typical workflow — BQ76920 battery monitor<a class="headerlink" href="#typical-workflow-bq76920-battery-monitor" title="Permanent link">&para;</a></h2>
+<p>Initialize a BQ76920 AFE (I2C address <code>0x08</code>), read ADC calibration, and monitor cell voltage:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a><span class="c1"># 1. Clear faults and enable the ADC</span>
+<a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a>ev2300<span class="w"> </span>write_byte<span class="w"> </span>0x08<span class="w"> </span>0x00<span class="w"> </span>0xFF<span class="w">    </span><span class="c1"># SYS_STAT = 0xFF (clear all faults)</span>
+<a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a>ev2300<span class="w"> </span>write_byte<span class="w"> </span>0x08<span class="w"> </span>0x04<span class="w"> </span>0x10<span class="w">    </span><span class="c1"># SYS_CTRL1 = 0x10 (ADC_EN)</span>
+<a id="__codelineno-23-4" name="__codelineno-23-4" href="#__codelineno-23-4"></a>ev2300<span class="w"> </span>write_byte<span class="w"> </span>0x08<span class="w"> </span>0x05<span class="w"> </span>0x03<span class="w">    </span><span class="c1"># SYS_CTRL2 = 0x03 (CHG_ON + DSG_ON)</span>
+<a id="__codelineno-23-5" name="__codelineno-23-5" href="#__codelineno-23-5"></a>ev2300<span class="w"> </span>write_byte<span class="w"> </span>0x08<span class="w"> </span>0x0B<span class="w"> </span>0x19<span class="w">    </span><span class="c1"># CC_CFG = 0x19 (coulomb counter config)</span>
+<a id="__codelineno-23-6" name="__codelineno-23-6" href="#__codelineno-23-6"></a>sleep<span class="w"> </span><span class="m">1</span>.0
+<a id="__codelineno-23-7" name="__codelineno-23-7" href="#__codelineno-23-7"></a>
+<a id="__codelineno-23-8" name="__codelineno-23-8" href="#__codelineno-23-8"></a><span class="c1"># 2. Verify registers were written</span>
+<a id="__codelineno-23-9" name="__codelineno-23-9" href="#__codelineno-23-9"></a>ev2300<span class="w"> </span>read_byte<span class="w"> </span>0x08<span class="w"> </span>0x00<span class="w">          </span><span class="c1"># SYS_STAT — should be 0x00 (no faults)</span>
+<a id="__codelineno-23-10" name="__codelineno-23-10" href="#__codelineno-23-10"></a>ev2300<span class="w"> </span>read_byte<span class="w"> </span>0x08<span class="w"> </span>0x04<span class="w">          </span><span class="c1"># SYS_CTRL1 — should be 0x10</span>
+<a id="__codelineno-23-11" name="__codelineno-23-11" href="#__codelineno-23-11"></a>ev2300<span class="w"> </span>read_byte<span class="w"> </span>0x08<span class="w"> </span>0x05<span class="w">          </span><span class="c1"># SYS_CTRL2 — should be 0x03</span>
 <a id="__codelineno-23-12" name="__codelineno-23-12" href="#__codelineno-23-12"></a>
-<a id="__codelineno-23-13" name="__codelineno-23-13" href="#__codelineno-23-13"></a><span class="c1"># Send a ManufacturerAccess command</span>
-<a id="__codelineno-23-14" name="__codelineno-23-14" href="#__codelineno-23-14"></a>ev2300<span class="w"> </span>write_word<span class="w"> </span>0x16<span class="w"> </span>0x00<span class="w"> </span>0x0001
-<a id="__codelineno-23-15" name="__codelineno-23-15" href="#__codelineno-23-15"></a>sleep<span class="w"> </span><span class="m">0</span>.1
-<a id="__codelineno-23-16" name="__codelineno-23-16" href="#__codelineno-23-16"></a>ev2300<span class="w"> </span>read_block<span class="w"> </span>0x16<span class="w"> </span>0x23<span class="w">       </span><span class="c1"># read the response</span>
+<a id="__codelineno-23-13" name="__codelineno-23-13" href="#__codelineno-23-13"></a><span class="c1"># 3. Read ADC calibration</span>
+<a id="__codelineno-23-14" name="__codelineno-23-14" href="#__codelineno-23-14"></a>ev2300<span class="w"> </span>read_byte<span class="w"> </span>0x08<span class="w"> </span>0x50<span class="w">          </span><span class="c1"># ADCGAIN1</span>
+<a id="__codelineno-23-15" name="__codelineno-23-15" href="#__codelineno-23-15"></a>ev2300<span class="w"> </span>read_byte<span class="w"> </span>0x08<span class="w"> </span>0x59<span class="w">          </span><span class="c1"># ADCGAIN2</span>
+<a id="__codelineno-23-16" name="__codelineno-23-16" href="#__codelineno-23-16"></a>ev2300<span class="w"> </span>read_byte<span class="w"> </span>0x08<span class="w"> </span>0x51<span class="w">          </span><span class="c1"># ADCOFFSET</span>
+<a id="__codelineno-23-17" name="__codelineno-23-17" href="#__codelineno-23-17"></a>
+<a id="__codelineno-23-18" name="__codelineno-23-18" href="#__codelineno-23-18"></a><span class="c1"># 4. Set OV/UV trip thresholds</span>
+<a id="__codelineno-23-19" name="__codelineno-23-19" href="#__codelineno-23-19"></a>ev2300<span class="w"> </span>write_byte<span class="w"> </span>0x08<span class="w"> </span>0x09<span class="w"> </span>0xBE<span class="w">    </span><span class="c1"># OV_TRIP → ~4.301 V/cell</span>
+<a id="__codelineno-23-20" name="__codelineno-23-20" href="#__codelineno-23-20"></a>ev2300<span class="w"> </span>write_byte<span class="w"> </span>0x08<span class="w"> </span>0x0A<span class="w"> </span>0x97<span class="w">    </span><span class="c1"># UV_TRIP → ~2.505 V/cell</span>
+<a id="__codelineno-23-21" name="__codelineno-23-21" href="#__codelineno-23-21"></a>
+<a id="__codelineno-23-22" name="__codelineno-23-22" href="#__codelineno-23-22"></a><span class="c1"># 5. Monitor during a voltage sweep</span>
+<a id="__codelineno-23-23" name="__codelineno-23-23" href="#__codelineno-23-23"></a>ev2300<span class="w"> </span>read_byte<span class="w"> </span>0x08<span class="w"> </span>0x00<span class="w">          </span><span class="c1"># check SYS_STAT for OV/UV flags</span>
+</code></pre></div>
+<h2 id="typical-workflow-bq40z50-fuel-gauge">Typical workflow — BQ40z50 fuel gauge<a class="headerlink" href="#typical-workflow-bq40z50-fuel-gauge" title="Permanent link">&para;</a></h2>
+<p>Read standard SBS registers from a smart battery fuel gauge (I2C address <code>0x16</code>):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a>ev2300<span class="w"> </span>read_word<span class="w"> </span>0x16<span class="w"> </span>0x09<span class="w">        </span><span class="c1"># Voltage()</span>
+<a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a>ev2300<span class="w"> </span>read_word<span class="w"> </span>0x16<span class="w"> </span>0x0D<span class="w">        </span><span class="c1"># RelativeStateOfCharge()</span>
+<a id="__codelineno-24-3" name="__codelineno-24-3" href="#__codelineno-24-3"></a>ev2300<span class="w"> </span>read_block<span class="w"> </span>0x16<span class="w"> </span>0x20<span class="w">       </span><span class="c1"># ManufacturerName()</span>
+<a id="__codelineno-24-4" name="__codelineno-24-4" href="#__codelineno-24-4"></a>ev2300<span class="w"> </span>scan<span class="w"> </span>0x16<span class="w">                  </span><span class="c1"># discover all readable registers</span>
+<a id="__codelineno-24-5" name="__codelineno-24-5" href="#__codelineno-24-5"></a>
+<a id="__codelineno-24-6" name="__codelineno-24-6" href="#__codelineno-24-6"></a><span class="c1"># Send a ManufacturerAccess command</span>
+<a id="__codelineno-24-7" name="__codelineno-24-7" href="#__codelineno-24-7"></a>ev2300<span class="w"> </span>write_word<span class="w"> </span>0x16<span class="w"> </span>0x00<span class="w"> </span>0x0001
+<a id="__codelineno-24-8" name="__codelineno-24-8" href="#__codelineno-24-8"></a>sleep<span class="w"> </span><span class="m">0</span>.1
+<a id="__codelineno-24-9" name="__codelineno-24-9" href="#__codelineno-24-9"></a>ev2300<span class="w"> </span>read_block<span class="w"> </span>0x16<span class="w"> </span>0x23<span class="w">       </span><span class="c1"># read the response</span>
 </code></pre></div>
 
 

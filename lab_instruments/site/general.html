@@ -667,10 +667,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#unscan" class="md-nav__link">
+  <a href="#disconnect" class="md-nav__link">
     <span class="md-ellipsis">
       
-        unscan
+        disconnect
       
     </span>
   </a>
@@ -1687,10 +1687,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#unscan" class="md-nav__link">
+  <a href="#disconnect" class="md-nav__link">
     <span class="md-ellipsis">
       
-        unscan
+        disconnect
       
     </span>
   </a>
@@ -1895,9 +1895,9 @@
 <p>This will turn off all instrument outputs. If a PSU is actively sourcing, its output will be disabled and zeroed.</p>
 </div>
 <hr />
-<h2 id="unscan">unscan<a class="headerlink" href="#unscan" title="Permanent link">&para;</a></h2>
+<h2 id="disconnect">disconnect<a class="headerlink" href="#disconnect" title="Permanent link">&para;</a></h2>
 <p>Remove a connected instrument from the current session without rescanning.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>unscan &lt;name&gt;
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>disconnect &lt;name&gt;
 </code></pre></div>
 <table>
 <thead>
@@ -1916,7 +1916,7 @@
 </tbody>
 </table>
 <p>The device is removed from the REPL's device list. If it was the active selection, the selection is cleared. Use <code>scan</code> to rediscover it.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>unscan psu1    # remove psu1 from the session
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>disconnect psu1    # remove psu1 from the session
 </code></pre></div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
@@ -2064,7 +2064,7 @@ This does not change the active selection.</p>
 <hr />
 <h2 id="sleep">sleep<a class="headerlink" href="#sleep" title="Permanent link">&para;</a></h2>
 <p>Pause for a specified duration.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>sleep &lt;seconds&gt;
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>sleep &lt;duration&gt;[unit]
 </code></pre></div>
 <table>
 <thead>
@@ -2076,14 +2076,52 @@ This does not change the active selection.</p>
 </thead>
 <tbody>
 <tr>
-<td><code>seconds</code></td>
+<td><code>duration</code></td>
 <td>required</td>
-<td>Duration to pause. Supports fractions: <code>0.5</code> = 500 ms.</td>
+<td>Duration to pause. A bare number is treated as seconds. Append a unit suffix for other scales.</td>
 </tr>
 </tbody>
 </table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>sleep 1.0     # wait 1 second
-<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>sleep 0.5     # wait 500 ms
+<table>
+<thead>
+<tr>
+<th>Suffix</th>
+<th>Meaning</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><em>(none)</em></td>
+<td>seconds</td>
+<td><code>sleep 1.0</code></td>
+</tr>
+<tr>
+<td><code>s</code></td>
+<td>seconds</td>
+<td><code>sleep 1.5s</code></td>
+</tr>
+<tr>
+<td><code>ms</code></td>
+<td>milliseconds</td>
+<td><code>sleep 500ms</code></td>
+</tr>
+<tr>
+<td><code>us</code></td>
+<td>microseconds</td>
+<td><code>sleep 100us</code></td>
+</tr>
+<tr>
+<td><code>m</code></td>
+<td>minutes</td>
+<td><code>sleep 2m</code></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>sleep 1.0       # wait 1 second
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>sleep 0.5       # wait 500 ms
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>sleep 500ms     # same — 500 ms
+<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a>sleep 100us     # 100 microseconds
 </code></pre></div>
 <p>Also valid as a <a href="scripting.html#timing">script directive</a>: <code>sleep {delay}</code></p>
 <hr />

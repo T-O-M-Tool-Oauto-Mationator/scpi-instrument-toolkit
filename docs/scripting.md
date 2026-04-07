@@ -1050,7 +1050,7 @@ print "DUT: {dut_name}"
 pause Connect DUT and DMM probes, then press Enter
 
 # ── Optional runtime input ────────────────────
-input operator Operator initials:
+operator = input Operator initials:
 
 # ── PSU on ───────────────────────────────────
 psu1 chan 1 on
@@ -1059,7 +1059,7 @@ dmm1 config vdc
 
 # ── Sweep ────────────────────────────────────
 for v 1.0 2.0 3.3 5.0 9.0 12.0
-  print Testing {v}V...
+  print "Testing {v}V..."
   psu1 set {v}
   sleep {delay}
   psu_{v} = psu1 meas v unit=V

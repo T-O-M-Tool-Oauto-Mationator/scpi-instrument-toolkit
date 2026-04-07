@@ -640,10 +640,11 @@ scope awg chan off
 Control the built-in frequency counter.
 
 ```
-scope counter on       # enable counter
-scope counter off      # disable counter
-scope counter read     # read current frequency
-scope counter source 1 # set counter source to channel 1
+scope counter on          # enable counter
+scope counter off         # disable counter
+scope counter read        # read current frequency
+scope counter source 1    # set counter source to channel 1
+scope counter mode freq   # set mode: freq, period, or totalize
 ```
 
 ### scope dvm

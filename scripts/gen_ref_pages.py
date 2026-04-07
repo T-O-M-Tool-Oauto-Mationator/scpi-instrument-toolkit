@@ -108,7 +108,7 @@ def _generate_instruments_page() -> str:
         "!!! info",
         "    This table is **auto-generated** from "
         "[`capabilities.py`](https://github.com/T-O-M-Tool-Oauto-Mationator/"
-        "scpi-instrument-toolkit/blob/dev/nightly/lab_instruments/repl/capabilities.py) "
+        "scpi-instrument-toolkit/blob/main/lab_instruments/repl/capabilities.py) "
         "at build time. It cannot go stale.",
         "",
         "| Model | Type | Interface | Key Features |",
@@ -119,8 +119,13 @@ def _generate_instruments_page() -> str:
         # Skip mock entries
         if class_name.startswith("Mock"):
             continue
+        if class_name not in DEVICE_INFO:
+            raise KeyError(
+                f"DEVICE_INFO is missing entry for '{class_name}'. "
+                f"Add it to scripts/gen_ref_pages.py so auto-generated docs stay accurate."
+            )
         display = DISPLAY_NAMES.get(class_name, class_name)
-        info = DEVICE_INFO.get(class_name, {"type": "Unknown", "interface": "Unknown"})
+        info = DEVICE_INFO[class_name]
         features = _caps_to_features(caps)
         lines.append(f"| {display} | {info['type']} | {info['interface']} | {features} |")
 
@@ -153,11 +158,8 @@ def _extract_subcommands(handler_class) -> list[str]:
 def _capture_help(handler_instance, *args) -> str:
     """Capture stdout from _show_help()."""
     buf = io.StringIO()
-    try:
-        with redirect_stdout(buf):
-            handler_instance._show_help(*args)
-    except Exception:
-        return "(help not available)"
+    with redirect_stdout(buf):
+        handler_instance._show_help(*args)
     return _strip_ansi(buf.getvalue()).strip()
 
 

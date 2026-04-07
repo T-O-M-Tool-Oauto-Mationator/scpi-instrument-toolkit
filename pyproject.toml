@@ -38,7 +38,7 @@ dependencies = [
 [project.optional-dependencies]
 sim = []
 hid = ["hidapi>=0.14.0"]
-docs = ["mkdocs-material", "mkdocstrings[python]>=0.25.0", "mkdocs-gen-files", "mkdocs-literate-nav"]
+docs = ["mkdocs-material", "mkdocstrings[python]>=0.25.0", "mkdocs-gen-files"]
 test = ["pytest>=7.0", "pytest-cov>=4.0"]
 lint = ["ruff>=0.4.0"]
 
