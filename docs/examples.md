@@ -52,7 +52,7 @@ print "=== PSU/DMM Voltage Test ==="
 print "Target: {voltage}V"
 
 psu1 chan 1 on
-psu1 set {voltage}
+psu1 set 1 {voltage}
 sleep 0.5
 
 psu_v = psu1 meas v unit=V
@@ -118,7 +118,7 @@ dmm1 config vdc
 
 for v 1.0 2.0 3.3 5.0 9.0 12.0
   print "Setting {v}V..."
-  psu1 set {v}
+  psu1 set 1 {v}
   sleep 0.5
   v_{v} = dmm1 meas unit=V
 end
@@ -186,7 +186,7 @@ sleep 0.5
 scope1 autoset
 sleep 1.0
 
-meas_freq = scope1 meas unit=Hz
+meas_freq = scope1 meas 1 FREQUENCY unit=Hz
 
 print "=== Results ==="
 log print
@@ -235,7 +235,7 @@ for f 100 500 1000 5000 10000 50000 100000
   print "Testing {f} Hz..."
   awg1 freq 1 {f}
   sleep 0.4
-  freq_{f} = scope1 meas unit=Hz
+  freq_{f} = scope1 meas 1 FREQUENCY unit=Hz
 end
 
 awg1 chan 1 off
@@ -293,13 +293,13 @@ steps = 7
 delay = 0.5
 
 print "=== PSU Voltage Ramp ==="
-print "{v_start}V → {v_end}V in {steps} steps"
+print "{v_start}V -> {v_end}V in {steps} steps"
 
 psu1 chan 1 on
 
 for v {v_start} 2.0 4.0 6.0 8.0 10.0 {v_end}
   print "Ramping to {v}V"
-  psu1 set {v}
+  psu1 set 1 {v}
   sleep {delay}
   ramp_{v} = psu1 meas v unit=V
 end
@@ -329,7 +329,7 @@ pause Connect hardware, then press Enter
 
 # 3. Configure instruments
 psu1 chan 1 on
-psu1 set {voltage}
+psu1 set 1 {voltage}
 sleep {delay}
 
 # 4. Measure and store

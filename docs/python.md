@@ -122,7 +122,7 @@ r = dmm.measure_resistance_2wire()
 
 # Resolve REPL shorthand to a DMMMode member
 mode = DMMMode.from_alias("vdc")        # → DMMMode.DC_VOLTAGE
-method_name = f"measure_{mode}"         # → "measure_dc_voltage"
+method_name = f"measure_{mode.value}"    # → "measure_dc_voltage"
 ```
 
 ### CouplingMode — oscilloscope input coupling

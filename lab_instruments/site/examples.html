@@ -1685,7 +1685,7 @@
 <a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>print &quot;Target: {voltage}V&quot;
 <a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>
 <a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>psu1 chan 1 on
-<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>psu1 set {voltage}
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>psu1 set 1 {voltage}
 <a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>sleep 0.5
 <a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>
 <a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>psu_v = psu1 meas v unit=V
@@ -1732,7 +1732,7 @@
 <a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>
 <a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>for v 1.0 2.0 3.3 5.0 9.0 12.0
 <a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>  print &quot;Setting {v}V...&quot;
-<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>  psu1 set {v}
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>  psu1 set 1 {v}
 <a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>  sleep 0.5
 <a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>  v_{v} = dmm1 meas unit=V
 <a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>end
@@ -1801,7 +1801,7 @@
 <a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>scope1 autoset
 <a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>sleep 1.0
 <a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>
-<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>meas_freq = scope1 meas unit=Hz
+<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>meas_freq = scope1 meas 1 FREQUENCY unit=Hz
 <a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a>
 <a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a>print &quot;=== Results ===&quot;
 <a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a>log print
@@ -1836,7 +1836,7 @@
 <a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>  print &quot;Testing {f} Hz...&quot;
 <a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a>  awg1 freq 1 {f}
 <a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a>  sleep 0.4
-<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a>  freq_{f} = scope1 meas unit=Hz
+<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a>  freq_{f} = scope1 meas 1 FREQUENCY unit=Hz
 <a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a>end
 <a id="__codelineno-12-13" name="__codelineno-12-13" href="#__codelineno-12-13"></a>
 <a id="__codelineno-12-14" name="__codelineno-12-14" href="#__codelineno-12-14"></a>awg1 chan 1 off
@@ -1903,13 +1903,13 @@
 <a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>delay = 0.5
 <a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a>
 <a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a>print &quot;=== PSU Voltage Ramp ===&quot;
-<a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a>print &quot;{v_start}V → {v_end}V in {steps} steps&quot;
+<a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a>print &quot;{v_start}V -&gt; {v_end}V in {steps} steps&quot;
 <a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a>
 <a id="__codelineno-15-10" name="__codelineno-15-10" href="#__codelineno-15-10"></a>psu1 chan 1 on
 <a id="__codelineno-15-11" name="__codelineno-15-11" href="#__codelineno-15-11"></a>
 <a id="__codelineno-15-12" name="__codelineno-15-12" href="#__codelineno-15-12"></a>for v {v_start} 2.0 4.0 6.0 8.0 10.0 {v_end}
 <a id="__codelineno-15-13" name="__codelineno-15-13" href="#__codelineno-15-13"></a>  print &quot;Ramping to {v}V&quot;
-<a id="__codelineno-15-14" name="__codelineno-15-14" href="#__codelineno-15-14"></a>  psu1 set {v}
+<a id="__codelineno-15-14" name="__codelineno-15-14" href="#__codelineno-15-14"></a>  psu1 set 1 {v}
 <a id="__codelineno-15-15" name="__codelineno-15-15" href="#__codelineno-15-15"></a>  sleep {delay}
 <a id="__codelineno-15-16" name="__codelineno-15-16" href="#__codelineno-15-16"></a>  ramp_{v} = psu1 meas v unit=V
 <a id="__codelineno-15-17" name="__codelineno-15-17" href="#__codelineno-15-17"></a>end
@@ -1935,7 +1935,7 @@
 <a id="__codelineno-16-9" name="__codelineno-16-9" href="#__codelineno-16-9"></a>
 <a id="__codelineno-16-10" name="__codelineno-16-10" href="#__codelineno-16-10"></a># 3. Configure instruments
 <a id="__codelineno-16-11" name="__codelineno-16-11" href="#__codelineno-16-11"></a>psu1 chan 1 on
-<a id="__codelineno-16-12" name="__codelineno-16-12" href="#__codelineno-16-12"></a>psu1 set {voltage}
+<a id="__codelineno-16-12" name="__codelineno-16-12" href="#__codelineno-16-12"></a>psu1 set 1 {voltage}
 <a id="__codelineno-16-13" name="__codelineno-16-13" href="#__codelineno-16-13"></a>sleep {delay}
 <a id="__codelineno-16-14" name="__codelineno-16-14" href="#__codelineno-16-14"></a>
 <a id="__codelineno-16-15" name="__codelineno-16-15" href="#__codelineno-16-15"></a># 4. Measure and store

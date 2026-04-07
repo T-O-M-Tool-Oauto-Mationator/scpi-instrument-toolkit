@@ -123,8 +123,10 @@ class VariableCommands(BaseCommand):
                 value, auto_unit = self._smu_meas(dev, dev_name, mode_arg)
             elif base_type == "psu":
                 value, auto_unit = self._psu_meas(dev, dev_name, mode_arg)
+            elif base_type == "scope":
+                value, auto_unit = self._scope_meas(dev, dev_name, meas_args)
             else:
-                # DMM, scope, awg — use .read()
+                # DMM, awg — use .read()
                 value = dev.read()
                 mode = self.ctx.last_instrument_mode.get(dev_name, "")
                 auto_unit = _MODE_UNIT_MAP.get(mode, "")
@@ -155,6 +157,41 @@ class VariableCommands(BaseCommand):
         if mode in ("i", "curr", "current"):
             return dev.measure_current(), "A"
         return dev.measure_voltage(), "V"
+
+    def _scope_meas(self, dev, dev_name: str, meas_args: list) -> tuple:
+        """Measure from scope. Expects meas_args like ['1', 'frequency'].
+
+        Returns (value, auto_unit).
+        """
+        _SCOPE_UNIT_MAP = {
+            "frequency": "Hz",
+            "period": "s",
+            "pk2pk": "V",
+            "rms": "V",
+            "mean": "V",
+            "maximum": "V",
+            "minimum": "V",
+            "amplitude": "V",
+        }
+        # Parse channel and measurement type from args
+        ch = 1
+        mtype = "frequency"
+        if len(meas_args) >= 2:
+            try:
+                ch = int(meas_args[0])
+            except ValueError:
+                ch = 1
+            mtype = meas_args[1].lower()
+        elif len(meas_args) == 1:
+            # Could be just a type or just a channel
+            try:
+                ch = int(meas_args[0])
+            except ValueError:
+                mtype = meas_args[0].lower()
+
+        value = dev.measure_bnf(ch, mtype.upper())
+        auto_unit = _SCOPE_UNIT_MAP.get(mtype, "")
+        return value, auto_unit
 
     def _assign_var(self, key: str, raw_val: str) -> None:
         """Core variable assignment — shared by 'var = expr' and 'set var expr'."""
