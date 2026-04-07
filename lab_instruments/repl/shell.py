@@ -2,11 +2,20 @@
 
 import atexit
 import cmd
+import os
 import re
 import shlex
 import signal
 import sys
 import threading
+
+try:
+    import readline
+except ImportError:
+    readline = None  # type: ignore[assignment]
+
+_HISTORY_FILE = os.path.join(os.path.expanduser("~"), ".scpi_history")
+_HISTORY_LENGTH = 1000
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as _pkg_version
 from typing import Any
@@ -118,19 +127,15 @@ class InstrumentRepl(cmd.Cmd):
         except Exception:
             pass
 
-        # Fix readline history position: reset to end after each command
-        # so Down arrow shows nothing and Up shows last command (standard terminal behavior)
-        try:
-            import ctypes
-            import ctypes.util
-            import readline
-
-            _rl_name = ctypes.util.find_library("readline")
-            if _rl_name:
-                _rl = ctypes.CDLL(_rl_name)
-                readline.set_pre_input_hook(_rl.using_history)
-        except Exception:
-            pass
+        # Load command history from disk so arrow keys recall previous commands
+        if readline is not None:
+            readline.set_history_length(_HISTORY_LENGTH)
+            try:
+                readline.read_history_file(_HISTORY_FILE)
+            except FileNotFoundError:
+                pass
+            except Exception:
+                pass
 
         # Register cleanup
         atexit.register(self._cleanup_on_exit)
@@ -334,6 +339,12 @@ class InstrumentRepl(cmd.Cmd):
             pass
 
     def _cleanup_on_exit(self):
+        # Save command history before shutdown
+        if readline is not None:
+            try:
+                readline.write_history_file(_HISTORY_FILE)
+            except Exception:
+                pass
         self._wait_for_scan()
         if not self._cleanup_done and self.ctx.registry.devices:
             self._cleanup_done = True

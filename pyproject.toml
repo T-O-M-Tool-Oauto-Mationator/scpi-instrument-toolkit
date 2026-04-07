@@ -29,6 +29,7 @@ dependencies = [
     "fpdf2>=2.7.0",
     "pyfunctional>=1.4.0",
     "requests>=2.31.0",
+    "pyreadline3>=3.4.0; sys_platform == 'win32'",
     "PySide6>=6.6.0",
     "pyqtgraph>=0.13.0",
     "nidcpower>=1.5.0; python_version>='3.9'",
