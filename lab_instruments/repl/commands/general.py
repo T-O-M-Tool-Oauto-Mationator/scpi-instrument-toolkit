@@ -50,9 +50,19 @@ class GeneralCommands(BaseCommand):
         site_dir = lab_pkg / "site"
         mkdocs_cfg = pkg_root / "mkdocs.yml"
 
-        # Auto-build if needed
-        if not (site_dir / "index.html").exists() and mkdocs_cfg.exists():
-            ColorPrinter.info("Building docs (first run — takes a few seconds)...")
+        # Rebuild if mkdocs.yml or any file under docs/ is newer than the built site
+        def _needs_rebuild() -> bool:
+            stamp = site_dir / "index.html"
+            if not stamp.exists():
+                return True
+            built_at = stamp.stat().st_mtime
+            for src in [mkdocs_cfg, *pathlib.Path(pkg_root / "docs").rglob("*")]:
+                if src.is_file() and src.stat().st_mtime > built_at:
+                    return True
+            return False
+
+        if mkdocs_cfg.exists() and _needs_rebuild():
+            ColorPrinter.info("Building docs...")
             try:
                 subprocess.run(
                     [sys.executable, "-m", "mkdocs", "build", "-f", str(mkdocs_cfg)],
@@ -62,6 +72,10 @@ class GeneralCommands(BaseCommand):
                     text=True,
                 )
                 ColorPrinter.success("Docs built.")
+                # Restart server so it picks up the fresh site
+                if self._docs_server is not None:
+                    self._docs_server.shutdown()
+                    self._docs_server = None
             except FileNotFoundError:
                 ColorPrinter.warning("mkdocs not found. Install with: pip install mkdocs-material")
                 return

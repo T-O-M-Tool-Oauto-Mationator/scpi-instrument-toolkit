@@ -9,6 +9,7 @@
 # Triggers:
 #   - Push to main
 #   - Push to dev/nightly
+#   - Manual dispatch (Actions → Run workflow)
 #
 # Required repo settings (one-time manual step):
 #   Settings → Pages → Source → Deploy from branch → gh-pages / (root)
@@ -21,6 +22,7 @@ on:
     branches:
       - main
       - dev/nightly
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -36,7 +38,13 @@ jobs:
           python-version: "3.12"
 
       - name: Install doc dependencies
-        run: pip install mkdocs-material "mkdocstrings[python]>=0.25.0"
+        run: pip install mkdocs-material "mkdocstrings[python]>=0.25.0" matplotlib
+
+      - name: Install package (needed by mkdocstrings to import modules)
+        run: pip install -e ".[dev]" --no-deps 2>/dev/null || pip install -e . --no-deps
+
+      - name: Generate architecture diagram
+        run: python scripts/gen_architecture_diagram.py
 
       - name: Deploy to GitHub Pages
         run: mkdocs gh-deploy --force
