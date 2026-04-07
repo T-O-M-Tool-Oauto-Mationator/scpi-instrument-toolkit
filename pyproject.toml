@@ -58,7 +58,7 @@ markers = [
 ]
 
 [tool.ruff]
-target-version = "0.1.153.dev20260407"
+target-version = "py310"
 line-length = 120
 
 [tool.ruff.lint]
