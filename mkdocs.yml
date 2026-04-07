@@ -90,4 +90,5 @@ nav:
     - Source Measure Unit: api/smu.md
     - USB-to-I2C (EV2300): api/ev2300.md
     - Base Class: api/base.md
+  - Architecture: architecture.md
   - Troubleshooting: troubleshooting.md
