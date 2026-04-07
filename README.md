@@ -155,6 +155,8 @@ It will automatically scan for connected instruments and show you what it found.
 > ```
 > All flags work the same way: `python -m lab_instruments --mock`, etc.
 
+> **One connection at a time:** Instrument connections are exclusive -- only one program can hold a connection to a device at a time. You cannot run the REPL and a Python script against the same instrument simultaneously, and you cannot have the REPL or a Python script connected while BQStudio (or any other vendor software) is already using that instrument. Close one before opening the other.
+
 ### Try it without any instruments
 
 If you just want to explore the tool without connecting anything:
