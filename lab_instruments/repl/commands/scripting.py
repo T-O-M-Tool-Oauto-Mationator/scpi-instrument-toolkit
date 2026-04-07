@@ -265,6 +265,7 @@ class ScriptingCommands(BaseCommand):
         # Pre-import lab_instruments so scripts can use it without boilerplate
         try:
             import lab_instruments
+
             exec_globals["lab_instruments"] = lab_instruments
         except ImportError:
             pass
@@ -283,10 +284,8 @@ class ScriptingCommands(BaseCommand):
             traceback.print_exc()
         finally:
             if path_added:
-                try:
+                with contextlib.suppress(ValueError):
                     sys.path.remove(script_dir)
-                except ValueError:
-                    pass
 
     def do_upper_limit(self, arg: str) -> None:
         if not arg:

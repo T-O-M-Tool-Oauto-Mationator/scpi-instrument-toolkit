@@ -148,6 +148,7 @@ class FileExplorer(QWidget):
     @staticmethod
     def _copy_to_clipboard(text: str) -> None:
         from PySide6.QtWidgets import QApplication
+
         QApplication.clipboard().setText(text)
 
     def _new_file(self, parent_dir: str, ext: str) -> None:

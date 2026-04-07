@@ -77,6 +77,14 @@ groups   # should include uucp or dialout
 
 ---
 
+## NI PXIe-4139 not detected
+
+The PXIe chassis must be powered on **before** the host PC boots. PXIe devices are enumerated during BIOS/POST — if the chassis powers on after the PC, the instrument will not appear in `scan` or `list`. Power cycle the PC with the chassis already on to fix this.
+
+This is standard PXIe bus behavior: the host enumerates PCIe devices at startup and does not hot-scan later. It is a common gotcha for students and new users who expect plug-and-play behavior.
+
+---
+
 ## NI-VISA not found
 
 The toolkit needs [NI-VISA](https://www.ni.com/en/support/downloads/drivers/download.ni-visa.html) to communicate with instruments over USB or GPIB. If you see an error about VISA not being found, download and install NI-VISA from the link above, then restart your terminal and try again.

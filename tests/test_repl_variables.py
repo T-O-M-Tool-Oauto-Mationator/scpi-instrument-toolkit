@@ -375,3 +375,191 @@ class TestCalcAssignment:
         entry = repl.ctx.measurements.get_by_label("val")
         assert entry is not None
         assert entry["unit"] == ""
+
+
+# ---------------------------------------------------------------------------
+# pyeval command
+# ---------------------------------------------------------------------------
+
+
+class TestPyeval:
+    def test_pyeval_basic_expression(self, make_repl, capsys):
+        """pyeval should evaluate a simple arithmetic expression."""
+        repl = make_repl({})
+        repl.onecmd("pyeval 2 ** 10")
+        out = capsys.readouterr().out
+        assert "1024" in out
+
+    def test_pyeval_accesses_script_vars(self, make_repl, capsys):
+        """pyeval should have access to REPL script variables as names."""
+        repl = make_repl({})
+        repl.onecmd("voltage = 3.3")
+        repl.onecmd("current = 0.5")
+        capsys.readouterr()
+        repl.onecmd("pyeval voltage * current")
+        out = capsys.readouterr().out
+        assert "1.65" in out
+
+    def test_pyeval_stores_result_in_underscore(self, make_repl, capsys):
+        """pyeval result should be stored in the _ variable."""
+        repl = make_repl({})
+        repl.onecmd("pyeval 42 + 8")
+        assert repl.ctx.script_vars["_"] == "50"
+
+    def test_pyeval_with_measurements(self, make_repl, capsys):
+        """pyeval should access measurements via the m dict."""
+        repl = make_repl({})
+        repl.ctx.measurements.record("vout", 4.95, "V", "dmm")
+        capsys.readouterr()
+        repl.onecmd("pyeval m['vout']")
+        out = capsys.readouterr().out
+        assert "4.95" in out
+
+    def test_pyeval_with_fstring(self, make_repl, capsys):
+        """pyeval should support f-strings."""
+        repl = make_repl({})
+        repl.onecmd("x = 3.14159")
+        capsys.readouterr()
+        repl.onecmd("pyeval f'pi is approximately {float(vars[\"x\"]):.2f}'")
+        out = capsys.readouterr().out
+        assert "pi is approximately 3.14" in out
+
+    def test_pyeval_with_list_comprehension(self, make_repl, capsys):
+        """pyeval should support list comprehensions."""
+        repl = make_repl({})
+        capsys.readouterr()
+        repl.onecmd("pyeval [x**2 for x in range(5)]")
+        out = capsys.readouterr().out
+        assert "[0, 1, 4, 9, 16]" in out
+
+    def test_pyeval_error_handling(self, make_repl, capsys):
+        """pyeval should print an error for invalid expressions."""
+        repl = make_repl({})
+        capsys.readouterr()
+        repl.onecmd("pyeval 1/0")
+        out = capsys.readouterr().out
+        assert "pyeval" in out.lower() or "error" in out.lower() or "division" in out.lower()
+
+    def test_pyeval_vars_dict_access(self, make_repl, capsys):
+        """pyeval should be able to access vars dict."""
+        repl = make_repl({})
+        repl.onecmd("a = 10")
+        repl.onecmd("b = 20")
+        capsys.readouterr()
+        repl.onecmd("pyeval sorted(vars.keys())")
+        out = capsys.readouterr().out
+        assert "a" in out
+        assert "b" in out
+
+    def test_pyeval_empty_shows_usage(self, make_repl, capsys):
+        """pyeval with no args should show usage."""
+        repl = make_repl({})
+        capsys.readouterr()
+        repl.onecmd("pyeval")
+        out = capsys.readouterr().out
+        assert "pyeval" in out.lower() or "expression" in out.lower()
+
+
+# ---------------------------------------------------------------------------
+# Increment/decrement and compound assignment
+# ---------------------------------------------------------------------------
+
+
+class TestCompoundAssignment:
+    def test_increment_existing(self, make_repl, capsys):
+        """x++ should increment an existing variable by 1."""
+        repl = make_repl({})
+        repl.onecmd("x = 5")
+        repl.onecmd("x++")
+        assert float(repl.ctx.script_vars["x"]) == 6.0
+
+    def test_increment_nonexistent(self, make_repl, capsys):
+        """x++ when x doesn't exist should start from 0 and become 1."""
+        repl = make_repl({})
+        repl.onecmd("x++")
+        assert float(repl.ctx.script_vars["x"]) == 1.0
+
+    def test_decrement_existing(self, make_repl, capsys):
+        """x-- should decrement an existing variable by 1."""
+        repl = make_repl({})
+        repl.onecmd("x = 10")
+        repl.onecmd("x--")
+        assert float(repl.ctx.script_vars["x"]) == 9.0
+
+    def test_decrement_nonexistent(self, make_repl, capsys):
+        """x-- when x doesn't exist should start from 0 and become -1."""
+        repl = make_repl({})
+        repl.onecmd("x--")
+        assert float(repl.ctx.script_vars["x"]) == -1.0
+
+    def test_plus_equal(self, make_repl, capsys):
+        """x += 5 should add 5 to x."""
+        repl = make_repl({})
+        repl.onecmd("x = 10")
+        repl.onecmd("x += 5")
+        assert float(repl.ctx.script_vars["x"]) == 15.0
+
+    def test_minus_equal(self, make_repl, capsys):
+        """x -= 2 should subtract 2 from x."""
+        repl = make_repl({})
+        repl.onecmd("x = 10")
+        repl.onecmd("x -= 2")
+        assert float(repl.ctx.script_vars["x"]) == 8.0
+
+    def test_multiply_equal(self, make_repl, capsys):
+        """x *= 3 should multiply x by 3."""
+        repl = make_repl({})
+        repl.onecmd("x = 4")
+        repl.onecmd("x *= 3")
+        assert float(repl.ctx.script_vars["x"]) == 12.0
+
+    def test_divide_equal(self, make_repl, capsys):
+        """x /= 4 should divide x by 4."""
+        repl = make_repl({})
+        repl.onecmd("x = 20")
+        repl.onecmd("x /= 4")
+        assert float(repl.ctx.script_vars["x"]) == 5.0
+
+    def test_floor_divide_equal(self, make_repl, capsys):
+        """x //= 2 should floor divide x by 2."""
+        repl = make_repl({})
+        repl.onecmd("x = 7")
+        repl.onecmd("x //= 2")
+        assert float(repl.ctx.script_vars["x"]) == 3.0
+
+    def test_power_equal(self, make_repl, capsys):
+        """x **= 3 should raise x to the power 3."""
+        repl = make_repl({})
+        repl.onecmd("x = 2")
+        repl.onecmd("x **= 3")
+        assert float(repl.ctx.script_vars["x"]) == 8.0
+
+    def test_modulo_equal(self, make_repl, capsys):
+        """x %= 2 should compute x modulo 2."""
+        repl = make_repl({})
+        repl.onecmd("x = 7")
+        repl.onecmd("x %= 2")
+        assert float(repl.ctx.script_vars["x"]) == 1.0
+
+    def test_compound_with_variable_rhs(self, make_repl, capsys):
+        """x += y should add the value of y to x."""
+        repl = make_repl({})
+        repl.onecmd("x = 10")
+        repl.onecmd("y = 5")
+        repl.onecmd("x += {y}")
+        assert float(repl.ctx.script_vars["x"]) == 15.0
+
+    def test_multiple_increments(self, make_repl, capsys):
+        """Multiple x++ calls should accumulate."""
+        repl = make_repl({})
+        repl.onecmd("x = 0")
+        repl.onecmd("x++")
+        repl.onecmd("x++")
+        repl.onecmd("x++")
+        assert float(repl.ctx.script_vars["x"]) == 3.0
+
+    def test_compound_from_zero(self, make_repl, capsys):
+        """Compound assignment on non-existent var should start from 0."""
+        repl = make_repl({})
+        repl.onecmd("x += 5")
+        assert float(repl.ctx.script_vars["x"]) == 5.0

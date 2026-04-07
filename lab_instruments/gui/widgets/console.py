@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import ctypes
 import re
 import threading
@@ -67,15 +68,11 @@ class _Console(QWidget):
 
         # -- Running banner (hidden by default) -----------------------------
         self._run_bar = QWidget()
-        self._run_bar.setStyleSheet(
-            "background: #f38ba8; border-radius: 4px;"
-        )
+        self._run_bar.setStyleSheet("background: #f38ba8; border-radius: 4px;")
         rb_lay = QHBoxLayout(self._run_bar)
         rb_lay.setContentsMargins(10, 6, 10, 6)
         self._run_label = QLabel("Running...")
-        self._run_label.setStyleSheet(
-            "color: #1e1e2e; font-weight: bold; font-size: 13px;"
-        )
+        self._run_label.setStyleSheet("color: #1e1e2e; font-weight: bold; font-size: 13px;")
         self._run_label.setFont(_mono(12))
         rb_lay.addWidget(self._run_label)
         rb_lay.addStretch()
@@ -128,14 +125,14 @@ class _Console(QWidget):
                 _force_kill_thread(t.ident)
 
         # 4. Safe all instrument outputs (E-STOP)
-        try:
+        with contextlib.suppress(Exception):
             self._d._repl._general.safe_all()
-        except Exception:
-            pass
 
         self._run_label.setText("STOPPED — outputs safe")
-        self.log("<span style='color:#f38ba8; font-weight:bold'>"
-                 "[STOPPED] Execution killed. All outputs set to safe state.</span>")
+        self.log(
+            "<span style='color:#f38ba8; font-weight:bold'>"
+            "[STOPPED] Execution killed. All outputs set to safe state.</span>"
+        )
 
     def keyPressEvent(self, ev):  # noqa: N802
         if self._input.hasFocus():
@@ -236,6 +233,7 @@ class _Console(QWidget):
     def _handle_plot_marker(self, path: str) -> None:
         """Open a static plot image in a tab."""
         from PySide6.QtWidgets import QMainWindow
+
         w = self.parent()
         while w:
             if isinstance(w, QMainWindow) and hasattr(w, "open_file"):
@@ -243,10 +241,10 @@ class _Console(QWidget):
                 return
             w = w.parent() if hasattr(w, "parent") else None
 
-    def _handle_liveplot_marker(self, patterns: list[str], title: str,
-                                xlabel: str = "", ylabel: str = "") -> None:
+    def _handle_liveplot_marker(self, patterns: list[str], title: str, xlabel: str = "", ylabel: str = "") -> None:
         """Open a live plot widget in a tab."""
         from PySide6.QtWidgets import QMainWindow
+
         w = self.parent()
         while w:
             if isinstance(w, QMainWindow) and hasattr(w, "_open_liveplot"):

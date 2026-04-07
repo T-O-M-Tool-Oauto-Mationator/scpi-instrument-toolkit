@@ -172,10 +172,10 @@ class PsuCommand(BaseCommand):
             "",
             "psu on|off",
             f"psu chan <1-{ch_count}|all> on|off",
-            f"psu set <channel> <voltage> [current]",
+            "psu set <channel> <voltage> [current]",
             f"  - channels: 1-{ch_count}",
             "  - example: psu set 1 5.0 0.2",
-            f"psu meas <channel> v|i",
+            "psu meas <channel> v|i",
             "  - example: psu meas 1 v",
             "  - or assign: value = psu read [unit=]",
         ]
@@ -194,7 +194,7 @@ class PsuCommand(BaseCommand):
         # Always: psu set <channel> <voltage> [current]
         ch_count = _channel_count(dev)
         if len(args) < 3:
-            ColorPrinter.warning(f"Usage: psu set <channel> <voltage> [current]")
+            ColorPrinter.warning("Usage: psu set <channel> <voltage> [current]")
             ColorPrinter.warning(f"Channels: 1-{ch_count}")
             return
         channel = _resolve_channel(dev, args[1])
@@ -225,7 +225,7 @@ class PsuCommand(BaseCommand):
             return
 
         if len(args) < 3:
-            ColorPrinter.warning(f"Usage: psu meas <channel> v|i")
+            ColorPrinter.warning("Usage: psu meas <channel> v|i")
             return
         channel = _resolve_channel(dev, args[1])
         mode = args[2].lower()

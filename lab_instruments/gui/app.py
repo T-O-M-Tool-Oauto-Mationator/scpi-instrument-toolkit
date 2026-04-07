@@ -7,7 +7,6 @@ import contextlib
 import glob
 import io
 import os
-import re
 import sys
 import threading
 
@@ -25,7 +24,6 @@ from PySide6.QtWidgets import (
 )
 
 from lab_instruments.repl.script_engine.expander import expand_script_lines
-from lab_instruments.repl.script_engine.runner import run_expanded
 
 from .core.dispatcher import _Dispatcher
 from .core.helpers import _ansi_to_html, _esc
@@ -273,7 +271,8 @@ class _MainWindow(QMainWindow):
 
         # Open live-plot tabs immediately when the command fires (even mid-script)
         d.liveplot_requested.connect(
-            self._open_liveplot, Qt.ConnectionType.QueuedConnection,
+            self._open_liveplot,
+            Qt.ConnectionType.QueuedConnection,
         )
 
         # ── Command palette ────────────────────────────────────────────
@@ -926,9 +925,12 @@ class _MainWindow(QMainWindow):
         # Skip entirely if a background op (scan, script) is running to avoid racing on hardware
         if self._d.is_busy():
             return
+        import contextlib
+
         for blocks in [self._psu_blocks, self._smu_blocks, self._awg_blocks, self._dmm_blocks, self._scope_blocks]:
             for block in blocks.values():
-                block._poll()
+                with contextlib.suppress(RuntimeError):
+                    block._poll()
         n = len(self._d.registry.devices)
         if n != self._last_device_count:
             self._last_device_count = n
@@ -1064,12 +1066,14 @@ class _MainWindow(QMainWindow):
 
         self._run_in_background(_do_force_scan, _force_scan_done, "Force rescanning (resetting all outputs)...")
 
-    def _open_liveplot(self, patterns: list[str], title: str,
-                       xlabel: str = "", ylabel: str = "") -> None:
+    def _open_liveplot(self, patterns: list[str], title: str, xlabel: str = "", ylabel: str = "") -> None:
         """Open a live plot widget in the work area."""
         widget = LivePlotWidget(
-            self._d._repl.ctx.measurements, patterns, title,
-            xlabel=xlabel, ylabel=ylabel,
+            self._d._repl.ctx.measurements,
+            patterns,
+            title,
+            xlabel=xlabel,
+            ylabel=ylabel,
         )
         self._work_area.add_widget(f"Live: {title}", widget)
 

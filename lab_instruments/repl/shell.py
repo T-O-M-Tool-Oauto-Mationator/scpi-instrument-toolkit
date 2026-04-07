@@ -2,6 +2,7 @@
 
 import atexit
 import cmd
+import contextlib
 import os
 import re
 import shlex
@@ -35,7 +36,7 @@ from .commands.scripting import ScriptingCommands
 from .commands.smu import SmuCommand
 from .commands.variables import VariableCommands
 from .context import ReplContext
-from .syntax import substitute_vars
+from .syntax import safe_eval, substitute_vars
 
 
 def get_version():
@@ -341,10 +342,8 @@ class InstrumentRepl(cmd.Cmd):
     def _cleanup_on_exit(self):
         # Save command history before shutdown
         if readline is not None:
-            try:
+            with contextlib.suppress(Exception):
                 readline.write_history_file(_HISTORY_FILE)
-            except Exception:
-                pass
         self._wait_for_scan()
         if not self._cleanup_done and self.ctx.registry.devices:
             self._cleanup_done = True
@@ -470,9 +469,51 @@ class InstrumentRepl(cmd.Cmd):
                     self.ctx.registry._device_override = None
                 return
 
+        # Increment / decrement: x++  x--
+        stripped = line.strip()
+        inc_m = re.match(r"^([A-Za-z_][A-Za-z0-9_.]*)\s*\+\+$", stripped)
+        if inc_m:
+            varname = inc_m.group(1)
+            cur = self.ctx.script_vars.get(varname, "0")
+            try:
+                self.ctx.script_vars[varname] = str(float(cur) + 1)
+            except ValueError:
+                self.ctx.script_vars[varname] = str(float(0) + 1)
+            ColorPrinter.success(f"{varname} = {self.ctx.script_vars[varname]}")
+            return
+        dec_m = re.match(r"^([A-Za-z_][A-Za-z0-9_.]*)\s*--$", stripped)
+        if dec_m:
+            varname = dec_m.group(1)
+            cur = self.ctx.script_vars.get(varname, "0")
+            try:
+                self.ctx.script_vars[varname] = str(float(cur) - 1)
+            except ValueError:
+                self.ctx.script_vars[varname] = str(float(0) - 1)
+            ColorPrinter.success(f"{varname} = {self.ctx.script_vars[varname]}")
+            return
+
+        # Compound assignment: x += 5  x -= 2  x *= 3  x /= 4  x //= 2  x **= 3  x %= 2
+        compound_m = re.match(r"^([A-Za-z_][A-Za-z0-9_.]*)\s*(\+|-|\*\*|\*|//|/|%)=\s*(.+)$", stripped)
+        if compound_m:
+            varname = compound_m.group(1)
+            op = compound_m.group(2)
+            rhs_raw = compound_m.group(3).strip()
+            rhs_val = substitute_vars(rhs_raw, self.ctx.script_vars, self.ctx.measurements)
+            cur = self.ctx.script_vars.get(varname, "0")
+            try:
+                expr = f"{cur} {op} ({rhs_val})"
+                from .syntax import safe_eval
+
+                result = safe_eval(expr, {k: float(v) for k, v in self.ctx.script_vars.items() if k != varname})
+                self.ctx.script_vars[varname] = str(result)
+                ColorPrinter.success(f"{varname} = {self.ctx.script_vars[varname]}")
+            except Exception as exc:
+                ColorPrinter.error(f"Compound assignment failed: {exc}")
+            return
+
         # Python-style assignment: voltage = 5.0  /  label = "mytest"
         # Also handles: value = dmm read  /  value = psu1 read unit=V
-        m = self._ASSIGN_RE.match(line.strip())
+        m = self._ASSIGN_RE.match(stripped)
         if m:
             varname = m.group(1)
             rhs = m.group(2).strip()
@@ -540,6 +581,9 @@ class InstrumentRepl(cmd.Cmd):
 
         return super().onecmd(line)
 
+    # Block-opening keywords that require an 'end' to close
+    _BLOCK_KEYWORDS = frozenset(("for", "repeat", "while", "if"))
+
     def onecmd(self, line):
         if self._in_loop:
             stripped = line.strip()
@@ -548,12 +592,14 @@ class InstrumentRepl(cmd.Cmd):
                 if self._loop_depth == 0:
                     self._execute_collected_loop()
                     return False
+                # Inner 'end' (for nested blocks) — must be kept in the body
+                self._loop_lines.append(line)
             else:
                 try:
                     tokens = shlex.split(stripped)
                 except ValueError:
                     tokens = stripped.split()
-                if tokens and tokens[0].lower() in ("for", "repeat"):
+                if tokens and tokens[0].lower() in self._BLOCK_KEYWORDS:
                     self._loop_depth += 1
                 self._loop_lines.append(line)
             return False
@@ -563,14 +609,21 @@ class InstrumentRepl(cmd.Cmd):
             tokens = shlex.split(stripped)
         except ValueError:
             tokens = stripped.split()
-        if tokens and tokens[0].lower() in ("for", "repeat"):
+
+        # Block collection for interactive use (for/repeat go through expander,
+        # while/if go through runtime execution)
+        if tokens and tokens[0].lower() in self._BLOCK_KEYWORDS:
             self._in_loop = True
             self._loop_depth = 1
             self._loop_header = stripped
             self._loop_lines = []
             self.prompt = "  > "
-            ColorPrinter.info("(entering loop block - type 'end' to exit)")
+            ColorPrinter.info("(entering block - type 'end' to finish)")
             return False
+
+        # Handle assert as a single-line command
+        if tokens and tokens[0].lower() == "assert":
+            return self._execute_assert(stripped)
 
         if ";" in line:
             should_exit = False
@@ -585,11 +638,38 @@ class InstrumentRepl(cmd.Cmd):
         return self._onecmd_single(line)
 
     def _execute_collected_loop(self):
-        from .script_engine.expander import expand_script_lines
-
         self.prompt = "eset> "
         self._in_loop = False
         all_lines = [self._loop_header] + self._loop_lines + ["end"]
+
+        # Determine if this is a while/if block (runtime) or for/repeat (expander)
+        try:
+            header_tokens = shlex.split(self._loop_header)
+        except ValueError:
+            header_tokens = self._loop_header.split()
+        head = header_tokens[0].lower() if header_tokens else ""
+
+        if head == "while":
+            try:
+                self._execute_while_block(self._loop_header, self._loop_lines)
+            except KeyboardInterrupt:
+                ColorPrinter.warning("While loop interrupted by user")
+            except Exception as e:
+                ColorPrinter.error(f"While loop execution error: {e}")
+            return
+
+        if head == "if":
+            try:
+                self._execute_if_block(all_lines)
+            except KeyboardInterrupt:
+                ColorPrinter.warning("If block interrupted by user")
+            except Exception as e:
+                ColorPrinter.error(f"If block execution error: {e}")
+            return
+
+        # for/repeat: use the expander
+        from .script_engine.expander import expand_script_lines
+
         try:
             expanded = expand_script_lines(all_lines, {}, self.ctx)
             for item in expanded:
@@ -603,6 +683,259 @@ class InstrumentRepl(cmd.Cmd):
             ColorPrinter.warning("Loop interrupted by user")
         except Exception as e:
             ColorPrinter.error(f"Loop execution error: {e}")
+
+    # ------------------------------------------------------------------
+    # Runtime block execution: while, if/elif/else, assert
+    # ------------------------------------------------------------------
+
+    _WHILE_MAX_ITERATIONS = 10000
+
+    class _BreakSignal(Exception):
+        """Raised to break out of a while loop."""
+
+    class _ContinueSignal(Exception):
+        """Raised to continue to the next while iteration."""
+
+    def _build_names_dict(self) -> dict:
+        """Build a names dict from script_vars for safe_eval (float where possible)."""
+        names: dict = {}
+        for k, v in self.ctx.script_vars.items():
+            with contextlib.suppress(TypeError, ValueError):
+                names[k] = float(v)
+                continue
+            names[k] = v
+        return names
+
+    def _eval_condition(self, condition_str: str) -> bool:
+        """Evaluate a condition string using safe_eval with script variables."""
+        cond = substitute_vars(condition_str, self.ctx.script_vars, self.ctx.measurements)
+        names = self._build_names_dict()
+        return bool(safe_eval(cond, names))
+
+    def _collect_block_from_lines(self, lines: list[str], start: int) -> tuple[list[str], int]:
+        """Collect lines from *start* until a matching 'end', tracking nesting depth.
+
+        Returns (block_lines, next_index_after_end).
+        """
+        block: list[str] = []
+        depth = 1
+        idx = start
+        while idx < len(lines):
+            line = lines[idx].strip()
+            idx += 1
+            if not line or line.startswith("#"):
+                block.append(line)
+                continue
+            try:
+                toks = shlex.split(line)
+            except ValueError:
+                toks = line.split()
+            if toks and toks[0].lower() in self._BLOCK_KEYWORDS:
+                depth += 1
+            elif toks and toks[0].lower() == "end":
+                depth -= 1
+                if depth == 0:
+                    return block, idx
+            block.append(line)
+        return block, idx
+
+    def _execute_block_lines(self, block: list[str]) -> None:
+        """Execute a list of command lines, handling nested while/if/assert."""
+        idx = 0
+        while idx < len(block):
+            if self.ctx.interrupt_requested:
+                return
+            raw_line = block[idx].strip()
+            idx += 1
+            if not raw_line or raw_line.startswith("#"):
+                continue
+            try:
+                toks = shlex.split(raw_line)
+            except ValueError:
+                toks = raw_line.split()
+            if not toks:
+                continue
+            head = toks[0].lower()
+
+            if head == "while":
+                condition = raw_line[len("while") :].strip()
+                inner_block, idx = self._collect_block_from_lines(block, idx)
+                self._execute_while_block(f"while {condition}", inner_block)
+                continue
+
+            if head == "if":
+                # Re-collect the full if/elif/else/end from remaining lines
+                if_lines = [raw_line]
+                depth = 1
+                j = idx
+                while j < len(block):
+                    bline = block[j].strip()
+                    j += 1
+                    try:
+                        lt = shlex.split(bline)
+                    except ValueError:
+                        lt = bline.split()
+                    if lt and lt[0].lower() in self._BLOCK_KEYWORDS:
+                        depth += 1
+                    elif lt and lt[0].lower() == "end":
+                        depth -= 1
+                        if depth == 0:
+                            if_lines.append(bline)
+                            break
+                    if_lines.append(bline)
+                idx = j
+                self._execute_if_block(if_lines)
+                continue
+
+            if head == "assert":
+                self._execute_assert(raw_line)
+                continue
+
+            if head == "break":
+                raise self._BreakSignal()
+
+            if head == "continue":
+                raise self._ContinueSignal()
+
+            # Regular command — run through onecmd
+            self.onecmd(raw_line)
+
+    def _execute_while_block(self, header: str, body_lines: list[str]) -> None:
+        """Execute a while block: ``while <condition>`` with body_lines."""
+        condition = header[len("while") :].strip()
+        if not condition:
+            ColorPrinter.error("while: missing condition")
+            return
+
+        iteration = 0
+        while iteration < self._WHILE_MAX_ITERATIONS:
+            if self.ctx.interrupt_requested:
+                ColorPrinter.warning("While loop interrupted")
+                return
+            try:
+                result = self._eval_condition(condition)
+            except Exception as exc:
+                ColorPrinter.error(f"while condition error: {exc}")
+                return
+            if not result:
+                break
+            iteration += 1
+            try:
+                self._execute_block_lines(list(body_lines))
+            except self._BreakSignal:
+                break
+            except self._ContinueSignal:
+                continue
+        else:
+            ColorPrinter.warning(f"While loop hit maximum iteration limit ({self._WHILE_MAX_ITERATIONS})")
+
+    def _execute_if_block(self, all_lines: list[str]) -> None:
+        """Execute an if/elif/else/end block from a list of all lines including header and end."""
+        # Parse the block into branches: [(condition_or_None, body_lines), ...]
+        branches: list[tuple[str | None, list[str]]] = []
+        current_condition: str | None = None
+        current_body: list[str] = []
+        depth = 0
+
+        for raw_line in all_lines:
+            line = raw_line.strip()
+            if not line:
+                if depth == 1:
+                    current_body.append(raw_line)
+                continue
+            try:
+                toks = shlex.split(line)
+            except ValueError:
+                toks = line.split()
+            head = toks[0].lower() if toks else ""
+
+            if head == "if" and depth == 0:
+                depth = 1
+                current_condition = line[len("if") :].strip()
+                current_body = []
+                continue
+
+            if depth == 1 and head == "elif":
+                branches.append((current_condition, current_body))
+                current_condition = line[len("elif") :].strip()
+                current_body = []
+                continue
+
+            if depth == 1 and head == "else":
+                branches.append((current_condition, current_body))
+                current_condition = None  # else branch
+                current_body = []
+                continue
+
+            if head == "end":
+                depth -= 1
+                if depth == 0:
+                    branches.append((current_condition, current_body))
+                    break
+                else:
+                    current_body.append(raw_line)
+                    continue
+
+            if head in self._BLOCK_KEYWORDS:
+                depth += 1
+
+            if depth >= 1:
+                current_body.append(raw_line)
+
+        # Evaluate branches in order
+        for condition, body in branches:
+            if condition is None:
+                # else branch — always execute
+                self._execute_block_lines(body)
+                return
+            try:
+                result = self._eval_condition(condition)
+            except Exception as exc:
+                ColorPrinter.error(f"if/elif condition error: {exc}")
+                return
+            if result:
+                self._execute_block_lines(body)
+                return
+
+    def _execute_assert(self, line: str) -> bool:
+        """Execute an assert statement: ``assert <condition> ["message"]``."""
+        after_assert = line[len("assert") :].strip()
+        if not after_assert:
+            ColorPrinter.error("assert: missing condition")
+            return False
+
+        # Try to extract a trailing quoted message
+        message = None
+        # Match trailing "..." or '...'
+        msg_match = re.search(r"""(["'])(.*?)\1\s*$""", after_assert)
+        if msg_match:
+            message = msg_match.group(2)
+            condition = after_assert[: msg_match.start()].strip()
+        else:
+            condition = after_assert
+
+        if not condition:
+            ColorPrinter.error("assert: missing condition")
+            return False
+
+        try:
+            result = self._eval_condition(condition)
+        except Exception as exc:
+            ColorPrinter.error(f"assert evaluation error: {exc}")
+            self.ctx.command_had_error = True
+            label = message or condition
+            self.ctx.test_results.append({"test": label, "passed": False, "detail": str(exc)})
+            return False
+
+        label = message or condition
+        if result:
+            ColorPrinter.success(f"PASS: {label}")
+            self.ctx.test_results.append({"test": label, "passed": True})
+        else:
+            ColorPrinter.error(f"FAIL: {label}")
+            self.ctx.command_had_error = True
+            self.ctx.test_results.append({"test": label, "passed": False})
+        return False
 
     # ------------------------------------------------------------------
     # Backward-compat method used by test_safety_limits.py
@@ -886,6 +1219,10 @@ class InstrumentRepl(cmd.Cmd):
     def do_unset(self, arg):
         """unset <varname>: delete a script variable"""
         self._var_cmd.do_unset(arg)
+
+    def do_pyeval(self, arg):
+        """pyeval <expr>: evaluate a Python expression"""
+        self._var_cmd.do_pyeval(arg)
 
     def do_sleep(self, arg):
         """sleep <duration>[us|ms|s|m]: pause execution"""

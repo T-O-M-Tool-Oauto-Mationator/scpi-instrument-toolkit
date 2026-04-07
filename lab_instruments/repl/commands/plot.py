@@ -103,12 +103,12 @@ class PlotCommand(BaseCommand):
             ColorPrinter.success(f"Plot saved to {save_path}")
 
         # Always save to temp file for GUI to pick up (avoids matplotlib thread crash)
-        tmp = tempfile.NamedTemporaryFile(suffix=".png", prefix="scpi_plot_", delete=False)
-        tmp.close()
-        fig.savefig(tmp.name, dpi=150, bbox_inches="tight")
+        with tempfile.NamedTemporaryFile(suffix=".png", prefix="scpi_plot_", delete=False) as tmp:
+            tmp_name = tmp.name
+        fig.savefig(tmp_name, dpi=150, bbox_inches="tight")
         plt.close(fig)
         # Marker for GUI to detect and open as a tab
-        print(f"__PLOT__:{tmp.name}")
+        print(f"__PLOT__:{tmp_name}")
         ColorPrinter.success("Plot rendered.")
 
     # ------------------------------------------------------------------
