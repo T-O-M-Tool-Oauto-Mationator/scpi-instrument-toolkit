@@ -103,6 +103,7 @@ class _TabStrip(QWidget):
         self._drag_start: QPoint | None = None
         self._drag_tab: int = -1
         self._close_hov: int = -1
+        self._scroll_x = 0
         self.setFixedHeight(self.TAB_H)
         self.setMouseTracking(True)
 
@@ -123,6 +124,7 @@ class _TabStrip(QWidget):
     def set_current(self, idx: int) -> None:
         if 0 <= idx < len(self._tabs):
             self._current = idx
+            self._ensure_tab_visible(idx)
             self.update()
 
     def count(self) -> int:
@@ -130,11 +132,31 @@ class _TabStrip(QWidget):
 
     # -- geometry ------------------------------------------------------------
 
-    def _tab_rects(self) -> list[QRect]:
+    def _tab_widths(self) -> list[int]:
         fm = self.fontMetrics()
-        rects, x = [], 0
-        for t in self._tabs:
-            tw = max(80, fm.horizontalAdvance(t) + 32)
+        return [max(80, fm.horizontalAdvance(t) + 32) for t in self._tabs]
+
+    def _total_tabs_width(self) -> int:
+        return sum(self._tab_widths())
+
+    def _max_scroll(self) -> int:
+        return max(0, self._total_tabs_width() - self.width())
+
+    def _ensure_tab_visible(self, idx: int) -> None:
+        widths = self._tab_widths()
+        if not widths or idx >= len(widths):
+            return
+        left = sum(widths[:idx])
+        right = left + widths[idx]
+        if left < self._scroll_x:
+            self._scroll_x = left
+        elif right > self._scroll_x + self.width():
+            self._scroll_x = right - self.width()
+        self._scroll_x = max(0, min(self._max_scroll(), self._scroll_x))
+
+    def _tab_rects(self) -> list[QRect]:
+        rects, x = [], -self._scroll_x
+        for tw in self._tab_widths():
             rects.append(QRect(x, 0, tw, self.TAB_H))
             x += tw
         return rects
@@ -310,6 +332,11 @@ class _TabStrip(QWidget):
         self._drag_start = None
         self._drag_tab = -1
 
+    def wheelEvent(self, event) -> None:  # noqa: N802
+        delta = event.angleDelta().x() or -event.angleDelta().y()
+        self._scroll_x = max(0, min(self._max_scroll(), self._scroll_x + delta // 2))
+        self.update()
+
     def leaveEvent(self, event) -> None:  # noqa: N802
         if not _DRAG_STATE.get("active"):
             self._hovered = -1
@@ -370,6 +397,7 @@ class _TabStrip(QWidget):
     def paintEvent(self, _ev) -> None:  # noqa: N802
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        p.setClipRect(self.rect())
         r = self.rect()
         pal = self.palette()
         bg = pal.color(pal.ColorRole.Window)

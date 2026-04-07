@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from .work_area import _WorkArea
 
+from PySide6.QtCore import QSize
 from PySide6.QtWidgets import (
     QFrame,
     QMainWindow,
@@ -37,6 +38,7 @@ class _PanelGroup(QFrame):
         lay.addWidget(self._stack, 1)
 
         self._overlay = _DropOverlay(self)
+        self.setMinimumSize(QSize(1, 1))
 
     def _work_area(self) -> _WorkArea | None:
         from .work_area import _WorkArea

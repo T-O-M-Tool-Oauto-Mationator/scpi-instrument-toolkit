@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QSplitter, QVBoxLayout, QWidget
+from PySide6.QtCore import QTimer, Qt
+from PySide6.QtWidgets import QMainWindow, QSplitter, QVBoxLayout, QWidget
 
 from .panel_group import _PanelGroup
 from .tab_strip import _DZ
@@ -75,6 +75,17 @@ class _WorkArea(QWidget):
         if src.count() == 0:
             self._remove_empty(src)
 
+    def _find_main_window(self) -> QMainWindow | None:
+        w = self.parent()
+        while w:
+            if isinstance(w, QMainWindow):
+                return w  # type: ignore[return-value]
+            try:
+                w = w.parent()
+            except Exception:
+                break
+        return None
+
     def _split(self, dst: _PanelGroup, new_grp: _PanelGroup, zone: _DZ) -> None:
         horiz = zone in (_DZ.LEFT, _DZ.RIGHT)
         orient = Qt.Orientation.Horizontal if horiz else Qt.Orientation.Vertical
@@ -86,6 +97,10 @@ class _WorkArea(QWidget):
         idx = sp.indexOf(dst)
         sizes = sp.sizes()
         sz = sizes[idx] if idx < len(sizes) else 400
+
+        # Capture window size before split so we can restore it afterward
+        main_win = self._find_main_window()
+        win_size = main_win.size() if main_win else None
 
         if sp.orientation() == orient:
             ins = idx if before else idx + 1
@@ -110,6 +125,9 @@ class _WorkArea(QWidget):
             new_s = list(sizes)
             new_s[idx] = sz
             sp.setSizes(new_s)
+
+        if main_win and win_size:
+            QTimer.singleShot(0, lambda: main_win.resize(win_size))
 
     def _remove_empty(self, group: _PanelGroup) -> None:
         sp = group.parent()
