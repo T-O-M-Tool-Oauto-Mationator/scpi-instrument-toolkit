@@ -32,6 +32,22 @@ theme:
     - content.code.copy
     - toc.follow
 
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: google
+            show_source: false
+            show_root_heading: true
+            show_root_full_path: false
+            show_signature_annotations: true
+            separate_signature: true
+            members_order: source
+            filters:
+              - "!^_"
+
 markdown_extensions:
   - admonition
   - pymdownx.details
@@ -67,3 +83,11 @@ nav:
   - Log & Calc: logging.md
   - Supported Instruments: instruments.md
   - Troubleshooting: troubleshooting.md
+  - API Reference:
+    - Power Supplies: api/psu.md
+    - Multimeters: api/dmm.md
+    - Function Generators: api/awg.md
+    - Oscilloscopes: api/scope.md
+    - Source Measure Unit: api/smu.md
+    - USB-to-I2C (EV2300): api/ev2300.md
+    - Base Class: api/base.md
