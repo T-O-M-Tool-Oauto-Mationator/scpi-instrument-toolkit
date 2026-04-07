@@ -171,22 +171,34 @@ class _MainWindow(QMainWindow):
             return a
 
         vm.addSection("Navigation  (PDF / DOCX / PPTX)")
-        vm.addAction(_va("Previous Page", "Left", lambda: self._viewer_call("_prev")))
-        vm.addAction(_va("Next Page", "Right", lambda: self._viewer_call("_next")))
-        vm.addAction(_va("First Page", "Home", lambda: self._viewer_call("_go_to", 0)))
+        self._vm_prev = _va("Previous Page", "Left", lambda: self._viewer_call("_prev"))
+        self._vm_next = _va("Next Page", "Right", lambda: self._viewer_call("_next"))
+        self._vm_first = _va("First Page", "Home", lambda: self._viewer_call("_go_to", 0))
+        vm.addAction(self._vm_prev)
+        vm.addAction(self._vm_next)
+        vm.addAction(self._vm_first)
 
         vm.addSeparator()
         vm.addSection("Zoom  (PDF / DOCX / PPTX / Image)")
-        vm.addAction(_va("Zoom In", "=", self._viewer_zoom_in))
-        vm.addAction(_va("Zoom Out", "-", self._viewer_zoom_out))
-        vm.addAction(_va("Fit Width  [W]", None, lambda: self._viewer_call("_fit_width")))
-        vm.addAction(_va("Fit Height  [H]", None, lambda: self._viewer_call("_fit_height")))
-        vm.addAction(_va("Fit  [F]", None, lambda: self._viewer_call("_zoom", 0)))
+        self._vm_zoom_in = _va("Zoom In", "=", self._viewer_zoom_in)
+        self._vm_zoom_out = _va("Zoom Out", "-", self._viewer_zoom_out)
+        self._vm_fit_w = _va("Fit Width  [W]", None, lambda: self._viewer_call("_fit_width"))
+        self._vm_fit_h = _va("Fit Height  [H]", None, lambda: self._viewer_call("_fit_height"))
+        self._vm_fit = _va("Fit  [F]", None, lambda: self._viewer_call("_zoom", 0))
+        vm.addAction(self._vm_zoom_in)
+        vm.addAction(self._vm_zoom_out)
+        vm.addAction(self._vm_fit_w)
+        vm.addAction(self._vm_fit_h)
+        vm.addAction(self._vm_fit)
 
         vm.addSeparator()
-        vm.addSection("Search  (Text / CSV / XLSX)")
-        vm.addAction(_va("Find…", "Ctrl+F", self._viewer_find))
-        vm.addAction(_va("Find && Replace…", "Ctrl+H", self._viewer_find_replace))
+        vm.addSection("Search")
+        self._vm_find = _va("Find…", "Ctrl+F", self._viewer_find)
+        self._vm_replace = _va("Find && Replace…", "Ctrl+H", self._viewer_find_replace)
+        vm.addAction(self._vm_find)
+        vm.addAction(self._vm_replace)
+
+        vm.aboutToShow.connect(self._update_viewer_menu)
 
         # ── Help menu ─────────────────────────────────────────────────
         hm = mb.addMenu("&Help")
@@ -563,13 +575,34 @@ class _MainWindow(QMainWindow):
 
     def _focused_viewer(self):
         """Walk focus chain to find the innermost known viewer widget."""
-        _types = (PdfViewer, _OfficeViewerBase, ImageViewer, TextViewer, CsvViewer, XlsxViewer)
+        _types = (PdfViewer, _OfficeViewerBase, ImageViewer, TextViewer, CsvViewer, XlsxViewer, ScpiEditor)
         w = QApplication.focusWidget()
         while w:
             if isinstance(w, _types):
                 return w
             w = w.parent()
         return None
+
+    def _update_viewer_menu(self) -> None:
+        """Enable/disable Viewer menu actions based on the focused viewer type."""
+        v = self._focused_viewer()
+        is_paged = isinstance(v, (PdfViewer, _OfficeViewerBase))
+        is_zoomable = isinstance(v, (PdfViewer, _OfficeViewerBase, ImageViewer))
+        has_fit_wh = isinstance(v, (PdfViewer, _OfficeViewerBase))
+        has_fit = isinstance(v, ImageViewer)
+        has_find = isinstance(v, (TextViewer, ScpiEditor, CsvViewer, XlsxViewer))
+        has_replace = isinstance(v, (TextViewer, ScpiEditor))
+
+        self._vm_prev.setEnabled(is_paged)
+        self._vm_next.setEnabled(is_paged)
+        self._vm_first.setEnabled(is_paged)
+        self._vm_zoom_in.setEnabled(is_zoomable)
+        self._vm_zoom_out.setEnabled(is_zoomable)
+        self._vm_fit_w.setEnabled(has_fit_wh)
+        self._vm_fit_h.setEnabled(has_fit_wh)
+        self._vm_fit.setEnabled(has_fit)
+        self._vm_find.setEnabled(has_find)
+        self._vm_replace.setEnabled(has_replace)
 
     def _viewer_call(self, method: str, *args) -> None:
         v = self._focused_viewer()
@@ -592,14 +625,14 @@ class _MainWindow(QMainWindow):
 
     def _viewer_find(self) -> None:
         v = self._focused_viewer()
-        if isinstance(v, TextViewer):
+        if isinstance(v, (TextViewer, ScpiEditor)):
             v._find_bar.open_find()
         elif isinstance(v, (CsvViewer, XlsxViewer)):
             v._find_bar.open()
 
     def _viewer_find_replace(self) -> None:
         v = self._focused_viewer()
-        if isinstance(v, TextViewer):
+        if isinstance(v, (TextViewer, ScpiEditor)):
             v._find_bar.open_replace()
 
     def _close_current_tab(self) -> None:

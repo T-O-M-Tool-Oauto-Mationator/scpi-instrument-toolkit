@@ -699,7 +699,7 @@ class PdfViewer(QWidget):
         fit_h_btn.setFixedWidth(46)
         fit_h_btn.setToolTip("Fit height (H)")
         fit_h_btn.clicked.connect(self._fit_height)
-        tb.addWidget(fit_btn)
+        tb.addWidget(fit_h_btn)
 
         zoom_out_btn = QPushButton("−")
         zoom_out_btn.setFixedWidth(26)
@@ -1047,7 +1047,7 @@ class _OfficeViewerBase(QWidget):
         fit_h_btn.setFixedWidth(46)
         fit_h_btn.setToolTip("Fit height (H)")
         fit_h_btn.clicked.connect(self._fit_height)
-        tb.addWidget(fit_btn)
+        tb.addWidget(fit_h_btn)
 
         zoom_out_btn = QPushButton("−")
         zoom_out_btn.setFixedWidth(26)

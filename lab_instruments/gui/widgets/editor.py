@@ -10,7 +10,9 @@ from PySide6.QtCore import QFileSystemWatcher, QRect, QSize, Qt, QTimer, Signal
 from PySide6.QtGui import (
     QColor,
     QFont,
+    QKeySequence,
     QPainter,
+    QShortcut,
     QSyntaxHighlighter,
     QTextCharFormat,
     QTextCursor,
@@ -23,11 +25,13 @@ from PySide6.QtWidgets import (
     QLabel,
     QPlainTextEdit,
     QPushButton,
+    QTextEdit,
     QVBoxLayout,
     QWidget,
 )
 
 from ..core.helpers import _ansi_to_html, _mono
+from .file_viewers import _TextFindReplaceBar
 
 # -- Syntax highlighter ------------------------------------------------------
 
@@ -582,6 +586,29 @@ class ScpiEditor(QWidget):
 
         lay.addWidget(self._editor, 1)
 
+        # -- Find / Replace bar -----------------------------------------------
+        self._matches: list[tuple[int, int]] = []
+        self._match_idx: int = -1
+        self._MATCH_BG = QColor("#ffe599")
+        self._CURRENT_BG = QColor("#f4a900")
+
+        self._find_bar = _TextFindReplaceBar()
+        self._find_bar.search_changed.connect(self._on_search_changed)
+        self._find_bar.find_next_requested.connect(self._find_next)
+        self._find_bar.find_prev_requested.connect(self._find_prev)
+        self._find_bar.replace_one_requested.connect(self._replace_one)
+        self._find_bar.replace_all_requested.connect(self._replace_all)
+        self._find_bar.closed.connect(self._on_find_closed)
+        lay.addWidget(self._find_bar)
+
+        _find_sc = QShortcut(QKeySequence.StandardKey.Find, self)
+        _find_sc.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
+        _find_sc.activated.connect(self._find_bar.open_find)
+
+        _repl_sc = QShortcut(QKeySequence("Ctrl+H"), self)
+        _repl_sc.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
+        _repl_sc.activated.connect(self._find_bar.open_replace)
+
         # Load file
         self._loading = True
         if file_path:
@@ -629,6 +656,167 @@ class ScpiEditor(QWidget):
         # Re-add to watcher (Qt removes it after notification)
         if path not in self._watcher.files():
             self._watcher.addPath(path)
+
+    # -- Find / Replace ----------------------------------------------------------
+
+    def _on_search_changed(self, pattern: str, use_regex: bool, case_sensitive: bool) -> None:
+        self._update_matches(pattern, use_regex, case_sensitive)
+
+    def _update_matches(self, pattern: str | None = None, use_regex: bool | None = None,
+                        case_sensitive: bool | None = None) -> None:
+        if pattern is None:
+            pattern = self._find_bar.pattern()
+        if use_regex is None:
+            use_regex = self._find_bar.use_regex()
+        if case_sensitive is None:
+            case_sensitive = self._find_bar.case_sensitive()
+
+        self._matches = []
+        self._match_idx = -1
+
+        if not pattern:
+            self._highlight_all()
+            self._find_bar.set_status("")
+            return
+
+        text = self._editor.toPlainText()
+
+        if use_regex:
+            flags = 0 if case_sensitive else re.IGNORECASE
+            try:
+                compiled = re.compile(pattern, flags)
+            except re.error as exc:
+                self._find_bar.set_status(f"Regex error: {exc}")
+                self._highlight_all()
+                return
+            self._matches = [(m.start(), m.end()) for m in compiled.finditer(text)]
+        else:
+            search = pattern if case_sensitive else pattern.lower()
+            haystack = text if case_sensitive else text.lower()
+            start = 0
+            while True:
+                idx = haystack.find(search, start)
+                if idx == -1:
+                    break
+                self._matches.append((idx, idx + len(search)))
+                start = idx + max(1, len(search))
+
+        if self._matches:
+            self._match_idx = 0
+            self._go_to_match(0)
+        else:
+            self._highlight_all()
+            self._find_bar.set_status("No results")
+
+    def _find_next(self) -> None:
+        if not self._matches:
+            self._update_matches()
+            return
+        self._match_idx = (self._match_idx + 1) % len(self._matches)
+        self._go_to_match(self._match_idx)
+
+    def _find_prev(self) -> None:
+        if not self._matches:
+            self._update_matches()
+            return
+        self._match_idx = (self._match_idx - 1) % len(self._matches)
+        self._go_to_match(self._match_idx)
+
+    def _go_to_match(self, idx: int) -> None:
+        if not self._matches:
+            return
+        start, end = self._matches[idx]
+        doc = self._editor.document()
+        cursor = QTextCursor(doc)
+        cursor.setPosition(start)
+        cursor.setPosition(end, QTextCursor.MoveMode.KeepAnchor)
+        self._editor.setTextCursor(cursor)
+        self._editor.ensureCursorVisible()
+        self._highlight_all()
+        self._find_bar.set_status(f"{idx + 1} of {len(self._matches)}")
+
+    def _highlight_all(self) -> None:
+        selections: list[QTextEdit.ExtraSelection] = []
+        doc = self._editor.document()
+        for i, (start, end) in enumerate(self._matches):
+            sel = QTextEdit.ExtraSelection()
+            fmt = QTextCharFormat()
+            fmt.setBackground(self._CURRENT_BG if i == self._match_idx else self._MATCH_BG)
+            sel.format = fmt
+            cur = QTextCursor(doc)
+            cur.setPosition(start)
+            cur.setPosition(end, QTextCursor.MoveMode.KeepAnchor)
+            sel.cursor = cur
+            selections.append(sel)
+        self._editor.setExtraSelections(selections)
+
+    def _replace_one(self, replacement: str) -> None:
+        if not self._matches or self._match_idx < 0:
+            self._update_matches()
+            return
+        start, end = self._matches[self._match_idx]
+        pattern = self._find_bar.pattern()
+        use_regex = self._find_bar.use_regex()
+        case_sensitive = self._find_bar.case_sensitive()
+        if use_regex:
+            flags = 0 if case_sensitive else re.IGNORECASE
+            try:
+                compiled = re.compile(pattern, flags)
+            except re.error:
+                return
+            matched_text = self._editor.toPlainText()[start:end]
+            try:
+                replacement_text = compiled.sub(replacement, matched_text, count=1)
+            except re.error:
+                return
+        else:
+            replacement_text = replacement
+        doc = self._editor.document()
+        cursor = QTextCursor(doc)
+        cursor.setPosition(start)
+        cursor.setPosition(end, QTextCursor.MoveMode.KeepAnchor)
+        cursor.insertText(replacement_text)
+        self._update_matches()
+        if self._matches:
+            self._find_next()
+
+    def _replace_all(self, replacement: str) -> None:
+        pattern = self._find_bar.pattern()
+        use_regex = self._find_bar.use_regex()
+        case_sensitive = self._find_bar.case_sensitive()
+        if not pattern:
+            return
+        text = self._editor.toPlainText()
+        if use_regex:
+            flags = 0 if case_sensitive else re.IGNORECASE
+            try:
+                compiled = re.compile(pattern, flags)
+                count = len(compiled.findall(text))
+                new_text = compiled.sub(replacement, text)
+            except re.error as exc:
+                self._find_bar.set_status(f"Regex error: {exc}")
+                return
+        else:
+            search = pattern if case_sensitive else pattern.lower()
+            haystack = text if case_sensitive else text.lower()
+            count = haystack.count(search)
+            if case_sensitive:
+                new_text = text.replace(pattern, replacement)
+            else:
+                new_text = re.compile(re.escape(pattern), re.IGNORECASE).sub(replacement, text)
+        self._editor.setPlainText(new_text)
+        self._matches = []
+        self._match_idx = -1
+        self._highlight_all()
+        self._find_bar.set_status(f"Replaced {count} occurrence{'s' if count != 1 else ''}")
+
+    def _on_find_closed(self) -> None:
+        self._matches = []
+        self._match_idx = -1
+        self._editor.setExtraSelections([])
+        self._editor.setFocus()
+
+    # -- File change detection ---------------------------------------------------
 
     def _on_contents_changed(self) -> None:
         if self._loading:
