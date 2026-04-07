@@ -430,28 +430,23 @@ class _MainWindow(QMainWindow):
         lines = [cmd for cmd, _ in expanded]
         source_lines = [src for _, src in expanded]
 
-        # Collect breakpoints from __BREAKPOINT__ markers
+        # Convert __BREAKPOINT__ markers to __NOP__ and record their 1-indexed positions
         breakpoints: set[int] = set()
-        clean_lines = []
-        clean_sources = []
-        for _i, (cmd, src) in enumerate(zip(lines, source_lines, strict=False)):
+        for i, cmd in enumerate(lines):
             if cmd == "__BREAKPOINT__":
-                breakpoints.add(len(clean_lines) + 1)
-            else:
-                clean_lines.append(cmd)
-                clean_sources.append(src)
+                breakpoints.add(i + 1)  # 1-indexed (matches editor line numbers)
+                lines[i] = "__NOP__"
 
         if debug:
-            # Also collect breakpoints set in the editor gutter
+            # Merge gutter breakpoints (already 1-indexed editor line numbers)
             editor = self._open_files.get(path)
             if not editor:
                 self.open_file(path)
                 editor = self._open_files.get(path)
             if editor and hasattr(editor, "start_debug"):
-                # Merge gutter breakpoints with script breakpoints
                 if hasattr(editor, "editor") and hasattr(editor.editor(), "_breakpoints"):
                     breakpoints |= editor.editor()._breakpoints
-                editor.start_debug(clean_lines, clean_sources, breakpoints)
+                editor.start_debug(lines, source_lines, breakpoints)
                 return
 
         # Normal run (not debug) — dispatch to background thread via dispatcher

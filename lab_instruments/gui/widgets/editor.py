@@ -714,25 +714,34 @@ class ScpiEditor(QWidget):
         else:
             self._debug_stop()
 
+    def _next_real_line(self, from_idx: int) -> int:
+        """Return index of next non-__NOP__ line at or after from_idx, or len(lines) if none."""
+        st = self._debug_state
+        if not st:
+            return from_idx
+        lines = st["lines"]
+        i = from_idx
+        while i < len(lines) and lines[i] == "__NOP__":
+            i += 1
+        return i
+
     def _debug_step(self) -> None:
-        """Execute current line and advance. Runs command in background so sleep doesn't freeze UI."""
+        """Execute current line and advance to next real command. Skips comments/NOPs."""
         if not self._debug_state or self._debug_state.get("busy"):
             return
         st = self._debug_state
-        idx = st["idx"]
+
+        # Skip to the next real command
+        idx = self._next_real_line(st["idx"])
         if idx >= len(st["lines"]):
             self._debug_stop()
             return
+
+        st["idx"] = idx
+        self._debug_update_position()
         line = st["lines"][idx]
-        if line == "__NOP__":
-            # Advance past this NOP (comments, directives, etc.) — one at a time
-            st["idx"] += 1
-            if st["idx"] >= len(st["lines"]):
-                self._debug_stop()
-            else:
-                self._debug_update_position()
-            return
-        # Disable step button while command runs
+
+        # Run the command in background so sleep/long ops don't freeze UI
         st["busy"] = True
         self._step_btn.setEnabled(False)
         self._cont_btn.setEnabled(False)
@@ -748,8 +757,10 @@ class ScpiEditor(QWidget):
             self._debug_state["busy"] = False
             self._step_btn.setEnabled(True)
             self._cont_btn.setEnabled(True)
-            self._debug_state["idx"] += 1
-            if self._debug_state["idx"] >= len(self._debug_state["lines"]):
+            # Advance past current line and skip to next real command
+            next_idx = self._next_real_line(self._debug_state["idx"] + 1)
+            self._debug_state["idx"] = next_idx
+            if next_idx >= len(self._debug_state["lines"]):
                 self._debug_stop()
             else:
                 self._debug_update_position()
@@ -761,31 +772,56 @@ class ScpiEditor(QWidget):
         t.start()
 
     def _debug_continue(self) -> None:
-        """Execute until next breakpoint or end (QTimer-based to keep event loop alive)."""
+        """Execute until next breakpoint or end."""
         if not self._debug_state:
             return
+        # Mark start so continue doesn't immediately stop on current breakpoint
+        self._debug_state["_cont_start"] = self._debug_state["idx"]
         self._debug_step()
         self._debug_schedule_continue()
 
     def _debug_schedule_continue(self) -> None:
         QTimer.singleShot(0, self._debug_continue_step)
 
+    def _has_breakpoint_in_range(self, start: int, end: int) -> bool:
+        """Check if any breakpoint (1-indexed) falls in the range [start, end)."""
+        if not self._debug_state:
+            return False
+        bps = self._debug_state["breakpoints"]
+        # Breakpoints on NOP lines should trigger at the next real line
+        return any((i + 1) in bps for i in range(start, end))
+
     def _debug_continue_step(self) -> None:
         if not self._debugging or not self._debug_state:
             return
         st = self._debug_state
-        if st["idx"] >= len(st["lines"]):
+        if st.get("busy"):
+            # Previous step still running — wait and retry
+            QTimer.singleShot(50, self._debug_continue_step)
+            return
+        idx = st["idx"]
+        if idx >= len(st["lines"]):
             self._debug_stop()
             return
-        if (st["idx"] + 1) in st["breakpoints"]:
+
+        # Check for breakpoint: a breakpoint on any line from current position
+        # through the next NOP block should stop at the next real line
+        next_real = self._next_real_line(idx)
+        if next_real >= len(st["lines"]):
+            self._debug_stop()
+            return
+
+        # Check if any breakpoint falls in the NOP range or on the real line itself
+        if self._has_breakpoint_in_range(idx, next_real + 1) and idx != st.get("_cont_start", -1):
+            st["idx"] = next_real
             self._debug_update_position()
             return
-        line = st["lines"][st["idx"]]
-        if line != "__NOP__":
-            self._debug_exec_line(line)
-        st["idx"] += 1
-        while st["idx"] < len(st["lines"]) and st["lines"][st["idx"]] == "__NOP__":
-            st["idx"] += 1
+
+        # Execute and advance
+        st["idx"] = next_real
+        line = st["lines"][next_real]
+        self._debug_exec_line(line)
+        st["idx"] = self._next_real_line(next_real + 1)
         if st["idx"] >= len(st["lines"]):
             self._debug_stop()
         else:
