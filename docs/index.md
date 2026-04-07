@@ -127,6 +127,7 @@ examples          # list bundled example scripts
 | [Scripting](scripting.md) | Scripts, variables, loops, directives — full reference |
 | [Examples](examples.md) | Bundled example workflows with explanations |
 | [Log & Calc](logging.md) | Measurement log, CSV export, derived calculations |
+| [Plotting](plotting.md) | Static plots, live plots, interactive charts, data selection, detail view |
 | [Instruments](instruments.md) | Supported models and connection setup |
 | [LabVIEW Bridge](labview.md) | Calling instrument drivers from LabVIEW Python Nodes |
 | [Troubleshooting](troubleshooting.md) | PATH issues, NI-VISA errors, managed machine workarounds |

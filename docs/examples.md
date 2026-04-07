@@ -313,6 +313,79 @@ log print
 
 ---
 
+## Live Plot Examples
+
+These examples use `liveplot` to visualize data in real time as it's collected. All work with `--mock`. See [Plotting](plotting.md) for full details on the plotting system.
+
+Every example below has both a `.scpi` and `.py` version. Import either from the GUI menu (**Examples > SCPI Scripts** or **Examples > Python Scripts**).
+
+---
+
+### live_voltage_sweep
+
+**Sweep PSU voltages with a live plot tracking DMM readings.**
+
+Uses `linspace` to generate 51 evenly-spaced voltage steps from 0.5 V to 12 V.
+
+```text
+examples load live_voltage_sweep
+script run live_voltage_sweep
+```
+
+The live plot shows DMM readings appearing point-by-point as the sweep progresses.
+
+---
+
+### live_multi_plot
+
+**Two live plots: PSU voltage + current during a ramp.**
+
+Opens **two separate tabs** — one for voltage, one for current — by running two `liveplot` commands.
+
+```text
+examples load live_multi_plot
+script run live_multi_plot
+```
+
+---
+
+### live_combined_plot
+
+**PSU voltage + current overlaid on ONE chart.**
+
+Same data as `live_multi_plot`, but uses a single `liveplot` command with two glob patterns to overlay both series on one chart.
+
+```text
+examples load live_combined_plot
+script run live_combined_plot
+```
+
+The key difference:
+
+```text
+# Two tabs (live_multi_plot):
+liveplot psu_v_* --title "Voltage"
+liveplot psu_i_* --title "Current"
+
+# One chart, two series (live_combined_plot):
+liveplot psu_v_* psu_i_* --title "PSU Voltage & Current"
+```
+
+---
+
+### live_freq_sweep
+
+**Live plot of scope frequency measurements during AWG sweep.**
+
+Sweeps AWG through 16 frequencies from 100 Hz to 100 kHz.
+
+```text
+examples load live_freq_sweep
+script run live_freq_sweep
+```
+
+---
+
 ## Building your own
 
 Use these examples as templates. The general pattern for any measurement script is:

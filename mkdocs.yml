@@ -84,6 +84,7 @@ nav:
     - Scripting: scripting.md
     - Example Workflows: examples.md
     - Log & Calc: logging.md
+    - Plotting: plotting.md
   - Python API:
     - Quickstart: python.md
     - Enumerations: api/enums.md
