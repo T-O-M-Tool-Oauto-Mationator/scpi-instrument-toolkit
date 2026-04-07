@@ -457,19 +457,46 @@ class _MainWindow(QMainWindow):
                 editor.start_debug(lines, source_lines, breakpoints)
                 return
 
-        # Normal run (not debug) — dispatch to background thread via dispatcher
-        # Expanded lines are already resolved; join as multi-line command for _d.run()
-        cmd_str = "\n".join(cmd for cmd, _ in expanded if cmd.strip() and cmd != "__BREAKPOINT__" and cmd != "__NOP__")
+        # Normal run (not debug) — run each command and stream output to console
+        run_cmds = [cmd for cmd, _ in expanded if cmd.strip() and cmd != "__BREAKPOINT__" and cmd != "__NOP__"]
         self._console._input.setEnabled(False)
 
-        def _scpi_done(output):
-            if output.strip():
-                self._console.log(_ansi_to_html(output))
+        def _run_all():
+            output_parts = []
+            for cmd in run_cmds:
+                result = self._d.run(cmd)
+                if result.strip():
+                    output_parts.append(result.rstrip("\n"))
+                    # Emit output to console via signal (thread-safe)
+                    _sig.finished.emit(result.rstrip("\n"))
+                # Stop on error if set -e is active
+                if self._d._repl.ctx.exit_on_error and self._d._repl.ctx.command_had_error:
+                    _sig.finished.emit("[ERROR] Script stopped (set -e)")
+                    break
+            return ""
+
+        def _line_output(text):
+            if text:
+                self._console.log(_ansi_to_html(text))
+
+        def _all_done(_):
             self._console.log(f"<span style='color:#155724'>[DONE] {name}</span>")
             self._console._input.setEnabled(True)
             self._on_console_command()
 
-        self._run_in_background(lambda: self._d.run(cmd_str), _scpi_done, f"Running {name}...")
+        _sig = _BgSignal(self)
+        _done_sig = _BgSignal(self)
+        _sig.finished.connect(_line_output, Qt.ConnectionType.QueuedConnection)
+        _done_sig.finished.connect(_all_done, Qt.ConnectionType.QueuedConnection)
+
+        import threading
+        def _worker():
+            _run_all()
+            _done_sig.finished.emit("")
+
+        t = threading.Thread(target=_worker, daemon=True)
+        t.start()
+        self._status.setText(f"Running {name}...")
 
     # -- Keybind handlers ----------------------------------------------------
 

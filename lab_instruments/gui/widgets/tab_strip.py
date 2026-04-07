@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from enum import Enum, auto
 from typing import TYPE_CHECKING
 
@@ -166,6 +167,31 @@ class _TabStrip(QWidget):
         close_all = menu.addAction("Close All")
         menu.addSeparator()
         pop_out = menu.addAction("Pop Out")
+
+        # Copy path options (only if widget has a file path)
+        copy_path = None
+        copy_rel = None
+        widget = self._group._widgets[idx][1] if idx < len(self._group._widgets) else None
+        file_path = None
+        if widget:
+            for attr in ("_file_path", "_path", "file_path"):
+                fp = getattr(widget, attr, None)
+                if fp and isinstance(fp, str):
+                    file_path = fp
+                    break
+                if callable(fp):
+                    try:
+                        fp = fp()
+                        if fp and isinstance(fp, str):
+                            file_path = fp
+                            break
+                    except Exception:
+                        pass
+        if file_path:
+            menu.addSeparator()
+            copy_path = menu.addAction("Copy Path")
+            copy_rel = menu.addAction("Copy Relative Path")
+
         action = menu.exec(event.globalPos())
         if action == close:
             self._group.close_tab(idx)
@@ -179,6 +205,12 @@ class _TabStrip(QWidget):
             self._close_all()
         elif action == pop_out:
             self._pop_out_tab(idx)
+        elif copy_path and action == copy_path:
+            from PySide6.QtWidgets import QApplication
+            QApplication.clipboard().setText(os.path.abspath(file_path))
+        elif copy_rel and action == copy_rel:
+            from PySide6.QtWidgets import QApplication
+            QApplication.clipboard().setText(os.path.relpath(file_path))
 
     def _pop_out_tab(self, idx: int) -> None:
         if not 0 <= idx < len(self._group._widgets):

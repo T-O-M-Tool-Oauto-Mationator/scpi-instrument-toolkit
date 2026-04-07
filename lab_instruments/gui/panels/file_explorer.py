@@ -137,10 +137,18 @@ class FileExplorer(QWidget):
         if path:
             menu.addAction("Rename...", lambda: self._rename(path))
             menu.addAction("Delete", lambda: self._delete(path, is_dir))
+            menu.addSeparator()
+            menu.addAction("Copy Path", lambda: self._copy_to_clipboard(os.path.abspath(path)))
+            menu.addAction("Copy Relative Path", lambda: self._copy_to_clipboard(os.path.relpath(path)))
 
         menu.exec(self._tree.viewport().mapToGlobal(pos))
 
     # -- File operations -----------------------------------------------------
+
+    @staticmethod
+    def _copy_to_clipboard(text: str) -> None:
+        from PySide6.QtWidgets import QApplication
+        QApplication.clipboard().setText(text)
 
     def _new_file(self, parent_dir: str, ext: str) -> None:
         name, ok = QInputDialog.getText(self, "New File", f"File name (e.g. my_script{ext}):")
