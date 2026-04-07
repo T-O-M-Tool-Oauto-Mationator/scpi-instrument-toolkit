@@ -1,0 +1,34 @@
+# cross_script_demo.scpi
+# Collects PSU measurements and stores them in REPL variables.
+# After running this, run the Python version to analyze the data.
+# Works with --mock.
+
+print "=== Cross-Script Demo (SCPI) ==="
+
+target = 5.0
+tolerance = 0.05
+
+psu1 chan 1 on
+dmm1 config vdc
+sleep 0.3
+
+# Collect 10 readings at the target voltage
+psu1 set 1 {target}
+sleep 0.3
+
+for i 1 2 3 4 5 6 7 8 9 10
+  reading_{i} = dmm1 meas unit=V
+  sleep 100ms
+end
+
+# Compute min and max from readings
+psu_v = psu1 meas v unit=V
+
+psu1 chan 1 off
+print "=== SCPI collection done ==="
+print "Target: {target}V  Tolerance: {tolerance}V"
+print "PSU readback: {psu_v}V"
+log print
+
+print ""
+print "Now run the Python version to analyze these measurements."

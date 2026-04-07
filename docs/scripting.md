@@ -195,7 +195,7 @@ script run my_psu_test       # run the recorded script
 
 ### python
 
-Execute an external Python script file with access to the REPL's live context.
+Execute an external Python script file with full access to the REPL's live instruments, measurements, and variables.
 
 ```
 python <file.py>
@@ -205,32 +205,184 @@ python <file.py>
 |-----------|----------|-------------|
 | `file.py` | required | Path to the Python script file (absolute or relative to cwd). |
 
-The script receives the following variables injected into its global namespace:
+Use `python` when you need the full Python ecosystem (NumPy, matplotlib, pandas, etc.) beyond what the SCPI script language provides, or when you want proper control flow, error handling, and data structures.
+
+### Injected globals
+
+Your script receives these variables automatically — no imports needed:
 
 | Variable | Type | Description |
 |----------|------|-------------|
-| `repl` | `InstrumentRepl` | The REPL instance |
-| `devices` | `dict` | Connected instruments, keyed by name (`psu1`, `dmm1`, …) |
-| `measurements` | `list` | Recorded measurement entries |
-| `ColorPrinter` | class | Colored terminal output |
-| `os`, `json`, `time` | modules | Standard library modules |
+| `repl` | `InstrumentRepl` | The full REPL instance — run any REPL command, access context |
+| `devices` | `dict[str, Any]` | Connected instruments keyed by name (`"psu"`, `"dmm"`, `"scope"`, …) |
+| `measurements` | `list[dict]` | All recorded measurement entries (list of `{label, value, unit, source, time}` dicts) |
+| `ColorPrinter` | class | Colored terminal output (`ColorPrinter.info()`, `.success()`, `.error()`, `.warning()`, `.header()`, `.cyan()`) |
+| `os` | module | `os` standard library module |
+| `sys` | module | `sys` standard library module |
+| `json` | module | `json` standard library module |
+| `time` | module | `time` standard library module |
+| `lab_instruments` | module | The `lab_instruments` package (for importing enums, drivers, etc.) |
+
+### Getting instruments
 
 ```python
-# my_script.py
-psu = devices.get("psu1")
-if psu:
-    psu.set_voltage(1, 5.0)
-    psu.enable_output(True)
-    ColorPrinter.success("PSU set to 5.0 V")
+# By name — same names you see from 'list' in the REPL
+psu = devices.get("psu") or devices.get("psu1")
+dmm = devices.get("dmm") or devices.get("dmm1")
+scope = devices.get("scope") or devices.get("scope1")
+awg = devices.get("awg") or devices.get("awg1")
+
+# Check before using
+if not psu:
+    ColorPrinter.error("No PSU found. Run 'scan' first.")
+    raise SystemExit
 ```
 
-```bash
-python my_script.py
-python /home/user/projects/lab_sequence.py
+### Running REPL commands from Python
+
+Use `repl.onecmd()` to execute any REPL command:
+
+```python
+repl.onecmd("psu1 chan 1 on")
+repl.onecmd("psu1 set 1 5.0")
+repl.onecmd("dmm1 config vdc")
+repl.onecmd('liveplot dmm_* --title "My Plot"')
 ```
 
-!!! note
-    Use `python` for automation that needs the full Python ecosystem (NumPy, matplotlib, etc.) beyond what the script language provides.
+### Reading and writing REPL variables
+
+Access the same variables you set with `var = value` in SCPI scripts:
+
+```python
+# Read REPL variables
+voltage = repl.ctx.script_vars.get("voltage", "5.0")
+
+# Set REPL variables (available to subsequent SCPI commands)
+repl.ctx.script_vars["result"] = "3.14"
+```
+
+### Recording measurements
+
+Record measurements so they appear in `log print`, live plots, and CSV exports:
+
+```python
+# Record a measurement with label, value, unit, and source
+repl.ctx.measurements.record("dmm_5.0V", 4.9987, "V", "dmm1")
+
+# Read back recorded measurements
+last = repl.ctx.measurements.get_last()           # most recent entry
+entry = repl.ctx.measurements.get_by_label("dmm_5.0V")  # by label
+all_entries = repl.ctx.measurements.entries         # full list
+```
+
+Each entry is a dict: `{"label": "dmm_5.0V", "value": 4.9987, "unit": "V", "source": "dmm1", "time": 1.234}`.
+
+### Using driver methods directly
+
+Call instrument methods directly — no REPL command parsing overhead:
+
+```python
+# PSU
+psu.enable_output(True)
+psu.set_output_channel(ch, 5.0, 0.5)  # channel, voltage, current_limit
+v = psu.measure_voltage()
+i = psu.measure_current()
+
+# DMM
+dmm.configure_dc_voltage()
+v = dmm.measure_dc_voltage()
+r = dmm.measure_resistance_2wire()
+
+# AWG
+awg.set_waveform(1, "SIN", frequency=1000, amplitude=2.0, offset=0)
+awg.enable_output(1, True)
+
+# Scope
+scope.autoset()
+freq = scope.measure_bnf(1, "FREQUENCY")
+pk2pk = scope.measure_bnf(1, "PK2PK")
+```
+
+### Starting a live plot
+
+Open a live-updating chart tab in the GUI:
+
+```python
+# Open a live plot tab — matches measurement labels by glob pattern
+repl.onecmd('liveplot dmm_* --title "Voltage Sweep" --xlabel "Time (s)" --ylabel "V"')
+
+# Then record measurements — they appear on the chart automatically
+for v in [1.0, 2.0, 3.3, 5.0]:
+    psu.set_output_channel(ch, v, 0.5)
+    time.sleep(0.2)
+    measured = dmm.measure_dc_voltage()
+    repl.ctx.measurements.record(f"dmm_{v}V", measured, "V", "dmm1")
+```
+
+### Full example — voltage sweep with live plot
+
+```python
+# live_sweep.py — run with: python live_sweep.py
+import time
+
+V_START, V_END, STEPS = 0.5, 12.0, 50
+DELAY = 0.15
+
+psu = devices.get("psu") or devices.get("psu1")
+dmm = devices.get("dmm") or devices.get("dmm1")
+
+if not psu or not dmm:
+    ColorPrinter.error("Need PSU + DMM. Run 'scan' first.")
+    raise SystemExit
+
+# Open live plot
+repl.onecmd('liveplot dmm_* --title "Voltage Sweep" --xlabel "Time (s)" --ylabel "V"')
+
+# Build voltage steps (like linspace)
+step = (V_END - V_START) / STEPS
+voltages = [V_START + step * i for i in range(STEPS + 1)]
+
+ColorPrinter.header(f"Sweeping {V_START}V -> {V_END}V in {STEPS+1} points")
+psu.enable_output(True)
+
+try:
+    for target_v in voltages:
+        psu.set_output_channel(1, target_v, 0.5)
+        time.sleep(DELAY)
+        measured = dmm.measure_dc_voltage()
+        repl.ctx.measurements.record(f"dmm_{target_v:.2f}V", measured, "V", "dmm1")
+        ColorPrinter.info(f"  {target_v:6.2f} V -> {measured:.4f} V")
+finally:
+    psu.enable_output(False)
+
+ColorPrinter.success("Done")
+```
+
+### Importing external libraries
+
+Your script runs in a full Python environment. Import anything installed:
+
+```python
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# NumPy linspace for sweep voltages
+voltages = np.linspace(1.0, 12.0, 50)
+
+# Collect into a DataFrame
+rows = []
+for v in voltages:
+    psu.set_output_channel(1, float(v), 0.5)
+    time.sleep(0.2)
+    rows.append({"set_V": float(v), "meas_V": dmm.measure_dc_voltage()})
+
+df = pd.DataFrame(rows)
+df.to_csv("results.csv", index=False)
+```
+
+!!! tip "Script directory is on sys.path"
+    The directory containing your `.py` file is temporarily added to `sys.path`, so you can import helper modules from the same folder.
 
 ---
 

@@ -281,3 +281,97 @@ class TestUnsetCommand:
         out = capsys.readouterr().out
         assert "42" not in out
         assert "{x}" in out
+
+
+# ---------------------------------------------------------------------------
+# calc assignment: result = calc <expr> [unit=X]
+# ---------------------------------------------------------------------------
+
+
+class TestCalcAssignment:
+    def test_calc_assign_simple_expression(self, make_repl, capsys):
+        """result = calc 2 * 3 should store '6' in script_vars."""
+        repl = make_repl({})
+        repl.onecmd("result = calc 2 * 3")
+        assert repl.ctx.script_vars["result"] == "6"
+
+    def test_calc_assign_with_variables(self, make_repl, capsys):
+        """result = calc {a} * {b} should substitute and compute."""
+        repl = make_repl({})
+        repl.ctx.script_vars["a"] = "5"
+        repl.ctx.script_vars["b"] = "3"
+        repl.onecmd("result = calc {a} * {b}")
+        assert repl.ctx.script_vars["result"] == "15"
+
+    def test_calc_assign_with_unit(self, make_repl, capsys):
+        """result = calc 5 * 2 unit=W should store value and record unit."""
+        repl = make_repl({})
+        repl.onecmd("result = calc 5 * 2 unit=W")
+        assert repl.ctx.script_vars["result"] == "10"
+        entry = repl.ctx.measurements.get_by_label("result")
+        assert entry is not None
+        assert entry["value"] == 10
+        assert entry["unit"] == "W"
+
+    def test_calc_assign_records_to_measurements(self, make_repl, capsys):
+        """Calc assignment should record in measurement store with source='calc'."""
+        repl = make_repl({})
+        repl.onecmd("power = calc 3.3 * 0.5 unit=W")
+        entry = repl.ctx.measurements.get_by_label("power")
+        assert entry is not None
+        assert entry["source"] == "calc"
+        assert abs(entry["value"] - 1.65) < 1e-9
+
+    def test_calc_assign_var_usable_in_subsequent_commands(self, make_repl, capsys):
+        """Variable set by calc assignment should be usable via {var}."""
+        repl = make_repl({})
+        repl.onecmd("x = calc 7 + 3")
+        capsys.readouterr()
+        repl.onecmd('print "x={x}"')
+        out = capsys.readouterr().out
+        assert "x=10" in out
+
+    def test_calc_assign_prints_output(self, make_repl, capsys):
+        """Calc assignment should print the result."""
+        repl = make_repl({})
+        repl.onecmd("power = calc 10 * 2 unit=W")
+        out = capsys.readouterr().out
+        assert "power" in out
+        assert "20" in out
+
+    def test_calc_assign_invalid_expr_shows_error(self, make_repl, capsys):
+        """Invalid expression should print error and not set variable."""
+        repl = make_repl({})
+        repl.onecmd("bad = calc foo bar baz")
+        out = capsys.readouterr().out
+        assert "bad" not in repl.ctx.script_vars
+        assert "calc failed" in out.lower() or "error" in out.lower()
+
+    def test_calc_assign_empty_expr_shows_warning(self, make_repl, capsys):
+        """Empty calc expression should warn."""
+        repl = make_repl({})
+        repl.onecmd("x = calc")
+        out = capsys.readouterr().out
+        assert "x" not in repl.ctx.script_vars
+        assert "expects" in out.lower() or "expression" in out.lower()
+
+    def test_standalone_calc_unchanged(self, make_repl, capsys):
+        """Standalone calc (not assignment) should still work as before."""
+        repl = make_repl({})
+        # Record an initial measurement so do_calc doesn't bail out
+        repl.ctx.measurements.record("seed", 1.0, "", "test")
+        repl.onecmd("calc power = 5 * 2 unit=W")
+        entry = repl.ctx.measurements.get_by_label("power")
+        assert entry is not None
+        assert entry["value"] == 10
+        # Standalone calc should NOT set script_vars
+        assert "power" not in repl.ctx.script_vars
+
+    def test_calc_assign_no_unit(self, make_repl, capsys):
+        """Calc assignment without unit= should still work."""
+        repl = make_repl({})
+        repl.onecmd("val = calc 100 / 4")
+        assert repl.ctx.script_vars["val"] == "25.0"
+        entry = repl.ctx.measurements.get_by_label("val")
+        assert entry is not None
+        assert entry["unit"] == ""

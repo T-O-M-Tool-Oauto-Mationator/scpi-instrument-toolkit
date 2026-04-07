@@ -476,8 +476,10 @@ class InstrumentRepl(cmd.Cmd):
         if m:
             varname = m.group(1)
             rhs = m.group(2).strip()
-            # Try instrument read first; fall through to plain assignment
+            # Try instrument read first; fall through to calc, then plain assignment
             if self._var_cmd.try_instrument_read(varname, rhs):
+                return
+            if self._var_cmd.try_calc_assignment(varname, rhs):
                 return
             self._var_cmd._assign_var(varname, rhs)
             return

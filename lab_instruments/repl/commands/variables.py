@@ -224,6 +224,61 @@ class VariableCommands(BaseCommand):
         else:
             raise ValueError(f"Unknown ev2300 verb: {verb}")
 
+    def try_calc_assignment(self, varname: str, rhs: str) -> bool:
+        """Attempt to handle ``varname = calc [label] <expr> [unit=X]``.
+
+        Returns True if the RHS starts with 'calc' and was handled,
+        False otherwise (caller should fall through to normal assignment).
+        """
+        stripped = rhs.strip()
+        if not stripped.lower().startswith("calc"):
+            return False
+        # Strip the leading 'calc' keyword
+        after_calc = stripped[4:].strip()
+        if not after_calc:
+            ColorPrinter.warning("calc expects an expression.")
+            return True
+
+        # Parse tokens to extract unit= if present
+        tokens = after_calc.split()
+        unit = ""
+        non_unit_tokens = []
+        for token in tokens:
+            if token.lower().startswith("unit="):
+                unit = token.split("=", 1)[1]
+            else:
+                non_unit_tokens.append(token)
+
+        # Strip unit=... from the raw expression string
+        expr = re.sub(r"(?<!\S)unit=\S+", "", after_calc).strip()
+        if not expr:
+            ColorPrinter.warning("calc expects an expression.")
+            return True
+
+        # Substitute {name} and $name variables in expr
+        expr = substitute_vars(expr, self.ctx.script_vars, self.ctx.measurements)
+
+        # Build names dict with 'last' from measurement store
+        names = {}
+        if self.ctx.measurements:
+            last_entry = self.ctx.measurements.get_last()
+            if last_entry:
+                names["last"] = last_entry["value"]
+
+        try:
+            value = safe_eval(expr, names)
+        except Exception as exc:
+            ColorPrinter.error(f"calc failed: {exc}")
+            self.ctx.command_had_error = True
+            return True
+
+        # Store in both script_vars AND measurement store
+        self.ctx.script_vars[varname] = str(value)
+        self.ctx.measurements.record(varname, value, unit, "calc")
+        suffix = f" {unit}" if unit else ""
+        ColorPrinter.cyan(f"{varname} = {value}{suffix}")
+        return True
+
     def _assign_var(self, key: str, raw_val: str) -> None:
         """Core variable assignment — shared by 'var = expr' and 'set var expr'."""
         raw_val = substitute_vars(raw_val, self.ctx.script_vars, self.ctx.measurements)
