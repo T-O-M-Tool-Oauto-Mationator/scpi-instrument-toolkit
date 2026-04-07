@@ -3,28 +3,32 @@
 import contextlib
 import re
 import shlex
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from lab_instruments.src.terminal import ColorPrinter
 
-from ..syntax import safe_eval, substitute_legacy
+from ..syntax import safe_eval, substitute_expand
 
 # Matches Python-style assignment: identifier = expression
-_ASSIGN_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.+)$")
+# The (?!=) prevents matching lines like "print ============"
+_ASSIGN_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_.]*)\s*=(?!=)\s*(.+)$")
 
 # Matches instrument read RHS: <instrument> read [unit=X]
-_INSTR_READ_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*)\s+read(?:\s+(.*))?$")
+# Also matches ev2300 read_word/read_byte/read_block commands
+_INSTR_READ_RE = re.compile(
+    r"^([A-Za-z_][A-Za-z0-9_]*)\s+(?:read|meas|read_word|read_byte|read_block)(?:\s+(.*))?$"
+)
 
 
 def expand_script_lines(
-    lines: List[str],
-    variables: Dict[str, str],
+    lines: list[str],
+    variables: dict[str, str],
     ctx: Any,
     depth: int = 0,
-    parent_vars: Optional[Dict[str, str]] = None,
-    exports: Optional[Dict[str, str]] = None,
+    parent_vars: dict[str, str] | None = None,
+    exports: dict[str, str] | None = None,
     _loop_ctx: str = "",
-) -> List[Tuple[str, str]]:
+) -> list[tuple[str, str]]:
     """Expand script lines into (command, source_display) tuples.
 
     Handles: import, export, breakpoint, set, call, repeat, array, for,
@@ -37,12 +41,13 @@ def expand_script_lines(
     if depth == 0:
         ctx.safety_limits = {}
         ctx.awg_channel_state = {}
-    expanded: List[Tuple[str, str]] = []
+    expanded: list[tuple[str, str]] = []
     idx = 0
     while idx < len(lines):
         raw_line = lines[idx].strip()
         idx += 1
         if not raw_line or raw_line.startswith("#"):
+            expanded.append(("__NOP__", _loop_ctx + raw_line))
             continue
         try:
             tokens = shlex.split(raw_line)
@@ -87,7 +92,7 @@ def expand_script_lines(
                 continue
             if len(tokens) >= 3:
                 key = tokens[1]
-                raw_val = substitute_legacy(" ".join(tokens[2:]), variables)
+                raw_val = substitute_expand(" ".join(tokens[2:]), variables)
                 try:
                     num_vars = {}
                     for k, v in variables.items():
@@ -109,8 +114,8 @@ def expand_script_lines(
             for token in tokens[2:]:
                 if "=" in token:
                     k, v = token.split("=", 1)
-                    call_params[k] = substitute_legacy(v, variables)
-            call_exports: Dict[str, str] = {}
+                    call_params[k] = substitute_expand(v, variables)
+            call_exports: dict[str, str] = {}
             expanded.extend(
                 expand_script_lines(
                     ctx.scripts[script_name],
@@ -140,7 +145,7 @@ def expand_script_lines(
 
         if head == "array" and len(tokens) >= 2:
             varname = tokens[1]
-            elements: List[str] = []
+            elements: list[str] = []
             while idx < len(lines):
                 line = lines[idx].strip()
                 idx += 1
@@ -151,16 +156,16 @@ def expand_script_lines(
                     continue
                 if inner_tokens[0].lower() == "end":
                     break
-                elements.extend(shlex.split(substitute_legacy(line, variables)))
+                elements.extend(shlex.split(substitute_expand(line, variables)))
             variables[varname] = " ".join(elements)
             expanded.append(("__NOP__", f"{_loop_ctx}{raw_line}  →  {varname} = [{variables[varname]}]"))
             continue
 
         if head == "for" and len(tokens) >= 3:
             key = tokens[1]
-            values: List[str] = []
+            values: list[str] = []
             for _rv in tokens[2:]:
-                _subst = substitute_legacy(_rv, variables)
+                _subst = substitute_expand(_rv, variables)
                 try:
                     values.extend(shlex.split(_subst))
                 except ValueError:
@@ -174,9 +179,9 @@ def expand_script_lines(
                         ColorPrinter.error("for: var list and value list length mismatch.")
                         break
                     local_vars = dict(variables)
-                    for name, val in zip(keys, parts):
-                        local_vars[name] = substitute_legacy(val, variables)
-                    iter_ctx = " ".join(f"{k}={v}" for k, v in zip(keys, parts))
+                    for name, val in zip(keys, parts, strict=True):
+                        local_vars[name] = substitute_expand(val, variables)
+                    iter_ctx = " ".join(f"{k}={v}" for k, v in zip(keys, parts, strict=True))
                     expanded.append(("__NOP__", f"{_loop_ctx}{raw_line}  →  {iter_ctx}"))
                     expanded.extend(
                         expand_script_lines(block, local_vars, ctx, depth, _loop_ctx=_loop_ctx + f"[{iter_ctx}] ")
@@ -184,7 +189,7 @@ def expand_script_lines(
             else:
                 for value in values:
                     local_vars = dict(variables)
-                    local_vars[key] = substitute_legacy(value, variables)
+                    local_vars[key] = substitute_expand(value, variables)
                     expanded.append(("__NOP__", f"{_loop_ctx}{raw_line}  →  {key}={value}"))
                     expanded.extend(
                         expand_script_lines(block, local_vars, ctx, depth, _loop_ctx=_loop_ctx + f"[{key}={value}] ")
@@ -192,6 +197,7 @@ def expand_script_lines(
             continue
 
         if head == "end":
+            expanded.append(("__NOP__", _loop_ctx + raw_line))
             continue
 
         if head in ("lower_limit", "upper_limit") and len(tokens) >= 3:
@@ -202,12 +208,34 @@ def expand_script_lines(
         _assign_match = _ASSIGN_RE.match(raw_line)
         if _assign_match:
             key = _assign_match.group(1)
-            raw_val = substitute_legacy(_assign_match.group(2).strip(), variables)
+            raw_val = substitute_expand(_assign_match.group(2).strip(), variables)
             # Instrument read assignment: value = dmm read [unit=X]
             # Emit the full line as a command so the shell handles it at runtime
             instr_read_match = _INSTR_READ_RE.match(raw_val)
             if instr_read_match:
                 expanded.append((raw_line, _loop_ctx + raw_line))
+                continue
+            # input assignment: VAR = input [prompt]
+            # Must run at runtime (user interaction), so emit as command
+            inp_parts = raw_val.split(None, 1)
+            if inp_parts and inp_parts[0] == "input":
+                expanded.append((raw_line, _loop_ctx + raw_line))
+                continue
+            # linspace assignment: VAR = linspace start stop [count]
+            ls_parts = raw_val.split()
+            if ls_parts and ls_parts[0] == "linspace" and len(ls_parts) >= 3:
+                try:
+                    ls_start = float(ls_parts[1])
+                    ls_stop = float(ls_parts[2])
+                    ls_count = int(ls_parts[3]) if len(ls_parts) >= 4 else 11
+                    if ls_count < 2:
+                        raise ValueError("count must be >= 2")
+                    ls_step = (ls_stop - ls_start) / (ls_count - 1)
+                    ls_vals = [ls_start + i * ls_step for i in range(ls_count)]
+                    variables[key] = " ".join(f"{v:g}" for v in ls_vals)
+                    expanded.append(("__NOP__", f"{_loop_ctx}{raw_line}  →  {key} = [{variables[key]}]"))
+                except (ValueError, ZeroDivisionError) as exc:
+                    ColorPrinter.error(f"linspace: {exc}")
                 continue
             try:
                 num_vars = {}
@@ -221,13 +249,13 @@ def expand_script_lines(
             expanded.append(("__NOP__", f"{_loop_ctx}{raw_line}  →  {key} = {variables[key]}"))
             continue
 
-        expanded.append((substitute_legacy(raw_line, variables), _loop_ctx + raw_line))
+        expanded.append((substitute_expand(raw_line, variables), _loop_ctx + raw_line))
     return expanded
 
 
-def _collect_block(lines: List[str], idx: int) -> Tuple[List[str], int]:
+def _collect_block(lines: list[str], idx: int) -> tuple[list[str], int]:
     """Collect lines until a matching 'end', tracking nested depth."""
-    block: List[str] = []
+    block: list[str] = []
     depth_inner = 1
     while idx < len(lines):
         line = lines[idx].strip()
@@ -252,9 +280,9 @@ def _collect_block(lines: List[str], idx: int) -> Tuple[List[str], int]:
 
 def _parse_limit(
     head: str,
-    tokens: List[str],
+    tokens: list[str],
     ctx: Any,
-    expanded: List[Tuple[str, str]],
+    expanded: list[tuple[str, str]],
     _loop_ctx: str,
     raw_line: str,
 ) -> None:

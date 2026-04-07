@@ -120,6 +120,28 @@ def keysight_edu33212a(mock_visa_rm):
 
 
 @pytest.fixture
+def keysight_edu36311a(mock_visa_rm):
+    mock_rm, mock_instrument = mock_visa_rm
+    from lab_instruments.src.keysight_edu36311a import Keysight_EDU36311A
+
+    psu = Keysight_EDU36311A("USB::0x2A8D::0x9201::INSTR")
+    psu.instrument = mock_instrument
+    mock_instrument.reset_mock()
+    return psu, mock_instrument
+
+
+@pytest.fixture
+def keysight_edu34450a(mock_visa_rm):
+    mock_rm, mock_instrument = mock_visa_rm
+    from lab_instruments.src.keysight_edu34450a import Keysight_EDU34450A
+
+    dmm = Keysight_EDU34450A("USB::0x2A8D::0x8E01::INSTR")
+    dmm.instrument = mock_instrument
+    mock_instrument.reset_mock()
+    return dmm, mock_instrument
+
+
+@pytest.fixture
 def bk_4063(mock_visa_rm):
     mock_rm, mock_instrument = mock_visa_rm
     from lab_instruments.src.bk_4063 import BK_4063
@@ -143,6 +165,17 @@ def jds6600_generator(mock_visa_rm, monkeypatch):
     gen.instrument = mock_instrument
     mock_instrument.reset_mock()
     return gen, mock_instrument
+
+
+@pytest.fixture
+def keysight_dsox1204g(mock_visa_rm):
+    mock_rm, mock_instrument = mock_visa_rm
+    from lab_instruments.src.keysight_dsox1204g import Keysight_DSOX1204G
+
+    scope = Keysight_DSOX1204G("USB::0x2A8D::0x0396::CN63347188::INSTR")
+    scope.instrument = mock_instrument
+    mock_instrument.reset_mock()
+    return scope, mock_instrument
 
 
 @pytest.fixture
@@ -220,3 +253,58 @@ def make_repl(monkeypatch):
         return repl
 
     return _make
+
+
+@pytest.fixture
+def ev2300():
+    """Create a TI_EV2300 driver with mocked HID backend."""
+    from lab_instruments.src.ev2300 import TI_EV2300, _EV2300Core, crc8
+
+    mock_backend = MagicMock()
+
+    # Enumerate returns one EV2300
+    mock_backend.find.return_value = "/dev/hidraw_mock"
+    mock_backend.open.return_value = 42
+    mock_backend.get_caps.return_value = None
+    mock_backend.get_info.return_value = {
+        "ok": True,
+        "vid": "0x0451",
+        "pid": "0x0036",
+        "serial": "TEST001",
+        "product": "EV2300A",
+        "manufacturer": "Texas Inst",
+        "version": "0x0200",
+    }
+
+    def _make_read_word_response():
+        """Build a realistic read_word success response."""
+        buf = bytearray(64)
+        buf[0] = 12  # length
+        buf[1] = 0xAA  # marker
+        buf[2] = 0x41  # CMD_READ_WORD | RESP_FLAG
+        buf[3] = 0x00
+        buf[4] = 0x00
+        buf[5] = 0x00
+        buf[6] = 2  # payload len
+        buf[7] = 0x10  # i2c_addr byte
+        buf[8] = 0x12  # high byte of value (big-endian, value = 0x1234)
+        buf[9] = 0x34  # low byte of value
+        # parse_response checks: raw[length-1] == crc8(raw[2:length-1])
+        buf[11] = crc8(buf[2:11])
+        buf[10] = 0x55  # not used in this position for this length
+        # Correct: length=12, so CRC at buf[11], FRAME_END... actually parse uses length
+        # Let me recalculate properly:
+        # parse_response checks: raw[length-1] == crc8(raw[2:length-1])
+        # length=12, so CRC at raw[11], computed over raw[2:11]
+        buf[11] = crc8(buf[2:11])
+        return bytes(buf)
+
+    mock_backend.write.return_value = True
+    mock_backend.read.return_value = _make_read_word_response()
+
+    dev = TI_EV2300("/dev/hidraw_mock")
+    # Manually create core with our mock backend
+    core = _EV2300Core(backend=mock_backend)
+    core.open("/dev/hidraw_mock")
+    dev._core = core
+    yield dev, mock_backend

@@ -2,7 +2,6 @@
 
 import os
 import shlex
-from typing import List
 
 from lab_instruments.src.terminal import ColorPrinter
 
@@ -26,7 +25,7 @@ class BaseCommand:
     def error(self, msg: str) -> None:
         self.ctx.error(msg)
 
-    def parse_args(self, arg: str) -> List[str]:
+    def parse_args(self, arg: str) -> list[str]:
         try:
             if os.name == "nt":
                 # On Windows, use posix=False to preserve backslashes in paths,
@@ -38,17 +37,17 @@ class BaseCommand:
             ColorPrinter.error(f"Parse error: {exc}")
             return []
 
-    def is_help(self, args: List[str]) -> bool:
+    def is_help(self, args: list[str]) -> bool:
         if not args:
             return False
         return args[-1].lower() in ("help", "-h", "--help")
 
-    def strip_help(self, args: List[str]):
+    def strip_help(self, args: list[str]):
         if self.is_help(args):
             return args[:-1], True
         return args, False
 
-    def parse_channels(self, ch_str: str, max_ch: int = 4) -> List[int]:
+    def parse_channels(self, ch_str: str, max_ch: int = 4) -> list[int]:
         s = str(ch_str).lower().strip()
         if s == "all":
             return list(range(1, max_ch + 1))

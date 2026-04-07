@@ -5,6 +5,7 @@ import json
 import os
 import pathlib
 import subprocess
+import sys
 import tempfile
 import time
 import traceback
@@ -57,17 +58,17 @@ class ScriptingCommands(BaseCommand):
                 ColorPrinter.success(f"Script '{name}' created.")
         elif sub == "run" and len(args) >= 2:
             name = args[1]
-            if name not in self.ctx.scripts:
-                ColorPrinter.error(f"Script '{name}' not found.")
+            lines = self._reload_script(name)
+            if lines is None:
                 return
-            expanded = expand_script_lines(self.ctx.scripts[name], {}, self.ctx)
+            expanded = expand_script_lines(lines, {}, self.ctx)
             run_expanded(expanded, self.shell, self.ctx, debug=False)
         elif sub == "debug" and len(args) >= 2:
             name = args[1]
-            if name not in self.ctx.scripts:
-                ColorPrinter.error(f"Script '{name}' not found.")
+            lines = self._reload_script(name)
+            if lines is None:
                 return
-            expanded = expand_script_lines(self.ctx.scripts[name], {}, self.ctx)
+            expanded = expand_script_lines(lines, {}, self.ctx)
             run_expanded(expanded, self.shell, self.ctx, debug=True)
         elif sub == "edit" and len(args) >= 2:
             name = args[1]
@@ -192,19 +193,33 @@ class ScriptingCommands(BaseCommand):
         if not args:
             ColorPrinter.info("Available example scripts:")
             for name, info in EXAMPLES.items():
+                tags = []
+                if info.get("lines"):
+                    tags.append("scpi")
+                if info.get("code"):
+                    tags.append("py")
+                tag_str = f"[{'+'.join(tags)}]" if tags else ""
                 desc = info.get("description", "")
-                ColorPrinter.cyan(f"  {name}: {desc}")
+                ColorPrinter.cyan(f"  {name} {tag_str}: {desc}")
             print("\n  Use: examples load <name>  or  examples load all")
             return
         if args[0].lower() == "load":
             name = args[1] if len(args) >= 2 else None
             if name == "all":
+                loaded = 0
                 for ename, info in EXAMPLES.items():
-                    self.ctx.scripts[ename] = info.get("lines", [])
-                ColorPrinter.success(f"Loaded {len(EXAMPLES)} example scripts.")
+                    lines = info.get("lines", [])
+                    if lines:
+                        self.ctx.scripts[ename] = lines
+                        loaded += 1
+                ColorPrinter.success(f"Loaded {loaded} SCPI example scripts.")
             elif name and name in EXAMPLES:
-                self.ctx.scripts[name] = EXAMPLES[name].get("lines", [])
-                ColorPrinter.success(f"Loaded example '{name}'.")
+                lines = EXAMPLES[name].get("lines", [])
+                if lines:
+                    self.ctx.scripts[name] = lines
+                    ColorPrinter.success(f"Loaded example '{name}'.")
+                else:
+                    ColorPrinter.warning(f"'{name}' has no SCPI version. Use the .py file directly.")
             else:
                 ColorPrinter.warning(f"Example '{name}' not found.")
 
@@ -237,15 +252,28 @@ class ScriptingCommands(BaseCommand):
             return
         exec_globals = {
             "__name__": "__main__",
-            "__file__": filename,
+            "__file__": os.path.abspath(filename),
             "repl": self.shell,
             "devices": self.registry.devices,
             "measurements": self.measurements.entries,
             "ColorPrinter": ColorPrinter,
             "os": os,
+            "sys": sys,
             "json": json,
             "time": time,
         }
+        # Pre-import lab_instruments so scripts can use it without boilerplate
+        try:
+            import lab_instruments
+            exec_globals["lab_instruments"] = lab_instruments
+        except ImportError:
+            pass
+        # Add the script's directory to sys.path so local imports work
+        script_dir = os.path.dirname(os.path.abspath(filename))
+        path_added = False
+        if script_dir not in sys.path:
+            sys.path.insert(0, script_dir)
+            path_added = True
         try:
             ColorPrinter.info(f"Executing {filename}...")
             exec(script_code, exec_globals)
@@ -253,6 +281,12 @@ class ScriptingCommands(BaseCommand):
         except Exception as exc:
             ColorPrinter.error(f"Script execution failed: {exc}")
             traceback.print_exc()
+        finally:
+            if path_added:
+                try:
+                    sys.path.remove(script_dir)
+                except ValueError:
+                    pass
 
     def do_upper_limit(self, arg: str) -> None:
         if not arg:
@@ -317,6 +351,23 @@ class ScriptingCommands(BaseCommand):
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
+    def _reload_script(self, name: str) -> list[str] | None:
+        """Reload a script from disk, updating the cache. Returns lines or None."""
+        path = self.ctx.script_file(name)
+        if os.path.isfile(path):
+            try:
+                with open(path, encoding="utf-8") as f:
+                    lines = f.read().splitlines()
+                self.ctx.scripts[name] = lines
+                return lines
+            except OSError as exc:
+                ColorPrinter.error(f"Failed to read '{path}': {exc}")
+                return None
+        if name in self.ctx.scripts:
+            return self.ctx.scripts[name]
+        ColorPrinter.error(f"Script '{name}' not found.")
+        return None
+
     def _save_script(self, name: str) -> None:
         try:
             script_path = self.ctx.script_file(name)

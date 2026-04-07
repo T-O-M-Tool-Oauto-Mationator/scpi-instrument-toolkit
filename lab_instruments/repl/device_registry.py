@@ -1,7 +1,7 @@
 """Device resolution, selection, and capability queries."""
 
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from lab_instruments.src.terminal import ColorPrinter
 
@@ -12,11 +12,11 @@ class DeviceRegistry:
     """Manages connected devices and resolves device references."""
 
     def __init__(self) -> None:
-        self.devices: Dict[str, Any] = {}
-        self.selected: Optional[str] = None
-        self._device_override: Optional[str] = None
+        self.devices: dict[str, Any] = {}
+        self.selected: str | None = None
+        self._device_override: str | None = None
 
-    def get_device(self, name: Optional[str]) -> Optional[Any]:
+    def get_device(self, name: str | None) -> Any | None:
         """Return a device by name, or the selected device if name is None."""
         if not self.devices:
             ColorPrinter.warning("No instruments connected. Run 'scan' first.")
@@ -33,13 +33,18 @@ class DeviceRegistry:
             return None
         return self.devices.get(name)
 
-    def resolve_type(self, device_type: str) -> Optional[str]:
+    def resolve_type(self, device_type: str) -> str | None:
         """Resolve a generic device type (e.g. 'psu') to a specific name (e.g. 'psu1').
 
         Uses _device_override if set (from numbered-device routing like 'psu1 set 5').
         """
-        if self._device_override and self._device_override in self.devices:
-            return self._device_override
+        if self._device_override:
+            if self._device_override in self.devices:
+                return self._device_override
+            # "psu1" override when device is registered as "psu" (single of its type)
+            base = re.sub(r"\d+$", "", self._device_override)
+            if base != self._device_override and base in self.devices:
+                return base
 
         pattern = re.compile(rf"^{re.escape(device_type)}\d*$")
         candidates = [name for name in self.devices if pattern.match(name)]
@@ -84,7 +89,7 @@ class DeviceRegistry:
         class_name = type(dev).__name__
         return DISPLAY_NAMES.get(class_name, class_name)
 
-    def channels_for(self, dev: Any, base_type: str) -> Optional[List[int]]:
+    def channels_for(self, dev: Any, base_type: str) -> list[int] | None:
         """Return the list of channel numbers for a device."""
         if hasattr(dev, "CHANNEL_MAP"):
             return sorted(dev.CHANNEL_MAP.keys())
@@ -128,6 +133,13 @@ class DeviceRegistry:
 
         return msg
 
+    # Known base types whose names contain digits (e.g. "ev2300").
+    # These must not be truncated by the trailing-digit strip.
+    _KNOWN_TYPES = ("ev2300",)
+
     def base_type(self, device_name: str) -> str:
-        """Return the base device type ('psu', 'awg', etc.) from a name like 'psu1'."""
+        """Return the base device type ('psu', 'awg', 'ev2300', etc.) from a name like 'psu1'."""
+        for t in self._KNOWN_TYPES:
+            if device_name == t or device_name.startswith(t + "_"):
+                return t
         return re.sub(r"\d+$", "", device_name)

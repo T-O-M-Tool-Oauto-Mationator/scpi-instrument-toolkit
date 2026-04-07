@@ -32,6 +32,26 @@ theme:
     - content.code.copy
     - toc.follow
 
+plugins:
+  - search
+  - gen-files:
+      scripts:
+        - scripts/gen_ref_pages.py
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: ["."]
+          options:
+            docstring_style: google
+            show_source: false
+            show_root_heading: true
+            show_root_full_path: false
+            show_signature_annotations: true
+            separate_signature: true
+            members_order: source
+            filters:
+              - "!^_"
+
 markdown_extensions:
   - admonition
   - pymdownx.details
@@ -51,17 +71,33 @@ markdown_extensions:
 nav:
   - Home: index.md
   - Installation: install.md
-  - General Commands: general.md
-  - Instruments:
+  - Supported Instruments: instruments.md
+  - REPL:
+    - General Commands: general.md
     - Power Supply (PSU): psu.md
     - Function Generator (AWG): awg.md
     - Multimeter (DMM): dmm.md
     - Oscilloscope (Scope): scope.md
     - Source Measure Unit (SMU): smu.md
+    - USB-to-I2C Adapter (EV2300): ev2300.md
     - NI PXIe-4139 Setup: ni_pxie.md
-  - Scripting:
-    - Scripts & Directives: scripting.md
+    - Scripting: scripting.md
     - Example Workflows: examples.md
-  - Log & Calc: logging.md
-  - Supported Instruments: instruments.md
+    - Log & Calc: logging.md
+    - Plotting: plotting.md
+  - Python API:
+    - Quickstart: python.md
+    - Enumerations: api/enums.md
+    - Power Supplies: api/psu.md
+    - Multimeters: api/dmm.md
+    - Function Generators: api/awg.md
+    - Oscilloscopes: api/scope.md
+    - Source Measure Unit: api/smu.md
+    - USB-to-I2C (EV2300): api/ev2300.md
+    - Base Class: api/base.md
+  - Reference:
+    - Instruments & Capabilities: generated/instruments.md
+    - REPL Command Reference: generated/repl-ref.md
+  - LabVIEW Bridge: labview.md
+  - Architecture: architecture.md
   - Troubleshooting: troubleshooting.md

@@ -2,6 +2,7 @@
 
 from typing import Any
 
+from lab_instruments.enums import SMUSourceMode
 from lab_instruments.src.terminal import ColorPrinter
 
 from ..context import ReplContext
@@ -93,14 +94,14 @@ class SmuCommand(BaseCommand):
                 "",
                 "smu on|off",
                 "smu set <voltage> [current_limit]",
-                "  - voltage: -60 to 60V, current_limit: 0 to 1A",
+                "  - voltage: -60 to 60V, current_limit: 0 to 3A",
                 "  - example: smu set 5.0 0.01",
                 "smu set_mode voltage <v> [current_limit]",
                 "smu set_mode current <i> [voltage_limit]",
                 "  - example: smu set_mode current 0.05 5.0",
                 "smu meas [v|i|vi]",
                 "  - no arg or vi: atomic V+I+compliance in one call",
-                "  - or assign: value = smu read [unit=]",
+                "  - assign + log: label = smu meas v [unit=V]",
                 "smu compliance  (query compliance state)",
                 "smu source_delay [<seconds>]  (get/set settle delay)",
                 "smu avg [<N>]  (get/set samples_to_average)",
@@ -155,7 +156,7 @@ class SmuCommand(BaseCommand):
                 return
             dev.set_voltage_mode(voltage, current_limit)
             suffix = f" @ {current_limit}A" if current_limit is not None else ""
-            ColorPrinter.success(f"Mode: DC_VOLTAGE  {voltage}V{suffix}")
+            ColorPrinter.success(f"Mode: {SMUSourceMode.VOLTAGE}  {voltage}V{suffix}")
         elif mode in ("current", "i"):
             current = float(args[2])
             voltage_limit = float(args[3]) if len(args) >= 4 else None
@@ -163,7 +164,7 @@ class SmuCommand(BaseCommand):
                 return
             dev.set_current_mode(current, voltage_limit)
             suffix = f"  voltage_limit={voltage_limit}V" if voltage_limit is not None else ""
-            ColorPrinter.success(f"Mode: DC_CURRENT  {current}A{suffix}")
+            ColorPrinter.success(f"Mode: {SMUSourceMode.CURRENT}  {current}A{suffix}")
         else:
             ColorPrinter.warning("smu set_mode voltage|current ...")
 

@@ -301,37 +301,37 @@ class TestPsuLimits:
     def test_voltage_over_limit_fails(self, psu_repl):
         self._set_limits(psu_repl, voltage_max=10.0)
         psu_repl._command_had_error = False
-        psu_repl.onecmd("psu set 12.0")
+        psu_repl.onecmd("psu set 1 12.0")
         assert psu_repl._command_had_error
 
     def test_voltage_at_exact_limit_passes(self, psu_repl):
         self._set_limits(psu_repl, voltage_max=10.0)
         psu_repl._command_had_error = False
-        psu_repl.onecmd("psu set 10.0")
+        psu_repl.onecmd("psu set 1 10.0")
         assert not psu_repl._command_had_error
 
     def test_voltage_under_limit_passes(self, psu_repl):
         self._set_limits(psu_repl, voltage_max=15.0)
         psu_repl._command_had_error = False
-        psu_repl.onecmd("psu set 5.0")
+        psu_repl.onecmd("psu set 1 5.0")
         assert not psu_repl._command_had_error
 
     def test_current_over_limit_fails(self, psu_repl):
         self._set_limits(psu_repl, current_max=1.0)
         psu_repl._command_had_error = False
-        psu_repl.onecmd("psu set 5.0 2.0")
+        psu_repl.onecmd("psu set 1 5.0 2.0")
         assert psu_repl._command_had_error
 
     def test_current_at_exact_limit_passes(self, psu_repl):
         self._set_limits(psu_repl, current_max=2.0)
         psu_repl._command_had_error = False
-        psu_repl.onecmd("psu set 5.0 2.0")
+        psu_repl.onecmd("psu set 1 5.0 2.0")
         assert not psu_repl._command_had_error
 
     def test_no_limits_always_passes(self, psu_repl):
         # No limit directives — should never block
         psu_repl._command_had_error = False
-        psu_repl.onecmd("psu set 99.0 99.0")
+        psu_repl.onecmd("psu set 1 99.0 99.0")
         assert not psu_repl._command_had_error
 
 
@@ -505,13 +505,13 @@ class TestInteractiveLimitCommands:
     def test_interactive_upper_limit_psu_blocks_command(self, psu_repl):
         psu_repl.onecmd("upper_limit psu voltage 3.0")
         psu_repl._command_had_error = False
-        psu_repl.onecmd("psu set 5.0")
+        psu_repl.onecmd("psu set 1 5.0")
         assert psu_repl._command_had_error
 
     def test_interactive_upper_limit_psu_allows_safe_command(self, psu_repl):
         psu_repl.onecmd("upper_limit psu voltage 10.0")
         psu_repl._command_had_error = False
-        psu_repl.onecmd("psu set 5.0")
+        psu_repl.onecmd("psu set 1 5.0")
         assert not psu_repl._command_had_error
 
     def test_interactive_upper_limit_psu_chan_stores_correctly(self, psu_repl):
@@ -788,25 +788,25 @@ class TestOutputEnableGating:
         # MockPSU defaults: 5.0V, set limit to 3.0 → blocked
         psu_repl.onecmd("upper_limit psu voltage 3.0")
         psu_repl._command_had_error = False
-        psu_repl.onecmd("psu chan on")
+        psu_repl.onecmd("psu chan 1 on")
         assert psu_repl._command_had_error
 
     def test_psu_chan_on_allowed_after_reducing_voltage(self, psu_repl):
         psu_repl.onecmd("upper_limit psu voltage 3.0")
-        psu_repl.onecmd("psu set 2.0")
+        psu_repl.onecmd("psu set 1 2.0")
         psu_repl._command_had_error = False
-        psu_repl.onecmd("psu chan on")
+        psu_repl.onecmd("psu chan 1 on")
         assert not psu_repl._command_had_error
 
     def test_psu_chan_on_allowed_when_no_limits(self, psu_repl):
         psu_repl._command_had_error = False
-        psu_repl.onecmd("psu chan on")
+        psu_repl.onecmd("psu chan 1 on")
         assert not psu_repl._command_had_error
 
     def test_psu_chan_off_always_allowed(self, psu_repl):
         psu_repl.onecmd("upper_limit psu voltage 3.0")
         psu_repl._command_had_error = False
-        psu_repl.onecmd("psu chan off")
+        psu_repl.onecmd("psu chan 1 off")
         assert not psu_repl._command_had_error
 
     # --- state <device> on ---

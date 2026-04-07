@@ -1,6 +1,5 @@
 """PSU command handler for the REPL."""
 
-import inspect
 from typing import Any
 
 from lab_instruments.src.terminal import ColorPrinter
@@ -9,16 +8,55 @@ from ..context import ReplContext
 from .base import BaseCommand
 from .safety import SafetySystem
 
-PSU_CHANNEL_ALIASES = {
-    # Unified channel numbers
-    "1": "positive_6_volts_channel",
-    "2": "positive_25_volts_channel",
-    "3": "negative_25_volts_channel",
-    # Internal names
-    "positive_6_volts_channel": "positive_6_volts_channel",
-    "positive_25_volts_channel": "positive_25_volts_channel",
-    "negative_25_volts_channel": "negative_25_volts_channel",
-}
+
+def _resolve_channel(dev, ch_str):
+    """Resolve a channel number string to the device's channel object.
+
+    Tries CHANNEL_FROM_NUMBER first (new enum-based protocol), then falls
+    back to positional indexing into CHANNEL_MAP (legacy string protocol).
+    For single-channel PSUs (no CHANNEL_MAP/CHANNEL_FROM_NUMBER), channel "1"
+    returns a sentinel so callers can use a uniform code path.
+    """
+    # New protocol: CHANNEL_FROM_NUMBER → enum members
+    channel_from_num = getattr(dev.__class__, "CHANNEL_FROM_NUMBER", {})
+    if channel_from_num:
+        try:
+            return channel_from_num.get(int(ch_str))
+        except ValueError:
+            return None
+
+    # Legacy protocol: CHANNEL_MAP → positional string keys
+    old_map = getattr(dev, "CHANNEL_MAP", {})
+    if old_map and ch_str.isdigit():
+        keys = list(old_map.keys())
+        idx = int(ch_str) - 1
+        if 0 <= idx < len(keys):
+            return keys[idx]
+
+    # Single-channel PSU: only channel 1 is valid
+    if ch_str.isdigit() and int(ch_str) == 1:
+        return 1  # sentinel — callers use set_output_channel which ignores it
+
+    return None
+
+
+def _channel_count(dev):
+    """Return the number of channels for a device."""
+    cfn = getattr(dev.__class__, "CHANNEL_FROM_NUMBER", None)
+    if cfn:
+        return len(cfn)
+    old_map = getattr(dev, "CHANNEL_MAP", None)
+    if old_map:
+        return len(old_map)
+    return 1
+
+
+def _is_multi_channel(dev):
+    return (
+        hasattr(dev, "select_channel")
+        or bool(getattr(dev.__class__, "CHANNEL_FROM_NUMBER", None))
+        or bool(getattr(dev, "CHANNEL_MAP", None))
+    )
 
 
 class PsuCommand(BaseCommand):
@@ -29,48 +67,48 @@ class PsuCommand(BaseCommand):
         self.safety = SafetySystem(ctx)
 
     def execute(self, arg: str, dev: Any, psu_name: str) -> None:
-        """Execute a PSU command.
-
-        The shell calls this like ``self._psu_cmd.execute(arg, dev, psu_name)``.
-        """
-        # Detect single-channel by checking if measure_voltage() takes a channel arg
-        try:
-            sig = inspect.signature(dev.measure_voltage)
-            is_single_channel = "channel" not in sig.parameters
-        except (ValueError, TypeError):
-            is_single_channel = False
-
+        """Execute a PSU command."""
         args = self.parse_args(arg)
         args, help_flag = self.strip_help(args)
 
         if not args:
-            self._show_help(is_single_channel)
+            self._show_help(dev)
             return
 
         cmd_name = args[0].lower()
+        ch_count = _channel_count(dev)
 
         try:
-            # CHAN COMMAND -- psu chan on|off (single) or psu chan <1|2|3|all> on|off (multi)
-            if cmd_name == "chan" and (
-                (is_single_channel and len(args) >= 2) or (not is_single_channel and len(args) >= 3)
-            ):
-                state = args[-1].lower() == "on"
+            # CHAN COMMAND -- psu chan <channel|all> on|off
+            if cmd_name == "chan":
+                if len(args) < 3:
+                    ColorPrinter.warning(f"Usage: psu chan <1-{ch_count}|all> on|off")
+                    return
+                state = args[2].lower() == "on"
                 if state and not self.safety.check_psu_output_allowed(psu_name):
                     return
+                ch_str = args[1].lower()
+                if ch_str != "all":
+                    channel = _resolve_channel(dev, args[1])
+                    if not channel:
+                        ColorPrinter.warning(f"Invalid channel. Use 1-{ch_count} or 'all'")
+                        return
+                    if hasattr(dev, "select_channel"):
+                        dev.select_channel(channel)
                 dev.enable_output(state)
                 ColorPrinter.success(f"Output {'enabled' if state else 'disabled'}")
 
-            # SET COMMAND - unified for both single and multi-channel
+            # SET COMMAND -- psu set <channel> <voltage> [current]
             elif cmd_name == "set":
-                self._handle_set(args, dev, psu_name, is_single_channel)
+                self._handle_set(args, dev, psu_name)
 
-            # MEAS COMMAND - unified for both single and multi-channel
+            # MEAS COMMAND -- psu meas <channel> v|i
             elif cmd_name == "meas":
-                self._handle_meas(args, dev, psu_name, is_single_channel)
+                self._handle_meas(args, dev, psu_name)
 
             # GET COMMAND (single-channel only)
             elif cmd_name == "get":
-                if is_single_channel:
+                if not _is_multi_channel(dev):
                     v = dev.get_voltage_setpoint()
                     i = dev.get_current_limit()
                     out = "ON" if dev.get_output_state() else "OFF"
@@ -80,19 +118,19 @@ class PsuCommand(BaseCommand):
 
             # TRACK COMMAND (multi-channel only)
             elif cmd_name == "track" and len(args) >= 2:
-                if not is_single_channel:
+                if _is_multi_channel(dev):
                     dev.set_tracking(args[1].lower() == "on")
                 else:
                     ColorPrinter.warning("'track' command not available for single-channel PSU")
 
             # SAVE/RECALL COMMANDS (multi-channel only)
             elif cmd_name == "save" and len(args) >= 2:
-                if not is_single_channel:
+                if _is_multi_channel(dev):
                     dev.save_state(int(args[1]))
                 else:
                     ColorPrinter.warning("'save' command not available for single-channel PSU")
             elif cmd_name == "recall" and len(args) >= 2:
-                if not is_single_channel:
+                if _is_multi_channel(dev):
                     dev.recall_state(int(args[1]))
                 else:
                     ColorPrinter.warning("'recall' command not available for single-channel PSU")
@@ -127,81 +165,56 @@ class PsuCommand(BaseCommand):
         """Default no-op; overridden by set_state_callback."""
         ColorPrinter.warning("state command not wired up")
 
-    def _show_help(self, is_single_channel: bool) -> None:
-        if is_single_channel:
-            self.print_colored_usage(
-                [
-                    "# PSU",
-                    "",
-                    "psu on|off",
-                    "psu chan on|off",
-                    "psu set <voltage> [current]",
-                    "  - voltage: 0-60V, current: 0-10A",
-                    "  - example: psu set 5.0 1.0",
-                    "psu meas v|i",
-                    "  - or assign: value = psu read [unit=]",
-                    "psu get  (show setpoints)",
-                    "psu state on|off|safe|reset",
-                ]
-            )
+    def _show_help(self, dev) -> None:
+        ch_count = _channel_count(dev)
+        lines = [
+            "# PSU",
+            "",
+            "psu on|off",
+            f"psu chan <1-{ch_count}|all> on|off",
+            f"psu set <channel> <voltage> [current]",
+            f"  - channels: 1-{ch_count}",
+            "  - example: psu set 1 5.0 0.2",
+            f"psu meas <channel> v|i",
+            "  - example: psu meas 1 v",
+            "  - or assign: value = psu read [unit=]",
+        ]
+        if _is_multi_channel(dev):
+            lines += [
+                "psu track on|off",
+                "psu save <1-3>",
+                "psu recall <1-3>",
+            ]
         else:
-            self.print_colored_usage(
-                [
-                    "# PSU",
-                    "",
-                    "psu chan <1|2|3|all> on|off",
-                    "psu set <channel> <voltage> [current]",
-                    "  - channels: 1 (6V), 2 (25V+), 3 (25V-)",
-                    "  - example: psu set 1 5.0 0.2",
-                    "  - example: psu set 2 12.0 0.5",
-                    "psu meas <channel> v|i",
-                    "  - example: psu meas 1 v",
-                    "  - or assign: value = psu read [unit=]",
-                    "psu track on|off",
-                    "psu save <1-3>",
-                    "psu recall <1-3>",
-                    "psu state on|off|safe|reset",
-                ]
-            )
+            lines.append("psu get  (show setpoints)")
+        lines.append("psu state on|off|safe|reset")
+        self.print_colored_usage(lines)
 
-    def _handle_set(self, args, dev, psu_name, is_single_channel) -> None:
-        if is_single_channel:
-            # Single-channel: psu set <voltage> [current]
-            if len(args) < 2:
-                ColorPrinter.warning("Usage: psu set <voltage> [current]")
-                return
-            voltage = float(args[1])
-            current = float(args[2]) if len(args) >= 3 else None
-            if not self.safety.check_psu_limits(psu_name, None, voltage=voltage, current=current):
-                return
-            dev.set_voltage(voltage)
-            if current is not None:
-                dev.set_current_limit(current)
-            ColorPrinter.success(f"Set: {voltage}V @ {current if current else dev.get_current_limit()}A")
-        else:
-            # Multi-channel: psu set <channel> <voltage> [current]
-            if len(args) < 3:
-                ColorPrinter.warning("Usage: psu set <channel> <voltage> [current]")
-                ColorPrinter.warning("Channels: 1 (6V), 2 (25V+), 3 (25V-)")
-                return
-            channel = PSU_CHANNEL_ALIASES.get(args[1].lower())
-            if not channel:
-                ColorPrinter.warning("Invalid channel. Use 1, 2, or 3")
-                return
-            voltage = float(args[2])
-            current = float(args[3]) if len(args) >= 4 else None
-            psu_ch = int(args[1]) if args[1].isdigit() else None
-            if not self.safety.check_psu_limits(psu_name, psu_ch, voltage=voltage, current=current):
-                return
-            dev.set_output_channel(channel, voltage, current)
-            ColorPrinter.success(f"Set {args[1].upper()}: {voltage}V" + (f" @ {current}A" if current else ""))
+    def _handle_set(self, args, dev, psu_name) -> None:
+        # Always: psu set <channel> <voltage> [current]
+        ch_count = _channel_count(dev)
+        if len(args) < 3:
+            ColorPrinter.warning(f"Usage: psu set <channel> <voltage> [current]")
+            ColorPrinter.warning(f"Channels: 1-{ch_count}")
+            return
+        channel = _resolve_channel(dev, args[1])
+        if channel is None:
+            ColorPrinter.warning(f"Invalid channel. Use 1-{ch_count}")
+            return
+        voltage = float(args[2])
+        current = float(args[3]) if len(args) >= 4 else None
+        psu_ch = int(args[1]) if args[1].isdigit() else None
+        if not self.safety.check_psu_limits(psu_name, psu_ch, voltage=voltage, current=current):
+            return
+        dev.set_output_channel(channel, voltage, current)
+        ColorPrinter.success(f"Set {args[1]}: {voltage}V" + (f" @ {current}A" if current else ""))
 
-    def _handle_meas(self, args, dev, psu_name, is_single_channel) -> None:
-        # Track the last measurement mode for unit auto-detection
-        if is_single_channel and len(args) >= 2:
-            self.ctx.last_instrument_mode[psu_name] = args[1].lower()
-        elif not is_single_channel and len(args) >= 3:
+    def _handle_meas(self, args, dev, psu_name) -> None:
+        # Always: psu meas <channel> v|i
+        ch_count = _channel_count(dev)
+        if len(args) >= 3:
             self.ctx.last_instrument_mode[psu_name] = args[2].lower()
+
         no_readback = getattr(dev, "SUPPORTS_READBACK", True) is False
         if no_readback:
             ColorPrinter.warning(
@@ -210,33 +223,24 @@ class PsuCommand(BaseCommand):
                 "Use 'psu get' to see cached setpoints."
             )
             return
-        if is_single_channel:
-            # Single-channel: psu meas v|i
-            if len(args) < 2:
-                ColorPrinter.warning("Usage: psu meas v|i")
-                return
-            mode = args[1].lower()
-            if mode in ("v", "volt", "voltage"):
-                value = dev.measure_voltage()
-                ColorPrinter.cyan(f"{value:.6f}V")
-            elif mode in ("i", "curr", "current"):
-                value = dev.measure_current()
-                ColorPrinter.cyan(f"{value:.6f}A")
-            else:
-                ColorPrinter.warning("psu meas v|i")
-        else:
-            # Multi-channel: psu meas <channel> v|i
-            if len(args) < 3:
-                ColorPrinter.warning("Usage: psu meas <channel> v|i")
-                return
-            channel = PSU_CHANNEL_ALIASES.get(args[1].lower())
-            mode = args[2].lower()
-            if not channel:
-                ColorPrinter.warning("Invalid channel. Use 1, 2, or 3")
-                return
-            if mode in ("v", "volt", "voltage"):
+
+        if len(args) < 3:
+            ColorPrinter.warning(f"Usage: psu meas <channel> v|i")
+            return
+        channel = _resolve_channel(dev, args[1])
+        mode = args[2].lower()
+        if channel is None:
+            ColorPrinter.warning(f"Invalid channel. Use 1-{ch_count}")
+            return
+        if mode in ("v", "volt", "voltage"):
+            if _is_multi_channel(dev):
                 ColorPrinter.cyan(str(dev.measure_voltage(channel)))
-            elif mode in ("i", "curr", "current"):
+            else:
+                ColorPrinter.cyan(f"{dev.measure_voltage():.6f}V")
+        elif mode in ("i", "curr", "current"):
+            if _is_multi_channel(dev):
                 ColorPrinter.cyan(str(dev.measure_current(channel)))
             else:
-                ColorPrinter.warning("psu meas <channel> v|i")
+                ColorPrinter.cyan(f"{dev.measure_current():.6f}A")
+        else:
+            ColorPrinter.warning("psu meas <channel> v|i")

@@ -28,9 +28,9 @@ on:
   workflow_dispatch:
     inputs:
       branch:
-        description: "Branch to build from (default: main)"
+        description: "Branch to build from (default: dev/nightly)"
         required: false
-        default: "main"
+        default: "dev/nightly"
 
 permissions:
   contents: write
@@ -46,7 +46,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.branch || 'main' }}
+          ref: ${{ github.event.inputs.branch || 'dev/nightly' }}
 
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
@@ -76,7 +76,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.branch || 'main' }}
+          ref: ${{ github.event.inputs.branch || 'dev/nightly' }}
           fetch-depth: 0
 
       - name: Set up Python 3.12
@@ -93,7 +93,7 @@ jobs:
         run: |
           DATE=$(date -u +%Y%m%d)
           SHORT_SHA=$(git rev-parse --short HEAD)
-          BRANCH="${{ github.event.inputs.branch || 'main' }}"
+          BRANCH="${{ github.event.inputs.branch || 'dev/nightly' }}"
 
           # Read base version from pyproject.toml
           BASE=$(python3 -c "
@@ -159,7 +159,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.branch || 'main' }}
+          ref: ${{ github.event.inputs.branch || 'dev/nightly' }}
           fetch-depth: 0
 
       - name: Download distribution artifacts
@@ -203,7 +203,7 @@ jobs:
           body: |
             ## Nightly Build
 
-            Rolling pre-release from the latest `${{ github.event.inputs.branch || 'main' }}` branch.
+            Rolling pre-release from the latest `${{ github.event.inputs.branch || 'dev/nightly' }}` branch.
             Updated automatically — **not for production use**.
 
             ### Install
@@ -214,7 +214,7 @@ jobs:
 
             ### Commit
 
-            `${{ github.sha }}` on `${{ github.event.inputs.branch || 'main' }}`
+            `${{ github.sha }}` on `${{ github.event.inputs.branch || 'dev/nightly' }}`
           prerelease: true
           files: dist/*
           fail_on_unmatched_files: true

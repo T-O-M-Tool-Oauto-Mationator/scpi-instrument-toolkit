@@ -3,7 +3,7 @@
 import os
 import sys
 import tempfile
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 from .device_registry import DeviceRegistry
 from .measurement_store import MeasurementStore
@@ -17,7 +17,7 @@ class ReplContext:
         self.measurements = MeasurementStore()
 
         # Script variables
-        self.script_vars: Dict[str, str] = {}
+        self.script_vars: dict[str, str] = {}
 
         # Error handling
         self.command_had_error: bool = False
@@ -27,9 +27,9 @@ class ReplContext:
         self.interrupt_requested: bool = False
 
         # Safety limits: (device_str, channel_or_none) -> {param_direction: value}
-        self.safety_limits: Dict[Tuple[str, Optional[int]], Dict[str, float]] = {}
+        self.safety_limits: dict[tuple[str, int | None], dict[str, float]] = {}
         # AWG channel state cache: (dev_name, channel) -> {vpp, offset}
-        self.awg_channel_state: Dict[tuple, Dict[str, Optional[float]]] = {}
+        self.awg_channel_state: dict[tuple, dict[str, float | None]] = {}
 
         # Report state
         self.test_results: list = []
@@ -38,16 +38,19 @@ class ReplContext:
         self.report_screenshots: list = []
 
         # Script management
-        self.scripts: Dict[str, Any] = {}
-        self.record_script: Optional[str] = None
+        self.scripts: dict[str, Any] = {}
+        self.record_script: str | None = None
 
         # Directory overrides
-        self._data_dir_override: Optional[str] = None
-        self._scripts_dir_override: Optional[str] = None
+        self._data_dir_override: str | None = None
+        self._scripts_dir_override: str | None = None
 
         # Last configured instrument mode (for unit auto-detection)
         # Keyed by device name, e.g. {"dmm": "vdc", "psu": "v"}
-        self.last_instrument_mode: Dict[str, str] = {}
+        self.last_instrument_mode: dict[str, str] = {}
+
+        # GUI callbacks (set by dispatcher when running inside the GUI)
+        self.on_liveplot: Any | None = None  # (patterns, title, xlabel, ylabel) -> None
 
         # DMM text loop state
         self.dmm_text_loop_active: bool = False
@@ -204,7 +207,7 @@ class ReplContext:
         os.makedirs(fallback, exist_ok=True)
         return fallback
 
-    def load_scripts(self) -> Dict[str, Any]:
+    def load_scripts(self) -> dict[str, Any]:
         """Load all .scpi scripts from the user scripts directory."""
         from lab_instruments.src.terminal import ColorPrinter
 

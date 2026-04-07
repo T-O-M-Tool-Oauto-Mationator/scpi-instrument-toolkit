@@ -14,8 +14,48 @@ scan
 
 Instruments are identified by querying `*IDN?` and matched against the [supported instrument list](instruments.md). They are assigned names like `psu1`, `dmm1`, `scope1`, `awg1`. If multiple of the same type are found they are numbered: `psu1`, `psu2`, etc.
 
+Already-connected instruments keep their current state — a re-scan will **not** turn off a PSU that is actively sourcing. Only newly discovered instruments are initialised to safe defaults.
+
 !!! tip
     You don't need to run `scan` manually on startup — the REPL scans automatically when it launches.
+
+---
+
+## force_scan
+
+Disconnect all instruments, re-scan from scratch, and reset every output to safe defaults (0 V, off).
+
+```
+force_scan
+```
+
+Use this when you want a clean slate — for example, at the start of a new test sequence where you need all instruments back to a known-safe state.
+
+!!! warning
+    This will turn off all instrument outputs. If a PSU is actively sourcing, its output will be disabled and zeroed.
+
+---
+
+## disconnect
+
+Remove a connected instrument from the current session without rescanning.
+
+```
+disconnect <name>
+```
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `name` | required | Instrument name as shown by `list` (e.g. `psu1`, `scope2`) |
+
+The device is removed from the REPL's device list. If it was the active selection, the selection is cleared. Use `scan` to rediscover it.
+
+```
+disconnect psu1    # remove psu1 from the session
+```
+
+!!! note
+    This does not physically disconnect the instrument — it just removes it from the device list. Run `scan` to bring it back.
 
 ---
 
@@ -151,16 +191,26 @@ all off       # turn off all outputs
 Pause for a specified duration.
 
 ```
-sleep <seconds>
+sleep <duration>[unit]
 ```
 
 | Parameter | Required | Description |
 |-----------|----------|-------------|
-| `seconds` | required | Duration to pause. Supports fractions: `0.5` = 500 ms. |
+| `duration` | required | Duration to pause. A bare number is treated as seconds. Append a unit suffix for other scales. |
+
+| Suffix | Meaning | Example |
+|--------|---------|---------|
+| *(none)* | seconds | `sleep 1.0` |
+| `s` | seconds | `sleep 1.5s` |
+| `ms` | milliseconds | `sleep 500ms` |
+| `us` | microseconds | `sleep 100us` |
+| `m` | minutes | `sleep 2m` |
 
 ```
-sleep 1.0     # wait 1 second
-sleep 0.5     # wait 500 ms
+sleep 1.0       # wait 1 second
+sleep 0.5       # wait 500 ms
+sleep 500ms     # same — 500 ms
+sleep 100us     # 100 microseconds
 ```
 
 Also valid as a [script directive](scripting.md#timing): `sleep {delay}`
@@ -193,17 +243,13 @@ Use `scan` to reconnect after closing.
 
 ## docs
 
-Open the full HTML command reference in your web browser.
+Open the full documentation in your web browser — REPL commands, Python API, scripting, and more.
 
 ```bash
 docs
 ```
 
 Serves the bundled MkDocs site via a local HTTP server on a random port. If the site has not been built yet and `mkdocs.yml` is present, it automatically runs `mkdocs build` first.
-
-```bash
-docs    # opens http://127.0.0.1:<port>/index.html in your default browser
-```
 
 !!! tip
     The HTTP server stays alive for the rest of the session. Calling `docs` again reuses the same port — no second server is started.

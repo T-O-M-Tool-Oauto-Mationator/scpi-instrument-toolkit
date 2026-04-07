@@ -1,27 +1,22 @@
 """Unified variable resolution and safe expression evaluation.
 
-Variable syntax supported in script files:
-  {varname}   Python f-string style  (preferred)
-  $varname    shell-style            (still supported)
+Variable syntax: {varname}  (Python f-string style)
 """
 
 import ast
 import re
-from typing import Any, Dict, Optional
+from typing import Any
 
 from .measurement_store import MeasurementStore
 
-# Combined pattern: matches either $varname or {varname}
-_SUBST_RE = re.compile(r"\$([A-Za-z_][A-Za-z0-9_]*)|\{([A-Za-z_][A-Za-z0-9_]*)\}")
-
-# Legacy ${name} pattern kept for explicit backward-compat callers
-_VAR_RE = re.compile(r"\$([A-Za-z_][A-Za-z0-9_]*)")
+# Pattern: matches {varname}
+_SUBST_RE = re.compile(r"\{([A-Za-z_][A-Za-z0-9_.]*)\}")
 
 # Identifiers that cannot be used as variable/label names
 _RESERVED = frozenset({"last"})
 
 
-def validate_name(name: str) -> Optional[str]:
+def validate_name(name: str) -> str | None:
     """Return an error message if *name* is not a valid variable/label identifier, else None."""
     if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name):
         return f"Invalid name '{name}': must be alphanumeric + underscore, starting with a letter or underscore."
@@ -32,14 +27,10 @@ def validate_name(name: str) -> Optional[str]:
 
 def substitute_vars(
     text: str,
-    script_vars: Dict[str, str],
-    measurements: Optional[MeasurementStore] = None,
+    script_vars: dict[str, str],
+    measurements: MeasurementStore | None = None,
 ) -> str:
-    """Replace $name and {name} references in *text*.
-
-    Both syntaxes are supported:
-      {varname}  — Python f-string style (preferred)
-      $varname   — shell-style (still supported)
+    """Replace {name} references in *text*.
 
     Resolution order: script_vars first, then measurement store labels.
     'last' resolves to the most recent measurement value.
@@ -47,8 +38,7 @@ def substitute_vars(
     """
 
     def _replace(match: re.Match) -> str:
-        # group(1) is from $name, group(2) is from {name}
-        name = match.group(1) if match.group(1) is not None else match.group(2)
+        name = match.group(1)
         # Script variables take priority
         if name in script_vars:
             return str(script_vars[name])
@@ -68,15 +58,19 @@ def substitute_vars(
     return _SUBST_RE.sub(_replace, text)
 
 
-def substitute_legacy(text: str, variables: Dict[str, str]) -> str:
-    """Legacy ${name} substitution for backward compat during migration."""
-    result = text
-    for name, value in variables.items():
-        result = result.replace(f"${{{name}}}", str(value))
-    return result
+def substitute_expand(text: str, variables: dict[str, str]) -> str:
+    """Replace {name} references from a variables dict during script expansion."""
+
+    def _replace(match: re.Match) -> str:
+        name = match.group(1)
+        if name in variables:
+            return str(variables[name])
+        return match.group(0)
+
+    return _SUBST_RE.sub(_replace, text)
 
 
-def safe_eval(expr: str, names: Dict[str, Any]) -> Any:
+def safe_eval(expr: str, names: dict[str, Any]) -> Any:
     """Evaluate a math expression safely using AST walking.
 
     Supports: +, -, *, /, **, %, unary +/-, parentheses,

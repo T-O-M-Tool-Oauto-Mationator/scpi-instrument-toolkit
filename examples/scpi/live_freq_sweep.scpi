@@ -1,0 +1,22 @@
+# live_freq_sweep.scpi
+# Sweeps AWG frequencies while a live plot tracks scope measurements.
+# Run with --mock.
+
+print "=== Live Frequency Sweep ==="
+
+liveplot freq_* --title "Frequency Response" --xlabel "Time (s)" --ylabel "Frequency (Hz)"
+
+awg1 chan 1 on
+awg1 wave 1 sine amp=2.0 offset=0
+sleep 0.3
+
+for f 100 200 500 750 1000 2000 3000 5000 7500 10000 15000 20000 30000 50000 75000 100000
+  print "Testing {f} Hz..."
+  awg1 freq 1 {f}
+  sleep 250ms
+  freq_{f} = scope1 meas 1 FREQUENCY unit=Hz
+end
+
+awg1 chan 1 off
+print "=== Sweep complete ==="
+log print

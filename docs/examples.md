@@ -52,13 +52,13 @@ print "=== PSU/DMM Voltage Test ==="
 print "Target: {voltage}V"
 
 psu1 chan 1 on
-psu1 set {voltage}
+psu1 set 1 {voltage}
 sleep 0.5
 
-psu_v = psu1 read
+psu_v = psu1 meas v unit=V
 
 dmm1 config vdc
-{label} = dmm1 read
+{label} = dmm1 meas unit=V
 
 print "=== Test complete ==="
 log print
@@ -117,10 +117,10 @@ sleep 0.3
 dmm1 config vdc
 
 for v 1.0 2.0 3.3 5.0 9.0 12.0
-  print Setting {v}V...
-  psu1 set {v}
+  print "Setting {v}V..."
+  psu1 set 1 {v}
   sleep 0.5
-  v_{v} = dmm1 read
+  v_{v} = dmm1 meas unit=V
 end
 
 psu1 chan 1 off
@@ -167,7 +167,7 @@ script run awg_scope_check freq=10000 amp=1.0
 3. Waits 500 ms for signal to stabilize
 4. Runs `scope autoset` to auto-configure the scope
 5. Waits 1 s for autoset to settle
-6. Records: FREQUENCY, PK2PK, and RMS from scope channel 1
+6. Records: frequency measurement from the scope
 
 **Script source:**
 
@@ -186,9 +186,7 @@ sleep 0.5
 scope1 autoset
 sleep 1.0
 
-scope1 meas_store 1 FREQUENCY meas_freq unit=Hz
-scope1 meas_store 1 PK2PK     meas_pk2pk unit=V
-scope1 meas_store 1 RMS       meas_rms unit=V
+meas_freq = scope1 meas 1 FREQUENCY unit=Hz
 
 print "=== Results ==="
 log print
@@ -198,7 +196,6 @@ log print
 
 ```text
 calc freq_error ({meas_freq} - 1000) / 1000 * 100 unit=%
-calc amp_error ({meas_pk2pk} - 2.0) / 2.0 * 100 unit=%
 ```
 
 ---
@@ -219,7 +216,7 @@ script run freq_sweep
 **What it does:**
 
 1. Enables AWG ch1, sets sine wave with fixed amplitude
-2. For each frequency in the list: sets frequency → waits 400 ms → records FREQUENCY and PK2PK from scope
+2. For each frequency in the list: sets frequency → waits 400 ms → records scope measurement
 3. Disables AWG
 4. Prints and saves log to `freq_sweep.csv`
 
@@ -235,11 +232,10 @@ awg1 wave 1 sine amp=2.0 offset=0
 sleep 0.3
 
 for f 100 500 1000 5000 10000 50000 100000
-  print Testing {f} Hz...
+  print "Testing {f} Hz..."
   awg1 freq 1 {f}
   sleep 0.4
-  scope1 meas_store 1 FREQUENCY freq_{f} unit=Hz
-  scope1 meas_store 1 PK2PK     pk2pk_{f} unit=V
+  freq_{f} = scope1 meas 1 FREQUENCY unit=Hz
 end
 
 awg1 chan 1 off
@@ -257,8 +253,8 @@ If you're testing a filter or amplifier, measure the input and output simultaneo
 for f 100 500 1000 5000 10000 50000
   awg1 freq 1 {f}
   sleep 0.4
-  scope1 meas_store 1 PK2PK in_{f} unit=V
-  scope1 meas_store 2 PK2PK out_{f} unit=V
+  in_{f} = scope1 meas 1 PK2PK unit=V
+  out_{f} = scope1 meas 2 PK2PK unit=V
   calc gain_{f} {out_{f}} / {in_{f}}
 end
 ```
@@ -297,15 +293,15 @@ steps = 7
 delay = 0.5
 
 print "=== PSU Voltage Ramp ==="
-print "{v_start}V → {v_end}V in {steps} steps"
+print "{v_start}V -> {v_end}V in {steps} steps"
 
 psu1 chan 1 on
 
 for v {v_start} 2.0 4.0 6.0 8.0 10.0 {v_end}
-  print Ramping to {v}V
-  psu1 set {v}
+  print "Ramping to {v}V"
+  psu1 set 1 {v}
   sleep {delay}
-  ramp_{v} = psu1 read
+  ramp_{v} = psu1 meas v unit=V
 end
 
 print "=== Ramp complete ==="
@@ -314,6 +310,79 @@ log print
 
 !!! tip "Customizing the step list"
     The `for` loop hardcodes the voltage steps (`2.0 4.0 6.0 ...`). To change the actual step values, load the example with `examples load psu_ramp`, then `script edit psu_ramp` and modify the `for` line directly.
+
+---
+
+## Live Plot Examples
+
+These examples use `liveplot` to visualize data in real time as it's collected. All work with `--mock`. See [Plotting](plotting.md) for full details on the plotting system.
+
+Every example below has both a `.scpi` and `.py` version. Import either from the GUI menu (**Examples > SCPI Scripts** or **Examples > Python Scripts**).
+
+---
+
+### live_voltage_sweep
+
+**Sweep PSU voltages with a live plot tracking DMM readings.**
+
+Uses `linspace` to generate 51 evenly-spaced voltage steps from 0.5 V to 12 V.
+
+```text
+examples load live_voltage_sweep
+script run live_voltage_sweep
+```
+
+The live plot shows DMM readings appearing point-by-point as the sweep progresses.
+
+---
+
+### live_multi_plot
+
+**Two live plots: PSU voltage + current during a ramp.**
+
+Opens **two separate tabs** — one for voltage, one for current — by running two `liveplot` commands.
+
+```text
+examples load live_multi_plot
+script run live_multi_plot
+```
+
+---
+
+### live_combined_plot
+
+**PSU voltage + current overlaid on ONE chart.**
+
+Same data as `live_multi_plot`, but uses a single `liveplot` command with two glob patterns to overlay both series on one chart.
+
+```text
+examples load live_combined_plot
+script run live_combined_plot
+```
+
+The key difference:
+
+```text
+# Two tabs (live_multi_plot):
+liveplot psu_v_* --title "Voltage"
+liveplot psu_i_* --title "Current"
+
+# One chart, two series (live_combined_plot):
+liveplot psu_v_* psu_i_* --title "PSU Voltage & Current"
+```
+
+---
+
+### live_freq_sweep
+
+**Live plot of scope frequency measurements during AWG sweep.**
+
+Sweeps AWG through 16 frequencies from 100 Hz to 100 kHz.
+
+```text
+examples load live_freq_sweep
+script run live_freq_sweep
+```
 
 ---
 
@@ -333,13 +402,13 @@ pause Connect hardware, then press Enter
 
 # 3. Configure instruments
 psu1 chan 1 on
-psu1 set {voltage}
+psu1 set 1 {voltage}
 sleep {delay}
 
 # 4. Measure and store
-psu_out = psu1 read
+psu_out = psu1 meas v unit=V
 dmm1 config vdc
-dmm_out = dmm1 read
+dmm_out = dmm1 meas unit=V
 
 # 5. Derived calculations
 calc error {dmm_out} - {psu_out} unit=V

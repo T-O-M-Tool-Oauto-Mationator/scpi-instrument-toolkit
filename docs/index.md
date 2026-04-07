@@ -31,6 +31,14 @@ scpi-repl --mock    # simulate instruments (no hardware needed)
     ```
     See [Troubleshooting](troubleshooting.md) for a session-only PATH fix and other tips.
 
+!!! warning "One connection at a time"
+    Instrument connections are exclusive. Only one program can hold the connection to a device at a time.
+
+    - You cannot run the REPL and a Python script against the same instrument simultaneously.
+    - You cannot have the REPL or a Python script connected while BQStudio (or any other vendor software) is open and using that instrument.
+
+    Close one program before opening the other. If you get a "resource busy" or "cannot open" error, check that no other terminal, script, or vendor tool is already connected.
+
 ### 3. Find your instruments
 
 ```
@@ -51,12 +59,12 @@ psu meas v        # measure output voltage
 
 ### 5. Log results and export
 
-`meas_store` saves a reading to the log with a **label** (name you choose). `calc` retrieves it by that label. `log print` shows the table. `log save` exports it.
+The assignment syntax (`label = instrument meas ...`) saves a reading to the log with a **label** (name you choose). `calc` retrieves it by that label. `log print` shows the table. `log save` exports it.
 
 ```
-psu meas_store v output unit=V     # save voltage — label is "output"
+output = psu meas v unit=V         # save voltage — label is "output"
 dmm config vdc                     # set DMM to DC voltage mode
-dmm meas_store dmm_v unit=V        # save DMM reading — label is "dmm_v"
+dmm_v = dmm meas unit=V            # save DMM reading — label is "dmm_v"
 calc error m["dmm_v"] - m["output"] unit=V   # reference labels in math
 log print                           # show the full results table
 log save results.csv                # export to CSV
@@ -108,13 +116,18 @@ examples          # list bundled example scripts
 
 | Page | What it covers |
 |------|---------------|
-| [General Commands](general.md) | scan, list, use, idn, raw, state, sleep, reload |
+| [Python API](python.md) | Control instruments from Python — autodiscovery, enums, direct instantiation |
+| [General Commands](general.md) | scan, force_scan, list, use, idn, raw, state, sleep, reload |
 | [PSU](psu.md) | Power supply control and measurement |
 | [AWG](awg.md) | Function generator — waveforms, frequency, amplitude |
 | [DMM](dmm.md) | Multimeter — measurement modes, logging |
 | [Scope](scope.md) | Oscilloscope — channels, triggers, measurements, waveform capture |
+| [SMU](smu.md) | Source measure unit — voltage/current sourcing and measurement |
+| [EV2300](ev2300.md) | USB-to-I2C adapter — SMBus register read/write, scan, probe |
 | [Scripting](scripting.md) | Scripts, variables, loops, directives — full reference |
 | [Examples](examples.md) | Bundled example workflows with explanations |
 | [Log & Calc](logging.md) | Measurement log, CSV export, derived calculations |
+| [Plotting](plotting.md) | Static plots, live plots, interactive charts, data selection, detail view |
 | [Instruments](instruments.md) | Supported models and connection setup |
+| [LabVIEW Bridge](labview.md) | Calling instrument drivers from LabVIEW Python Nodes |
 | [Troubleshooting](troubleshooting.md) | PATH issues, NI-VISA errors, managed machine workarounds |

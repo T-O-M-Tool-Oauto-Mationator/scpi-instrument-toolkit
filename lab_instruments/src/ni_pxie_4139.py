@@ -23,9 +23,10 @@ class NI_PXIe_4139:
     on-the-fly FIRST, then abort() to stop.
     """
 
-    # Hardware limits for the PXIe-4139
-    MAX_VOLTAGE = 60.0
-    MAX_CURRENT = 1.0
+    # Hardware limits for the PXIe-4139 (per NI datasheet: ±60 V, 3 A SMU)
+    # DC source power capped at 20 W, DC sink power at 12 W (hardware-enforced).
+    MAX_VOLTAGE = 60.0  # ±60 V
+    MAX_CURRENT = 3.0  # ±3 A DC (10 A pulse only)
     MAX_SOURCE_DELAY = 167.0  # seconds, hardware limit per NI-DCPower spec
     DEFAULT_CURRENT_LIMIT = 0.01  # 10 mA
     DEFAULT_VOLTAGE_LIMIT = 5.0  # V, compliance when in current mode
@@ -34,41 +35,61 @@ class NI_PXIe_4139:
         self.resource_name = resource_name
         self._session = None
         self._output_mode = "voltage"  # "voltage" or "current"
+        self._output_on = False  # track output state locally (session query fails after abort)
 
     # ------------------------------------------------------------------
     # Connection
     # ------------------------------------------------------------------
 
     def connect(self):
-        """Open an nidcpower session and configure safe defaults."""
-        self._session = nidcpower.Session(resource_name=self.resource_name, channels="0")
+        """Open an nidcpower session and configure safe defaults.
+
+        The session is left in the Running state with output disabled.
+        All subsequent property changes (voltage_level, output_enabled, etc.)
+        are applied via commit() while running — NI-DCPower requires this.
+        If the device is in OLP (Overload Protection), the session is opened
+        with relaxed options to clear the latched state first.
+        """
+        try:
+            self._session = nidcpower.Session(resource_name=self.resource_name, channels="0", reset=True)
+        except Exception:
+            # OLP or other hard error — open with status checks disabled, clear, reopen
+            self._session = nidcpower.Session(
+                resource_name=self.resource_name,
+                channels="0",
+                reset=True,
+                options="QueryInstrStatus=0,RangeCheck=0",
+            )
+            with contextlib.suppress(Exception):
+                self._session.clear_latched_output_cutoff_state()
+            self._session.reset_device()
+            self._session.close()
+            # Reopen cleanly
+            self._session = nidcpower.Session(resource_name=self.resource_name, channels="0", reset=True)
         self._session.output_function = nidcpower.OutputFunction.DC_VOLTAGE
         self._session.voltage_level_autorange = True
         self._session.current_limit_autorange = True
         self._session.voltage_level = 0.0
         self._session.current_limit = self.DEFAULT_CURRENT_LIMIT
-        self._session.output_enabled = True
-        self._session.commit()
-        # Initiate, zero, disable, abort — ensures hardware is truly at 0 V
-        self._session.initiate()
-        self._session.voltage_level = 0.0
         self._session.output_enabled = False
-        self._session.abort()
+        self._session.commit()
+        self._session.initiate()  # Session stays Running from here on
+        self._output_on = False
         print(f"Connected to {self.resource_name}")
 
     def disconnect(self):
         """Close the nidcpower session."""
         if self._session is not None:
             try:
-                # Zero and disable while running, then abort
-                self._session.voltage_level = 0.0
                 self._session.output_enabled = False
-                self._session.initiate()
+                self._session.voltage_level = 0.0
+                self._session.commit()
                 self._session.abort()
             except Exception:
                 pass
             self._session.close()
             self._session = None
+            self._output_on = False
             print(f"Disconnected from {self.resource_name}")
 
     # ------------------------------------------------------------------
@@ -87,29 +108,24 @@ class NI_PXIe_4139:
     # ------------------------------------------------------------------
 
     def enable_output(self, enabled: bool = True):
-        """Enable or disable the output."""
+        """Enable or disable the output. Session stays Running."""
         self._check_session()
         if enabled:
             self._session.output_enabled = True
-            self._session.commit()
-            self._session.initiate()
         else:
-            # Set voltage to 0 and disable while session is still running
             self._session.voltage_level = 0.0
             self._session.output_enabled = False
-            self._session.abort()
+        self._session.commit()
+        self._output_on = enabled
 
     def disable_all_channels(self):
         """Set output to safe state: 0 V, low current limit, output off."""
         self._check_session()
-        # Set safe values while running, then abort
         self._session.voltage_level = 0.0
         self._session.current_limit = self.DEFAULT_CURRENT_LIMIT
         self._session.output_enabled = False
-        with contextlib.suppress(Exception):
-            self._session.initiate()
-        with contextlib.suppress(Exception):
-            self._session.abort()
+        self._session.commit()
+        self._output_on = False
 
     # ------------------------------------------------------------------
     # Voltage / current configuration
@@ -124,7 +140,7 @@ class NI_PXIe_4139:
         self._session.commit()
 
     def set_current_limit(self, current: float):
-        """Set the current limit."""
+        """Set the current limit (compliance magnitude, always positive)."""
         self._check_session()
         if not 0 <= current <= self.MAX_CURRENT:
             raise ValueError(f"Current limit must be between 0 and {self.MAX_CURRENT} A")
@@ -169,19 +185,8 @@ class NI_PXIe_4139:
         return self.measure_vi()["current"]
 
     def _measure(self):
-        """Take a single measurement, initiating the session if needed."""
-        was_running = self._session.output_enabled
-        if not was_running:
-            self._session.output_enabled = True
-            self._session.commit()
-            self._session.initiate()
-        try:
-            return self._session.measure_multiple()[0]
-        finally:
-            if not was_running:
-                # Disable while running, then abort
-                self._session.output_enabled = False
-                self._session.abort()
+        """Take a single measurement. Session must be Running (always is after connect)."""
+        return self._session.measure_multiple()[0]
 
     # ------------------------------------------------------------------
     # Compliance
@@ -213,6 +218,13 @@ class NI_PXIe_4139:
     # Output mode (voltage / current)
     # ------------------------------------------------------------------
 
+    def _restart_session(self) -> None:
+        """Abort and re-initiate the session. Needed for properties like output_function
+        that cannot be changed while Running."""
+        self._session.abort()
+        self._session.commit()
+        self._session.initiate()
+
     def set_voltage_mode(self, voltage: float, current_limit: float = None) -> None:
         """Switch to DC_VOLTAGE mode and set the voltage level."""
         self._check_session()
@@ -220,12 +232,15 @@ class NI_PXIe_4139:
             raise ValueError(f"Voltage must be between -{self.MAX_VOLTAGE} and {self.MAX_VOLTAGE} V")
         if current_limit is not None and not 0 <= current_limit <= self.MAX_CURRENT:
             raise ValueError(f"Current limit must be between 0 and {self.MAX_CURRENT} A")
+        # output_function can only be set while NOT running
+        self._session.abort()
         self._session.output_function = nidcpower.OutputFunction.DC_VOLTAGE
         self._session.voltage_level = voltage
         if current_limit is not None:
             self._session.current_limit = current_limit
         self._output_mode = "voltage"
         self._session.commit()
+        self._session.initiate()
 
     def set_current_mode(self, current: float, voltage_limit: float = None) -> None:
         """Switch to DC_CURRENT mode and set the current level."""
@@ -236,11 +251,14 @@ class NI_PXIe_4139:
             voltage_limit = self.DEFAULT_VOLTAGE_LIMIT
         if not 0 <= voltage_limit <= self.MAX_VOLTAGE:
             raise ValueError(f"Voltage limit must be between 0 and {self.MAX_VOLTAGE} V")
+        # output_function can only be set while NOT running
+        self._session.abort()
         self._session.output_function = nidcpower.OutputFunction.DC_CURRENT
         self._session.current_level = current
         self._session.voltage_limit = voltage_limit
         self._output_mode = "current"
         self._session.commit()
+        self._session.initiate()
 
     def get_output_mode(self) -> str:
         """Return the active output mode: 'voltage' or 'current'."""
@@ -291,16 +309,28 @@ class NI_PXIe_4139:
     def get_output_state(self) -> bool:
         """Return whether the output is enabled."""
         self._check_session()
-        return self._session.output_enabled
+        return self._output_on
 
     # ------------------------------------------------------------------
     # Reset / SCPI compatibility stubs
     # ------------------------------------------------------------------
 
     def reset(self):
-        """Reset the instrument to default state."""
-        self._check_session()
-        self._session.reset()
+        """Reset the instrument — full session teardown and reconnect.
+
+        This recovers from hard errors like OLP (Overload Protection)
+        where the session is unresponsive to normal commands.
+        """
+        if self._session is not None:
+            with contextlib.suppress(Exception):
+                self._session.abort()
+            with contextlib.suppress(Exception):
+                self._session.reset()
+            with contextlib.suppress(Exception):
+                self._session.close()
+            self._session = None
+            self._output_on = False
+        self.connect()
 
     def query(self, cmd, **kwargs):
         """Return an IDN-like string (SCPI compatibility stub)."""

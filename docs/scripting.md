@@ -2,7 +2,7 @@
 
 Scripts are named sequences of REPL commands stored in the session. They support variables, loops, sub-scripts, and operator interaction — letting you automate full test sequences.
 
-Script directives (`set`, `array`, `print`, `pause`, `input`, `sleep`, `repeat`, `for`, `call`, `import`, `export`, `breakpoint`, `upper_limit`, `lower_limit`) are also valid as **interactive REPL commands** — you can test them at the prompt before putting them in a script.
+Script directives (`set`, `array`, `linspace`, `print`, `pause`, `sleep`, `repeat`, `for`, `call`, `import`, `export`, `breakpoint`, `upper_limit`, `lower_limit`) are also valid as **interactive REPL commands** — you can test them at the prompt before putting them in a script. `input` and `linspace` use assignment syntax: `var = input [prompt]`, `var = linspace start stop [count]`.
 
 ---
 
@@ -174,7 +174,7 @@ record start my_psu_test    # start recording
 psu1 set 5.0
 sleep 0.5
 dmm1 config vdc
-dmm1 meas_store vout unit=V
+vout = dmm1 meas unit=V
 log print
 record stop                  # saves as my_psu_test.scpi in scripts dir
 script run my_psu_test       # run the recorded script
@@ -280,11 +280,11 @@ voltage = 5.0
 label = my_run
 
 psu1 set {voltage}               # → psu1 set 5.0
-dmm1 meas_store {label} unit=V   # → dmm1 meas_store my_run unit=V
+{label} = dmm1 meas unit=V   # → my_run = dmm1 meas unit=V
 print "Setting {voltage}V"       # → prints  Setting 5.0V
 ```
 
-Both `{varname}` and `$varname` work. `{varname}` is the preferred style.
+Use `{varname}` syntax for variable references.
 
 ### Error handling: set -e / set +e
 
@@ -469,7 +469,7 @@ print "Test complete. Check log print for results."
 print "# blank line"
 ```
 
-Both `{varname}` and `$varname` work in print messages. `{varname}` is preferred.
+Use `{varname}` syntax for variable references in print messages.
 
 Use `print` to add section headers, progress updates, and operator instructions in your scripts.
 
@@ -494,7 +494,7 @@ pause Swap DUT before continuing
 ### input — prompt for a value
 
 ```
-input <varname> [prompt text]
+<varname> = input [prompt text]
 ```
 
 Prompts the operator to type a value at runtime. The entered text is stored as `{varname}` and substituted into all subsequent lines.
@@ -505,23 +505,23 @@ Prompts the operator to type a value at runtime. The entered text is stored as `
 | `prompt text` | optional | Text shown to operator. Default: the variable name.                                                 |
 
 ```
-input voltage Enter target voltage (V):
-input dut_id DUT serial number:
-input operator_name Operator name:
+voltage = input Enter target voltage (V):
+dut_id = input DUT serial number:
+operator_name = input Operator name:
 ```
 
-After `input voltage`, you can use `{voltage}` anywhere:
+After the prompt, you can use `{voltage}` anywhere:
 
 ```
-input voltage Enter target voltage (V):
+voltage = input Enter target voltage (V):
 psu1 set {voltage}
 print "Voltage set to {voltage}V"
 dmm1 config vdc
-dmm1 meas_store output_{voltage} unit=V
+output_{voltage} = dmm1 meas unit=V
 ```
 
 !!! note
-Unlike `set`, values captured by `input` **cannot** be overridden from the command line at `script run` time. They are always prompted interactively.
+    Values captured by `input` **cannot** be overridden from the command line at `script run` time. They are always prompted interactively.
 
 ---
 
@@ -563,7 +563,7 @@ Executes the enclosed commands exactly N times.
 
 ```
 repeat 5
-  psu1 meas_store v sample unit=V
+  sample = psu1 meas v unit=V
   sleep 0.2
 end
 ```
@@ -598,7 +598,7 @@ for v 1.0 2.0 3.3 5.0 9.0 12.0
   print Setting {v}V...
   psu1 set {v}
   sleep 0.5
-  dmm1 meas_store v_{v} unit=V
+  v_{v} = dmm1 meas unit=V
 end
 ```
 
@@ -616,8 +616,8 @@ end
 for f 100 500 1000 5000 10000 50000
   awg1 freq 1 {f}
   sleep 0.4
-  scope1 meas_store 1 FREQUENCY freq_{f} unit=Hz
-  scope1 meas_store 1 PK2PK pk2pk_{f} unit=V
+  freq_{f} = scope1 meas 1 FREQUENCY unit=Hz
+  pk2pk_{f} = scope1 meas 1 PK2PK unit=V
 end
 ```
 
@@ -704,6 +704,58 @@ end
 
 This is equivalent to writing all values inline on the `for` line — but much easier to manage.
 
+### linspace — generate evenly-spaced values
+
+```
+<varname> = linspace <start> <stop> [count]
+```
+
+Generates `count` evenly-spaced values from `start` to `stop` (inclusive) and stores them as a space-separated string. Default count is 11.
+
+| Parameter | Required | Values | Description |
+|-----------|----------|--------|-------------|
+| `start` | required | float | First value in the range. |
+| `stop` | required | float | Last value in the range. |
+| `count` | optional | integer >= 2 | Number of points (default: 11). |
+
+**Voltage sweep with linspace:**
+
+```
+VSWEEP = linspace 6 25 20
+for VIN {VSWEEP}
+  psu set 2 {VIN} 0.5
+  sleep 0.5
+  linereg_{VIN}V = smu meas v unit=V
+end
+```
+
+**Current sweep in mA:**
+
+```
+ISWEEP = linspace 0 0.050 11
+for I {ISWEEP}
+  smu set_mode current {I} 3.0
+  smu on
+  sleep 0.3
+  ilim_{I}A = smu meas v unit=V
+  smu off
+end
+```
+
+**Use variables for start/stop:**
+
+```
+v_start = 1.0
+v_end = 12.0
+RAMP = linspace {v_start} {v_end} 7
+for v {RAMP}
+  psu set {v}
+  sleep 0.5
+end
+```
+
+Works at the interactive REPL prompt too.
+
 ---
 
 ## Variable Scope
@@ -742,7 +794,7 @@ export result    # {result} becomes available in the REPL after the script runs
 ```
 # measure_vout — measures PSU output, exports result
 VOUT = 0.0
-psu meas_store v psu_reading unit=V
+psu_reading = psu meas v unit=V
 VOUT = m["psu_reading"]
 export VOUT
 ```
@@ -784,7 +836,7 @@ label = psu_out
 psu1 chan 1 on
 psu1 set {voltage}
 sleep 0.5
-psu1 meas_store v {label} unit=V
+{label} = psu1 meas v unit=V
 ```
 
 Call it from another script:
@@ -794,7 +846,7 @@ Call it from another script:
 dmm1 config vdc
 for v 3.3 5.0 12.0
   call set_psu voltage={v} label=psu_{v}
-  dmm1 meas_store dmm_{v} unit=V
+  dmm_{v} = dmm1 meas unit=V
 end
 log print
 ```
@@ -998,7 +1050,7 @@ print "DUT: {dut_name}"
 pause Connect DUT and DMM probes, then press Enter
 
 # ── Optional runtime input ────────────────────
-input operator Operator initials:
+operator = input Operator initials:
 
 # ── PSU on ───────────────────────────────────
 psu1 chan 1 on
@@ -1007,11 +1059,11 @@ dmm1 config vdc
 
 # ── Sweep ────────────────────────────────────
 for v 1.0 2.0 3.3 5.0 9.0 12.0
-  print Testing {v}V...
+  print "Testing {v}V..."
   psu1 set {v}
   sleep {delay}
-  psu1 meas_store v psu_{v} unit=V
-  dmm1 meas_store dmm_{v} unit=V
+  psu_{v} = psu1 meas v unit=V
+  dmm_{v} = dmm1 meas unit=V
   calc err_{v} (m["dmm_{v}"] - m["psu_{v}"]) / m["psu_{v}"] * 100 unit=%
 end
 

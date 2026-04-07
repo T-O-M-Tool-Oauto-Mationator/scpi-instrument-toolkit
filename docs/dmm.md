@@ -1,5 +1,8 @@
 # DMM — Multimeter
 
+!!! tip "Auto-generated reference"
+    For the definitive command list extracted directly from source code, see [REPL Command Reference](generated/repl-ref.md#dmm-multimeter).
+
 Controls digital multimeters.
 
 - Multiple DMMs are named `dmm1`, `dmm2`, etc.
@@ -8,6 +11,9 @@ Controls digital multimeters.
 
 === "HP 34401A"
     6½-digit multimeter with GPIB interface. Supports NPLC control, display text, fetch, and high-accuracy measurements.
+
+=== "Keysight EDU34450A"
+    5½-digit multimeter with USB/LAN interface. Supports capacitance, temperature, dual display, and resolution speed control (SLOW/MEDIUM/FAST). Does not support NPLC.
 
 === "OWON XDM1041"
     4½-digit multimeter with USB/serial interface. Supports basic DMM commands.
@@ -72,57 +78,12 @@ Take a reading using the currently configured mode.
 dmm read
 ```
 
-Call `dmm config` first to set the mode. `dmm read` does not store the result — use [`dmm meas_store`](#dmm-meas_store) to record it.
+Call `dmm config` first to set the mode. `dmm read` does not store the result — use the assignment syntax (`label = dmm meas unit=V`) to record it.
 
 ```
 dmm config vdc
 dmm read       # take one DC voltage reading
 ```
-
----
-
-## dmm meas_store
-
-Read and record the result to the measurement log.
-
-```
-dmm meas_store <label> [scale=<factor>] [unit=<str>]
-```
-
-| Parameter | Required | Values | Description |
-|-----------|----------|--------|-------------|
-| `label` | required | string, no spaces | **Name for this entry in the log.** Appears as the row identifier in `log print` output. Also used as the dictionary key in `calc` expressions: `m["label"]`. Use underscores instead of spaces — e.g. `vout_mv`. |
-| `scale=` | optional | float | **Multiply the raw reading by this factor before storing.** Useful for unit conversion — e.g. `scale=1000` to convert V → mV, or `scale=0.001` to convert mA → A. Default: `1.0` (no scaling). |
-| `unit=` | optional | string | Unit label shown in `log print` output (e.g. `V`, `mV`, `A`, `Ω`). **Display-only** — does not affect the stored value or calculations. |
-
-!!! warning "Requires dmm config first"
-    Call `dmm config <mode>` before using `meas_store`. The DMM must be in the correct mode.
-
-```
-dmm config vdc
-dmm meas_store vout unit=V                  # store as 'vout', access as m["vout"]
-
-dmm config res
-dmm meas_store r_load unit=Ω               # store resistance
-
-dmm config vdc
-dmm meas_store vout_mv scale=1000 unit=mV  # convert V → mV before storing
-```
-
-**Using stored values in calculations:**
-
-```
-dmm config vdc
-dmm meas_store voltage unit=V
-
-dmm config idc
-dmm meas_store current unit=A
-
-calc power m["voltage"] * m["current"] unit=W    # compute power
-log print
-```
-
-See [Log & Calc](logging.md) for full details.
 
 ---
 
@@ -147,7 +108,49 @@ dmm meas freq       # quick frequency reading
 ```
 
 !!! note
-    `dmm meas` does not support `nplc=` or storing results. For high-accuracy or repeated measurements, use `dmm config` + `dmm read` / `dmm meas_store`.
+    `dmm meas` does not support `nplc=` or storing results. For high-accuracy or repeated measurements, use `dmm config` + `dmm read` or the assignment syntax (`label = dmm meas unit=V`).
+
+!!! tip "Recording measurements"
+    Use assignment syntax to measure **and** store the result to the measurement log in one step:
+
+    ```
+    <label> = dmm meas [scale=<factor>] [unit=<str>]
+    ```
+
+    | Parameter | Required | Values | Description |
+    |-----------|----------|--------|-------------|
+    | `label` | required | string, no spaces | **Name for this entry in the log.** Appears as the row identifier in `log print` output. Also used as the dictionary key in `calc` expressions: `m["label"]`. Use underscores instead of spaces — e.g. `vout_mv`. |
+    | `scale=` | optional | float | **Multiply the raw reading by this factor before storing.** Useful for unit conversion — e.g. `scale=1000` to convert V → mV, or `scale=0.001` to convert mA → A. Default: `1.0` (no scaling). |
+    | `unit=` | optional | string | Unit label shown in `log print` output (e.g. `V`, `mV`, `A`, `Ω`). **Display-only** — does not affect the stored value or calculations. |
+
+    !!! warning "Requires dmm config first"
+        Call `dmm config <mode>` before using the assignment syntax. The DMM must be in the correct mode.
+
+    ```
+    dmm config vdc
+    vout = dmm meas unit=V                  # store as 'vout', access as m["vout"]
+
+    dmm config res
+    r_load = dmm meas unit=Ω               # store resistance
+
+    dmm config vdc
+    vout_mv = dmm meas scale=1000 unit=mV  # convert V → mV before storing
+    ```
+
+    **Using stored values in calculations:**
+
+    ```
+    dmm config vdc
+    voltage = dmm meas unit=V
+
+    dmm config idc
+    current = dmm meas unit=A
+
+    calc power m["voltage"] * m["current"] unit=W    # compute power
+    log print
+    ```
+
+    See [Log & Calc](logging.md) for full details.
 
 ---
 
@@ -281,6 +284,9 @@ Print the valid measurement ranges for the connected DMM model.
 ```
 dmm ranges
 ```
+
+!!! note
+    `dmm limits` is an alias for `dmm ranges`.
 
 ---
 

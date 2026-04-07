@@ -11,7 +11,7 @@
       
       
       
-        <link rel="prev" href="install.html">
+        <link rel="prev" href="instruments.html">
       
       
         <link rel="next" href="psu.html">
@@ -50,6 +50,8 @@
         <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
       
     
+    
+      <link rel="stylesheet" href="assets/_mkdocstrings.css">
     
     <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
@@ -259,86 +261,6 @@
   
   
   
-    
-  
-  
-    <li class="md-tabs__item md-tabs__item--active">
-      <a href="general.html" class="md-tabs__link">
-        
-  
-  
-    
-  
-  General Commands
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="psu.html" class="md-tabs__link">
-          
-  
-  
-  Instruments
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="scripting.html" class="md-tabs__link">
-          
-  
-  
-  Scripting
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="logging.html" class="md-tabs__link">
-        
-  
-  
-    
-  
-  Log & Calc
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
   
     <li class="md-tabs__item">
       <a href="instruments.html" class="md-tabs__link">
@@ -348,6 +270,106 @@
     
   
   Supported Instruments
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="general.html" class="md-tabs__link">
+          
+  
+  
+  REPL
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="python.html" class="md-tabs__link">
+          
+  
+  
+  Python API
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="generated/instruments.html" class="md-tabs__link">
+          
+  
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="labview.html" class="md-tabs__link">
+        
+  
+  
+    
+  
+  LabVIEW Bridge
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="architecture.html" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Architecture
 
       </a>
     </li>
@@ -476,6 +498,90 @@
       
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="instruments.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Supported Instruments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    REPL
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    REPL
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
     
   
   
@@ -543,6 +649,28 @@
     <span class="md-ellipsis">
       
         scan
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#force_scan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        force_scan
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#disconnect" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        disconnect
       
     </span>
   </a>
@@ -710,60 +838,7 @@
     </li>
   
 
-    
-      
-      
-  
-  
-  
-  
-    
-    
-    
-    
-      
-      
-        
-      
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-          
-        
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
-        
-          
-          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
-            
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Instruments
-  
-
-    
-  </span>
-  
-  
-
-            <span class="md-nav__icon md-icon"></span>
-          </label>
-        
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4">
-            <span class="md-nav__icon md-icon"></span>
-            
-  
-    Instruments
-  
-
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
+              
             
               
                 
@@ -912,6 +987,34 @@
   
   
     <li class="md-nav__item">
+      <a href="ev2300.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    USB-to-I2C Adapter (EV2300)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="ni_pxie.html" class="md-nav__link">
         
   
@@ -920,6 +1023,90 @@
     
   
     NI PXIe-4139 Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="scripting.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Scripting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Example Workflows
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="logging.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Log & Calc
   
 
     
@@ -972,7 +1159,7 @@
   <span class="md-ellipsis">
     
   
-    Scripting
+    Python API
   
 
     
@@ -988,7 +1175,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Scripting
+    Python API
   
 
           </label>
@@ -1001,14 +1188,14 @@
   
   
     <li class="md-nav__item">
-      <a href="scripting.html" class="md-nav__link">
+      <a href="python.html" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Scripts & Directives
+    Quickstart
   
 
     
@@ -1029,14 +1216,327 @@
   
   
     <li class="md-nav__item">
-      <a href="examples.html" class="md-nav__link">
+      <a href="api/enums.html" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Example Workflows
+    Enumerations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="api/psu.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Power Supplies
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="api/dmm.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Multimeters
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="api/awg.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Function Generators
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="api/scope.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Oscilloscopes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="api/smu.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Source Measure Unit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="api/ev2300.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    USB-to-I2C (EV2300)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="api/base.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Base Class
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="generated/instruments.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Instruments & Capabilities
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="generated/repl-ref.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    REPL Command Reference
   
 
     
@@ -1064,14 +1564,14 @@
   
   
     <li class="md-nav__item">
-      <a href="logging.html" class="md-nav__link">
+      <a href="labview.html" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Log & Calc
+    LabVIEW Bridge
   
 
     
@@ -1091,14 +1591,14 @@
   
   
     <li class="md-nav__item">
-      <a href="instruments.html" class="md-nav__link">
+      <a href="architecture.html" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Supported Instruments
+    Architecture
   
 
     
@@ -1169,6 +1669,28 @@
     <span class="md-ellipsis">
       
         scan
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#force_scan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        force_scan
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#disconnect" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        disconnect
       
     </span>
   </a>
@@ -1357,20 +1879,59 @@
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>scan
 </code></pre></div>
 <p>Instruments are identified by querying <code>*IDN?</code> and matched against the <a href="instruments.html">supported instrument list</a>. They are assigned names like <code>psu1</code>, <code>dmm1</code>, <code>scope1</code>, <code>awg1</code>. If multiple of the same type are found they are numbered: <code>psu1</code>, <code>psu2</code>, etc.</p>
+<p>Already-connected instruments keep their current state — a re-scan will <strong>not</strong> turn off a PSU that is actively sourcing. Only newly discovered instruments are initialised to safe defaults.</p>
 <div class="admonition tip">
 <p class="admonition-title">Tip</p>
 <p>You don't need to run <code>scan</code> manually on startup — the REPL scans automatically when it launches.</p>
 </div>
 <hr />
+<h2 id="force_scan">force_scan<a class="headerlink" href="#force_scan" title="Permanent link">&para;</a></h2>
+<p>Disconnect all instruments, re-scan from scratch, and reset every output to safe defaults (0 V, off).</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>force_scan
+</code></pre></div>
+<p>Use this when you want a clean slate — for example, at the start of a new test sequence where you need all instruments back to a known-safe state.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>This will turn off all instrument outputs. If a PSU is actively sourcing, its output will be disabled and zeroed.</p>
+</div>
+<hr />
+<h2 id="disconnect">disconnect<a class="headerlink" href="#disconnect" title="Permanent link">&para;</a></h2>
+<p>Remove a connected instrument from the current session without rescanning.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>disconnect &lt;name&gt;
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>name</code></td>
+<td>required</td>
+<td>Instrument name as shown by <code>list</code> (e.g. <code>psu1</code>, <code>scope2</code>)</td>
+</tr>
+</tbody>
+</table>
+<p>The device is removed from the REPL's device list. If it was the active selection, the selection is cleared. Use <code>scan</code> to rediscover it.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>disconnect psu1    # remove psu1 from the session
+</code></pre></div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This does not physically disconnect the instrument — it just removes it from the device list. Run <code>scan</code> to bring it back.</p>
+</div>
+<hr />
 <h2 id="list">list<a class="headerlink" href="#list" title="Permanent link">&para;</a></h2>
 <p>Show all currently connected instruments.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>list
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>list
 </code></pre></div>
 <p>Displays each instrument's assigned name, model, and whether it is currently active (set via <code>use</code>).</p>
 <hr />
 <h2 id="use">use<a class="headerlink" href="#use" title="Permanent link">&para;</a></h2>
 <p>Set the active instrument for subsequent generic commands.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>use &lt;name&gt;
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>use &lt;name&gt;
 </code></pre></div>
 <table>
 <thead>
@@ -1389,24 +1950,24 @@
 </tbody>
 </table>
 <p>When only one instrument of a type is connected it is selected automatically. With multiple of the same type you must <code>use</code> the desired one before using generic commands like <code>psu set</code>.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>use psu1          # make psu1 active
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>psu set 5.0       # acts on psu1
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>use psu2          # switch to psu2
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>psu set 12.0      # now acts on psu2
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>use psu1          # make psu1 active
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>psu set 5.0       # acts on psu1
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>use psu2          # switch to psu2
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>psu set 12.0      # now acts on psu2
 </code></pre></div>
 <div class="admonition tip">
 <p class="admonition-title">Direct addressing</p>
 <p>You can skip <code>use</code> entirely by prefixing the instrument name to any command:
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>psu1 set 5.0
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>psu2 set 12.0
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>psu1 set 5.0
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>psu2 set 12.0
 </code></pre></div>
 This does not change the active selection.</p>
 </div>
 <hr />
 <h2 id="idn">idn<a class="headerlink" href="#idn" title="Permanent link">&para;</a></h2>
 <p>Query a instrument's identification string (<code>*IDN?</code>).</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>idn [name]
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>idn [name]
 </code></pre></div>
 <table>
 <thead>
@@ -1425,13 +1986,13 @@ This does not change the active selection.</p>
 </tbody>
 </table>
 <p>The response is the instrument's manufacturer, model, serial number, and firmware version.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>idn           # query active instrument
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>idn scope1    # query scope1 specifically
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>idn           # query active instrument
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>idn scope1    # query scope1 specifically
 </code></pre></div>
 <hr />
 <h2 id="raw">raw<a class="headerlink" href="#raw" title="Permanent link">&para;</a></h2>
 <p>Send a raw SCPI command or query directly.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>raw &lt;command&gt;
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>raw &lt;command&gt;
 </code></pre></div>
 <table>
 <thead>
@@ -1449,9 +2010,9 @@ This does not change the active selection.</p>
 </tr>
 </tbody>
 </table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>raw *RST              # reset the instrument
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>raw OUTP:STAT ON      # send a command
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>raw MEAS:VOLT:DC?     # query — prints the response
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>raw *RST              # reset the instrument
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>raw OUTP:STAT ON      # send a command
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>raw MEAS:VOLT:DC?     # query — prints the response
 </code></pre></div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
@@ -1460,7 +2021,7 @@ This does not change the active selection.</p>
 <hr />
 <h2 id="state">state<a class="headerlink" href="#state" title="Permanent link">&para;</a></h2>
 <p>Set the active instrument to a named state.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>state &lt;on|off|safe|reset&gt;
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>state &lt;on|off|safe|reset&gt;
 </code></pre></div>
 <table>
 <thead>
@@ -1488,22 +2049,22 @@ This does not change the active selection.</p>
 </tr>
 </tbody>
 </table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>state safe     # safe state on active instrument
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>state reset    # factory reset active instrument
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>state safe     # safe state on active instrument
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>state reset    # factory reset active instrument
 </code></pre></div>
 <hr />
 <h2 id="all">all<a class="headerlink" href="#all" title="Permanent link">&para;</a></h2>
 <p>Apply a state to <strong>every</strong> connected instrument simultaneously.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>all &lt;on|off|safe|reset&gt;
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>all &lt;on|off|safe|reset&gt;
 </code></pre></div>
 <p>Same values as <code>state</code>. Useful as a quick emergency stop or to reset everything before a new test.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>all safe      # put everything in safe state
-<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>all off       # turn off all outputs
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>all safe      # put everything in safe state
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>all off       # turn off all outputs
 </code></pre></div>
 <hr />
 <h2 id="sleep">sleep<a class="headerlink" href="#sleep" title="Permanent link">&para;</a></h2>
 <p>Pause for a specified duration.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>sleep &lt;seconds&gt;
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>sleep &lt;duration&gt;[unit]
 </code></pre></div>
 <table>
 <thead>
@@ -1515,36 +2076,72 @@ This does not change the active selection.</p>
 </thead>
 <tbody>
 <tr>
-<td><code>seconds</code></td>
+<td><code>duration</code></td>
 <td>required</td>
-<td>Duration to pause. Supports fractions: <code>0.5</code> = 500 ms.</td>
+<td>Duration to pause. A bare number is treated as seconds. Append a unit suffix for other scales.</td>
 </tr>
 </tbody>
 </table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>sleep 1.0     # wait 1 second
-<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>sleep 0.5     # wait 500 ms
+<table>
+<thead>
+<tr>
+<th>Suffix</th>
+<th>Meaning</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><em>(none)</em></td>
+<td>seconds</td>
+<td><code>sleep 1.0</code></td>
+</tr>
+<tr>
+<td><code>s</code></td>
+<td>seconds</td>
+<td><code>sleep 1.5s</code></td>
+</tr>
+<tr>
+<td><code>ms</code></td>
+<td>milliseconds</td>
+<td><code>sleep 500ms</code></td>
+</tr>
+<tr>
+<td><code>us</code></td>
+<td>microseconds</td>
+<td><code>sleep 100us</code></td>
+</tr>
+<tr>
+<td><code>m</code></td>
+<td>minutes</td>
+<td><code>sleep 2m</code></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>sleep 1.0       # wait 1 second
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>sleep 0.5       # wait 500 ms
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>sleep 500ms     # same — 500 ms
+<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a>sleep 100us     # 100 microseconds
 </code></pre></div>
 <p>Also valid as a <a href="scripting.html#timing">script directive</a>: <code>sleep {delay}</code></p>
 <hr />
 <h2 id="status">status<a class="headerlink" href="#status" title="Permanent link">&para;</a></h2>
 <p>Show all connected instruments and which one is currently active.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>status
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>status
 </code></pre></div>
 <p>Identical to <code>list</code>. See the <code>list</code> command for full details. <code>status</code> exists as a convenience alias.</p>
 <hr />
 <h2 id="close">close<a class="headerlink" href="#close" title="Permanent link">&para;</a></h2>
 <p>Disconnect all instruments and release VISA resources.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>close
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>close
 </code></pre></div>
 <p>Use <code>scan</code> to reconnect after closing.</p>
 <hr />
 <h2 id="docs">docs<a class="headerlink" href="#docs" title="Permanent link">&para;</a></h2>
-<p>Open the full HTML command reference in your web browser.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>docs
+<p>Open the full documentation in your web browser — REPL commands, Python API, scripting, and more.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>docs
 </code></pre></div>
 <p>Serves the bundled MkDocs site via a local HTTP server on a random port. If the site has not been built yet and <code>mkdocs.yml</code> is present, it automatically runs <code>mkdocs build</code> first.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>docs<span class="w">    </span><span class="c1"># opens http://127.0.0.1:&lt;port&gt;/index.html in your default browser</span>
-</code></pre></div>
 <div class="admonition tip">
 <p class="admonition-title">Tip</p>
 <p>The HTTP server stays alive for the rest of the session. Calling <code>docs</code> again reuses the same port — no second server is started.</p>
@@ -1556,22 +2153,22 @@ This does not change the active selection.</p>
 <hr />
 <h2 id="clear">clear<a class="headerlink" href="#clear" title="Permanent link">&para;</a></h2>
 <p>Clear the terminal screen.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>clear
+<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>clear
 </code></pre></div>
 <hr />
 <h2 id="reload">reload<a class="headerlink" href="#reload" title="Permanent link">&para;</a></h2>
 <p>Restart the REPL process, disconnecting all instruments.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>reload
+<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a>reload
 </code></pre></div>
 <hr />
 <h2 id="version">version<a class="headerlink" href="#version" title="Permanent link">&para;</a></h2>
 <p>Print the installed version of the toolkit.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>version
+<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a>version
 </code></pre></div>
 <hr />
 <h2 id="exit">exit<a class="headerlink" href="#exit" title="Permanent link">&para;</a></h2>
 <p>Close the REPL and disconnect all instruments safely.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a>exit
+<div class="highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a>exit
 </code></pre></div>
 
 

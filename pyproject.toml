@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "scpi-instrument-toolkit"
-version = "0.1.142"
+version = "1.0.0"
 description = "Python drivers and interactive REPL for SCPI test and measurement instruments"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 license = {text = "MIT"}
 authors = [
     {name = "Brighton Sikarskie"},
@@ -29,20 +29,25 @@ dependencies = [
     "fpdf2>=2.7.0",
     "pyfunctional>=1.4.0",
     "requests>=2.31.0",
-    "textual>=1.8.0",
+    "pyreadline3>=3.4.0; sys_platform == 'win32'",
+    "PySide6>=6.6.0",
+    "pyqtgraph>=0.13.0",
+    "pymupdf>=1.24.0",
     "nidcpower>=1.5.0; python_version>='3.9'",
     "nidcpower>=1.4.0; python_version<'3.9'",
 ]
 
 [project.optional-dependencies]
 sim = []
-docs = ["mkdocs-material"]
+hid = ["hidapi>=0.14.0"]
+docs = ["mkdocs-material", "mkdocstrings[python]>=0.25.0", "mkdocs-gen-files"]
 test = ["pytest>=7.0", "pytest-cov>=4.0"]
 lint = ["ruff>=0.4.0"]
 
 [project.scripts]
 scpi-repl = "lab_instruments.repl:main"
-scpi-tui = "lab_instruments.tui.app:main"
+scpi-gui = "lab_instruments.gui:main"
+scpi-docs = "lab_instruments.docs_server:main"
 
 [project.urls]
 Homepage = "https://github.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit"
@@ -55,7 +60,7 @@ markers = [
 ]
 
 [tool.ruff]
-target-version = "py38"
+target-version = "py310"
 line-length = 120
 
 [tool.ruff.lint]
@@ -69,13 +74,19 @@ ignore = ["E501"]
 source = ["lab_instruments"]
 omit = [
     "lab_instruments/site/*",
+    "lab_instruments/site-library/*",
+    "lab_instruments/docs_server.py",
+    "lab_instruments/gui/*",
     "lab_instruments/__main__.py",
     "lab_instruments/examples.py",
     "lab_instruments/src/rigol_dho804.py",
     "lab_instruments/src/tektronix_mso2024.py",
+    "lab_instruments/src/keysight_dsox1204g.py",
     "lab_instruments/src/discovery.py",
     "lab_instruments/src/bk_4063.py",
     "lab_instruments/src/owon_xdm1041.py",
+    "lab_instruments/src/ev2300.py",
+    "lab_instruments/repl/commands/ev2300.py",
 ]
 
 [tool.coverage.report]
@@ -102,5 +113,18 @@ lab_instruments = [
     "site/assets/javascripts/workers/*.js",
     "site/assets/javascripts/workers/*.map",
     "site/search/*.json",
+    "site-library/*.html",
+    "site-library/*.xml",
+    "site-library/*.gz",
+    "site-library/assets/stylesheets/*.css",
+    "site-library/assets/stylesheets/*.map",
+    "site-library/assets/javascripts/*.js",
+    "site-library/assets/javascripts/*.map",
+    "site-library/assets/javascripts/lunr/*.js",
+    "site-library/assets/javascripts/lunr/min/*.js",
+    "site-library/assets/javascripts/workers/*.js",
+    "site-library/assets/javascripts/workers/*.map",
+    "site-library/search/*.json",
+    "site-library/instruments/**/*.html",
 ]
 

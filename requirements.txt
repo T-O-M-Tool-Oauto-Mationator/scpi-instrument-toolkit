@@ -19,6 +19,7 @@ openpyxl>=3.1.0
 # Utilities
 pyfunctional>=1.4.0
 requests>=2.31.0
+pyreadline3>=3.4.0; sys_platform == "win32"
 textual>=1.8.0
 textual-dev>=1.8.0
 

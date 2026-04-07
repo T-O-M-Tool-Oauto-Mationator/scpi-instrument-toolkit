@@ -359,3 +359,76 @@ class TestAll:
         repl_multi.onecmd("all --help")
         out = capsys.readouterr().out
         assert out != ""
+
+
+# ---------------------------------------------------------------------------
+# disconnect
+# ---------------------------------------------------------------------------
+
+
+class TestUnscan:
+    def test_disconnect_no_args_shows_help(self, repl_psu, capsys):
+        repl_psu.onecmd("disconnect")
+        out = capsys.readouterr().out
+        assert out != ""
+
+    def test_disconnect_help_flag(self, repl_psu, capsys):
+        repl_psu.onecmd("disconnect --help")
+        out = capsys.readouterr().out
+        assert out != ""
+
+    def test_disconnect_removes_device(self, repl_psu):
+        assert "psu1" in repl_psu.devices
+        repl_psu.onecmd("disconnect psu1")
+        assert "psu1" not in repl_psu.devices
+
+    def test_disconnect_unknown_warns(self, repl_psu, capsys):
+        repl_psu.onecmd("disconnect nonexistent")
+        out = capsys.readouterr().out
+        assert "nonexistent" in out or "No device" in out
+
+    def test_disconnect_active_device_clears_selection(self, repl_psu):
+        repl_psu.onecmd("use psu1")
+        assert repl_psu.selected == "psu1"
+        repl_psu.onecmd("disconnect psu1")
+        assert repl_psu.selected is None
+
+    def test_disconnect_non_active_preserves_selection(self):
+        repl = make_repl({"psu1": MockHP_E3631A(), "psu2": MockHP_E3631A()})
+        repl.onecmd("use psu1")
+        repl.onecmd("disconnect psu2")
+        assert repl.selected == "psu1"
+        assert "psu2" not in repl.devices
+
+    def test_disconnect_one_of_two_leaves_other(self):
+        repl = make_repl({"psu1": MockHP_E3631A(), "psu2": MockHP_E3631A()})
+        repl.onecmd("disconnect psu1")
+        assert "psu1" not in repl.devices
+        assert "psu2" in repl.devices
+
+    def test_disconnect_unnumbered_device(self):
+        repl = make_repl({"awg": MockAWG()})
+        repl.onecmd("disconnect awg")
+        assert "awg" not in repl.devices
+
+    def test_disconnect_high_numbered_device(self):
+        repl = make_repl({"dmm3": MockHP_34401A()})
+        repl.onecmd("disconnect dmm3")
+        assert "dmm3" not in repl.devices
+
+    def test_disconnect_leaves_other_types_intact(self, repl_multi):
+        repl_multi.onecmd("disconnect psu1")
+        assert "psu1" not in repl_multi.devices
+        assert "awg1" in repl_multi.devices
+        assert "dmm1" in repl_multi.devices
+        assert "scope1" in repl_multi.devices
+
+    def test_disconnect_prints_removed_message(self, repl_psu, capsys):
+        repl_psu.onecmd("disconnect psu1")
+        out = capsys.readouterr().out
+        assert "psu1" in out
+
+    def test_disconnect_on_empty_repl_warns(self, repl_empty, capsys):
+        repl_empty.onecmd("disconnect psu1")
+        out = capsys.readouterr().out
+        assert out != ""

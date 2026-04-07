@@ -89,6 +89,21 @@ python -m lab_instruments --mock
 
 ---
 
+## "Resource busy" / instrument already in use
+
+Instrument connections are exclusive. Only one program can hold a connection to a device at a time. Common causes:
+
+- **REPL + Python script open at the same time** targeting the same instrument
+- **REPL or Python script open while BQStudio is connected** to the EV2300 (or any other TI/vendor tool that holds the USB connection)
+- **A previous script that crashed** without calling `disconnect()`, leaving the VISA session open
+
+**Fix:** close the other program first, then retry. If a crashed script left a session open, restart your terminal -- the VISA session is tied to the Python process and will be released when the process exits.
+
+!!! tip "Using the EV2300 with BQStudio"
+    The EV2300A USB-to-I2C adapter can only be claimed by one application at a time. If you need to use BQStudio for firmware flashing or register browsing, close the REPL or stop your script first. When you are done in BQStudio, close it before re-running your script or REPL.
+
+---
+
 ## First-time setup on TAMU / managed Windows machines
 
 If you are starting from scratch on a managed machine, use the all-in-one setup script — it installs GitHub Desktop (including git), Python, and the toolkit in one step with no admin rights.
@@ -140,3 +155,25 @@ If you cannot run scripts, use this one-liner in PowerShell:
 ```powershell
 $g=(Get-ChildItem "$env:LOCALAPPDATA\GitHubDesktop\app-*\resources\app\git\cmd\git.exe" -EA 0|Sort-Object LastWriteTime -Desc|Select-Object -First 1); if(-not $g){$g=(Get-ChildItem "$env:LOCALAPPDATA\GitHubDesktop" -Filter git.exe -Recurse -EA 0|?{$_.DirectoryName -like "*\git\cmd"}|Sort-Object LastWriteTime -Desc|Select-Object -First 1)}; if(-not $g){Write-Host "GitHub Desktop Git not found" -FG Red}else{$p=$g.DirectoryName;$u=[Environment]::GetEnvironmentVariable('Path','User'); if(($u -split ';'|%{$_.TrimEnd('\\').ToLowerInvariant()}) -notcontains $p.TrimEnd('\\').ToLowerInvariant()){[Environment]::SetEnvironmentVariable('Path',($(if([string]::IsNullOrWhiteSpace($u)){$p}else{"$u;$p"})),'User')}; Write-Host "Done. Open a new terminal and run: git --version" -FG Green}
 ```
+
+---
+
+## EV2300 communication errors
+
+### "Device error (0x46)" or I2C read/write failures
+
+The EV2300 USB-to-I2C bridge can get into a bad state. Run `ev2300 fix` in the REPL for step-by-step recovery, or follow these steps:
+
+1. Make sure the BQ EVM board is powered (e.g. PSU set to 18V)
+2. Press the **BOOT** button on the BQ EVM board
+3. `disconnect ev2300`
+4. `scan`
+5. Retry your command
+
+If it still doesn't work, unplug the EV2300 USB cable, plug it back in, then `disconnect ev2300`, `scan`, and retry.
+
+### EV2300 detected but cannot connect
+
+Another program (e.g. **BQ Studio**) likely has the EV2300 HID handle open. Close it and run `scan` again. Only one program can use the EV2300 at a time.
+
+See [EV2300 Troubleshooting](ev2300.md#troubleshooting) for more details.

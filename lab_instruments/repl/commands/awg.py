@@ -2,6 +2,7 @@
 
 from typing import Any
 
+from lab_instruments.enums import WaveformType
 from lab_instruments.src.terminal import ColorPrinter
 
 from ..capabilities import Capability
@@ -19,24 +20,6 @@ AWG_WAVE_KEYS = {
     "duty": "duty",
     "sym": "symmetry",
     "symmetry": "symmetry",
-}
-
-# Maps user-friendly waveform names to canonical SCPI abbreviations
-AWG_WAVE_ALIASES = {
-    "sine": "SIN",
-    "sin": "SIN",
-    "square": "SQU",
-    "squ": "SQU",
-    "ramp": "RAMP",
-    "triangle": "RAMP",
-    "tri": "RAMP",
-    "pulse": "PULS",
-    "puls": "PULS",
-    "noise": "NOIS",
-    "nois": "NOIS",
-    "dc": "DC",
-    "arb": "ARB",
-    "prbs": "PRBS",
 }
 
 
@@ -120,10 +103,14 @@ class AwgCommand(BaseCommand):
             elif cmd_name == "state" and len(args) >= 2:
                 self._state_callback(dev_name, args[1])
 
-            # ON/OFF SHORTHAND -- "awg on" / "awg off" -> all channels
-            elif cmd_name in ("on", "off") and len(args) == 1:
+            # ON/OFF SHORTHAND -- "awg on <1|2|all>" / "awg off <1|2|all>"
+            elif cmd_name in ("on", "off"):
+                if len(args) < 2:
+                    ColorPrinter.warning(f"Usage: awg {cmd_name} <1|2|all>")
+                    return
                 state = cmd_name == "on"
-                for channel in [1, 2]:
+                channels = self.parse_channels(args[1], max_ch=2)
+                for channel in channels:
                     if state and not self.safety.check_awg_output_allowed(dev_name, channel):
                         return
                     if is_jds6600:
@@ -164,7 +151,7 @@ class AwgCommand(BaseCommand):
             [
                 "# AWG",
                 "",
-                "awg on|off                         (all channels)",
+                "awg on|off <1|2|all>",
                 "awg chan <1|2|all> on|off",
                 "awg wave <1|2|all> <type> [freq=] [amp=] [offset=] [duty=] [phase=]",
                 "  - type: sine|square|ramp|triangle|pulse|noise|dc|arb",
@@ -233,8 +220,11 @@ class AwgCommand(BaseCommand):
                 if "phase" in params:
                     dev.set_phase(channel, params["phase"])
             else:
-                # Normalize to SCPI abbreviations: "sine" -> "SIN", "square" -> "SQU", etc.
-                scpi_wave = AWG_WAVE_ALIASES.get(waveform, waveform.upper())
+                # Normalize to SCPI abbreviations via WaveformType enum
+                try:
+                    scpi_wave = WaveformType.from_alias(waveform)
+                except ValueError:
+                    scpi_wave = waveform.upper()
                 kwargs = {}
                 for key, value in params.items():
                     mapped_key = AWG_WAVE_KEYS.get(key)
@@ -242,7 +232,11 @@ class AwgCommand(BaseCommand):
                         kwargs[mapped_key] = value
                 dev.set_waveform(channel, scpi_wave, **kwargs)
             self.safety.update_awg_state(dev_name, channel, vpp=wave_vpp, offset=wave_offset)
-            ColorPrinter.success(f"CH{channel}: {AWG_WAVE_ALIASES.get(waveform, waveform.upper())}{param_str}")
+            try:
+                display_wave = WaveformType.from_alias(waveform)
+            except ValueError:
+                display_wave = waveform.upper()
+            ColorPrinter.success(f"CH{channel}: {display_wave}{param_str}")
 
     def _handle_freq(self, args, dev, dev_name, is_jds6600) -> None:
         channels = self.parse_channels(args[1], max_ch=2)

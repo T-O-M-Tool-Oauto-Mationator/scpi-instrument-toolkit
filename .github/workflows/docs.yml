@@ -1,0 +1,49 @@
+# =============================================================================
+# docs.yml — Deploy MkDocs site to GitHub Pages
+# =============================================================================
+# Purpose:
+#   Build and publish the documentation site on every push to main or
+#   dev/nightly. The built site is force-pushed to the gh-pages branch,
+#   which GitHub Pages serves automatically.
+#
+# Triggers:
+#   - Push to main
+#   - Push to dev/nightly
+#   - Manual dispatch (Actions → Run workflow)
+#
+# Required repo settings (one-time manual step):
+#   Settings → Pages → Source → Deploy from branch → gh-pages / (root)
+# =============================================================================
+
+name: Deploy Docs
+
+on:
+  push:
+    branches:
+      - main
+      - dev/nightly
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install package and doc dependencies
+        run: |
+          pip install -e ".[docs]"
+          pip install matplotlib
+
+      - name: Generate architecture diagram
+        run: python scripts/gen_architecture_diagram.py
+
+      - name: Deploy to GitHub Pages
+        run: mkdocs gh-deploy --force

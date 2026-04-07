@@ -46,6 +46,16 @@ class Capability(Flag):
     SCOPE_MEAS_FORCE = auto()
     SCOPE_MEAS_CLEAR = auto()
 
+    # EV2300 / I2C adapter capabilities
+    EV2300_READ_WORD = auto()
+    EV2300_WRITE_WORD = auto()
+    EV2300_READ_BYTE = auto()
+    EV2300_WRITE_BYTE = auto()
+    EV2300_READ_BLOCK = auto()
+    EV2300_WRITE_BLOCK = auto()
+    EV2300_SEND_BYTE = auto()
+    EV2300_DEVICE_INFO = auto()
+
 
 # Per-driver capability declarations
 # Maps class name to its capabilities
@@ -64,10 +74,14 @@ DRIVER_CAPABILITIES = {
     "Keysight_EDU36311A": (
         Capability.PSU_MULTI_CHANNEL | Capability.PSU_READBACK | Capability.PSU_TRACKING | Capability.PSU_SAVE_RECALL
     ),
+    "MockEDU36311A": (
+        Capability.PSU_MULTI_CHANNEL | Capability.PSU_READBACK | Capability.PSU_TRACKING | Capability.PSU_SAVE_RECALL
+    ),
     # AWGs
     "Keysight_EDU33212A": (Capability.AWG_SYNC | Capability.AWG_INDEPENDENT_PARAMS),
     "MockEDU33212A": (Capability.AWG_SYNC | Capability.AWG_INDEPENDENT_PARAMS),
     "BK_4063": Capability.AWG_INDEPENDENT_PARAMS,
+    "MockBK_4063": Capability.AWG_INDEPENDENT_PARAMS,
     "JDS6600_Generator": Capability.AWG_JDS6600_PROTOCOL,
     "MockJDS6600": Capability.AWG_JDS6600_PROTOCOL,
     # DMMs
@@ -82,6 +96,20 @@ DRIVER_CAPABILITIES = {
     "MockHP_34401A": (
         Capability.DMM_NPLC
         | Capability.DMM_DISPLAY_CONTROL
+        | Capability.DMM_DISPLAY_TEXT
+        | Capability.DMM_FETCH
+        | Capability.DMM_BEEP
+        | Capability.DMM_RANGES
+    ),
+    "Keysight_EDU34450A": (
+        Capability.DMM_DISPLAY_CONTROL
+        | Capability.DMM_DISPLAY_TEXT
+        | Capability.DMM_FETCH
+        | Capability.DMM_BEEP
+        | Capability.DMM_RANGES
+    ),
+    "MockEDU34450A": (
+        Capability.DMM_DISPLAY_CONTROL
         | Capability.DMM_DISPLAY_TEXT
         | Capability.DMM_FETCH
         | Capability.DMM_BEEP
@@ -128,8 +156,59 @@ DRIVER_CAPABILITIES = {
         | Capability.SCOPE_MEAS_FORCE
         | Capability.SCOPE_MEAS_CLEAR
     ),
+    "Keysight_DSOX1204G": (
+        Capability.SCOPE_SCREENSHOT
+        | Capability.SCOPE_BUILTIN_AWG
+        | Capability.SCOPE_DVM
+        | Capability.SCOPE_DISPLAY_CONTROL
+        | Capability.SCOPE_ACQUIRE_CONTROL
+        | Capability.SCOPE_MATH
+        | Capability.SCOPE_MASK
+        | Capability.SCOPE_LABEL
+        | Capability.SCOPE_INVERT
+        | Capability.SCOPE_BWLIMIT
+        | Capability.SCOPE_FORCE_TRIGGER
+        | Capability.SCOPE_WAIT_STOP
+        | Capability.SCOPE_MEAS_CLEAR
+    ),
+    "MockDSOX1204G": (
+        Capability.SCOPE_SCREENSHOT
+        | Capability.SCOPE_BUILTIN_AWG
+        | Capability.SCOPE_DVM
+        | Capability.SCOPE_DISPLAY_CONTROL
+        | Capability.SCOPE_ACQUIRE_CONTROL
+        | Capability.SCOPE_MATH
+        | Capability.SCOPE_MASK
+        | Capability.SCOPE_LABEL
+        | Capability.SCOPE_INVERT
+        | Capability.SCOPE_BWLIMIT
+        | Capability.SCOPE_FORCE_TRIGGER
+        | Capability.SCOPE_WAIT_STOP
+        | Capability.SCOPE_MEAS_CLEAR
+    ),
     "Tektronix_MSO2024": Capability.SCOPE_WAIT_STOP,
     "MockMSO2024": Capability.SCOPE_WAIT_STOP,
+    # EV2300
+    "TI_EV2300": (
+        Capability.EV2300_READ_WORD
+        | Capability.EV2300_WRITE_WORD
+        | Capability.EV2300_READ_BYTE
+        | Capability.EV2300_WRITE_BYTE
+        | Capability.EV2300_READ_BLOCK
+        | Capability.EV2300_WRITE_BLOCK
+        | Capability.EV2300_SEND_BYTE
+        | Capability.EV2300_DEVICE_INFO
+    ),
+    "MockEV2300": (
+        Capability.EV2300_READ_WORD
+        | Capability.EV2300_WRITE_WORD
+        | Capability.EV2300_READ_BYTE
+        | Capability.EV2300_WRITE_BYTE
+        | Capability.EV2300_READ_BLOCK
+        | Capability.EV2300_WRITE_BLOCK
+        | Capability.EV2300_SEND_BYTE
+        | Capability.EV2300_DEVICE_INFO
+    ),
 }
 
 # Display names for known instrument classes
@@ -143,6 +222,7 @@ DISPLAY_NAMES = {
     "Keysight_EDU33212A": "Keysight EDU33212A",
     "MockEDU33212A": "Keysight EDU33212A (Mock)",
     "BK_4063": "BK Precision 4063",
+    "MockBK_4063": "BK Precision 4063 (Mock)",
     "JDS6600_Generator": "JDS6600",
     "MockJDS6600": "JDS6600 (Mock)",
     "HP_34401A": "HP 34401A",
@@ -151,6 +231,14 @@ DISPLAY_NAMES = {
     "MockXDM1041": "Owon XDM1041 (Mock)",
     "Rigol_DHO804": "Rigol DHO804",
     "MockDHO804": "Rigol DHO804 (Mock)",
+    "Keysight_EDU36311A": "Keysight EDU36311A",
+    "MockEDU36311A": "Keysight EDU36311A (Mock)",
+    "Keysight_DSOX1204G": "Keysight DSOX1204G",
+    "MockDSOX1204G": "Keysight DSOX1204G (Mock)",
+    "Keysight_EDU34450A": "Keysight EDU34450A",
+    "MockEDU34450A": "Keysight EDU34450A (Mock)",
     "Tektronix_MSO2024": "Tektronix MSO2024",
     "MockMSO2024": "Tektronix MSO2024 (Mock)",
+    "TI_EV2300": "TI EV2300A USB-to-I2C",
+    "MockEV2300": "TI EV2300A USB-to-I2C (Mock)",
 }

@@ -1,12 +1,15 @@
 # SMU — Source Measure Unit
 
+!!! tip "Auto-generated reference"
+    For the definitive command list extracted directly from source code, see [REPL Command Reference](generated/repl-ref.md#smu-source-measure-unit).
+
 Controls source measure units (SMUs) that can both source a precise voltage and simultaneously measure current (or vice versa).
 
 - Multiple SMUs are named `smu1`, `smu2`, etc.
 - Address a specific SMU directly: `smu1 set 5.0` — or use `use smu1` then `smu set 5.0`
 
 === "NI PXIe-4139"
-    ±60 V / 1 A four-quadrant SMU. Uses the **nidcpower** Python package (not VISA/SCPI). Install with: `pip install nidcpower`. Output range: −60 V to +60 V, 0 A to 1 A.
+    ±60 V / 3 A four-quadrant SMU (20 W source, 12 W sink). Uses the **nidcpower** Python package (not VISA/SCPI). Install with: `pip install nidcpower`. Output range: −60 V to +60 V, −3 A to +3 A DC (10 A pulse).
 
 ---
 
@@ -34,7 +37,7 @@ smu set <voltage> [current_limit]
 | Parameter | Required | Values | Description |
 |-----------|----------|--------|-------------|
 | `voltage` | required | −60.0 – 60.0 (V) | Target output voltage. |
-| `current_limit` | optional | 0.0 – 1.0 (A) | Current compliance limit. If omitted, the existing limit is kept. |
+| `current_limit` | optional | 0.0 – 3.0 (A) | Current compliance limit (always positive). If omitted, the existing limit is kept. |
 
 ```bash
 smu set 5.0          # set 5 V, keep existing current limit
@@ -43,7 +46,10 @@ smu set -12.0 0.1    # negative voltage for four-quadrant operation
 ```
 
 !!! warning
-    Setting a voltage without a current limit uses whatever limit was set previously (default: 10 mA). Always specify the limit when powering an unknown DUT.
+    Setting a voltage without a current limit uses whatever limit was set previously (default: 10 mA). Always specify the limit when powering an unknown DUT. DC source power is capped at 20 W and sink power at 12 W by the hardware.
+
+!!! tip "How to sink current"
+    Use `smu set_mode current` instead of `smu set`. In current mode, the SMU acts as a programmable electronic load — positive current = sink from DUT, negative current = source into DUT. See [smu set_mode](#smu-set_mode) below.
 
 ---
 
@@ -85,40 +91,42 @@ smu set_mode current <i> [voltage_limit]
 | Parameter | Required | Values | Description |
 |-----------|----------|--------|-------------|
 | `voltage` / `current` | required | mode keyword | Select sourcing mode. Alias: `v` / `i`. |
-| second arg | required | float | Setpoint in volts (voltage mode) or amps (current mode). |
-| third arg | optional | float | Compliance limit for the opposing quantity. |
+| second arg | required | float | Setpoint in volts (voltage mode) or amps (current mode, −3.0 to 3.0). |
+| third arg | optional | float | Compliance limit for the opposing quantity (always positive). |
 
 ```bash
 smu set_mode voltage 3.3 0.1    # source 3.3 V with 100 mA current limit
-smu set_mode current 0.05 5.0   # source 50 mA with 5 V voltage limit
-smu set_mode current 0.01       # source 10 mA, no explicit voltage limit
+smu set_mode current 0.010 3.0  # sink 10 mA from DUT (electronic load), 3 V compliance
+smu set_mode current -0.5 5.0   # source 0.5 A into DUT, 5 V compliance
 ```
+
+!!! note "Current mode polarity"
+    In current mode, **positive current = sink** (draw current from the DUT, acting as a load) and **negative current = source** (push current into the DUT). This is the standard four-quadrant SMU convention. Use positive values when the SMU is loading an LDO, regulator, or other voltage source.
 
 Safety limits (`upper_limit` / `lower_limit`) are enforced before the mode switch is applied.
 
 ---
 
-## smu meas_store
+!!! tip "Recording measurements"
+    Use assignment syntax to measure **and** store the result to the measurement log in one step:
 
-Measure and record the result to the measurement log.
+    ```bash
+    <label> = smu meas <v|i> [unit=<str>]
+    ```
 
-```bash
-smu meas_store <v|i> <label> [unit=<str>]
-```
+    | Parameter | Required | Values | Description |
+    |-----------|----------|--------|-------------|
+    | `label` | required | string, no spaces | Name for this entry in the log. |
+    | `v\|i` | required | `v`, `i` | What to measure. |
+    | `unit=` | optional | string | Unit shown in `log print`. Defaults to `V` or `A`. |
 
-| Parameter | Required | Values | Description |
-|-----------|----------|--------|-------------|
-| `v\|i` | required | `v`, `i` | What to measure. |
-| `label` | required | string, no spaces | Name for this entry in the log. |
-| `unit=` | optional | string | Unit shown in `log print`. Defaults to `V` or `A`. |
+    ```bash
+    smu_vout = smu meas v unit=V
+    smu_iout = smu meas i unit=A
+    calc power m["smu_vout"] * m["smu_iout"] unit=W
+    ```
 
-```bash
-smu meas_store v smu_vout unit=V
-smu meas_store i smu_iout unit=A
-calc power m["smu_vout"] * m["smu_iout"] unit=W
-```
-
-See [Log & Calc](logging.md) for full details.
+    See [Log & Calc](logging.md) for full details.
 
 ---
 
@@ -233,8 +241,8 @@ smu1 set 5.0 0.02     # 5 V, 20 mA limit
 smu1 on
 sleep 0.5
 
-smu1 meas_store v vout unit=V
-smu1 meas_store i iout unit=A
+vout = smu1 meas v unit=V
+iout = smu1 meas i unit=A
 calc power m["vout"] * m["iout"] unit=W
 
 log print

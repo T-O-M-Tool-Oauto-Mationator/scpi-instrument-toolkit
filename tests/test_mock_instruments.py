@@ -7,7 +7,10 @@ from lab_instruments.mock_instruments import (
     MockBase,
     MockDHO804,
     MockDMM,
+    MockDSOX1204G,
     MockEDU33212A,
+    MockEDU34450A,
+    MockEDU36311A,
     MockHP_E3631A,
     MockJDS6600,
     MockMPS6010H,
@@ -201,13 +204,27 @@ class TestMockDHO804:
 
 
 class TestGetMockDevices:
-    def test_returns_9_keys(self):
+    def test_returns_14_keys(self):
         devices = get_mock_devices(verbose=False)
-        assert len(devices) == 9
+        assert len(devices) == 14
 
     def test_expected_keys(self):
         devices = get_mock_devices(verbose=False)
-        for key in ("psu1", "psu2", "smu", "awg1", "awg2", "dmm1", "dmm2", "scope1", "scope2"):
+        for key in (
+            "psu1",
+            "psu2",
+            "psu3",
+            "smu",
+            "awg1",
+            "awg2",
+            "dmm1",
+            "dmm2",
+            "dmm3",
+            "scope1",
+            "scope2",
+            "scope3",
+            "ev2300",
+        ):
             assert key in devices
 
     def test_psu1_type(self):
@@ -225,5 +242,14 @@ class TestGetMockDevices:
     def test_scope1_type(self):
         assert isinstance(get_mock_devices(verbose=False)["scope1"], MockDHO804)
 
+    def test_psu3_type(self):
+        assert isinstance(get_mock_devices(verbose=False)["psu3"], MockEDU36311A)
+
+    def test_dmm3_type(self):
+        assert isinstance(get_mock_devices(verbose=False)["dmm3"], MockEDU34450A)
+
     def test_scope2_type(self):
         assert isinstance(get_mock_devices(verbose=False)["scope2"], MockMSO2024)
+
+    def test_scope3_type(self):
+        assert isinstance(get_mock_devices(verbose=False)["scope3"], MockDSOX1204G)

@@ -29,6 +29,49 @@ irm "https://raw.githubusercontent.com/T-O-M-Tool-Oauto-Mationator/scpi-instrume
 
 > **NI-VISA** (needed for real hardware) requires admin rights and must be installed separately by IT or via the [NI download page](https://www.ni.com/en/support/downloads/drivers/download.ni-visa.html). Use `--mock` mode until then.
 
+### Set up a project workspace (venv)
+
+For lab scripts and data analysis, create an isolated Python environment per project so package installs do not affect each other.
+
+```powershell
+# Create a project folder and enter it
+mkdir my-lab-project
+cd my-lab-project
+
+# Create a virtual environment
+python -m venv .venv
+
+# Activate it
+.\.venv\Scripts\Activate.ps1
+```
+
+> **Managed machines:** if activation fails with a script-execution error, run this once in PowerShell:
+> ```powershell
+> Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+> ```
+> Or use the batch form instead: `.\.venv\Scripts\activate.bat`
+
+With the venv active, install the toolkit into it:
+
+```powershell
+pip install "git+https://github.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit.git"
+```
+
+To deactivate when you are done: `deactivate`
+
+**VS Code:** open the project folder (`code .`), then pick `.venv` as the interpreter (Ctrl+Shift+P -> "Python: Select Interpreter").
+
+> **Don't want to use the REPL?** You can import the drivers directly in your own Python scripts -- see [Using the Python Drivers Directly](#using-the-python-drivers-directly).
+
+### Documentation
+
+| Docs | What they cover |
+|------|----------------|
+| [REPL Command Reference](docs/index.md) | Interactive REPL commands, scripting, logging |
+| [Python API Reference](docs-library/index.md) | Using the drivers as a Python library in your own scripts |
+
+To open them from the REPL: `docs repl` or `docs python`.
+
 See [docs/troubleshooting.md](docs/troubleshooting.md) if you run into issues.
 
 ---
@@ -47,6 +90,8 @@ See [docs/troubleshooting.md](docs/troubleshooting.md) if you run into issues.
 | Matrix MPS6010H | Power Supply |
 | JDS6600 | Function Generator |
 | NI PXIe-4139 | SMU |
+
+> **BQ76920 battery monitor IC:** for Python drivers and register-level documentation, see [CesMag/BQ76920_Bridge](https://github.com/CesMag/BQ76920_Bridge).
 
 ---
 
@@ -110,6 +155,8 @@ It will automatically scan for connected instruments and show you what it found.
 > ```
 > All flags work the same way: `python -m lab_instruments --mock`, etc.
 
+> **One connection at a time:** Instrument connections are exclusive -- only one program can hold a connection to a device at a time. You cannot run the REPL and a Python script against the same instrument simultaneously, and you cannot have the REPL or a Python script connected while BQStudio (or any other vendor software) is already using that instrument. Close one before opening the other.
+
 ### Try it without any instruments
 
 If you just want to explore the tool without connecting anything:
@@ -119,6 +166,67 @@ scpi-repl --mock
 ```
 
 This uses fake instruments so you can test commands safely.
+
+---
+
+## Using the Python Drivers Directly
+
+If you are writing a Python script for data collection, pandas analysis, or a lab report and do not need the interactive REPL, you can import the instrument drivers directly.
+
+> **Full Python API docs:** Run `docs python` in the REPL, or open [docs-library/index.md](docs-library/index.md) for the complete API reference with method tables and examples for every driver.
+
+### Find your instrument's VISA address
+
+Connect the instrument and run this in Python:
+
+```python
+import pyvisa
+rm = pyvisa.ResourceManager()
+print(rm.list_resources())
+# Example output: ('GPIB0::5::INSTR', 'GPIB0::22::INSTR', 'USB0::...')
+```
+
+### Minimal example
+
+```python
+from lab_instruments.src.hp_e3631a import HP_E3631A
+from lab_instruments.src.hp_34401a import HP_34401A
+
+psu = HP_E3631A("GPIB0::5::INSTR")   # replace with your address
+dmm = HP_34401A("GPIB0::22::INSTR")  # replace with your address
+
+psu.connect()
+dmm.connect()
+try:
+    # Set +6V channel to 3.3V, 0.1A limit and enable output
+    psu.set_output_channel("positive_6_volts_channel", 3.3, current_limit=0.1)
+    psu.enable_output(True)
+
+    # Configure DMM for DC voltage and take a reading
+    dmm.configure_dc_voltage()
+    reading = dmm.read()
+    print(f"Measured: {reading} V")
+finally:
+    psu.disconnect()
+    dmm.disconnect()
+```
+
+Always call `disconnect()` in a `finally` block so the instrument is released even if the script crashes.
+
+### Available drivers
+
+| Instrument | Class | Import path |
+|---|---|---|
+| HP E3631A PSU | `HP_E3631A` | `lab_instruments.src.hp_e3631a` |
+| HP 34401A DMM | `HP_34401A` | `lab_instruments.src.hp_34401a` |
+| Tektronix MSO2024 | `Tektronix_MSO2024` | `lab_instruments.src.tektronix_mso2024` |
+| Rigol DHO804 | `Rigol_DHO804` | `lab_instruments.src.rigol_dho804` |
+| BK Precision 4063 | `BK_4063` | `lab_instruments.src.bk_4063` |
+| Keysight EDU33212A | `Keysight_EDU33212A` | `lab_instruments.src.keysight_edu33212a` |
+| OWON XDM1041 | `Owon_XDM1041` | `lab_instruments.src.owon_xdm1041` |
+| Matrix MPS6010H | `MATRIX_MPS6010H` | `lab_instruments.src.matrix_mps6010h` |
+| JDS6600 | `JDS6600_Generator` | `lab_instruments.src.jds6600_generator` |
+| NI PXIe-4139 | `NI_PXIe_4139` | `lab_instruments.src.ni_pxie_4139` |
 
 ---
 

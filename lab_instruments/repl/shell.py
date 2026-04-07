@@ -2,21 +2,32 @@
 
 import atexit
 import cmd
+import os
 import re
 import shlex
 import signal
 import sys
 import threading
+
+try:
+    import readline
+except ImportError:
+    readline = None  # type: ignore[assignment]
+
+_HISTORY_FILE = os.path.join(os.path.expanduser("~"), ".scpi_history")
+_HISTORY_LENGTH = 1000
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as _pkg_version
-from typing import Any, Dict
+from typing import Any
 
 from lab_instruments import ColorPrinter, InstrumentDiscovery
 
 from .commands.awg import AwgCommand
 from .commands.dmm import DmmCommand
+from .commands.ev2300 import Ev2300Command
 from .commands.general import GeneralCommands
 from .commands.logging_cmd import LoggingCommands
+from .commands.plot import PlotCommand
 from .commands.psu import PsuCommand
 from .commands.safety import SafetySystem
 from .commands.scope import ScopeCommand
@@ -62,7 +73,7 @@ class InstrumentRepl(cmd.Cmd):
     intro = f"ESET Instrument REPL v{_REPL_VERSION}. Type 'help' for commands."
     prompt = "eset> "
 
-    def __init__(self):
+    def __init__(self, *, auto_scan: bool = True):
         super().__init__()
 
         # Shared state
@@ -80,8 +91,10 @@ class InstrumentRepl(cmd.Cmd):
         self._dmm_cmd = DmmCommand(self.ctx)
         self._scope_cmd = ScopeCommand(self.ctx)
         self._smu_cmd = SmuCommand(self.ctx)
+        self._ev2300_cmd = Ev2300Command(self.ctx)
         self._var_cmd = VariableCommands(self.ctx)
         self._log_cmd = LoggingCommands(self.ctx)
+        self._plot_cmd = PlotCommand(self.ctx)
         self._script_cmd = ScriptingCommands(self.ctx, self._safety, shell=self)
 
         # Wire up state callback for instrument commands that delegate to do_state
@@ -90,6 +103,7 @@ class InstrumentRepl(cmd.Cmd):
         self._dmm_cmd.set_state_callback(lambda name, st: self.do_state(f"{name} {st}"))
         self._scope_cmd.set_state_callback(lambda name, st: self.do_state(f"{name} {st}"))
         self._smu_cmd.set_state_callback(lambda name, st: self.do_state(f"{name} {st}"))
+        self._ev2300_cmd.set_state_callback(lambda name, st: self.do_state(f"{name} {st}"))
 
         # Multi-line loop support
         self._in_loop = False
@@ -113,6 +127,16 @@ class InstrumentRepl(cmd.Cmd):
         except Exception:
             pass
 
+        # Load command history from disk so arrow keys recall previous commands
+        if readline is not None:
+            readline.set_history_length(_HISTORY_LENGTH)
+            try:
+                readline.read_history_file(_HISTORY_FILE)
+            except FileNotFoundError:
+                pass
+            except Exception:
+                pass
+
         # Register cleanup
         atexit.register(self._cleanup_on_exit)
         signal.signal(signal.SIGINT, self._cleanup_on_interrupt)
@@ -121,19 +145,22 @@ class InstrumentRepl(cmd.Cmd):
 
         # Background scan
         self._scan_done = threading.Event()
-        self._scan_thread = threading.Thread(target=self._background_scan, daemon=True, name="scpi-scan")
-        ColorPrinter.info("Scanning for instruments in background — type 'scan' to wait for results.")
-        self._scan_thread.start()
+        if auto_scan:
+            self._scan_thread = threading.Thread(target=self._background_scan, daemon=True, name="scpi-scan")
+            ColorPrinter.info("Scanning for instruments in background — type 'scan' to wait for results.")
+            self._scan_thread.start()
+        else:
+            self._scan_done.set()
 
     # ------------------------------------------------------------------
     # Backward-compatibility properties
     # ------------------------------------------------------------------
     @property
-    def devices(self) -> Dict[str, Any]:
+    def devices(self) -> dict[str, Any]:
         return self.ctx.registry.devices
 
     @devices.setter
-    def devices(self, value: Dict[str, Any]):
+    def devices(self, value: dict[str, Any]):
         self.ctx.registry.devices = value
 
     @property
@@ -312,6 +339,12 @@ class InstrumentRepl(cmd.Cmd):
             pass
 
     def _cleanup_on_exit(self):
+        # Save command history before shutdown
+        if readline is not None:
+            try:
+                readline.write_history_file(_HISTORY_FILE)
+            except Exception:
+                pass
         self._wait_for_scan()
         if not self._cleanup_done and self.ctx.registry.devices:
             self._cleanup_done = True
@@ -410,7 +443,7 @@ class InstrumentRepl(cmd.Cmd):
                 pass
         return stop
 
-    _ASSIGN_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.+)$")
+    _ASSIGN_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_.]*)\s*=\s*(.+)$")
 
     def default(self, line):
         """Handle numbered device names ('awg1', 'scope2') and var = expr assignment."""
@@ -418,11 +451,19 @@ class InstrumentRepl(cmd.Cmd):
         cmd_token = parts[0]
         rest = parts[1] if len(parts) > 1 else ""
 
-        if cmd_token in self.ctx.registry.devices:
+        # Resolve the device name: exact match, or "psu1" -> "psu" when only one exists
+        resolved = cmd_token
+        if cmd_token not in self.ctx.registry.devices:
             base_type = re.sub(r"\d+$", "", cmd_token)
+            if base_type != cmd_token and base_type in self.ctx.registry.devices:
+                # "psu1" typed but device is registered as "psu" (only one of its type)
+                resolved = base_type
+
+        if resolved in self.ctx.registry.devices:
+            base_type = re.sub(r"\d+$", "", resolved)
             handler = getattr(self, f"do_{base_type}", None)
             if handler:
-                self.ctx.registry._device_override = cmd_token
+                self.ctx.registry._device_override = resolved
                 try:
                     handler(rest)
                 finally:
@@ -647,64 +688,73 @@ class InstrumentRepl(cmd.Cmd):
     # Command dispatch — delegates to command handler objects
     # ------------------------------------------------------------------
     def do_scan(self, arg):
-        "scan: discover and connect to instruments"
+        """scan: discover and connect to instruments"""
         self._wait_for_scan()
         self._general.do_scan(arg, self.discovery, self._scan_done)
 
+    def do_force_scan(self, arg):
+        """force-scan: disconnect all and re-scan from scratch (resets outputs to 0)"""
+        self._wait_for_scan()
+        self._general.do_force_scan(arg, self.discovery, self._scan_done)
+
+    def do_disconnect(self, arg):
+        """disconnect <name>: remove a scanned device from the session"""
+        self._general.do_disconnect(arg)
+
     def do_list(self, arg):
-        "list: show connected instruments"
+        """list: show connected instruments"""
         self._general.do_list(arg)
 
     def do_use(self, arg):
-        "use <name>: set active instrument"
+        """use <name>: set active instrument"""
         self._general.do_use(arg)
 
     def do_status(self, arg):
-        "status: show current selection"
+        """status: show current selection"""
         self._general.do_status(arg)
 
     def do_idn(self, arg):
-        "idn [name]: query *IDN?"
+        """idn [name]: query *IDN?"""
         self._wait_for_scan()
         self._general.do_idn(arg)
 
     def do_raw(self, arg):
-        "raw [name] <scpi>: send raw SCPI command"
+        """raw [name] <scpi>: send raw SCPI command"""
         self._wait_for_scan()
         self._general.do_raw(arg)
 
     def do_state(self, arg):
-        "state [safe|reset|on|off] or state <device> <state>"
+        """state [safe|reset|on|off] or state <device> <state>"""
         self._wait_for_scan()
         self._general.do_state(arg)
 
     def do_close(self, arg):
-        "close: disconnect all instruments"
+        """close: disconnect all instruments"""
         self._general.do_close(arg)
 
     def do_docs(self, arg):
-        "docs: open full HTML documentation in your browser"
+        """docs: open full HTML documentation in your browser"""
         self._general.do_docs(arg)
 
     def do_version(self, arg):
-        "version: show version"
+        """version: show version"""
         self._general.do_version(arg, _REPL_VERSION)
 
     def do_clear(self, arg):
-        "clear: clear terminal"
+        """clear: clear terminal"""
         self._general.do_clear(arg)
 
     def do_reload(self, arg):
-        "reload: restart REPL process"
+        """reload: restart REPL process"""
         self._general.do_reload(arg)
 
     def do_all(self, arg):
-        "all <on|off|safe|reset>: apply state to all instruments"
+        """all <on|off|safe|reset>: apply state to all instruments"""
         self._wait_for_scan()
         self._general.do_all(arg)
 
     def do_exit(self, arg):
-        "exit: quit the REPL"
+        """exit: quit the REPL"""
         return True
 
     def do_EOF(self, arg):
@@ -713,7 +763,7 @@ class InstrumentRepl(cmd.Cmd):
 
     # Instrument commands
     def do_psu(self, arg):
-        "psu <cmd>: control the power supply"
+        """psu <cmd>: control the power supply"""
         self._wait_for_scan()
         psu_name = self.ctx.registry.resolve_type("psu")
         if not psu_name:
@@ -730,7 +780,7 @@ class InstrumentRepl(cmd.Cmd):
         self._psu_cmd.execute(arg, dev, psu_name)
 
     def do_awg(self, arg):
-        "awg <cmd>: control the function generator"
+        """awg <cmd>: control the function generator"""
         self._wait_for_scan()
         awg_name = self.ctx.registry.resolve_type("awg")
         if not awg_name:
@@ -747,7 +797,7 @@ class InstrumentRepl(cmd.Cmd):
         self._awg_cmd.execute(arg, dev, awg_name)
 
     def do_dmm(self, arg):
-        "dmm <cmd>: control the multimeter"
+        """dmm <cmd>: control the multimeter"""
         self._wait_for_scan()
         dmm_name = self.ctx.registry.resolve_type("dmm")
         if not dmm_name:
@@ -764,7 +814,7 @@ class InstrumentRepl(cmd.Cmd):
         self._dmm_cmd.execute(arg, dev, dmm_name)
 
     def do_scope(self, arg):
-        "scope <cmd>: control the oscilloscope"
+        """scope <cmd>: control the oscilloscope"""
         self._wait_for_scan()
         scope_name = self.ctx.registry.resolve_type("scope")
         if not scope_name:
@@ -781,7 +831,7 @@ class InstrumentRepl(cmd.Cmd):
         self._scope_cmd.execute(arg, dev, scope_name)
 
     def do_smu(self, arg):
-        "smu <cmd>: control the source measure unit"
+        """smu <cmd>: control the source measure unit"""
         self._wait_for_scan()
         smu_name = self.ctx.registry.resolve_type("smu")
         if not smu_name:
@@ -797,76 +847,101 @@ class InstrumentRepl(cmd.Cmd):
             return
         self._smu_cmd.execute(arg, dev, smu_name)
 
+    def do_ev2300(self, arg):
+        """ev2300 <cmd>: control the EV2300 USB-to-I2C adapter"""
+        self._wait_for_scan()
+        ev_name = self.ctx.registry.resolve_type("ev2300")
+        if not ev_name:
+            self.ctx.command_had_error = True
+            if not self.ctx.registry.devices:
+                ColorPrinter.warning("No instruments connected. Run 'scan' first.")
+            else:
+                self._error("No EV2300 found. Run 'scan' first.")
+            return
+        dev = self.ctx.registry.get_device(ev_name)
+        if not dev:
+            self.ctx.command_had_error = True
+            return
+        self._ev2300_cmd.execute(arg, dev, ev_name)
+
     # Variable/IO commands
     def do_print(self, arg):
-        "print <message>: display a message"
+        """print <message>: display a message"""
         self._var_cmd.do_print(arg)
 
     def do_pause(self, arg):
-        "pause [message]: wait for Enter"
+        """pause [message]: wait for Enter"""
         self._var_cmd.do_pause(arg)
 
     def do_input(self, arg):
-        "input <varname> [prompt]: read a value from user"
+        """input <varname> [prompt]: read a value from user"""
         self._var_cmd.do_input(arg)
 
     def do_set(self, arg):
-        "set <varname> <expr>: define a variable"
+        """set <varname> <expr>: define a variable"""
         self._var_cmd.do_set(arg)
 
     def do_unset(self, arg):
-        "unset <varname>: delete a script variable"
+        """unset <varname>: delete a script variable"""
         self._var_cmd.do_unset(arg)
 
     def do_sleep(self, arg):
-        "sleep <duration>[us|ms|s|m]: pause execution"
+        """sleep <duration>[us|ms|s|m]: pause execution"""
         self._var_cmd.do_sleep(arg)
 
     # Logging commands
     def do_data(self, arg):
-        "data dir [path|reset]: manage data directory"
+        """data dir [path|reset]: manage data directory"""
         self._log_cmd.do_data(arg)
 
     def do_log(self, arg):
-        "log <print|save|clear>: manage measurements"
+        """log <print|save|clear>: manage measurements"""
         self._log_cmd.do_log(arg)
 
     def do_calc(self, arg):
-        "calc <label> = <expr> [unit=]: compute from measurements"
+        """calc <label> = <expr> [unit=]: compute from measurements"""
         self._log_cmd.do_calc(arg)
 
     def do_check(self, arg):
-        "check <label> <min> <max>: pass/fail assertion"
+        """check <label> <min> <max>: pass/fail assertion"""
         self._log_cmd.do_check(arg)
 
     def do_report(self, arg):
-        "report <print|save|clear|title|operator>: manage reports"
+        """report <print|save|clear|title|operator>: manage reports"""
         self._log_cmd.do_report(arg)
+
+    def do_plot(self, arg):
+        """plot [pattern ...] [--title "text"]: plot measurement log data"""
+        self._plot_cmd.execute(arg)
+
+    def do_liveplot(self, arg):
+        """liveplot <pattern> [--title "text"]: live-updating chart"""
+        self._plot_cmd.execute_liveplot(arg)
 
     # Scripting commands
     def do_script(self, arg):
-        "script <new|run|debug|edit|list|rm|show|dir|import|load|save>: manage scripts"
+        """script <new|run|debug|edit|list|rm|show|dir|import|load|save>: manage scripts"""
         self._script_cmd.do_script(arg)
 
     def do_record(self, arg):
-        "record <start|stop|status>: record commands to a script"
+        """record <start|stop|status>: record commands to a script"""
         self._script_cmd.do_record(arg)
 
     def do_examples(self, arg):
-        "examples [load <name|all>]: list or load example scripts"
+        """examples [load <name|all>]: list or load example scripts"""
         self._script_cmd.do_examples(arg)
 
     def do_python(self, arg):
-        "python <file.py>: execute external Python script"
+        """python <file.py>: execute external Python script"""
         self._script_cmd.do_python(arg)
 
     def do_upper_limit(self, arg):
-        "upper_limit <device> [chan <N>] <param> <value>: set upper safety limit"
+        """upper_limit <device> [chan <N>] <param> <value>: set upper safety limit"""
         self._wait_for_scan()
         self._script_cmd.do_upper_limit(arg)
 
     def do_lower_limit(self, arg):
-        "lower_limit <device> [chan <N>] <param> <value>: set lower safety limit"
+        """lower_limit <device> [chan <N>] <param> <value>: set lower safety limit"""
         self._wait_for_scan()
         self._script_cmd.do_lower_limit(arg)
 
@@ -874,11 +949,12 @@ class InstrumentRepl(cmd.Cmd):
     # Help system
     # ------------------------------------------------------------------
     def do_help(self, arg):
-        "help [command|all]: show help"
+        """help [command|all]: show help"""
         if arg:
             if arg.strip().lower() == "all":
                 for cmd_name in [
                     "scan",
+                    "force_scan",
                     "list",
                     "use",
                     "status",
@@ -893,6 +969,7 @@ class InstrumentRepl(cmd.Cmd):
                     "log",
                     "calc",
                     "data",
+                    "plot",
                     "script",
                 ]:
                     fn = getattr(self, f"help_{cmd_name}", None)
@@ -904,9 +981,9 @@ class InstrumentRepl(cmd.Cmd):
                 R = ColorPrinter.RESET
                 print(f"\n{Y}{B}INSTRUMENT COMMANDS{R}  (type the command with no args for full help)")
                 for name, desc in [
-                    ("psu", "power supply  — chan, set, meas, meas_store, track, save, recall, state"),
+                    ("psu", "power supply  — chan, set, meas, track, save, recall, state"),
                     ("awg", "function gen  — chan, wave, freq, amp, offset, duty, phase, sync, state"),
-                    ("dmm", "multimeter    — config, read, fetch, meas, meas_store, beep, display"),
+                    ("dmm", "multimeter    — config, read, fetch, meas, beep, display"),
                     ("scope", "oscilloscope  — chan, meas, save, screenshot, trigger, awg, dvm, counter"),
                 ]:
                     print(f"  {C}{name:<8}{R} {desc}")
@@ -949,6 +1026,8 @@ class InstrumentRepl(cmd.Cmd):
 
         section("GENERAL")
         cmd_line("scan", "discover and connect to instruments")
+        cmd_line("force_scan", "re-scan from scratch, reset all outputs to 0")
+        cmd_line("disconnect", "remove a device from the session  (disconnect <name>)")
         cmd_line("reload", "restart the REPL process")
         cmd_line("list", "show connected instruments")
         cmd_line("use", "set active instrument  (use <name>)")
@@ -968,7 +1047,7 @@ class InstrumentRepl(cmd.Cmd):
         cmd_line("awg", "function generator  — chan, wave, freq, amp, offset, duty, phase")
         cmd_line("dmm", "multimeter  — config, read, fetch, meas, beep, display")
         cmd_line("scope", "oscilloscope  — chan, meas, meas_loop, save, trigger, awg, dvm, counter")
-        cmd_line("smu", "source measure unit  — set, meas, meas_store, get, on, off")
+        cmd_line("smu", "source measure unit  — set, meas, get, on, off")
 
         section("SCRIPTING")
         cmd_line("script", "manage and run named scripts  — new, run, debug, edit, list, rm, show, dir")
@@ -983,6 +1062,7 @@ class InstrumentRepl(cmd.Cmd):
         cmd_line("calc", "compute a value from logged measurements")
         cmd_line("check", "pass/fail assertion on measurements")
         cmd_line("report", "view or export lab test report  — print, save, clear, title, operator")
+        cmd_line("plot", "plot measurement log data  (plot [pattern] [--title ...])")
         cmd_line("data dir", "get or set the data output directory  (data dir [path|reset])")
 
         print(f"\n  {Y}help <command>{R}  for full documentation   {Y}help all{R}  for everything at once\n")
@@ -998,6 +1078,9 @@ class InstrumentRepl(cmd.Cmd):
 
     def help_calc(self):
         self.do_calc("")
+
+    def help_plot(self):
+        self._plot_cmd.execute("--help")
 
     def help_script(self):
         self.do_script("")
@@ -1026,6 +1109,21 @@ class InstrumentRepl(cmd.Cmd):
                 "  - discover and connect to all VISA instruments",
                 "  - instruments are assigned names: psu1, awg1, dmm1, scope1, …",
                 "  - re-run at any time to pick up newly connected devices",
+                "  - already-connected instruments keep their current state",
+                "",
+                "  see also: force_scan (resets all outputs to 0)",
+            ]
+        )
+
+    def help_force_scan(self):
+        self._general.print_colored_usage(
+            [
+                "# FORCE_SCAN",
+                "",
+                "force_scan",
+                "  - disconnect all instruments and re-scan from scratch",
+                "  - all outputs are set to safe defaults (0 V, off)",
+                "  - use when you want a clean slate",
             ]
         )
 

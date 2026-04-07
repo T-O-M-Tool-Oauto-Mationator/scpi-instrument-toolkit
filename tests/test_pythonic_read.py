@@ -76,7 +76,7 @@ class TestInstrumentReadAssignment:
         assert len(repl_dmm.ctx.measurements) == 1
         entry = repl_dmm.ctx.measurements.get_by_label("output_v")
         assert entry is not None
-        assert entry["source"] == "dmm.read"
+        assert entry["source"] == "dmm"
 
     def test_dmm_read_unit_autodetect_vdc(self, repl_dmm):
         repl_dmm.onecmd("dmm config vdc")
@@ -121,16 +121,16 @@ class TestInstrumentReadAssignment:
         assert entry["unit"] == "kohms"
 
     def test_psu_read_voltage(self, repl_dmm_psu):
-        repl_dmm_psu.onecmd("psu meas v")
+        repl_dmm_psu.onecmd("psu meas 1 v")
         repl_dmm_psu.onecmd("supply = psu read")
         assert "supply" in repl_dmm_psu.ctx.script_vars
         entry = repl_dmm_psu.ctx.measurements.get_by_label("supply")
         assert entry is not None
         assert entry["unit"] == "V"
-        assert entry["source"] == "psu.read"
+        assert entry["source"] == "psu"
 
     def test_psu_read_current(self, repl_dmm_psu):
-        repl_dmm_psu.onecmd("psu meas i")
+        repl_dmm_psu.onecmd("psu meas 1 i")
         repl_dmm_psu.onecmd("supply_i = psu read")
         entry = repl_dmm_psu.ctx.measurements.get_by_label("supply_i")
         assert entry is not None
@@ -195,7 +195,7 @@ class TestLogSave:
         with open(csv_path) as f:
             content = f.read()
         assert "output_v" in content
-        assert "dmm.read" in content
+        assert "dmm" in content
 
 
 # -----------------------------------------------------------------------

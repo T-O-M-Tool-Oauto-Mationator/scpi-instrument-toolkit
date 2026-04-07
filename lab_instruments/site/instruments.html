@@ -11,10 +11,10 @@
       
       
       
-        <link rel="prev" href="logging.html">
+        <link rel="prev" href="install.html">
       
       
-        <link rel="next" href="troubleshooting.html">
+        <link rel="next" href="general.html">
       
       
         
@@ -50,6 +50,8 @@
         <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
       
     
+    
+      <link rel="stylesheet" href="assets/_mkdocstrings.css">
     
     <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
@@ -259,84 +261,6 @@
   
   
   
-  
-    <li class="md-tabs__item">
-      <a href="general.html" class="md-tabs__link">
-        
-  
-  
-    
-  
-  General Commands
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="psu.html" class="md-tabs__link">
-          
-  
-  
-  Instruments
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="scripting.html" class="md-tabs__link">
-          
-  
-  
-  Scripting
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="logging.html" class="md-tabs__link">
-        
-  
-  
-    
-  
-  Log & Calc
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
     
   
   
@@ -348,6 +272,104 @@
     
   
   Supported Instruments
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="general.html" class="md-tabs__link">
+          
+  
+  
+  REPL
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="python.html" class="md-tabs__link">
+          
+  
+  
+  Python API
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="generated/instruments.html" class="md-tabs__link">
+          
+  
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="labview.html" class="md-tabs__link">
+        
+  
+  
+    
+  
+  LabVIEW Bridge
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="architecture.html" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Architecture
 
       </a>
     </li>
@@ -476,17 +498,44 @@
       
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="general.html" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Supported Instruments
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="instruments.html" class="md-nav__link md-nav__link--active">
         
   
   
   <span class="md-ellipsis">
     
   
-    General Commands
+    Supported Instruments
   
 
     
@@ -495,6 +544,120 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#supported-models" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Supported models
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#connection-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Connection setup
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Connection setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#usb-and-gpib-instruments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        USB and GPIB instruments
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ni-pxie-instruments-ni-pxie-4139-smu" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        NI PXIe instruments (NI PXIe-4139 SMU)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ti-ev2300a-usb-to-i2c" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TI EV2300A (USB-to-I2C)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#serial-instruments-matrix-mps-jds6600" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Serial instruments (Matrix MPS, JDS6600)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#auto-detection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Auto-detection
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#testing-without-hardware" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Testing without hardware
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -531,7 +694,7 @@
   <span class="md-ellipsis">
     
   
-    Instruments
+    REPL
   
 
     
@@ -547,11 +710,39 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Instruments
+    REPL
   
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="general.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    General Commands
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -700,6 +891,34 @@
   
   
     <li class="md-nav__item">
+      <a href="ev2300.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    USB-to-I2C Adapter (EV2300)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="ni_pxie.html" class="md-nav__link">
         
   
@@ -708,6 +927,90 @@
     
   
     NI PXIe-4139 Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="scripting.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Scripting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Example Workflows
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="logging.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Log & Calc
   
 
     
@@ -760,7 +1063,7 @@
   <span class="md-ellipsis">
     
   
-    Scripting
+    Python API
   
 
     
@@ -776,7 +1079,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Scripting
+    Python API
   
 
           </label>
@@ -789,14 +1092,14 @@
   
   
     <li class="md-nav__item">
-      <a href="scripting.html" class="md-nav__link">
+      <a href="python.html" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Scripts & Directives
+    Quickstart
   
 
     
@@ -817,14 +1120,327 @@
   
   
     <li class="md-nav__item">
-      <a href="examples.html" class="md-nav__link">
+      <a href="api/enums.html" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Example Workflows
+    Enumerations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="api/psu.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Power Supplies
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="api/dmm.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Multimeters
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="api/awg.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Function Generators
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="api/scope.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Oscilloscopes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="api/smu.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Source Measure Unit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="api/ev2300.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    USB-to-I2C (EV2300)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="api/base.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Base Class
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="generated/instruments.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Instruments & Capabilities
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="generated/repl-ref.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    REPL Command Reference
   
 
     
@@ -852,14 +1468,14 @@
   
   
     <li class="md-nav__item">
-      <a href="logging.html" class="md-nav__link">
+      <a href="labview.html" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Log & Calc
+    LabVIEW Bridge
   
 
     
@@ -876,44 +1492,17 @@
       
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Supported Instruments
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="instruments.html" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="architecture.html" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Supported Instruments
+    Architecture
   
 
     
@@ -922,109 +1511,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#supported-models" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Supported models
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#connection-setup" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Connection setup
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Connection setup">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#usb-and-gpib-instruments" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        USB and GPIB instruments
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#ni-pxie-instruments-ni-pxie-4139-smu" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        NI PXIe instruments (NI PXIe-4139 SMU)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#serial-instruments-matrix-mps-jds6600" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Serial instruments (Matrix MPS, JDS6600)
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#auto-detection" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Auto-detection
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#testing-without-hardware" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Testing without hardware
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1128,6 +1614,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#ti-ev2300a-usb-to-i2c" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TI EV2300A (USB-to-I2C)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#serial-instruments-matrix-mps-jds6600" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1187,6 +1684,10 @@
 
 <h1 id="supported-instruments">Supported Instruments<a class="headerlink" href="#supported-instruments" title="Permanent link">&para;</a></h1>
 <h2 id="supported-models">Supported models<a class="headerlink" href="#supported-models" title="Permanent link">&para;</a></h2>
+<div class="admonition tip">
+<p class="admonition-title">Auto-generated version</p>
+<p>An auto-generated instruments table (built from source code, always up-to-date) is available at <a href="generated/instruments.html">Instruments &amp; Capabilities</a>.</p>
+</div>
 <table>
 <thead>
 <tr>
@@ -1216,6 +1717,12 @@
 <td>Triple-output, tracking</td>
 </tr>
 <tr>
+<td>Keysight EDU36311A</td>
+<td>Power Supply</td>
+<td>USB / LAN</td>
+<td>Triple-output (6V/5A, 30V/1A, 30V/1A), tracking, OVP/OCP</td>
+</tr>
+<tr>
 <td>Matrix MPS-6010H-1C</td>
 <td>Power Supply</td>
 <td>Serial</td>
@@ -1226,6 +1733,12 @@
 <td>Multimeter</td>
 <td>GPIB</td>
 <td>Display text, NPLC control</td>
+</tr>
+<tr>
+<td>Keysight EDU34450A</td>
+<td>Multimeter</td>
+<td>USB / LAN</td>
+<td>5½-digit, capacitance, temperature, dual display</td>
 </tr>
 <tr>
 <td>OWON XDM1041</td>
@@ -1255,7 +1768,19 @@
 <td>NI PXIe-4139</td>
 <td>SMU</td>
 <td>PXIe (nidcpower)</td>
-<td>±60 V / 1 A four-quadrant, voltage/current source and measure</td>
+<td>±60 V / 3 A four-quadrant (20 W source, 12 W sink), voltage/current source and measure</td>
+</tr>
+<tr>
+<td>Keysight DSOX1204G</td>
+<td>Oscilloscope</td>
+<td>USB / LAN</td>
+<td>Screenshot, display, acquire, math, mask, label, invert, bwlimit, built-in AWG (WGEN), DVM</td>
+</tr>
+<tr>
+<td>TI EV2300A</td>
+<td>USB-to-I2C Adapter</td>
+<td>USB HID</td>
+<td>SMBus/I2C read/write word/byte/block, register scan, raw probe</td>
 </tr>
 </tbody>
 </table>
@@ -1280,6 +1805,13 @@
 <li>Not compatible with VISA/SCPI — VISA-based commands (<code>*IDN?</code>, etc.) do not apply.</li>
 <li>Remote PXI controllers are not supported.</li>
 </ul>
+<h3 id="ti-ev2300a-usb-to-i2c">TI EV2300A (USB-to-I2C)<a class="headerlink" href="#ti-ev2300a-usb-to-i2c" title="Permanent link">&para;</a></h3>
+<p>The EV2300A is detected automatically via USB HID — no VISA or extra TI drivers needed. It appears as <code>ev2300</code> in the REPL. See <a href="ev2300.html">USB-to-I2C Adapter (EV2300)</a> for commands.</p>
+<p><strong>Prerequisites:</strong></p>
+<ul>
+<li>EV2300A must have firmware loaded (not in bootloader mode). If the REPL reports "bootloader mode", flash firmware via TI bqStudio.</li>
+<li>On Linux, a udev rule is needed for <code>/dev/hidraw</code> access. On macOS, install <code>hidapi</code>.</li>
+</ul>
 <h3 id="serial-instruments-matrix-mps-jds6600">Serial instruments (Matrix MPS, JDS6600)<a class="headerlink" href="#serial-instruments-matrix-mps-jds6600" title="Permanent link">&para;</a></h3>
 <p>Serial instruments are probed automatically at multiple baud rates. No manual configuration is needed. Connect via USB-to-serial adapter, then launch <code>scpi-repl</code>.</p>
 <hr />
@@ -1288,8 +1820,10 @@
 <ol>
 <li>Lists all VISA resources (USB, GPIB, Serial)</li>
 <li>Queries <code>*IDN?</code> on each one</li>
-<li>Matches the response against the known model list</li>
-<li>Assigns a name (<code>psu1</code>, <code>dmm1</code>, <code>scope1</code>, <code>awg1</code>, etc.)</li>
+<li>Scans PXI slots for NI-DCPower devices</li>
+<li>Scans USB HID for EV2300 adapters</li>
+<li>Matches responses against the known model list</li>
+<li>Assigns a name (<code>psu1</code>, <code>dmm1</code>, <code>scope1</code>, <code>awg1</code>, <code>smu1</code>, <code>ev2300</code>, etc.)</li>
 </ol>
 <p>If multiple instruments of the same type are found, they are numbered: <code>psu1</code>, <code>psu2</code>, etc.</p>
 <hr />
@@ -1297,7 +1831,7 @@
 <p>Use <code>--mock</code> to run the REPL with simulated instruments:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>scpi-repl<span class="w"> </span>--mock
 </code></pre></div>
-<p>Mock mode injects: <code>psu1</code>, <code>psu2</code>, <code>awg1</code>, <code>awg2</code>, <code>dmm1</code>, <code>dmm2</code>, <code>scope1</code>, <code>scope2</code> — two of each type. Measurements return realistic random values. Useful for testing scripts before connecting real hardware.</p>
+<p>Mock mode injects: <code>psu1</code>, <code>psu2</code>, <code>psu3</code>, <code>awg1</code>, <code>awg2</code>, <code>dmm1</code>, <code>dmm2</code>, <code>dmm3</code>, <code>smu</code>, <code>scope1</code>, <code>scope2</code>, <code>scope3</code>. Measurements return realistic random values. Useful for testing scripts before connecting real hardware.</p>
 
 
 

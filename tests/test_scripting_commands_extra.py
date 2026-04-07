@@ -45,7 +45,7 @@ class TestScriptNew:
                 # Write some content to the temp file
                 if len(cmd) >= 2:
                     with open(cmd[1], "w") as f:
-                        f.write("psu set 5.0\n")
+                        f.write("psu set 1 5.0\n")
 
             with patch("subprocess.run", side_effect=fake_subprocess_run):
                 repl.onecmd("script new my_new_script")
@@ -95,7 +95,7 @@ class TestScriptNew:
 
 class TestScriptDebug:
     def test_script_debug_run(self, repl, capsys):
-        repl.ctx.scripts = {"debug_s": ["psu set 5.0"]}
+        repl.ctx.scripts = {"debug_s": ["psu set 1 5.0"]}
         with patch("builtins.input", side_effect=["q"]):
             repl.onecmd("script debug debug_s")
 

@@ -34,9 +34,9 @@ class GeneralCommands(BaseCommand):
                     "# DOCS",
                     "",
                     "docs",
-                    "  - open the full command reference in your web browser",
-                    "  - serves the bundled MkDocs site if available",
-                    "  - auto-builds from mkdocs.yml if the site has not been built yet",
+                    "  - open the full documentation in your browser",
+                    "  - covers REPL commands, Python API, scripting, and more",
+                    "  - auto-builds on first run if site has not been built yet",
                     "  - requires: pip install mkdocs-material  (for auto-build)",
                 ]
             )
@@ -47,28 +47,42 @@ class GeneralCommands(BaseCommand):
         # lab_instruments/ is 3 parents up; repo root is 4 parents up
         lab_pkg = pathlib.Path(__file__).resolve().parent.parent.parent
         pkg_root = lab_pkg.parent  # repo root — mkdocs.yml lives here
-        site_dir = lab_pkg / "site"  # matches site_dir in mkdocs.yml
-        mkdocs_yml = pkg_root / "mkdocs.yml"
+        site_dir = lab_pkg / "site"
+        mkdocs_cfg = pkg_root / "mkdocs.yml"
 
-        # Auto-build if needed
-        if not (site_dir / "index.html").exists() and mkdocs_yml.exists():
-            ColorPrinter.info("Building docs (first run — takes a few seconds)...")
+        # Rebuild if mkdocs.yml or any file under docs/ is newer than the built site
+        def _needs_rebuild() -> bool:
+            stamp = site_dir / "index.html"
+            if not stamp.exists():
+                return True
+            built_at = stamp.stat().st_mtime
+            for src in [mkdocs_cfg, *pathlib.Path(pkg_root / "docs").rglob("*")]:
+                if src.is_file() and src.stat().st_mtime > built_at:
+                    return True
+            return False
+
+        if mkdocs_cfg.exists() and _needs_rebuild():
+            ColorPrinter.info("Building docs...")
             try:
                 subprocess.run(
-                    [sys.executable, "-m", "mkdocs", "build"],
+                    [sys.executable, "-m", "mkdocs", "build", "-f", str(mkdocs_cfg)],
                     cwd=str(pkg_root),
                     check=True,
                     capture_output=True,
                     text=True,
                 )
                 ColorPrinter.success("Docs built.")
+                # Restart server so it picks up the fresh site
+                if self._docs_server is not None:
+                    self._docs_server.shutdown()
+                    self._docs_server = None
             except FileNotFoundError:
-                ColorPrinter.warning("mkdocs not found. Install with: pip install mkdocs-material")
-                ColorPrinter.info(f"Docs source: {pkg_root / 'docs'}")
+                ColorPrinter.warning('mkdocs not found. Install with: pip install -e ".[docs]"')
                 return
             except subprocess.CalledProcessError as exc:
-                stderr = (exc.stderr or "")[:200]
+                stderr = (exc.stderr or "")[:300]
                 ColorPrinter.error(f"mkdocs build failed: {stderr}")
+                ColorPrinter.info('Try: pip install -e ".[docs]"')
                 return
 
         if not (site_dir / "index.html").exists():
@@ -88,9 +102,10 @@ class GeneralCommands(BaseCommand):
                 def log_message(self_h, fmt, *a):
                     pass
 
-            self._docs_server = http.server.HTTPServer(("127.0.0.1", 0), _QuietHandler)
-            self._docs_port = self._docs_server.server_address[1]
-            threading.Thread(target=self._docs_server.serve_forever, daemon=True).start()
+            server = http.server.HTTPServer(("127.0.0.1", 0), _QuietHandler)
+            self._docs_server = server
+            self._docs_port = server.server_address[1]
+            threading.Thread(target=server.serve_forever, daemon=True).start()
 
         url = f"http://127.0.0.1:{self._docs_port}/index.html"
         ColorPrinter.info(f"Opening docs: {url}")
@@ -121,6 +136,56 @@ class GeneralCommands(BaseCommand):
                 ColorPrinter.success(f"Found {len(self.registry.devices)} device(s).")
             else:
                 ColorPrinter.warning("No instruments found.")
+
+    def do_force_scan(self, arg: str, discovery: Any, scan_done: Any) -> None:
+        args = self.parse_args(arg)
+        if self.is_help(args):
+            self.print_colored_usage(
+                [
+                    "# FORCE-SCAN",
+                    "",
+                    "force-scan",
+                    "  - disconnect all instruments and re-scan from scratch",
+                    "  - all outputs are set to safe defaults (0 V, off)",
+                    "  - use when you want a clean slate",
+                ]
+            )
+            return
+        if not scan_done.is_set():
+            ColorPrinter.info("Waiting for background scan to finish...")
+            scan_done.wait()
+        self.registry.devices = discovery.scan(verbose=True, force=True)
+        if self.registry.selected not in self.registry.devices:
+            self.registry.selected = None
+        if self.registry.devices:
+            ColorPrinter.success(f"Found {len(self.registry.devices)} device(s). All outputs set to safe defaults.")
+        else:
+            ColorPrinter.warning("No instruments found.")
+
+    def do_disconnect(self, arg: str) -> None:
+        args = self.parse_args(arg)
+        if self.is_help(args) or not args:
+            self.print_colored_usage(
+                [
+                    "# DISCONNECT",
+                    "",
+                    "disconnect <name>",
+                    "  - remove a scanned device from the session by name",
+                    "  - use 'list' to see device names",
+                    "  - the device is removed until the next 'scan'",
+                ]
+            )
+            return
+        name = args[0]
+        if name not in self.registry.devices:
+            ColorPrinter.warning(f"No device named '{name}'. Run 'list' to see connected devices.")
+            return
+        del self.registry.devices[name]
+        if self.registry.selected == name:
+            self.registry.selected = None
+            ColorPrinter.info(f"Removed '{name}' and cleared active selection.")
+        else:
+            ColorPrinter.success(f"Removed '{name}'.")
 
     def do_list(self, arg: str) -> None:
         args = self.parse_args(arg)
@@ -262,6 +327,8 @@ class GeneralCommands(BaseCommand):
         try:
             if name.startswith("psu"):
                 self._state_psu(name, dev, state)
+            elif name.startswith("ev2300"):
+                self._state_ev2300(name, dev, state)
             elif name.startswith("smu"):
                 self._state_smu(name, dev, state)
             elif name.startswith("awg"):
@@ -378,6 +445,16 @@ class GeneralCommands(BaseCommand):
         else:
             ColorPrinter.warning("SMU states: on, off, safe, reset")
 
+    def _state_ev2300(self, name, dev, state):
+        if state in ("safe", "off", "reset"):
+            if hasattr(dev, "reset"):
+                dev.reset()
+            ColorPrinter.success(f"{name}: reset")
+        elif state == "on":
+            ColorPrinter.info(f"{name}: adapter is always on when connected")
+        else:
+            ColorPrinter.warning("EV2300 states: on, off, safe, reset")
+
     def _state_dmm(self, name, dev, state):
         if state in ("safe", "reset"):
             dev.reset()
@@ -489,6 +566,8 @@ class GeneralCommands(BaseCommand):
                 elif name.startswith("smu"):
                     if hasattr(dev, "disable_all_channels"):
                         dev.disable_all_channels()
+                elif name.startswith("ev2300"):
+                    pass  # Bus adapter — no dangerous output state
                 elif name.startswith("dmm") and hasattr(dev, "reset"):
                     dev.reset()
                 ColorPrinter.success(f"{name}: safe state applied")
@@ -540,6 +619,8 @@ class GeneralCommands(BaseCommand):
                     elif hasattr(dev, "enable_output"):
                         dev.enable_output(False)
                     ColorPrinter.success(f"{name}: output disabled")
+                elif name.startswith("ev2300"):
+                    pass  # Bus adapter — no output to disable
                 elif name.startswith("dmm") and hasattr(dev, "reset"):
                     dev.reset()
                     ColorPrinter.success(f"{name}: reset")
@@ -576,6 +657,8 @@ class GeneralCommands(BaseCommand):
                             continue
                         dev.enable_output(True)
                         ColorPrinter.success(f"{name}: output enabled")
+                elif name.startswith("ev2300"):
+                    pass  # Bus adapter — always on when connected
                 elif name.startswith("scope") and hasattr(dev, "enable_all_channels"):
                     dev.enable_all_channels()
                     ColorPrinter.success(f"{name}: channels enabled")

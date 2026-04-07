@@ -7,7 +7,6 @@ Based on DHO800/DHO900 Programming Guide
 """
 
 from dataclasses import dataclass
-from typing import Optional
 
 import numpy as np
 import pyvisa
@@ -42,7 +41,7 @@ class WaveformData:
         """Return number of points in waveform."""
         return len(self.time)
 
-    def plot(self, title: Optional[str] = None):
+    def plot(self, title: str | None = None):
         """
         Plot waveform using matplotlib.
 
@@ -1324,7 +1323,7 @@ class Rigol_DHO804(DeviceManager):
             raise
 
     def save_waveform_csv(
-        self, channel: int, filename: str, max_points: Optional[int] = None, time_window: Optional[float] = None
+        self, channel: int, filename: str, max_points: int | None = None, time_window: float | None = None
     ) -> None:
         """
         Save waveform from a single channel to a CSV file.
@@ -1374,13 +1373,13 @@ class Rigol_DHO804(DeviceManager):
         with open(filename, "w", newline="") as csvfile:
             writer = csv.writer(csvfile)
             writer.writerow(["Time (s)", f"CH{channel} Voltage (V)"])
-            for t, v in zip(times, volts):
+            for t, v in zip(times, volts, strict=True):
                 writer.writerow([t, v])
 
         print(f"Waveform from CH{channel} saved to {filename}")
 
     def save_waveforms_csv(
-        self, channels: list, filename: str, max_points: Optional[int] = None, time_window: Optional[float] = None
+        self, channels: list, filename: str, max_points: int | None = None, time_window: float | None = None
     ) -> None:
         """
         Save waveforms from multiple channels to a single CSV file.

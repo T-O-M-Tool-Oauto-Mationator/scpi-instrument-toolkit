@@ -101,7 +101,9 @@ class LoggingCommands(BaseCommand):
                 ColorPrinter.warning("No measurements recorded.")
                 return
             if not os.path.isabs(path):
-                path = os.path.join(self.ctx.get_data_dir(), path)
+                # Resolve relative to script dir when running a script, else data dir
+                base = self.ctx.get_scripts_dir() if self.ctx.in_script else self.ctx.get_data_dir()
+                path = os.path.join(base, path)
             try:
                 os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
                 with open(path, "w", encoding="utf-8", newline="") as handle:
@@ -381,7 +383,7 @@ class LoggingCommands(BaseCommand):
             headers = ["Label", "Value", "Unit", "Limits", "Status"]
             pdf.set_font("Helvetica", "B", 10)
             pdf.set_fill_color(220, 220, 220)
-            for w, h in zip(col_w, headers):
+            for w, h in zip(col_w, headers, strict=True):
                 pdf.cell(w, 7, h, border=1, fill=True)
             pdf.ln()
             pdf.set_font("Helvetica", "", 10)
@@ -414,7 +416,7 @@ class LoggingCommands(BaseCommand):
             headers2 = ["Label", "Value", "Unit", "Source"]
             pdf.set_font("Helvetica", "B", 10)
             pdf.set_fill_color(220, 220, 220)
-            for w, h in zip(col_w2, headers2):
+            for w, h in zip(col_w2, headers2, strict=True):
                 pdf.cell(w, 7, h, border=1, fill=True)
             pdf.ln()
             pdf.set_font("Helvetica", "", 10)

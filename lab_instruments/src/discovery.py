@@ -6,7 +6,7 @@ import concurrent.futures
 import contextlib
 import threading
 import time
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 import pyvisa
 
@@ -14,7 +14,10 @@ from .bk_4063 import BK_4063
 from .hp_34401a import HP_34401A
 from .hp_e3631a import HP_E3631A
 from .jds6600_generator import JDS6600_Generator
+from .keysight_dsox1204g import Keysight_DSOX1204G
 from .keysight_edu33212a import Keysight_EDU33212A
+from .keysight_edu34450a import Keysight_EDU34450A
+from .keysight_edu36311a import Keysight_EDU36311A
 from .matrix_mps6010h import MATRIX_MPS6010H
 
 try:
@@ -24,6 +27,13 @@ try:
 except ImportError:
     NI_PXIe_4139 = None  # type: ignore[assignment,misc]
     _NI_PXIE_AVAILABLE = False
+try:
+    from .ev2300 import TI_EV2300
+
+    _EV2300_AVAILABLE = True
+except (ImportError, OSError):
+    TI_EV2300 = None  # type: ignore[assignment,misc]
+    _EV2300_AVAILABLE = False
 from .owon_xdm1041 import Owon_XDM1041
 from .rigol_dho804 import Rigol_DHO804
 from .tektronix_mso2024 import Tektronix_MSO2024
@@ -46,7 +56,11 @@ class InstrumentDiscovery:
         "XDM1041": Owon_XDM1041,
         "JDS6600": JDS6600_Generator,
         "EDU33212A": Keysight_EDU33212A,
+        "EDU36311A": Keysight_EDU36311A,
+        "EDU34450A": Keysight_EDU34450A,
+        "DSOX1204G": Keysight_DSOX1204G,
         **({"PXIe-4139": NI_PXIe_4139} if _NI_PXIE_AVAILABLE else {}),
+        **({"EV2300": TI_EV2300} if _EV2300_AVAILABLE else {}),
     }
 
     # Friendly names for the instruments (use generic names)
@@ -60,15 +74,22 @@ class InstrumentDiscovery:
         "XDM1041": "dmm",  # Generic name
         "JDS6600": "awg",
         "EDU33212A": "awg",
+        "EDU36311A": "psu",
+        "EDU34450A": "dmm",
+        "DSOX1204G": "scope",
         "PXIe-4139": "smu",
+        "EV2300": "ev2300",
     }
+
+    # Models recognized during scan but not yet supported (driver under development)
+    WIP_MODELS = {}
 
     # PXI slot range to scan for NI-DCPower devices
     PXI_SLOT_RANGE = range(2, 19)
 
     def __init__(self):
         self.rm = pyvisa.ResourceManager()
-        self.found_devices: Dict[str, Any] = {}
+        self.found_devices: dict[str, Any] = {}
         self._print_lock = threading.Lock()
 
     def _safe_print(self, msg, end="\n", flush=False):
@@ -76,7 +97,7 @@ class InstrumentDiscovery:
         with self._print_lock:
             print(msg, end=end, flush=flush)
 
-    def _try_serial_idn(self, inst) -> Optional[str]:
+    def _try_serial_idn(self, inst) -> str | None:
         """
         Try common serial configurations to query *IDN?.
 
@@ -120,7 +141,7 @@ class InstrumentDiscovery:
 
         return None
 
-    def _try_matrix_idn(self, inst) -> Optional[str]:
+    def _try_matrix_idn(self, inst) -> str | None:
         """
         Try MATRIX MPS-6010H-1C identification.
         This device requires REM:ON before *IDN? will work.
@@ -168,7 +189,7 @@ class InstrumentDiscovery:
 
         return None
 
-    def _try_jds6600_idn(self, inst) -> Optional[str]:
+    def _try_jds6600_idn(self, inst) -> str | None:
         """
         Try JDS6600/Seesii DDS generator identification.
         JDS6600 doesn't respond to *IDN?, uses its own protocol.
@@ -205,11 +226,15 @@ class InstrumentDiscovery:
 
         return None
 
-    def _probe_nidcpower(self, verbose: bool) -> list:
+    def _probe_nidcpower(self, verbose: bool, skip_resources: dict | None = None) -> list:
         """Probe PXI slots for NI-DCPower devices (e.g. PXIe-4139 SMUs).
+
+        Args:
+            skip_resources: resource names to skip (already connected).
 
         Returns a list of (generic_name, driver_instance, model_key, idn) tuples.
         """
+        skip_resources = skip_resources or {}
         try:
             import nidcpower
         except ImportError:
@@ -223,6 +248,11 @@ class InstrumentDiscovery:
         results = []
         for slot in self.PXI_SLOT_RANGE:
             resource_name = f"PXI1Slot{slot}"
+            if resource_name in skip_resources:
+                if verbose:
+                    name, _ = skip_resources[resource_name]
+                    self._safe_print(f"Keeping {resource_name}... already connected as '{name}'")
+                continue
             try:
                 session = nidcpower.Session(resource_name=resource_name, channels="0")
                 try:
@@ -264,12 +294,94 @@ class InstrumentDiscovery:
 
         return results
 
-    def _probe_resource(self, resource: str, verbose: bool) -> Optional[Tuple[str, Any, str, str]]:
+    def _probe_ev2300(self, verbose: bool, skip_resources: dict | None = None) -> list:
+        """Probe USB HID for TI EV2300 adapters.
+
+        Args:
+            skip_resources: resource names to skip (already connected).
+
+        Returns a list of (generic_name, driver_instance, model_key, idn) tuples.
+        """
+        skip_resources = skip_resources or {}
+        if not _EV2300_AVAILABLE:
+            if verbose:
+                self._safe_print("Scanning USB HID for EV2300 adapters...")
+                self._safe_print("  [SKIP] EV2300 driver not available (import failed)")
+            return []
+
+        if verbose:
+            self._safe_print("Scanning USB HID for EV2300 adapters...", flush=True)
+
+        results = []
+        try:
+            devices = TI_EV2300.enumerate_devices(diagnostics=verbose)
+            if not devices and verbose:
+                # Check if any are stuck in bootloader mode
+                bl_count = TI_EV2300.count_bootloader_devices()
+                if bl_count:
+                    self._safe_print(
+                        f"  {ColorPrinter.YELLOW}[WARN] Found {bl_count} EV2300 in "
+                        f"bootloader mode (firmware not loaded). "
+                        f"Flash firmware via TI bqStudio.{ColorPrinter.RESET}"
+                    )
+                else:
+                    self._safe_print("  No EV2300 adapters found")
+
+            for dev_info in devices:
+                try:
+                    path = dev_info["path"]
+                    if str(path) in skip_resources:
+                        if verbose:
+                            name, _ = skip_resources[str(path)]
+                            self._safe_print(f"Keeping EV2300... already connected as '{name}'")
+                        continue
+                    driver = TI_EV2300(path)
+                    driver.connect()
+                    info = driver.get_device_info()
+                    serial = info.get("serial", "unknown") if info.get("ok") else "unknown"
+                    idn = f"Texas Instruments,EV2300A,{serial},pure-python-hid"
+
+                    if verbose:
+                        self._safe_print(f"Checking USB HID... {ColorPrinter.GREEN}Found: {idn}{ColorPrinter.RESET}")
+                        self._safe_print("  -> Identified as EV2300 (USB-to-I2C adapter)")
+                        self._safe_print(
+                            f"  {ColorPrinter.CYAN}Tip: if you get I2C errors, "
+                            f"run 'ev2300 fix' for recovery steps{ColorPrinter.RESET}"
+                        )
+
+                    results.append(("ev2300", driver, "EV2300", idn))
+                except ConnectionError as exc:
+                    if verbose:
+                        path_str = dev_info.get("path_str", dev_info.get("path", "?"))
+                        self._safe_print(
+                            f"  {ColorPrinter.YELLOW}[WARN] EV2300 at {path_str}: "
+                            f"connect failed: {exc}{ColorPrinter.RESET}"
+                        )
+                        self._safe_print(
+                            f"  {ColorPrinter.YELLOW}Another program (e.g. BQ Studio) may have "
+                            f"the EV2300 open. Close it and run 'scan' again.{ColorPrinter.RESET}"
+                        )
+                    continue
+                except Exception as exc:
+                    if verbose:
+                        path_str = dev_info.get("path_str", dev_info.get("path", "?"))
+                        self._safe_print(
+                            f"  {ColorPrinter.YELLOW}[WARN] EV2300 at {path_str}: "
+                            f"connect failed: {exc}{ColorPrinter.RESET}"
+                        )
+                    continue
+        except Exception as exc:
+            if verbose:
+                self._safe_print(f"  {ColorPrinter.YELLOW}[WARN] EV2300 HID scan failed: {exc}{ColorPrinter.RESET}")
+
+        return results
+
+    def _probe_resource(self, resource: str, verbose: bool) -> tuple[str, Any, str, str] | None:
         """
         Probe a single resource and return (generic_name, driver_instance, model_key, idn) if successful.
         """
         # Skip Bluetooth and other virtual serial ports that often hang
-        if any(skip in resource for skip in ["Bluetooth", "BTHENUM", "BT"]):
+        if any(skip in resource for skip in ["Bluetooth", "BTHENUM"]):
             if verbose:
                 self._safe_print(f"Skipping {resource} (virtual port)")
             return None
@@ -343,6 +455,17 @@ class InstrumentDiscovery:
                             )
                         return None
 
+            # Check for WIP models (recognized but driver not yet implemented)
+            for wip_key, wip_desc in self.WIP_MODELS.items():
+                if wip_key in idn:
+                    inst.close()
+                    if verbose:
+                        self._safe_print(f"Checking {resource}... {ColorPrinter.GREEN}Found: {idn}{ColorPrinter.RESET}")
+                        self._safe_print(
+                            f"{ColorPrinter.YELLOW}  -> {wip_desc} — not yet supported.{ColorPrinter.RESET}"
+                        )
+                    return None
+
             # No match found
             inst.close()
             if verbose:
@@ -360,10 +483,18 @@ class InstrumentDiscovery:
                     self._safe_print(f"Checking {resource}... {ColorPrinter.RED}No response{ColorPrinter.RESET}")
             return None
 
-    def scan(self, verbose=True) -> Dict[str, Any]:
+    def scan(self, verbose=True, force=False) -> dict[str, Any]:
         """Scans all available VISA resources and attempts to identify supported instruments.
 
         This scan is performed in parallel for improved performance.
+        Already-connected instruments are kept as-is so that a re-scan does
+        not disrupt running outputs (e.g. a PSU that is actively sourcing).
+
+        Args:
+            verbose: Print progress messages.
+            force: If True, re-probe all resources from scratch (first-scan
+                behaviour). Existing drivers are disconnected and all
+                instruments are re-initialised to safe defaults.
 
         Returns:
             Dict[str, Any]: A dictionary of initialized instrument drivers, keyed by their friendly name
@@ -371,6 +502,21 @@ class InstrumentDiscovery:
         """
         if verbose:
             ColorPrinter.header("Scanning for Instruments")
+
+        if force:
+            # Disconnect existing drivers so they get freshly initialised
+            for _name, drv in list(self.found_devices.items()):
+                with contextlib.suppress(Exception):
+                    drv.disconnect()
+            self.found_devices.clear()
+
+        # Build a lookup of resource_name -> (friendly_name, driver) for
+        # instruments that are already connected so we can skip re-probing them.
+        existing_by_resource: dict[str, tuple[str, Any]] = {}
+        for name, drv in self.found_devices.items():
+            res_name = getattr(drv, "resource_name", None)
+            if res_name:
+                existing_by_resource[res_name] = (name, drv)
 
         try:
             if verbose:
@@ -390,34 +536,77 @@ class InstrumentDiscovery:
         if not resources:
             return {}
 
-        # Run probes in parallel
-        results = []
-        with concurrent.futures.ThreadPoolExecutor(max_workers=len(resources)) as executor:
-            # Map resources to the probe function
-            future_to_resource = {executor.submit(self._probe_resource, res, verbose): res for res in resources}
-            for future in concurrent.futures.as_completed(future_to_resource):
-                try:
-                    res = future.result()
-                    if res:
-                        results.append(res)
-                except Exception as e:
-                    if verbose:
-                        self._safe_print(f"{ColorPrinter.RED}Thread error during scan: {e}{ColorPrinter.RESET}")
+        # Separate resources into already-known and new
+        new_resources = []
+        kept_results = []  # (generic, driver, model_key, idn) for existing drivers
+        for res in resources:
+            if res in existing_by_resource:
+                name, drv = existing_by_resource[res]
+                # Find the model_key and generic name from the driver class
+                model_key = ""
+                generic = ""
+                for key, cls in self.MODEL_MAP.items():
+                    if isinstance(drv, cls):
+                        model_key = key
+                        generic = self.NAME_MAP.get(key, "")
+                        break
+                if not generic:
+                    generic = name.rstrip("0123456789") or name
+                if verbose:
+                    self._safe_print(f"Keeping {res}... already connected as '{name}'")
+                kept_results.append((generic, drv, model_key, ""))
+            else:
+                new_resources.append(res)
 
-        # Probe PXI slots for NI-DCPower devices (SMUs)
-        nidcpower_results = self._probe_nidcpower(verbose)
+        # Run probes in parallel — only for new resources
+        results = list(kept_results)
+        if new_resources:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=len(new_resources)) as executor:
+                future_to_resource = {executor.submit(self._probe_resource, res, verbose): res for res in new_resources}
+                for future in concurrent.futures.as_completed(future_to_resource):
+                    try:
+                        res = future.result()
+                        if res:
+                            results.append(res)
+                    except Exception as e:
+                        if verbose:
+                            self._safe_print(f"{ColorPrinter.RED}Thread error during scan: {e}{ColorPrinter.RESET}")
+
+        # Add kept non-VISA devices (PXI, EV2300 HID) that weren't in the VISA
+        # resource list and therefore weren't added to kept_results above.
+        for res_name, (name, drv) in existing_by_resource.items():
+            # Skip if already in kept_results (VISA devices handled above)
+            if any(d is drv for _, d, _, _ in results):
+                continue
+            model_key = ""
+            generic = ""
+            for key, cls in self.MODEL_MAP.items():
+                if isinstance(drv, cls):
+                    model_key = key
+                    generic = self.NAME_MAP.get(key, "")
+                    break
+            if not generic:
+                generic = name.rstrip("0123456789") or name
+            results.append((generic, drv, model_key, ""))
+
+        # Probe PXI slots for NI-DCPower devices (SMUs) — skip already-connected slots
+        nidcpower_results = self._probe_nidcpower(verbose, skip_resources=existing_by_resource)
         results.extend(nidcpower_results)
+
+        # Probe USB HID for EV2300 adapters — skip already-connected ones
+        ev2300_results = self._probe_ev2300(verbose, skip_resources=existing_by_resource)
+        results.extend(ev2300_results)
 
         # Post-process: handle naming and type counts
         # Sort results by resource name to ensure deterministic naming (e.g. ASRL1 is psu1, ASRL4 is psu2)
         # Result format: (generic, driver, model_key, idn)
-        results.sort(key=lambda x: x[1].resource_name)
+        results.sort(key=lambda x: str(x[1].resource_name))
 
-        final_drivers: Dict[str, Any] = {}
-        type_counts: Dict[str, int] = {}
+        final_drivers: dict[str, Any] = {}
+        type_counts: dict[str, int] = {}
 
         # Calculate totals for naming
-        type_totals: Dict[str, int] = {}
+        type_totals: dict[str, int] = {}
         for generic, _, _, _ in results:
             type_totals[generic] = type_totals.get(generic, 0) + 1
 
@@ -446,7 +635,7 @@ class InstrumentDiscovery:
 
         return final_drivers
 
-    def get(self, name: str) -> Optional[Any]:
+    def get(self, name: str) -> Any | None:
         """Get an initialized driver by its assigned name.
 
         Valid names are whatever was assigned during scan() — e.g. 'awg', 'awg1',
@@ -458,7 +647,7 @@ class InstrumentDiscovery:
             raise ValueError(f"No instrument named '{name}'. Available: {available}")
         return self.found_devices[name]
 
-    def list_devices(self) -> Dict[str, Any]:
+    def list_devices(self) -> dict[str, Any]:
         """Return all discovered instruments as a dict of name → driver instance."""
         return dict(self.found_devices)
 
@@ -480,7 +669,7 @@ class InstrumentDiscovery:
         self.found_devices[new_name] = self.found_devices.pop(old_name)
 
 
-def find_all(verbose=True) -> Dict[str, Any]:
+def find_all(verbose=True) -> dict[str, Any]:
     """Shortcut function to scan and return all instruments."""
     scanner = InstrumentDiscovery()
     return scanner.scan(verbose)

@@ -25,7 +25,7 @@ from lab_instruments.repl.device_registry import DeviceRegistry
 from lab_instruments.repl.measurement_store import MeasurementStore
 from lab_instruments.repl.syntax import (
     safe_eval,
-    substitute_legacy,
+    substitute_expand,
     substitute_vars,
     validate_name,
 )
@@ -69,37 +69,37 @@ class TestSubstituteVars:
     def test_script_var_priority(self):
         ms = MeasurementStore()
         ms.record("x", 99)
-        result = substitute_vars("value=$x", {"x": "42"}, ms)
+        result = substitute_vars("value={x}", {"x": "42"}, ms)
         assert result == "value=42"
 
     def test_measurement_label_lookup(self):
         ms = MeasurementStore()
         ms.record("volt", 3.3)
-        result = substitute_vars("$volt", {}, ms)
+        result = substitute_vars("{volt}", {}, ms)
         assert result == "3.3"
 
     def test_last_keyword(self):
         ms = MeasurementStore()
         ms.record("a", 1.0)
         ms.record("b", 2.5)
-        result = substitute_vars("$last", {}, ms)
+        result = substitute_vars("{last}", {}, ms)
         assert result == "2.5"
 
     def test_last_keyword_empty_store(self):
         ms = MeasurementStore()
-        result = substitute_vars("$last", {}, ms)
-        assert result == "$last"
+        result = substitute_vars("{last}", {}, ms)
+        assert result == "{last}"
 
     def test_unresolved_variable(self):
-        result = substitute_vars("$unknown", {})
-        assert result == "$unknown"
+        result = substitute_vars("{unknown}", {})
+        assert result == "{unknown}"
 
     def test_no_measurements_object(self):
-        result = substitute_vars("$x", {"x": "10"}, None)
+        result = substitute_vars("{x}", {"x": "10"}, None)
         assert result == "10"
 
     def test_multiple_vars(self):
-        result = substitute_vars("$a + $b", {"a": "1", "b": "2"})
+        result = substitute_vars("{a} + {b}", {"a": "1", "b": "2"})
         assert result == "1 + 2"
 
     def test_no_vars_in_text(self):
@@ -109,26 +109,34 @@ class TestSubstituteVars:
     def test_measurement_label_not_in_script_vars(self):
         ms = MeasurementStore()
         ms.record("myval", 7.7)
-        result = substitute_vars("result=$myval", {}, ms)
+        result = substitute_vars("result={myval}", {}, ms)
         assert result == "result=7.7"
 
     def test_unresolved_no_measurements(self):
-        result = substitute_vars("$missing", {}, None)
-        assert result == "$missing"
+        result = substitute_vars("{missing}", {}, None)
+        assert result == "{missing}"
+
+    def test_dollar_syntax_not_supported(self):
+        result = substitute_vars("$x", {"x": "42"})
+        assert result == "$x"  # $ syntax no longer resolved
 
 
-class TestSubstituteLegacy:
+class TestSubstituteExpand:
     def test_basic_replacement(self):
-        result = substitute_legacy("set ${volt}", {"volt": "5.0"})
+        result = substitute_expand("set {volt}", {"volt": "5.0"})
         assert result == "set 5.0"
 
-    def test_no_replacement(self):
-        result = substitute_legacy("set $volt", {"volt": "5.0"})
-        assert result == "set $volt"  # legacy only matches ${name}
+    def test_no_replacement_unknown(self):
+        result = substitute_expand("set {unknown}", {"volt": "5.0"})
+        assert result == "set {unknown}"
 
     def test_multiple_replacements(self):
-        result = substitute_legacy("${a} and ${b}", {"a": "X", "b": "Y"})
+        result = substitute_expand("{a} and {b}", {"a": "X", "b": "Y"})
         assert result == "X and Y"
+
+    def test_dollar_prefix_passes_through(self):
+        result = substitute_expand("set ${volt}", {"volt": "5.0"})
+        assert result == "set $5.0"  # $ is literal, {volt} still resolves
 
 
 class TestSafeEval:
@@ -417,7 +425,8 @@ class TestDeviceRegistry:
         dev = MockHP_E3631A()
         reg = self._make_registry({"psu1": dev})
         chs = reg.channels_for(dev, "psu")
-        assert chs == [1, 2, 3]
+        assert len(chs) == 3
+        assert sorted(chs) == [1, 2, 3]
 
     def test_channels_for_psu_single(self):
         dev = MockMPS6010H()
@@ -698,7 +707,7 @@ class TestVariableCommands:
     def test_do_print_with_var_substitution(self, capsys):
         vc, ctx = self._make()
         ctx.script_vars["name"] = "Alice"
-        vc.do_print("Hi $name!")
+        vc.do_print("Hi {name}!")
         out = capsys.readouterr().out
         assert "Hi Alice!" in out
 
@@ -800,23 +809,23 @@ class TestVariableCommands:
         out = capsys.readouterr().out
         assert "Sleeping" in out
 
-    def test_do_input(self, capsys, monkeypatch):
+    def test_input_via_assignment(self, capsys, monkeypatch):
         vc, ctx = self._make()
         monkeypatch.setattr("builtins.input", lambda prompt: "42")
-        vc.do_input("myvar Enter a value")
+        vc._assign_var("myvar", "input Enter a value")
         assert ctx.script_vars["myvar"] == "42"
 
-    def test_do_input_no_args(self, capsys):
-        vc, ctx = self._make()
-        vc.do_input("")
-        out = capsys.readouterr().out
-        assert "Usage" in out
-
-    def test_do_input_default_prompt(self, capsys, monkeypatch):
+    def test_input_default_prompt(self, capsys, monkeypatch):
         vc, ctx = self._make()
         monkeypatch.setattr("builtins.input", lambda prompt: "val")
-        vc.do_input("x")
+        vc._assign_var("x", "input")
         assert ctx.script_vars["x"] == "val"
+
+    def test_do_input_legacy_shows_error(self, capsys):
+        vc, ctx = self._make()
+        vc.do_input("myvar prompt")
+        out = capsys.readouterr().out
+        assert "var = input" in out.lower() or "varname = input" in out.lower()
 
     def test_do_pause(self, capsys, monkeypatch):
         vc, ctx = self._make()
@@ -1299,7 +1308,7 @@ class TestLoggingCommands:
         lc, ctx = self._make()
         ctx.measurements.record("psu_v", 5.0, "V", "psu")
         ctx.measurements.record("psu_i", 0.1, "A", "psu")
-        lc.do_calc("power = $psu_v * $psu_i unit=W")
+        lc.do_calc("power = {psu_v} * {psu_i} unit=W")
         out = capsys.readouterr().out
         assert "power" in out
         assert "0.5" in out
@@ -1414,12 +1423,15 @@ class TestExpander:
         assert len(result) == 1
         assert result[0][0] == "print hello"
 
-    def test_comment_and_blank_skipped(self):
+    def test_comment_and_blank_preserved_as_nop(self):
         from lab_instruments.repl.script_engine.expander import expand_script_lines
 
         ctx = self._make_ctx()
         result = expand_script_lines(["# comment", "", "  ", "print x"], {}, ctx)
-        assert len(result) == 1
+        # Comments and blanks are preserved as __NOP__ for debug line alignment
+        assert len(result) == 4
+        assert result[0][0] == "__NOP__"
+        assert result[3][0] == "print x"
 
     def test_set_variable(self):
         from lab_instruments.repl.script_engine.expander import expand_script_lines
@@ -1450,7 +1462,7 @@ class TestExpander:
         from lab_instruments.repl.script_engine.expander import expand_script_lines
 
         ctx = self._make_ctx()
-        lines = ["for v 1 2 3", "print ${v}", "end"]
+        lines = ["for v 1 2 3", "print {v}", "end"]
         variables = {}
         result = expand_script_lines(lines, variables, ctx)
         commands = [cmd for cmd, _ in result if cmd != "__NOP__"]
@@ -1460,7 +1472,7 @@ class TestExpander:
         from lab_instruments.repl.script_engine.expander import expand_script_lines
 
         ctx = self._make_ctx()
-        lines = ["for x,y 1,2 3,4", "print ${x} ${y}", "end"]
+        lines = ["for x,y 1,2 3,4", "print {x} {y}", "end"]
         result = expand_script_lines(lines, {}, ctx)
         commands = [cmd for cmd, _ in result if cmd != "__NOP__"]
         assert commands == ["print 1 2", "print 3 4"]
@@ -1469,7 +1481,7 @@ class TestExpander:
         from lab_instruments.repl.script_engine.expander import expand_script_lines
 
         ctx = self._make_ctx()
-        lines = ["for x,y 1,2 3", "print ${x}", "end"]
+        lines = ["for x,y 1,2 3", "print {x}", "end"]
         expand_script_lines(lines, {}, ctx)
         out = capsys.readouterr().out
         assert "mismatch" in out
@@ -1500,6 +1512,38 @@ class TestExpander:
         expand_script_lines(lines, variables, ctx)
         assert variables["items"] == "1 2 3 4"
 
+    def test_linspace_default_count(self):
+        from lab_instruments.repl.script_engine.expander import expand_script_lines
+
+        ctx = self._make_ctx()
+        variables: dict = {}
+        expand_script_lines(["V = linspace 0 10"], variables, ctx)
+        vals = variables["V"].split()
+        assert len(vals) == 11
+        assert vals[0] == "0"
+        assert vals[-1] == "10"
+
+    def test_linspace_custom_count(self):
+        from lab_instruments.repl.script_engine.expander import expand_script_lines
+
+        ctx = self._make_ctx()
+        variables: dict = {}
+        expand_script_lines(["V = linspace 0 1 5"], variables, ctx)
+        vals = variables["V"].split()
+        assert len(vals) == 5
+        assert vals[0] == "0"
+        assert vals[-1] == "1"
+        assert vals[2] == "0.5"
+
+    def test_linspace_with_for(self):
+        from lab_instruments.repl.script_engine.expander import expand_script_lines
+
+        ctx = self._make_ctx()
+        lines = ["SWEEP = linspace 1 3 3", "for v {SWEEP}", "print {v}", "end"]
+        result = expand_script_lines(lines, {}, ctx)
+        commands = [cmd for cmd, _ in result if cmd != "__NOP__"]
+        assert commands == ["print 1", "print 2", "print 3"]
+
     def test_call(self):
         from lab_instruments.repl.script_engine.expander import expand_script_lines
 
@@ -1522,7 +1566,7 @@ class TestExpander:
         from lab_instruments.repl.script_engine.expander import expand_script_lines
 
         ctx = self._make_ctx()
-        ctx.scripts["sub"] = ["print ${v}"]
+        ctx.scripts["sub"] = ["print {v}"]
         lines = ["call sub v=42"]
         result = expand_script_lines(lines, {}, ctx)
         commands = [cmd for cmd, _ in result if cmd != "__NOP__"]
@@ -1705,7 +1749,7 @@ class TestExpander:
         ctx = self._make_ctx()
         variables = {}
         expand_script_lines(["set a hello"], variables, ctx)
-        result = expand_script_lines(["for v ${a}", "print ${v}", "end"], variables, ctx)
+        result = expand_script_lines(["for v {a}", "print {v}", "end"], variables, ctx)
         commands = [cmd for cmd, _ in result if cmd != "__NOP__"]
         assert "print hello" in commands
 
@@ -2061,7 +2105,7 @@ class TestShell:
         # Simulate entering a for loop interactively
         repl.onecmd("for v 1 2")
         assert repl._in_loop is True
-        repl.onecmd("print ${v}")
+        repl.onecmd("print {v}")
         repl.onecmd("end")
         assert repl._in_loop is False
         out = capsys.readouterr().out
@@ -2446,14 +2490,14 @@ class TestShellIntegration:
         repl = make_repl({})
         repl.ctx.measurements.record("a", 2.0)
         repl.ctx.measurements.record("b", 3.0)
-        repl.onecmd("calc product = $a * $b")
+        repl.onecmd("calc product = {a} * {b}")
         out = capsys.readouterr().out
         assert "6" in out
 
     def test_var_substitution_in_commands(self, make_repl, capsys):
         repl = make_repl({})
         repl.ctx.script_vars["msg"] = "hello"
-        repl.onecmd("print $msg")
+        repl.onecmd("print {msg}")
         out = capsys.readouterr().out
         assert "hello" in out
 

@@ -28,14 +28,13 @@ class TestNIPXIe4139_EnableOutput:
         smu.enable_output(True)
         assert ms.output_enabled is True
         ms.commit.assert_called()
-        ms.initiate.assert_called_once()
 
     def test_enable_off(self, ni_pxie_4139):
         smu, ms = ni_pxie_4139
         smu.enable_output(False)
         assert ms.voltage_level == 0.0
         assert ms.output_enabled is False
-        ms.abort.assert_called_once()
+        ms.commit.assert_called()
 
 
 # ===========================================================================
@@ -137,7 +136,7 @@ class TestNIPXIe4139_GetSetpoints:
 
     def test_get_output_state_on(self, ni_pxie_4139):
         smu, ms = ni_pxie_4139
-        ms.output_enabled = True
+        smu.enable_output(True)
         assert smu.get_output_state() is True
 
 
@@ -350,6 +349,11 @@ class TestNIPXIe4139_CurrentMode:
         smu, ms = ni_pxie_4139
         smu.set_current_mode(0.01)
         assert ms.voltage_limit == pytest.approx(smu.DEFAULT_VOLTAGE_LIMIT)
+
+    def test_set_current_mode_negative(self, ni_pxie_4139):
+        smu, ms = ni_pxie_4139
+        smu.set_current_mode(-0.5, 5.0)
+        assert ms.current_level == -0.5
 
     def test_set_current_mode_too_high_raises(self, ni_pxie_4139):
         smu, _ms = ni_pxie_4139

@@ -7,6 +7,8 @@ Usage:
 
 import random
 
+from lab_instruments.src.hp_e3631a import HP_E3631A as _HP_E3631A
+
 
 class MockBase:
     def disconnect(self):
@@ -40,10 +42,10 @@ class MockPSU(MockBase):
     def set_current_limit(self, i):
         self._current = float(i)
 
-    def set_output_channel(self, ch, v, i=None):
-        self._voltage = float(v)
-        if i is not None:
-            self._current = float(i)
+    def set_output_channel(self, ch, voltage, current_limit=None):
+        self._voltage = float(voltage)
+        if current_limit is not None:
+            self._current = float(current_limit)
 
     def measure_voltage(self, ch=None):
         return round(random.uniform(4.985, 5.015), 6)
@@ -566,6 +568,149 @@ class MockDHO804(MockScope):
         return {"passed": passed, "failed": total - passed, "total": total}
 
 
+class MockDSOX1204G(MockScope):
+    """Mock Keysight DSOX1204G oscilloscope."""
+
+    def get_screenshot(self):
+        """Return dummy PNG bytes."""
+        import base64
+
+        return base64.b64decode(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVQI12NgAAIABQABNl7BcQAAAABJRU5ErkJggg=="
+        )
+
+    def set_channel_label(self, channel, label, show=True):
+        pass
+
+    def invert_channel(self, channel, enable):
+        pass
+
+    def set_bandwidth_limit(self, channel, limit):
+        pass
+
+    def force_trigger(self):
+        pass
+
+    def clear_display(self):
+        pass
+
+    def set_waveform_brightness(self, brightness):
+        pass
+
+    def set_persistence(self, time):
+        pass
+
+    def set_display_type(self, display_type):
+        pass
+
+    def set_acquisition_type(self, acq_type):
+        pass
+
+    def set_average_count(self, count):
+        pass
+
+    def get_sample_rate(self):
+        return 1e9
+
+    def enable_math_channel(self, math_ch, enable=True):
+        pass
+
+    def configure_math_operation(self, math_ch, operation, source1, source2=None):
+        pass
+
+    def configure_math_function(self, math_ch, function, source):
+        pass
+
+    def configure_fft(self, math_ch, source, window="RECT"):
+        pass
+
+    def set_math_scale(self, math_ch, scale, offset=None):
+        pass
+
+    def set_mask_enable(self, enable):
+        pass
+
+    def get_mask_enable(self):
+        return False
+
+    def set_mask_source(self, channel):
+        pass
+
+    def get_mask_source(self):
+        return 1
+
+    def set_mask_tolerance_x(self, tolerance):
+        pass
+
+    def set_mask_tolerance_y(self, tolerance):
+        pass
+
+    def create_mask(self):
+        pass
+
+    def start_mask_test(self):
+        pass
+
+    def stop_mask_test(self):
+        pass
+
+    def get_mask_test_status(self):
+        return "STOP"
+
+    def reset_mask_statistics(self):
+        pass
+
+    def get_mask_failed_count(self):
+        return 0
+
+    def get_mask_passed_count(self):
+        return random.randint(90, 100)
+
+    def get_mask_total_count(self):
+        return 100
+
+    def get_mask_statistics(self):
+        passed = random.randint(90, 100)
+        total = 100
+        return {"passed": passed, "failed": total - passed, "total": total}
+
+    def clear_measurements(self):
+        pass
+
+    def awg_set_output_enable(self, on):
+        pass
+
+    def awg_configure_simple(self, func, freq, amp, offset, enable=True):
+        pass
+
+    def awg_set_function(self, func):
+        pass
+
+    def awg_set_frequency(self, freq):
+        pass
+
+    def awg_set_amplitude(self, amp):
+        pass
+
+    def awg_set_offset(self, offset):
+        pass
+
+    def awg_set_square_duty(self, duty):
+        pass
+
+    def awg_set_ramp_symmetry(self, sym):
+        pass
+
+    def set_dvm_enable(self, on):
+        pass
+
+    def get_dvm_current(self):
+        return round(random.uniform(4.997, 5.003), 4)
+
+    def set_dvm_source(self, ch):
+        pass
+
+
 class MockMSO2024(MockScope):
     """Mock Tektronix MSO2024 oscilloscope."""
 
@@ -574,6 +719,9 @@ class MockMSO2024(MockScope):
 
 class MockMPS6010H(MockPSU):
     """Mock Matrix MPS-6010H power supply with remote mode."""
+
+    MAX_VOLTAGE = 60.0
+    MAX_CURRENT = 10.0
 
     def set_remote_mode(self, on):
         pass
@@ -658,22 +806,100 @@ class MockNI_PXIe_4139(MockPSU):
         return round(random.uniform(22.0, 28.0), 1)
 
 
-class MockHP_E3631A(MockPSU):
+class MockMultiChannelPSU(MockPSU):
+    """Base for multi-channel PSUs: adds select_channel + per-channel output state."""
+
+    def __init__(self):
+        super().__init__()
+        if hasattr(self.__class__, "CHANNEL_FROM_NUMBER"):
+            self._ch_outputs: dict = {ch: False for ch in self.__class__.CHANNEL_FROM_NUMBER.values()}
+        else:
+            self._ch_outputs = {k: False for k in self.CHANNEL_MAP}
+        self._selected_ch = None
+
+    def select_channel(self, ch: str) -> None:
+        self._selected_ch = ch
+
+    def enable_output(self, state) -> None:
+        ch = self._selected_ch
+        if ch and ch in self._ch_outputs:
+            self._ch_outputs[ch] = bool(state)
+        else:
+            for k in self._ch_outputs:
+                self._ch_outputs[k] = bool(state)
+
+    def get_output_state(self, ch=None) -> bool:
+        key = ch if ch is not None else self._selected_ch
+        if key and key in self._ch_outputs:
+            return self._ch_outputs[key]
+        return any(self._ch_outputs.values())
+
+    def disable_all_channels(self) -> None:
+        for k in self._ch_outputs:
+            self._ch_outputs[k] = False
+
+
+class MockHP_E3631A(MockMultiChannelPSU):
     """Mock HP E3631A triple-output power supply."""
 
-    pass
+    Channel = _HP_E3631A.Channel
+    CHANNEL_FROM_NUMBER = _HP_E3631A.CHANNEL_FROM_NUMBER
+    CHANNEL_LIMITS = {
+        _HP_E3631A.Channel.POSITIVE_6V: (6.0, 5.0),
+        _HP_E3631A.Channel.POSITIVE_25V: (25.0, 1.0),
+        _HP_E3631A.Channel.NEGATIVE_25V: (25.0, 1.0),
+    }
+
+
+class MockEDU36311A(MockMultiChannelPSU):
+    """Mock Keysight EDU36311A triple-output power supply."""
+
+    CHANNEL_MAP = {
+        "p6v_channel": "P6V",
+        "p30v_channel": "P30V",
+        "n30v_channel": "N30V",
+    }
+    CHANNEL_LIMITS = {
+        "p6v_channel": (6.0, 5.0),
+        "p30v_channel": (30.0, 1.0),
+        "n30v_channel": (30.0, 1.0),
+    }
 
 
 class MockJDS6600(MockAWG):
     """Mock JDS6600 DDS function generator."""
 
-    pass
+    VALID_WAVEFORMS = [
+        "SINE",
+        "SQUARE",
+        "PULSE",
+        "TRIANGLE",
+        "PARTIAL_SINE",
+        "CMOS",
+        "DC",
+        "HALF_WAVE",
+        "FULL_WAVE",
+        "POS_LADDER",
+        "NEG_LADDER",
+        "NOISE",
+        "EXP_RISE",
+        "EXP_DECAY",
+        "MULTITONE",
+        "SINC",
+        "LORENZ",
+    ]
 
 
 class MockEDU33212A(MockAWG):
     """Mock Keysight EDU33212A function generator."""
 
-    pass
+    VALID_WAVEFORMS = ["SIN", "SQU", "RAMP", "PULS", "NOIS", "PRBS", "DC", "ARB"]
+
+
+class MockBK_4063(MockAWG):
+    """Mock B&K Precision 4063 function generator."""
+
+    VALID_WAVEFORMS = ["SINE", "SQUARE", "RAMP", "PULSE", "NOISE", "DC", "ARB"]
 
 
 class MockHP_34401A(MockDMM):
@@ -682,10 +908,104 @@ class MockHP_34401A(MockDMM):
     pass
 
 
+class MockEDU34450A(MockDMM):
+    """Mock Keysight EDU34450A digital multimeter."""
+
+    def configure_capacitance(self, range_val="DEF"):
+        pass
+
+    def configure_temperature(self):
+        pass
+
+    def measure_capacitance(self, range_val="DEF"):
+        return round(random.uniform(99e-9, 101e-9), 12)
+
+    def measure_temperature(self):
+        return round(random.uniform(22.0, 26.0), 1)
+
+
 class MockXDM1041(MockDMM):
     """Mock OWON XDM1041 digital multimeter."""
 
     pass
+
+
+class MockEV2300(MockBase):
+    """Mock TI EV2300 USB-to-I2C adapter."""
+
+    def __init__(self):
+        self.resource_name = "mock-ev2300"
+        self._is_open = False
+
+    def connect(self):
+        self._is_open = True
+
+    def disconnect(self):
+        self._is_open = False
+
+    @property
+    def is_open(self):
+        return self._is_open
+
+    def read_word(self, i2c_addr: int, register: int) -> dict:
+        return {"ok": True, "cmd": 0x41, "value": random.randint(0, 0xFFFF), "crc_ok": True, "error": False}
+
+    def write_word(self, i2c_addr: int, register: int, value: int) -> dict:
+        return {"ok": True, "cmd": 0x44, "crc_ok": True, "error": False}
+
+    def read_byte(self, i2c_addr: int, register: int) -> dict:
+        return {"ok": True, "cmd": 0x43, "value": random.randint(0, 0xFF), "crc_ok": True, "error": False}
+
+    def write_byte(self, i2c_addr: int, register: int, value: int) -> dict:
+        return {"ok": True, "cmd": 0x47, "crc_ok": True, "error": False}
+
+    def read_block(self, i2c_addr: int, register: int) -> dict:
+        block = bytes(random.randint(0, 0xFF) for _ in range(4))
+        return {"ok": True, "cmd": 0x42, "block": block, "crc_ok": True, "error": False}
+
+    def write_block(self, i2c_addr: int, register: int, data: bytes) -> dict:
+        return {"ok": True, "cmd": 0x45, "crc_ok": True, "error": False}
+
+    def send_byte(self, i2c_addr: int, command: int) -> dict:
+        return {"ok": True, "cmd": 0x46, "crc_ok": True, "error": False}
+
+    def get_device_info(self) -> dict:
+        return {
+            "ok": True,
+            "vid": "0x0451",
+            "pid": "0x0036",
+            "serial": "MOCK001",
+            "product": "EV2300A",
+            "manufacturer": "Texas Inst",
+            "version": "0x0200",
+        }
+
+    def i2c_power(self, enabled: int = 1) -> dict:
+        return {"ok": True, "status": 0, "enabled": int(enabled)}
+
+    def open_device(self, adapter: str = "auto") -> dict:
+        self.connect()
+        return {"ok": True, "status": 0}
+
+    def close_device(self) -> int:
+        self.disconnect()
+        return 0
+
+    def read_smbus_word(self, i2c_addr: int, register_addr: int, pec: int = 0) -> dict:
+        r = self.read_word(i2c_addr, register_addr)
+        return {"ok": True, "status": 0, "value": r["value"]}
+
+    def write_smbus_byte(self, i2c_addr: int, register_addr: int, value: int, pec: int = 0) -> dict:
+        return {"ok": True, "status": 0, "register": register_addr, "value": value & 0xFF}
+
+    def clear_status(self):
+        pass
+
+    def query(self, cmd, **kwargs):
+        return "Texas Instruments,EV2300A,MOCK001,mock"
+
+    def probe_command(self, cmd, i2c_addr=0x08, register=0x00, data=b"", write_submit=False):
+        return {"ok": True, "cmd": cmd | 0x40, "probe_cmd": cmd, "error": False}
 
 
 def get_mock_devices(verbose=True):
@@ -694,18 +1014,26 @@ def get_mock_devices(verbose=True):
     if verbose:
         ColorPrinter.warning("Mock mode — no real instruments connected")
         ColorPrinter.info(
-            "Injecting: psu1 (MockHP_E3631A), psu2 (MockMPS6010H), smu (MockNI_PXIe_4139), "
-            "awg1 (MockEDU33212A), awg2 (MockJDS6600), dmm1 (MockHP_34401A), dmm2 (MockXDM1041), "
-            "scope1 (MockDHO804), scope2 (MockMSO2024)"
+            "Injecting: psu1 (MockHP_E3631A), psu2 (MockMPS6010H), psu3 (MockEDU36311A), "
+            "smu (MockNI_PXIe_4139), "
+            "awg1 (MockEDU33212A), awg2 (MockJDS6600), awg3 (MockBK_4063), "
+            "dmm1 (MockHP_34401A), dmm2 (MockXDM1041), dmm3 (MockEDU34450A), "
+            "scope1 (MockDHO804), scope2 (MockMSO2024), scope3 (MockDSOX1204G), "
+            "ev2300 (MockEV2300)"
         )
     return {
         "psu1": MockHP_E3631A(),
         "psu2": MockMPS6010H(),
+        "psu3": MockEDU36311A(),
         "smu": MockNI_PXIe_4139(),
         "awg1": MockEDU33212A(),
         "awg2": MockJDS6600(),
+        "awg3": MockBK_4063(),
         "dmm1": MockHP_34401A(),
         "dmm2": MockXDM1041(),
+        "dmm3": MockEDU34450A(),
         "scope1": MockDHO804(),
         "scope2": MockMSO2024(),
+        "scope3": MockDSOX1204G(),
+        "ev2300": MockEV2300(),
     }
