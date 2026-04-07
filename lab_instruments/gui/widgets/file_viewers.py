@@ -26,10 +26,9 @@ def _silence_mupdf():
         os.dup2(saved, 2)
         os.close(saved)
 
-from PySide6.QtCore import Qt, QThread, Signal
+from PySide6.QtCore import QEvent, Qt, QThread, Signal
 from PySide6.QtGui import QColor, QImage, QKeySequence, QPixmap, QShortcut, QTextCharFormat, QTextCursor, QTextDocument
 from PySide6.QtWidgets import (
-    QComboBox,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -659,12 +658,17 @@ class TextViewer(QWidget):
 class PdfViewer(QWidget):
     """Renders PDF pages as images using PyMuPDF."""
 
+    _ZOOM_MIN = 0.05
+    _ZOOM_MAX = 20.0
+    _ZOOM_STEP = 1.25
+
     def __init__(self, file_path: str, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._path = file_path
         self._page = 0
         self._page_count = 0
         self._zoom_scale = 2.0
+        self._zoom_fit = True
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
         lay = QVBoxLayout(self)
@@ -680,17 +684,40 @@ class PdfViewer(QWidget):
         self._next_btn.clicked.connect(self._next)
         tb.addWidget(self._next_btn)
         tb.addStretch()
+
+        fit_btn = QPushButton("Fit")
+        fit_btn.setFixedWidth(38)
+        fit_btn.clicked.connect(self._fit)
+        tb.addWidget(fit_btn)
+
+        zoom_out_btn = QPushButton("−")
+        zoom_out_btn.setFixedWidth(26)
+        zoom_out_btn.clicked.connect(lambda: self._zoom_by(1 / self._ZOOM_STEP))
+        tb.addWidget(zoom_out_btn)
+
+        self._zoom_label = QLabel("")
+        self._zoom_label.setFixedWidth(54)
+        self._zoom_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._zoom_label.setStyleSheet("font-size: 10px;")
+        tb.addWidget(self._zoom_label)
+
+        zoom_in_btn = QPushButton("+")
+        zoom_in_btn.setFixedWidth(26)
+        zoom_in_btn.clicked.connect(lambda: self._zoom_by(self._ZOOM_STEP))
+        tb.addWidget(zoom_in_btn)
+
         self._info = QLabel("")
-        self._info.setStyleSheet("font-size: 10px;")
+        self._info.setStyleSheet("font-size: 10px; margin-left: 8px;")
         tb.addWidget(self._info)
         lay.addLayout(tb)
 
         self._scroll = QScrollArea()
         self._scroll.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._scroll.setWidgetResizable(True)
+        self._scroll.setWidgetResizable(False)
         self._label = QLabel()
         self._label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._scroll.setWidget(self._label)
+        self._scroll.viewport().installEventFilter(self)
         lay.addWidget(self._scroll, 1)
 
         try:
@@ -713,10 +740,18 @@ class PdfViewer(QWidget):
         with _silence_mupdf():
             pix = page.get_pixmap(matrix=mat)
         img = QImage(pix.samples, pix.width, pix.height, pix.stride, QImage.Format.Format_RGB888)
-        self._label.setPixmap(QPixmap.fromImage(img))
-        self._info.setText(f"Page {self._page + 1} / {self._page_count}   {int(self._zoom_scale * 50)}%")
+        pixmap = QPixmap.fromImage(img)
+        self._label.setPixmap(pixmap)
+        self._label.resize(pixmap.size())
+        self._zoom_label.setText(f"{int(self._zoom_scale * 100)}%")
+        self._info.setText(f"Page {self._page + 1} / {self._page_count}")
         self._prev_btn.setEnabled(self._page > 0)
         self._next_btn.setEnabled(self._page < self._page_count - 1)
+
+    def _zoom_by(self, factor: float) -> None:
+        self._zoom_scale = max(self._ZOOM_MIN, min(self._ZOOM_MAX, self._zoom_scale * factor))
+        self._zoom_fit = False
+        self._render()
 
     def _prev(self) -> None:
         if self._page > 0:
@@ -732,11 +767,25 @@ class PdfViewer(QWidget):
         if not self._page_count:
             return
         import fitz  # noqa: F811
-        vp_w = self._scroll.viewport().width()
+        vp_w = self._scroll.viewport().width() - 4
         page = self._doc[self._page]
         if vp_w > 0 and page.rect.width > 0:
             self._zoom_scale = vp_w / page.rect.width
+            self._zoom_fit = True
             self._render()
+
+    def resizeEvent(self, event) -> None:  # noqa: N802
+        if self._zoom_fit and self._page_count:
+            self._fit()
+        super().resizeEvent(event)
+
+    def eventFilter(self, obj, event) -> bool:  # noqa: N802
+        if obj is self._scroll.viewport() and event.type() == QEvent.Type.Wheel:
+            if event.modifiers() & Qt.KeyboardModifier.ControlModifier:
+                factor = self._ZOOM_STEP if event.angleDelta().y() > 0 else 1 / self._ZOOM_STEP
+                self._zoom_by(factor)
+                return True
+        return super().eventFilter(obj, event)
 
     def keyPressEvent(self, event) -> None:  # noqa: N802
         key = event.key()
@@ -745,11 +794,9 @@ class PdfViewer(QWidget):
         elif key in (Qt.Key.Key_Right, Qt.Key.Key_Down):
             self._next()
         elif key in (Qt.Key.Key_Plus, Qt.Key.Key_Equal):
-            self._zoom_scale = min(6.0, self._zoom_scale + 0.25)
-            self._render()
+            self._zoom_by(self._ZOOM_STEP)
         elif key == Qt.Key.Key_Minus:
-            self._zoom_scale = max(0.25, self._zoom_scale - 0.25)
-            self._render()
+            self._zoom_by(1 / self._ZOOM_STEP)
         elif key in (Qt.Key.Key_F, Qt.Key.Key_0):
             self._fit()
         else:
@@ -899,6 +946,10 @@ class _OfficeConversionWorker(QThread):
 class _OfficeViewerBase(QWidget):
     """Base viewer for Office documents rendered via LibreOffice + PyMuPDF."""
 
+    _ZOOM_MIN = 5.0
+    _ZOOM_MAX = 2000.0
+    _ZOOM_STEP = 1.25
+
     def __init__(self, file_path: str, page_label: str = "Page", parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._path = file_path
@@ -906,6 +957,8 @@ class _OfficeViewerBase(QWidget):
         self._pages: list[QImage] = []
         self._current = 0
         self._worker: _OfficeConversionWorker | None = None
+        self._zoom_pct: float = 100.0
+        self._zoom_fit: bool = True
 
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
@@ -935,19 +988,34 @@ class _OfficeViewerBase(QWidget):
 
         tb.addItem(QSpacerItem(0, 0, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum))
 
-        tb.addWidget(QLabel("Zoom:"))
-        self._zoom_combo = QComboBox()
-        self._zoom_combo.addItems(["Fit Width", "50%", "75%", "100%", "150%", "200%"])
-        self._zoom_combo.setCurrentIndex(0)
-        self._zoom_combo.currentTextChanged.connect(lambda _: self._apply_zoom())
-        tb.addWidget(self._zoom_combo)
+        fit_btn = QPushButton("Fit")
+        fit_btn.setFixedWidth(38)
+        fit_btn.clicked.connect(self._fit_width)
+        tb.addWidget(fit_btn)
+
+        zoom_out_btn = QPushButton("−")
+        zoom_out_btn.setFixedWidth(26)
+        zoom_out_btn.clicked.connect(lambda: self._zoom_by(1 / self._ZOOM_STEP))
+        tb.addWidget(zoom_out_btn)
+
+        self._zoom_label = QLabel("100%")
+        self._zoom_label.setFixedWidth(54)
+        self._zoom_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._zoom_label.setStyleSheet("font-size: 10px;")
+        tb.addWidget(self._zoom_label)
+
+        zoom_in_btn = QPushButton("+")
+        zoom_in_btn.setFixedWidth(26)
+        zoom_in_btn.clicked.connect(lambda: self._zoom_by(self._ZOOM_STEP))
+        tb.addWidget(zoom_in_btn)
 
         lay.addLayout(tb)
 
         # -- scroll area --
         self._scroll = QScrollArea()
-        self._scroll.setWidgetResizable(True)
+        self._scroll.setWidgetResizable(False)
         self._scroll.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._scroll.viewport().installEventFilter(self)
 
         self._label = QLabel()
         self._label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -1000,22 +1068,36 @@ class _OfficeViewerBase(QWidget):
         self._prev_btn.setEnabled(self._current > 0)
         self._next_btn.setEnabled(self._current < total - 1)
 
+    # -- zoom --
+
+    def _fit_width(self) -> None:
+        if not self._pages:
+            return
+        vp_w = self._scroll.viewport().width() - 4
+        src = self._pages[self._current]
+        if vp_w > 0 and src.width() > 0:
+            self._zoom_pct = vp_w / src.width() * 100
+            self._zoom_fit = True
+            self._apply_zoom()
+
+    def _zoom_by(self, factor: float) -> None:
+        self._zoom_pct = max(self._ZOOM_MIN, min(self._ZOOM_MAX, self._zoom_pct * factor))
+        self._zoom_fit = False
+        self._apply_zoom()
+
     def _apply_zoom(self) -> None:
         if not self._pages:
             return
         src = self._pages[self._current]
-        pix = QPixmap.fromImage(src)
-        choice = self._zoom_combo.currentText()
-        if choice == "Fit Width":
+        if self._zoom_fit:
             vp_w = self._scroll.viewport().width() - 4
-            if vp_w > 0 and pix.width() > 0:
-                pix = pix.scaledToWidth(vp_w, Qt.TransformationMode.SmoothTransformation)
-        else:
-            pct = int(choice.replace("%", ""))
-            target_w = int(src.width() * pct / 100)
-            if target_w > 0:
-                pix = pix.scaledToWidth(target_w, Qt.TransformationMode.SmoothTransformation)
+            if vp_w > 0 and src.width() > 0:
+                self._zoom_pct = vp_w / src.width() * 100
+        target_w = max(1, int(src.width() * self._zoom_pct / 100))
+        pix = QPixmap.fromImage(src).scaledToWidth(target_w, Qt.TransformationMode.SmoothTransformation)
         self._label.setPixmap(pix)
+        self._label.resize(pix.size())
+        self._zoom_label.setText(f"{int(self._zoom_pct)}%")
 
     def _prev(self) -> None:
         if self._current > 0:
@@ -1027,14 +1109,18 @@ class _OfficeViewerBase(QWidget):
 
     # -- events --
 
-    def resizeEvent(self, event) -> None:
-        if self._zoom_combo.currentText() == "Fit Width":
+    def resizeEvent(self, event) -> None:  # noqa: N802
+        if self._zoom_fit:
             self._apply_zoom()
         super().resizeEvent(event)
 
-    def _zoom_step(self, direction: int) -> None:
-        cur = self._zoom_combo.currentIndex()
-        self._zoom_combo.setCurrentIndex(max(0, min(self._zoom_combo.count() - 1, cur + direction)))
+    def eventFilter(self, obj, event) -> bool:  # noqa: N802
+        if obj is self._scroll.viewport() and event.type() == QEvent.Type.Wheel:
+            if event.modifiers() & Qt.KeyboardModifier.ControlModifier:
+                factor = self._ZOOM_STEP if event.angleDelta().y() > 0 else 1 / self._ZOOM_STEP
+                self._zoom_by(factor)
+                return True
+        return super().eventFilter(obj, event)
 
     def keyPressEvent(self, event) -> None:  # noqa: N802
         key = event.key()
@@ -1047,15 +1133,15 @@ class _OfficeViewerBase(QWidget):
         elif key == Qt.Key.Key_End:
             self._go_to(len(self._pages) - 1)
         elif key in (Qt.Key.Key_Plus, Qt.Key.Key_Equal):
-            self._zoom_step(1)
+            self._zoom_by(self._ZOOM_STEP)
         elif key == Qt.Key.Key_Minus:
-            self._zoom_step(-1)
+            self._zoom_by(1 / self._ZOOM_STEP)
         elif key in (Qt.Key.Key_F, Qt.Key.Key_0):
-            self._zoom_combo.setCurrentText("Fit Width")
+            self._fit_width()
         else:
             super().keyPressEvent(event)
 
-    def closeEvent(self, event) -> None:
+    def closeEvent(self, event) -> None:  # noqa: N802
         if self._worker is not None and self._worker.isRunning():
             self._worker.quit()
             self._worker.wait(3000)
