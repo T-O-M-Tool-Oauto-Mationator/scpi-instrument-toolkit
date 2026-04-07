@@ -161,6 +161,7 @@ class _TabStrip(QWidget):
         menu = QMenu(self)
         close = menu.addAction("Close")
         close_others = menu.addAction("Close Others")
+        close_left = menu.addAction("Close to the Left")
         close_right = menu.addAction("Close to the Right")
         close_all = menu.addAction("Close All")
         menu.addSeparator()
@@ -170,6 +171,8 @@ class _TabStrip(QWidget):
             self._group.close_tab(idx)
         elif action == close_others:
             self._close_others(idx)
+        elif action == close_left:
+            self._close_to_left(idx)
         elif action == close_right:
             self._close_to_right(idx)
         elif action == close_all:
@@ -206,6 +209,11 @@ class _TabStrip(QWidget):
                 # Adjust keep_idx if we closed a tab before it
                 if i < keep_idx:
                     keep_idx -= 1
+
+    def _close_to_left(self, idx: int) -> None:
+        """Close all tabs to the left of idx."""
+        for i in range(idx - 1, -1, -1):
+            self._group.close_tab(i)
 
     def _close_to_right(self, idx: int) -> None:
         """Close all tabs to the right of idx."""
