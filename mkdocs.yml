@@ -83,6 +83,7 @@ nav:
     - Log & Calc: logging.md
   - Python API:
     - Quickstart: python.md
+    - Enumerations: api/enums.md
     - Power Supplies: api/psu.md
     - Multimeters: api/dmm.md
     - Function Generators: api/awg.md

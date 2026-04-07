@@ -2,6 +2,7 @@
 
 from typing import Any
 
+from lab_instruments.enums import SMUSourceMode
 from lab_instruments.src.terminal import ColorPrinter
 
 from ..context import ReplContext
@@ -155,7 +156,7 @@ class SmuCommand(BaseCommand):
                 return
             dev.set_voltage_mode(voltage, current_limit)
             suffix = f" @ {current_limit}A" if current_limit is not None else ""
-            ColorPrinter.success(f"Mode: DC_VOLTAGE  {voltage}V{suffix}")
+            ColorPrinter.success(f"Mode: {SMUSourceMode.VOLTAGE}  {voltage}V{suffix}")
         elif mode in ("current", "i"):
             current = float(args[2])
             voltage_limit = float(args[3]) if len(args) >= 4 else None
@@ -163,7 +164,7 @@ class SmuCommand(BaseCommand):
                 return
             dev.set_current_mode(current, voltage_limit)
             suffix = f"  voltage_limit={voltage_limit}V" if voltage_limit is not None else ""
-            ColorPrinter.success(f"Mode: DC_CURRENT  {current}A{suffix}")
+            ColorPrinter.success(f"Mode: {SMUSourceMode.CURRENT}  {current}A{suffix}")
         else:
             ColorPrinter.warning("smu set_mode voltage|current ...")
 

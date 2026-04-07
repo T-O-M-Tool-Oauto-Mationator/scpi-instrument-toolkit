@@ -9,6 +9,8 @@ IDN response: Keysight Technologies,EDU33212A,<serial>,<firmware>
 Interface: USB-B (USB-TMC) or LAN
 """
 
+from lab_instruments.enums import WaveformType
+
 from .device_manager import DeviceManager
 
 
@@ -23,7 +25,7 @@ class Keysight_EDU33212A(DeviceManager):
 
     CHANNEL_MAP = {1: "SOURce1", 2: "SOURce2"}
 
-    VALID_WAVEFORMS = {"SIN", "SQU", "RAMP", "PULS", "NOIS", "PRBS", "DC", "ARB"}
+    VALID_WAVEFORMS = {w.value for w in WaveformType}
 
     VALID_MOD_FUNCS = {"SIN", "SQU", "TRI", "UPRAMP", "DNRAMP", "NOIS", "PRBS", "ARB"}
 

@@ -5,6 +5,7 @@ import os
 import time
 from typing import Any
 
+from lab_instruments.enums import CouplingMode, TriggerEdge, TriggerMode
 from lab_instruments.src.terminal import ColorPrinter
 
 from ..context import ReplContext
@@ -66,7 +67,10 @@ class ScopeCommand(BaseCommand):
 
             elif cmd_name == "coupling" and len(args) >= 3:
                 channels = self.parse_channels(args[1], max_ch=4)
-                coupling_type = args[2].upper()
+                try:
+                    coupling_type = CouplingMode(args[2].upper())
+                except ValueError:
+                    coupling_type = args[2].upper()
                 for channel in channels:
                     dev.set_coupling(channel, coupling_type)
                     ColorPrinter.success(f"CH{channel}: coupling {coupling_type}")
@@ -339,9 +343,12 @@ class ScopeCommand(BaseCommand):
         level = float(args[2])
         kwargs = {k.lower(): v for k, v in (a.split("=", 1) for a in args[3:] if "=" in a)}
         positional = [a for a in args[3:] if "=" not in a]
-        slope = kwargs.get("slope", positional[0] if positional else "RISE").upper()
-        mode = kwargs.get("mode", positional[1] if len(positional) > 1 else "AUTO").upper()
-        dev.configure_trigger(channel, level, slope)
+        slope_str = kwargs.get("slope", positional[0] if positional else "RISE").upper()
+        mode_str = kwargs.get("mode", positional[1] if len(positional) > 1 else "AUTO").upper()
+        try:
+            slope = TriggerEdge(slope_str)
+        except ValueError:
+            slope = slope_str
         sweep_map = {
             "NORM": "NORMal",
             "NORMAL": "NORMal",
@@ -349,7 +356,8 @@ class ScopeCommand(BaseCommand):
             "SINGLE": "SINGle",
             "SING": "SINGle",
         }
-        sweep = sweep_map.get(mode, mode)
+        sweep = sweep_map.get(mode_str, mode_str)
+        dev.configure_trigger(channel, level, slope)
         if hasattr(dev, "set_trigger_sweep"):
             dev.set_trigger_sweep(sweep)
         ColorPrinter.success(f"Trigger configured: CH{channel} @ {level}V, SLOPE={slope}, MODE={sweep}")

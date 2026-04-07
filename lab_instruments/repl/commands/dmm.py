@@ -3,26 +3,12 @@
 import time
 from typing import Any
 
+from lab_instruments.enums import DMMMode
 from lab_instruments.src.terminal import ColorPrinter
 
 from ..capabilities import Capability
 from ..context import ReplContext
 from .base import BaseCommand
-
-DMM_MODE_ALIASES = {
-    "vdc": "dc_voltage",
-    "vac": "ac_voltage",
-    "idc": "dc_current",
-    "iac": "ac_current",
-    "res": "resistance_2wire",
-    "fres": "resistance_4wire",
-    "freq": "frequency",
-    "per": "period",
-    "cont": "continuity",
-    "diode": "diode",
-    "cap": "capacitance",
-    "temp": "temperature",
-}
 
 
 class DmmCommand(BaseCommand):
@@ -196,7 +182,11 @@ class DmmCommand(BaseCommand):
 
     def _handle_config(self, args, dev, dev_name: str, is_basic: bool) -> None:
         mode_arg = args[1].lower()
-        mode = DMM_MODE_ALIASES.get(mode_arg, mode_arg)
+        try:
+            dmm_mode = DMMMode.from_alias(mode_arg)
+            mode = dmm_mode.value
+        except ValueError:
+            mode = mode_arg
 
         # Track last configured mode for unit auto-detection
         self.ctx.last_instrument_mode[dev_name] = mode_arg
@@ -206,18 +196,13 @@ class DmmCommand(BaseCommand):
             dev.set_mode(mode_arg)
             ColorPrinter.success(f"Mode set to: {mode_arg}")
         else:
-            # Full-featured DMM: Support range/resolution/nplc parameters (optional)
-            if not mode or mode not in DMM_MODE_ALIASES.values():
-                # Try without alias
-                mode = mode_arg
-
             func = getattr(dev, f"configure_{mode}", None)
             if not func:
                 ColorPrinter.warning(f"Invalid mode '{mode_arg}'. Type 'dmm' for options.")
                 return
 
             # Handle modes that don't take parameters
-            if mode in ("continuity", "diode", "temperature"):
+            if mode in (DMMMode.CONTINUITY, DMMMode.DIODE, DMMMode.TEMPERATURE):
                 func()
                 ColorPrinter.success(f"Configured for {mode}")
                 return
@@ -253,17 +238,17 @@ class DmmCommand(BaseCommand):
 
     def _handle_meas(self, args, dev, is_basic: bool) -> None:
         mode_arg = args[1].lower()
-        mode = DMM_MODE_ALIASES.get(mode_arg, mode_arg)
+        try:
+            dmm_mode = DMMMode.from_alias(mode_arg)
+            mode = dmm_mode.value
+        except ValueError:
+            mode = mode_arg
 
         if is_basic:
             # Basic DMM: Set mode then read
             dev.set_mode(mode_arg)
             ColorPrinter.cyan(str(dev.read()))
         else:
-            # Full-featured DMM: Use measure function
-            if not mode or mode not in DMM_MODE_ALIASES.values():
-                mode = mode_arg
-
             func = getattr(dev, f"measure_{mode}", None)
             if not func:
                 ColorPrinter.warning(f"Invalid mode '{mode_arg}'. Type 'dmm' for options.")

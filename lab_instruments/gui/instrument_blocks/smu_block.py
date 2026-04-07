@@ -15,6 +15,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from lab_instruments.enums import SMUSourceMode
+
 from ..core.dispatcher import _Dispatcher
 from ..core.helpers import _mono, _NumSpin
 
@@ -66,7 +68,7 @@ class _SMUBlock(QFrame):
 
         # Mode combo sits in the header (right-aligned)
         self._mode_combo = QComboBox()
-        self._mode_combo.addItems(["VOLTAGE", "CURRENT"])
+        self._mode_combo.addItems([SMUSourceMode.VOLTAGE, SMUSourceMode.CURRENT])
         self._mode_combo.currentTextChanged.connect(self._on_mode_changed)
         hdr_lay.addWidget(self._mode_combo)
         outer.addWidget(hdr)

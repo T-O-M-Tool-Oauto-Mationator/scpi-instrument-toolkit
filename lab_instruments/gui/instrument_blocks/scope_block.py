@@ -15,6 +15,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from lab_instruments.enums import CouplingMode
+
 from ..core.dispatcher import _Dispatcher
 from ..core.helpers import _mono, _NumSpin
 
@@ -221,7 +223,7 @@ class _ScopeBlock(QFrame):
             col.addWidget(vscale)
             self._ch_vscale[ch] = vscale
             coupling = QComboBox()
-            coupling.addItems(["DC", "AC", "GND"])
+            coupling.addItems([m.value for m in CouplingMode])
             coupling.activated.connect(lambda i, c=ch, cb=coupling: self._repl(f"scope coupling {c} {cb.currentText()}"))
             col.addWidget(coupling)
             self._ch_coupling[ch] = coupling

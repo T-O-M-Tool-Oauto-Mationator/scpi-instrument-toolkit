@@ -68,11 +68,81 @@ Passing a plain string or integer raises `TypeError` immediately with a clear me
 
 ### Single-channel instruments
 
-Single-channel instruments (e.g. `MATRIX_MPS6010H`, `HP_34401A`) take no channel argument:
+Single-channel instruments (e.g. `MATRIX_MPS6010H`) take no channel argument:
 
 ```python
-dmm = instruments["dmm"]
-v = dmm.measure_voltage()   # no channel needed
+from lab_instruments import find_all
+
+instr = find_all()
+psu = instr["psu"]
+v = psu.measure_voltage()   # no channel argument needed
+```
+
+---
+
+## Instrument enums
+
+Domain-specific parameters (waveform type, DMM mode, coupling, trigger edge) are typed enumerations. Pass them directly to driver methods — they compare equal to their string values so no conversion is needed.
+
+```python
+from lab_instruments import WaveformType, DMMMode, CouplingMode, TriggerEdge
+```
+
+### WaveformType — AWG waveform shapes
+
+```python
+from lab_instruments import find_all, WaveformType
+
+instr = find_all()
+awg = instr["awg"]
+
+awg.set_waveform(1, WaveformType.SIN, frequency=1000, amplitude=2.0)
+awg.set_waveform(2, WaveformType.SQU, frequency=500, amplitude=1.0)
+```
+
+Resolve user input at runtime with `from_alias`:
+
+```python
+WaveformType.from_alias("sine")    # → WaveformType.SIN
+WaveformType.from_alias("square")  # → WaveformType.SQU
+WaveformType.from_alias("SIN")     # → WaveformType.SIN
+```
+
+### DMMMode — measurement modes
+
+```python
+from lab_instruments import find_all, DMMMode
+
+instr = find_all()
+dmm = instr["dmm"]
+
+dmm.configure_dc_voltage()              # configure then read separately
+v = dmm.measure_dc_voltage()           # configure + read in one call
+r = dmm.measure_resistance_2wire()
+
+# Resolve REPL shorthand to a DMMMode member
+mode = DMMMode.from_alias("vdc")        # → DMMMode.DC_VOLTAGE
+method_name = f"measure_{mode}"         # → "measure_dc_voltage"
+```
+
+### CouplingMode — oscilloscope input coupling
+
+```python
+from lab_instruments import find_all, CouplingMode
+
+instr = find_all()
+scope = instr["scope"]
+
+scope.set_coupling(1, CouplingMode.DC)
+scope.set_coupling(2, CouplingMode.AC)
+```
+
+### TriggerEdge — trigger slope
+
+```python
+from lab_instruments import TriggerEdge, TriggerMode
+
+scope.configure_trigger(channel=1, level=1.0, slope=TriggerEdge.RISE)
 ```
 
 ---
@@ -94,7 +164,7 @@ import time
 time.sleep(0.5)
 
 v_psu = psu.measure_voltage(HP_E3631A.Channel.POSITIVE_6V)
-v_dmm = dmm.measure_voltage()
+v_dmm = dmm.measure_dc_voltage()
 
 print(f"PSU reads: {v_psu:.4f} V")
 print(f"DMM reads: {v_dmm:.4f} V")
@@ -107,16 +177,21 @@ psu.enable_output(False)
 
 ## Where to find more
 
-The driver source files are the canonical reference for every method, valid range, and error condition:
+See the [API reference](api/base.md) for full method signatures generated directly from driver source. All drivers are documented with Google-style docstrings.
 
-| Driver | File |
-|--------|------|
-| `HP_E3631A` | `lab_instruments/src/hp_e3631a.py` |
-| `MATRIX_MPS6010H` | `lab_instruments/src/matrix_mps6010h.py` |
-| `HP_34401A` | `lab_instruments/src/hp_34401a.py` |
-| `Keysight_EDU36311A` | `lab_instruments/src/keysight_edu36311a.py` |
-| `Keysight_EDU34450A` | `lab_instruments/src/keysight_edu34450a.py` |
-| `Rigol_DHO804` | `lab_instruments/src/rigol_dho804.py` |
-| `Tektronix_MSO2024` | `lab_instruments/src/tektronix_mso2024.py` |
-| `Keysight_EDU33212A` | `lab_instruments/src/keysight_edu33212a.py` |
-| `NI_PXIe_4139` | `lab_instruments/src/ni_pxie_4139.py` |
+| Driver | Instrument |
+|--------|------------|
+| `HP_E3631A` | Triple-output PSU (+6 V / ±25 V) |
+| `Keysight_EDU36311A` | Triple-output PSU (+6 V / ±30 V) |
+| `MATRIX_MPS6010H` | Single-channel PSU (0–60 V / 0–10 A) |
+| `HP_34401A` | 6.5-digit bench DMM |
+| `Keysight_EDU34450A` | 5.5-digit bench DMM |
+| `Owon_XDM1041` | 7.5-digit bench DMM |
+| `Rigol_DHO804` | 4-channel oscilloscope |
+| `Tektronix_MSO2024` | 4-channel mixed-signal oscilloscope |
+| `Keysight_DSOX1204G` | 4-channel oscilloscope |
+| `Keysight_EDU33212A` | Dual-channel arbitrary waveform generator |
+| `BK_4063` | Dual-channel arbitrary waveform generator |
+| `JDS6600_Generator` | DDS signal generator (serial/USB) |
+| `NI_PXIe_4139` | Source measure unit (SMU) |
+| `TI_EV2300` | USB-to-I2C/SMBus adapter |

@@ -16,10 +16,15 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from lab_instruments.enums import WaveformType
+
 from ..core.dispatcher import _Dispatcher
 from ..core.helpers import _mono, _NumSpin
 
-_AWG_WAVEFORMS = ["SIN", "SQU", "RAMP", "PULS", "NOIS", "DC"]
+_AWG_WAVEFORMS = [w.value for w in (
+    WaveformType.SIN, WaveformType.SQU, WaveformType.RAMP,
+    WaveformType.PULS, WaveformType.NOIS, WaveformType.DC,
+)]
 _AWG_CH_ACCENTS = ["#1a6bbf", "#7c3aed"]  # CH1: blue, CH2: purple
 
 

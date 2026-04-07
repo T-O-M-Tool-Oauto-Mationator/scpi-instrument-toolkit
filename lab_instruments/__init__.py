@@ -1,6 +1,7 @@
 __version__ = "0.1.141"
 __author__ = "Brighton Sikarskie, Cesar Magana"
 
+from .enums import CouplingMode, DMMMode, SMUSourceMode, TriggerEdge, TriggerMode, WaveformType
 from .src.bk_4063 import BK_4063
 from .src.device_manager import DeviceManager
 from .src.discovery import InstrumentDiscovery, find_all
@@ -27,6 +28,12 @@ from .src.tektronix_mso2024 import Tektronix_MSO2024
 from .src.terminal import ColorPrinter
 
 __all__ = [
+    "CouplingMode",
+    "DMMMode",
+    "SMUSourceMode",
+    "TriggerEdge",
+    "TriggerMode",
+    "WaveformType",
     "DeviceManager",
     "HP_E3631A",
     "HP_34401A",
