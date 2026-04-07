@@ -51,6 +51,7 @@ markdown_extensions:
 nav:
   - Home: index.md
   - Installation: install.md
+  - Python API: python.md
   - General Commands: general.md
   - Instruments:
     - Power Supply (PSU): psu.md

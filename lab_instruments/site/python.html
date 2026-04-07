@@ -11,10 +11,10 @@
       
       
       
-        <link rel="prev" href="general.html">
+        <link rel="prev" href="install.html">
       
       
-        <link rel="next" href="awg.html">
+        <link rel="next" href="general.html">
       
       
         
@@ -25,7 +25,7 @@
     
     
       
-        <title>Power Supply (PSU) - SCPI Instrument Toolkit</title>
+        <title>Python API - SCPI Instrument Toolkit</title>
       
     
     
@@ -76,7 +76,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#psu-power-supply" class="md-skip">
+        <a href="#python-api" class="md-skip">
           Skip to content
         </a>
       
@@ -110,7 +110,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Power Supply (PSU)
+              Python API
             
           </span>
         </div>
@@ -259,8 +259,10 @@
   
   
   
+    
   
-    <li class="md-tabs__item">
+  
+    <li class="md-tabs__item md-tabs__item--active">
       <a href="python.html" class="md-tabs__link">
         
   
@@ -297,12 +299,10 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
+      <li class="md-tabs__item">
         <a href="psu.html" class="md-tabs__link">
           
   
@@ -495,10 +495,37 @@
       
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="python.html" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Python API
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="python.html" class="md-nav__link md-nav__link--active">
         
   
   
@@ -514,6 +541,109 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#quickstart-autodiscovery-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quickstart — autodiscovery (recommended)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#direct-instantiation-when-you-know-the-address" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Direct instantiation — when you know the address
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#channel-enums" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Channel enums
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Channel enums">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#hp-e3631a" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        HP E3631A
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#single-channel-instruments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Single-channel instruments
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#using-find_all-in-scripts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Using find_all() in scripts
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#where-to-find-more" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Where to find more
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -549,31 +679,28 @@
       
   
   
-    
   
   
-  
     
     
     
     
-      
-        
-        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
         
           
-          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
             
   
   
@@ -591,7 +718,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             
@@ -606,37 +733,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Power Supply (PSU)
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="psu.html" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="psu.html" class="md-nav__link">
         
   
   
@@ -652,103 +752,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#psu-chan" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        psu chan
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#psu-set" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        psu set
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#psu-meas" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        psu meas
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#psu-get" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        psu get
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#psu-track" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        psu track
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#psu-save-recall" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        psu save / recall
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#psu-state" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        psu state
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1154,10 +1157,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#psu-chan" class="md-nav__link">
+  <a href="#quickstart-autodiscovery-recommended" class="md-nav__link">
     <span class="md-ellipsis">
       
-        psu chan
+        Quickstart — autodiscovery (recommended)
       
     </span>
   </a>
@@ -1165,10 +1168,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#psu-set" class="md-nav__link">
+  <a href="#direct-instantiation-when-you-know-the-address" class="md-nav__link">
     <span class="md-ellipsis">
       
-        psu set
+        Direct instantiation — when you know the address
       
     </span>
   </a>
@@ -1176,10 +1179,49 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#psu-meas" class="md-nav__link">
+  <a href="#channel-enums" class="md-nav__link">
     <span class="md-ellipsis">
       
-        psu meas
+        Channel enums
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Channel enums">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#hp-e3631a" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        HP E3631A
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#single-channel-instruments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Single-channel instruments
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#using-find_all-in-scripts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Using find_all() in scripts
       
     </span>
   </a>
@@ -1187,43 +1229,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#psu-get" class="md-nav__link">
+  <a href="#where-to-find-more" class="md-nav__link">
     <span class="md-ellipsis">
       
-        psu get
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#psu-track" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        psu track
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#psu-save-recall" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        psu save / recall
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#psu-state" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        psu state
+        Where to find more
       
     </span>
   </a>
@@ -1250,316 +1259,127 @@
   
 
 
-<h1 id="psu-power-supply">PSU — Power Supply<a class="headerlink" href="#psu-power-supply" title="Permanent link">&para;</a></h1>
-<p>Controls power supply units over VISA.</p>
-<ul>
-<li><strong>Single-channel</strong> PSUs (e.g. HP E3631A): channel is always <code>1</code></li>
-<li><strong>Multi-channel</strong> PSUs (e.g. Matrix MPS-6010H): channels <code>1</code>, <code>2</code>, <code>3</code>, or <code>all</code></li>
-<li>Multiple PSUs are named <code>psu1</code>, <code>psu2</code>, etc.</li>
-</ul>
-<p>Address a specific PSU directly: <code>psu1 set 5.0</code> — or use <code>use psu1</code> then <code>psu set 5.0</code>.</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="1:3"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><input id="__tabbed_1_3" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">HP E3631A</label><label for="__tabbed_1_2">Keysight EDU36311A</label><label for="__tabbed_1_3">Matrix MPS-6010H</label></div>
-<div class="tabbed-content">
-<div class="tabbed-block">
-<p>Triple-output power supply. Channels: 1 (0–6 V), 2 (0–25 V), 3 (0– −25 V). Supports tracking mode for ±supply configurations.</p>
-</div>
-<div class="tabbed-block">
-<p>Triple-output power supply. Channels: 1 (0–6 V / 5 A), 2 (0–30 V / 1 A), 3 (0–30 V / 1 A). USB/LAN interface. Supports tracking mode, OVP/OCP protection, save/recall (5 slots).</p>
-</div>
-<div class="tabbed-block">
-<p>Single-channel programmable PSU with serial interface. Supports remote mode control.</p>
-</div>
-</div>
-</div>
+<h1 id="python-api">Python API<a class="headerlink" href="#python-api" title="Permanent link">&para;</a></h1>
+<p>Control instruments directly from Python — no REPL required.</p>
 <hr />
-<h2 id="psu-chan">psu chan<a class="headerlink" href="#psu-chan" title="Permanent link">&para;</a></h2>
-<p>Enable or disable an output channel.</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="2:2"><input checked="checked" id="__tabbed_2_1" name="__tabbed_2" type="radio" /><input id="__tabbed_2_2" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="__tabbed_2_1">Single-channel PSU</label><label for="__tabbed_2_2">Multi-channel PSU</label></div>
-<div class="tabbed-content">
-<div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>psu chan &lt;on|off&gt;
+<h2 id="quickstart-autodiscovery-recommended">Quickstart — autodiscovery (recommended)<a class="headerlink" href="#quickstart-autodiscovery-recommended" title="Permanent link">&para;</a></h2>
+<p>No USB addresses needed. <code>find_all()</code> scans exactly like <code>scan</code> in the REPL and returns the same named device dict.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">lab_instruments</span><span class="w"> </span><span class="kn">import</span> <span class="n">find_all</span><span class="p">,</span> <span class="n">HP_E3631A</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">instruments</span> <span class="o">=</span> <span class="n">find_all</span><span class="p">()</span>          <span class="c1"># scans USB/GPIB/Serial — same as &#39;scan&#39; in the REPL</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">psu</span> <span class="o">=</span> <span class="n">instruments</span><span class="p">[</span><span class="s2">&quot;psu&quot;</span><span class="p">]</span>          <span class="c1"># &quot;psu1&quot;, &quot;psu2&quot;, etc. if multiple of the same type</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="n">psu</span><span class="o">.</span><span class="n">enable_output</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="n">psu</span><span class="o">.</span><span class="n">set_output_channel</span><span class="p">(</span><span class="n">HP_E3631A</span><span class="o">.</span><span class="n">Channel</span><span class="o">.</span><span class="n">POSITIVE_6V</span><span class="p">,</span> <span class="n">voltage</span><span class="o">=</span><span class="mf">5.0</span><span class="p">)</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="n">v</span> <span class="o">=</span> <span class="n">psu</span><span class="o">.</span><span class="n">measure_voltage</span><span class="p">(</span><span class="n">HP_E3631A</span><span class="o">.</span><span class="n">Channel</span><span class="o">.</span><span class="n">POSITIVE_6V</span><span class="p">)</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">v</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2"> V&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="n">psu</span><span class="o">.</span><span class="n">enable_output</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
 </code></pre></div>
-</div>
-<div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>psu chan &lt;channel&gt; &lt;on|off&gt;
+<p>Keys returned by <code>find_all()</code> are the same names you see from <code>list</code> in the REPL (<code>psu</code>, <code>psu1</code>, <code>dmm</code>, <code>scope1</code>, etc.).</p>
+<hr />
+<h2 id="direct-instantiation-when-you-know-the-address">Direct instantiation — when you know the address<a class="headerlink" href="#direct-instantiation-when-you-know-the-address" title="Permanent link">&para;</a></h2>
+<p>Use when you have a specific instrument address (find it with <code>list</code> in the REPL, or NI MAX / <code>pyvisa-shell</code>).</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">lab_instruments</span><span class="w"> </span><span class="kn">import</span> <span class="n">HP_E3631A</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="n">psu</span> <span class="o">=</span> <span class="n">HP_E3631A</span><span class="p">(</span><span class="s2">&quot;GPIB0::5::INSTR&quot;</span><span class="p">)</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="n">psu</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="k">with</span> <span class="n">psu</span><span class="p">:</span>   <span class="c1"># disable_all_channels called automatically on exit</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    <span class="n">psu</span><span class="o">.</span><span class="n">set_output_channel</span><span class="p">(</span><span class="n">HP_E3631A</span><span class="o">.</span><span class="n">Channel</span><span class="o">.</span><span class="n">POSITIVE_6V</span><span class="p">,</span> <span class="n">voltage</span><span class="o">=</span><span class="mf">3.3</span><span class="p">,</span> <span class="n">current_limit</span><span class="o">=</span><span class="mf">0.2</span><span class="p">)</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    <span class="n">psu</span><span class="o">.</span><span class="n">enable_output</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>    <span class="n">v</span> <span class="o">=</span> <span class="n">psu</span><span class="o">.</span><span class="n">measure_voltage</span><span class="p">(</span><span class="n">HP_E3631A</span><span class="o">.</span><span class="n">Channel</span><span class="o">.</span><span class="n">POSITIVE_6V</span><span class="p">)</span>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">v</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2"> V&quot;</span><span class="p">)</span>
 </code></pre></div>
-</div>
-</div>
-</div>
+<hr />
+<h2 id="channel-enums">Channel enums<a class="headerlink" href="#channel-enums" title="Permanent link">&para;</a></h2>
+<p>Instruments with named output channels expose a <code>Channel</code> enum on the driver class. Pass enum members directly — your IDE will autocomplete them and catch typos at write time.</p>
+<h3 id="hp-e3631a">HP E3631A<a class="headerlink" href="#hp-e3631a" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">lab_instruments</span><span class="w"> </span><span class="kn">import</span> <span class="n">HP_E3631A</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="n">HP_E3631A</span><span class="o">.</span><span class="n">Channel</span><span class="o">.</span><span class="n">POSITIVE_6V</span>   <span class="c1"># +6 V output  (channel 1 in the REPL)</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="n">HP_E3631A</span><span class="o">.</span><span class="n">Channel</span><span class="o">.</span><span class="n">POSITIVE_25V</span>  <span class="c1"># +25 V output (channel 2 in the REPL)</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="n">HP_E3631A</span><span class="o">.</span><span class="n">Channel</span><span class="o">.</span><span class="n">NEGATIVE_25V</span>  <span class="c1"># −25 V output (channel 3 in the REPL)</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">psu</span><span class="o">.</span><span class="n">set_output_channel</span><span class="p">(</span><span class="n">HP_E3631A</span><span class="o">.</span><span class="n">Channel</span><span class="o">.</span><span class="n">POSITIVE_25V</span><span class="p">,</span> <span class="n">voltage</span><span class="o">=</span><span class="mf">12.0</span><span class="p">,</span> <span class="n">current_limit</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="n">v</span> <span class="o">=</span> <span class="n">psu</span><span class="o">.</span><span class="n">measure_voltage</span><span class="p">(</span><span class="n">HP_E3631A</span><span class="o">.</span><span class="n">Channel</span><span class="o">.</span><span class="n">POSITIVE_25V</span><span class="p">)</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="n">i</span> <span class="o">=</span> <span class="n">psu</span><span class="o">.</span><span class="n">measure_current</span><span class="p">(</span><span class="n">HP_E3631A</span><span class="o">.</span><span class="n">Channel</span><span class="o">.</span><span class="n">POSITIVE_25V</span><span class="p">)</span>
+</code></pre></div>
+<p>Passing a plain string or integer raises <code>TypeError</code> immediately with a clear message telling you the valid members — no silent misbehaviour.</p>
+<h3 id="single-channel-instruments">Single-channel instruments<a class="headerlink" href="#single-channel-instruments" title="Permanent link">&para;</a></h3>
+<p>Single-channel instruments (e.g. <code>MATRIX_MPS6010H</code>, <code>HP_34401A</code>) take no channel argument:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">dmm</span> <span class="o">=</span> <span class="n">instruments</span><span class="p">[</span><span class="s2">&quot;dmm&quot;</span><span class="p">]</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="n">v</span> <span class="o">=</span> <span class="n">dmm</span><span class="o">.</span><span class="n">measure_voltage</span><span class="p">()</span>   <span class="c1"># no channel needed</span>
+</code></pre></div>
+<hr />
+<h2 id="using-find_all-in-scripts">Using <code>find_all()</code> in scripts<a class="headerlink" href="#using-find_all-in-scripts" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">lab_instruments</span><span class="w"> </span><span class="kn">import</span> <span class="n">find_all</span><span class="p">,</span> <span class="n">HP_E3631A</span><span class="p">,</span> <span class="n">HP_34401A</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="n">instr</span> <span class="o">=</span> <span class="n">find_all</span><span class="p">()</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="n">psu</span><span class="p">:</span> <span class="n">HP_E3631A</span> <span class="o">=</span> <span class="n">instr</span><span class="p">[</span><span class="s2">&quot;psu&quot;</span><span class="p">]</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="n">dmm</span><span class="p">:</span> <span class="n">HP_34401A</span> <span class="o">=</span> <span class="n">instr</span><span class="p">[</span><span class="s2">&quot;dmm&quot;</span><span class="p">]</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="n">psu</span><span class="o">.</span><span class="n">set_output_channel</span><span class="p">(</span><span class="n">HP_E3631A</span><span class="o">.</span><span class="n">Channel</span><span class="o">.</span><span class="n">POSITIVE_6V</span><span class="p">,</span> <span class="n">voltage</span><span class="o">=</span><span class="mf">5.0</span><span class="p">)</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="n">psu</span><span class="o">.</span><span class="n">enable_output</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a><span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a><span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.5</span><span class="p">)</span>
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a><span class="n">v_psu</span> <span class="o">=</span> <span class="n">psu</span><span class="o">.</span><span class="n">measure_voltage</span><span class="p">(</span><span class="n">HP_E3631A</span><span class="o">.</span><span class="n">Channel</span><span class="o">.</span><span class="n">POSITIVE_6V</span><span class="p">)</span>
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a><span class="n">v_dmm</span> <span class="o">=</span> <span class="n">dmm</span><span class="o">.</span><span class="n">measure_voltage</span><span class="p">()</span>
+<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a>
+<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;PSU reads: </span><span class="si">{</span><span class="n">v_psu</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2"> V&quot;</span><span class="p">)</span>
+<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;DMM reads: </span><span class="si">{</span><span class="n">v_dmm</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2"> V&quot;</span><span class="p">)</span>
+<a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error:     </span><span class="si">{</span><span class="nb">abs</span><span class="p">(</span><span class="n">v_psu</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">v_dmm</span><span class="p">)</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">1000</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> mV&quot;</span><span class="p">)</span>
+<a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a>
+<a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a><span class="n">psu</span><span class="o">.</span><span class="n">enable_output</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+</code></pre></div>
+<hr />
+<h2 id="where-to-find-more">Where to find more<a class="headerlink" href="#where-to-find-more" title="Permanent link">&para;</a></h2>
+<p>The driver source files are the canonical reference for every method, valid range, and error condition:</p>
 <table>
 <thead>
 <tr>
-<th>Parameter</th>
-<th>Required</th>
-<th>Values</th>
-<th>Description</th>
+<th>Driver</th>
+<th>File</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>channel</code></td>
-<td>multi-ch only</td>
-<td><code>1</code>, <code>2</code>, <code>3</code>, <code>all</code></td>
-<td>Channel number. Omit entirely for single-channel PSUs. Use <code>all</code> to toggle all channels at once.</td>
+<td><code>HP_E3631A</code></td>
+<td><code>lab_instruments/src/hp_e3631a.py</code></td>
 </tr>
 <tr>
-<td><code>on\|off</code></td>
-<td>required</td>
-<td><code>on</code>, <code>off</code></td>
-<td><code>on</code> = enable output voltage; <code>off</code> = disable output.</td>
-</tr>
-</tbody>
-</table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>psu chan on          # enable output (single-channel PSU)
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>psu chan off         # disable output (single-channel PSU)
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>psu chan 2 off       # disable channel 2 (multi-channel PSU)
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>psu chan all off     # disable all channels at once
-</code></pre></div>
-<hr />
-<h2 id="psu-set">psu set<a class="headerlink" href="#psu-set" title="Permanent link">&para;</a></h2>
-<p>Set output voltage and optional current limit.</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="3:2"><input checked="checked" id="__tabbed_3_1" name="__tabbed_3" type="radio" /><input id="__tabbed_3_2" name="__tabbed_3" type="radio" /><div class="tabbed-labels"><label for="__tabbed_3_1">Single-channel PSU</label><label for="__tabbed_3_2">Multi-channel PSU</label></div>
-<div class="tabbed-content">
-<div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>psu set &lt;voltage&gt; [current]
-</code></pre></div>
-</div>
-<div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>psu set &lt;channel&gt; &lt;voltage&gt; [current]
-</code></pre></div>
-</div>
-</div>
-</div>
-<table>
-<thead>
-<tr>
-<th>Parameter</th>
-<th>Required</th>
-<th>Values</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>channel</code></td>
-<td>multi-ch only</td>
-<td><code>1</code>, <code>2</code>, <code>3</code></td>
-<td>Channel number — required before voltage on multi-channel PSUs.</td>
+<td><code>MATRIX_MPS6010H</code></td>
+<td><code>lab_instruments/src/matrix_mps6010h.py</code></td>
 </tr>
 <tr>
-<td><code>voltage</code></td>
-<td>required</td>
-<td>float (V)</td>
-<td>Target output voltage in volts.</td>
+<td><code>HP_34401A</code></td>
+<td><code>lab_instruments/src/hp_34401a.py</code></td>
 </tr>
 <tr>
-<td><code>current</code></td>
-<td>optional</td>
-<td>float (A)</td>
-<td>Current limit in amperes. If omitted, the current limit is unchanged.</td>
-</tr>
-</tbody>
-</table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>psu set 5.0               # set 5 V (single-channel)
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>psu set 5.0 0.5           # set 5 V with 0.5 A limit
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>psu set 2 12.0            # multi-channel: channel 2 to 12 V
-<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>psu set 2 12.0 1.0        # multi-channel: channel 2, 12 V, 1 A limit
-</code></pre></div>
-<hr />
-<h2 id="psu-meas">psu meas<a class="headerlink" href="#psu-meas" title="Permanent link">&para;</a></h2>
-<p>Measure and print the live output value.</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="4:2"><input checked="checked" id="__tabbed_4_1" name="__tabbed_4" type="radio" /><input id="__tabbed_4_2" name="__tabbed_4" type="radio" /><div class="tabbed-labels"><label for="__tabbed_4_1">Single-channel PSU</label><label for="__tabbed_4_2">Multi-channel PSU</label></div>
-<div class="tabbed-content">
-<div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>psu meas &lt;v|i&gt;
-</code></pre></div>
-</div>
-<div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>psu meas &lt;channel&gt; &lt;v|i&gt;
-</code></pre></div>
-</div>
-</div>
-</div>
-<table>
-<thead>
-<tr>
-<th>Parameter</th>
-<th>Required</th>
-<th>Values</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>channel</code></td>
-<td>multi-ch only</td>
-<td><code>1</code>, <code>2</code>, <code>3</code></td>
-<td>Channel to measure. Required for multi-channel PSUs; omit for single-channel.</td>
+<td><code>Keysight_EDU36311A</code></td>
+<td><code>lab_instruments/src/keysight_edu36311a.py</code></td>
 </tr>
 <tr>
-<td><code>v\|i</code></td>
-<td>required</td>
-<td><code>v</code>, <code>i</code></td>
-<td><code>v</code> = measure output voltage; <code>i</code> = measure output current.</td>
-</tr>
-</tbody>
-</table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>psu meas v         # print output voltage (single-channel)
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>psu meas i         # print output current (single-channel)
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>psu meas 2 v       # multi-channel: channel 2 voltage
-</code></pre></div>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p><code>psu meas</code> prints the value but does not record it. To record for export or calculations, use the assignment syntax: <code>label = psu meas v unit=V</code>.</p>
-</div>
-<div class="admonition tip">
-<p class="admonition-title">Recording measurements</p>
-<p>Use assignment syntax to measure <strong>and</strong> store the result to the measurement log in one step:</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="5:2"><input checked="checked" id="__tabbed_5_1" name="__tabbed_5" type="radio" /><input id="__tabbed_5_2" name="__tabbed_5" type="radio" /><div class="tabbed-labels"><label for="__tabbed_5_1">Single-channel PSU</label><label for="__tabbed_5_2">Multi-channel PSU</label></div>
-<div class="tabbed-content">
-<div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>&lt;label&gt; = psu meas &lt;v|i&gt; [unit=&lt;str&gt;]
-</code></pre></div>
-</div>
-<div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>&lt;label&gt; = psu meas &lt;channel&gt; &lt;v|i&gt; [unit=&lt;str&gt;]
-</code></pre></div>
-</div>
-</div>
-</div>
-<table>
-<thead>
-<tr>
-<th>Parameter</th>
-<th>Required</th>
-<th>Values</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>label</code></td>
-<td>required</td>
-<td>string, no spaces</td>
-<td><strong>Name for this entry in the log.</strong> Appears as the row identifier in <code>log print</code> output. Also used as the dictionary key in <code>calc</code> expressions: <code>m["label"]</code>. Use underscores instead of spaces — e.g. <code>ch1_voltage</code>.</td>
+<td><code>Keysight_EDU34450A</code></td>
+<td><code>lab_instruments/src/keysight_edu34450a.py</code></td>
 </tr>
 <tr>
-<td><code>channel</code></td>
-<td>multi-ch only</td>
-<td><code>1</code>, <code>2</code>, <code>3</code></td>
-<td>Channel to measure. Required for multi-channel PSUs; omit for single-channel.</td>
+<td><code>Rigol_DHO804</code></td>
+<td><code>lab_instruments/src/rigol_dho804.py</code></td>
 </tr>
 <tr>
-<td><code>v\|i</code></td>
-<td>required</td>
-<td><code>v</code>, <code>i</code></td>
-<td>Quantity to measure: <code>v</code> = voltage, <code>i</code> = current.</td>
+<td><code>Tektronix_MSO2024</code></td>
+<td><code>lab_instruments/src/tektronix_mso2024.py</code></td>
 </tr>
 <tr>
-<td><code>unit=</code></td>
-<td>optional</td>
-<td>string</td>
-<td>Unit label shown in <code>log print</code> output (e.g. <code>V</code>, <code>A</code>). <strong>Display-only</strong> — does not affect the stored numeric value or any calculation.</td>
-</tr>
-</tbody>
-</table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>psu_out = psu meas v unit=V        # store as &#39;psu_out&#39;, access as m[&quot;psu_out&quot;]
-<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>psu_i = psu meas i unit=A          # store current
-<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>ch2_v = psu meas 2 v unit=V       # multi-channel: channel 2 voltage
-</code></pre></div>
-<p>After storing, view with <code>log print</code> or compute derived values with <code>calc</code>:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>psu_v = psu meas v unit=V
-<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>psu_i = psu meas i unit=A
-<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>calc power m[&quot;psu_v&quot;] * m[&quot;psu_i&quot;] unit=W    # compute power
-<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>log print
-</code></pre></div>
-<p>See <a href="logging.html">Log &amp; Calc</a> for full details.</p>
-</div>
-<hr />
-<h2 id="psu-get">psu get<a class="headerlink" href="#psu-get" title="Permanent link">&para;</a></h2>
-<p>Show the programmed voltage/current setpoints (not the live measured output).</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>psu get
-</code></pre></div>
-<p>For live measured values use <code>psu meas</code>.</p>
-<hr />
-<h2 id="psu-track">psu track<a class="headerlink" href="#psu-track" title="Permanent link">&para;</a></h2>
-<p>Enable or disable channel tracking mode (multi-channel PSUs only).</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>psu track &lt;on|off&gt;
-</code></pre></div>
-<table>
-<thead>
-<tr>
-<th>Parameter</th>
-<th>Required</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>on\|off</code></td>
-<td>required</td>
-<td><code>on</code> = link channels in tracking mode (±supply); <code>off</code> = independent control.</td>
-</tr>
-</tbody>
-</table>
-<p>In tracking mode the two adjustable channels mirror each other — one outputs positive, the other negative — for split-supply configurations.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>psu track on     # enable tracking (±supply mode)
-<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>psu track off    # return to independent channel control
-</code></pre></div>
-<hr />
-<h2 id="psu-save-recall">psu save / recall<a class="headerlink" href="#psu-save-recall" title="Permanent link">&para;</a></h2>
-<p>Save or restore voltage/current settings to a numbered slot (multi-channel PSUs only).</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>psu save &lt;1-3&gt;
-<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>psu recall &lt;1-3&gt;
-</code></pre></div>
-<table>
-<thead>
-<tr>
-<th>Parameter</th>
-<th>Required</th>
-<th>Values</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>1-3</code></td>
-<td>required</td>
-<td><code>1</code>, <code>2</code>, <code>3</code></td>
-<td>Slot number to save to or recall from.</td>
-</tr>
-</tbody>
-</table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>psu save 1      # save current settings to slot 1
-<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>psu recall 1    # restore settings from slot 1
-</code></pre></div>
-<hr />
-<h2 id="psu-state">psu state<a class="headerlink" href="#psu-state" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>psu state &lt;on|off|safe|reset&gt;
-</code></pre></div>
-<table>
-<thead>
-<tr>
-<th>Value</th>
-<th>Effect</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>on</code></td>
-<td>Enable output</td>
+<td><code>Keysight_EDU33212A</code></td>
+<td><code>lab_instruments/src/keysight_edu33212a.py</code></td>
 </tr>
 <tr>
-<td><code>off</code></td>
-<td>Disable output</td>
-</tr>
-<tr>
-<td><code>safe</code></td>
-<td>Outputs off, voltage setpoints zeroed</td>
-</tr>
-<tr>
-<td><code>reset</code></td>
-<td><code>*RST</code> — factory defaults</td>
+<td><code>NI_PXIe_4139</code></td>
+<td><code>lab_instruments/src/ni_pxie_4139.py</code></td>
 </tr>
 </tbody>
 </table>
