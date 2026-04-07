@@ -26,11 +26,12 @@ def _silence_mupdf():
         os.close(saved)
 
 from PySide6.QtCore import Qt, QThread, Signal
-from PySide6.QtGui import QImage, QPixmap
+from PySide6.QtGui import QImage, QKeySequence, QPixmap, QShortcut, QTextDocument
 from PySide6.QtWidgets import (
     QComboBox,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
     QPlainTextEdit,
     QPushButton,
     QScrollArea,
@@ -43,6 +44,68 @@ from PySide6.QtWidgets import (
 )
 
 from ..core.helpers import _mono
+
+
+class _FindBar(QWidget):
+    """Slim search bar that embeds at the bottom of a viewer."""
+
+    find_next = Signal(str)
+    find_prev = Signal(str)
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        lay = QHBoxLayout(self)
+        lay.setContentsMargins(4, 2, 4, 2)
+        lay.setSpacing(4)
+
+        self._input = QLineEdit()
+        self._input.setPlaceholderText("Find…  (Esc to close)")
+        self._input.setMaximumWidth(300)
+        self._input.returnPressed.connect(lambda: self.find_next.emit(self._input.text()))
+        self._input.textChanged.connect(lambda t: self.find_next.emit(t))
+        lay.addWidget(self._input)
+
+        prev_btn = QPushButton("↑")
+        prev_btn.setFixedWidth(26)
+        prev_btn.setToolTip("Previous match (Shift+Enter)")
+        prev_btn.clicked.connect(lambda: self.find_prev.emit(self._input.text()))
+        lay.addWidget(prev_btn)
+
+        next_btn = QPushButton("↓")
+        next_btn.setFixedWidth(26)
+        next_btn.setToolTip("Next match (Enter)")
+        next_btn.clicked.connect(lambda: self.find_next.emit(self._input.text()))
+        lay.addWidget(next_btn)
+
+        self._status = QLabel("")
+        self._status.setStyleSheet("font-size: 10px; color: gray;")
+        lay.addWidget(self._status)
+
+        lay.addStretch()
+
+        close_btn = QPushButton("✕")
+        close_btn.setFixedWidth(26)
+        close_btn.clicked.connect(self.hide)
+        lay.addWidget(close_btn)
+
+        self.hide()
+
+    def open(self) -> None:
+        self.show()
+        self._input.setFocus()
+        self._input.selectAll()
+
+    def text(self) -> str:
+        return self._input.text()
+
+    def set_status(self, text: str) -> None:
+        self._status.setText(text)
+
+    def keyPressEvent(self, event) -> None:  # noqa: N802
+        if event.key() == Qt.Key.Key_Escape:
+            self.hide()
+        else:
+            super().keyPressEvent(event)
 
 
 class ImageViewer(QWidget):
@@ -86,6 +149,19 @@ class ImageViewer(QWidget):
             self._label.setPixmap(self._pixmap)
             self._label.resize(self._pixmap.size())
 
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+
+    def keyPressEvent(self, event) -> None:  # noqa: N802
+        key = event.key()
+        if key in (Qt.Key.Key_Plus, Qt.Key.Key_Equal):
+            self._zoom(0.25)
+        elif key == Qt.Key.Key_Minus:
+            self._zoom(-0.25)
+        elif key in (Qt.Key.Key_F, Qt.Key.Key_0):
+            self._zoom(0)
+        else:
+            super().keyPressEvent(event)
+
     def _zoom(self, delta: float) -> None:
         if delta == 0:
             # Fit to viewport
@@ -113,6 +189,8 @@ class CsvViewer(QWidget):
     def __init__(self, file_path: str, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._path = file_path
+        self._matches: list[tuple[int, int]] = []
+        self._match_idx = 0
 
         lay = QVBoxLayout(self)
         lay.setContentsMargins(0, 0, 0, 0)
@@ -125,6 +203,13 @@ class CsvViewer(QWidget):
         self._info = QLabel("")
         self._info.setStyleSheet("font-size: 10px; padding: 2px 6px;")
         lay.addWidget(self._info)
+
+        self._find_bar = _FindBar()
+        self._find_bar.find_next.connect(self._find)
+        self._find_bar.find_prev.connect(lambda t: self._find(t, backward=True))
+        lay.addWidget(self._find_bar)
+
+        QShortcut(QKeySequence.StandardKey.Find, self).activated.connect(self._find_bar.open)
 
         self._load()
 
@@ -154,6 +239,29 @@ class CsvViewer(QWidget):
         except Exception as exc:
             self._info.setText(f"Error: {exc}")
 
+    def _find(self, text: str, backward: bool = False) -> None:
+        if not text:
+            self._matches = []
+            self._find_bar.set_status("")
+            return
+        self._matches = [
+            (r, c)
+            for r in range(self._table.rowCount())
+            for c in range(self._table.columnCount())
+            if (item := self._table.item(r, c)) and text.lower() in item.text().lower()
+        ]
+        if not self._matches:
+            self._find_bar.set_status("No results")
+            return
+        if backward:
+            self._match_idx = (self._match_idx - 1) % len(self._matches)
+        else:
+            self._match_idx = (self._match_idx + 1) % len(self._matches) if self._matches else 0
+        r, c = self._matches[self._match_idx]
+        self._table.setCurrentCell(r, c)
+        self._table.scrollToItem(self._table.item(r, c))
+        self._find_bar.set_status(f"{self._match_idx + 1} of {len(self._matches)}")
+
 
 class TextViewer(QWidget):
     """Read-only plain text viewer with monospace font."""
@@ -171,11 +279,35 @@ class TextViewer(QWidget):
         self._editor.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
         lay.addWidget(self._editor, 1)
 
+        self._find_bar = _FindBar()
+        self._find_bar.find_next.connect(self._find)
+        self._find_bar.find_prev.connect(lambda t: self._find(t, backward=True))
+        self._find_bar.hide_event = lambda: self._editor.setFocus()
+        lay.addWidget(self._find_bar)
+
+        QShortcut(QKeySequence.StandardKey.Find, self).activated.connect(self._find_bar.open)
+
         try:
             with open(file_path, encoding="utf-8", errors="replace") as f:
                 self._editor.setPlainText(f.read())
         except Exception as exc:
             self._editor.setPlainText(f"Error reading file: {exc}")
+
+    def _find(self, text: str, backward: bool = False) -> None:
+        if not text:
+            self._find_bar.set_status("")
+            return
+        flags = QTextDocument.FindFlag.FindBackward if backward else QTextDocument.FindFlag(0)
+        found = self._editor.find(text, flags)
+        if not found:
+            # Wrap around
+            cur = self._editor.textCursor()
+            cur.movePosition(
+                cur.MoveOperation.End if backward else cur.MoveOperation.Start
+            )
+            self._editor.setTextCursor(cur)
+            found = self._editor.find(text, flags)
+        self._find_bar.set_status("" if found else "No results")
 
 
 class PdfViewer(QWidget):
@@ -186,6 +318,8 @@ class PdfViewer(QWidget):
         self._path = file_path
         self._page = 0
         self._page_count = 0
+        self._zoom_scale = 2.0
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
         lay = QVBoxLayout(self)
         lay.setContentsMargins(0, 0, 0, 0)
@@ -229,12 +363,12 @@ class PdfViewer(QWidget):
         import fitz  # noqa: F811
 
         page = self._doc[self._page]
-        mat = fitz.Matrix(2.0, 2.0)  # 2x zoom for readability
+        mat = fitz.Matrix(self._zoom_scale, self._zoom_scale)
         with _silence_mupdf():
             pix = page.get_pixmap(matrix=mat)
         img = QImage(pix.samples, pix.width, pix.height, pix.stride, QImage.Format.Format_RGB888)
         self._label.setPixmap(QPixmap.fromImage(img))
-        self._info.setText(f"Page {self._page + 1} / {self._page_count}")
+        self._info.setText(f"Page {self._page + 1} / {self._page_count}   {int(self._zoom_scale * 50)}%")
         self._prev_btn.setEnabled(self._page > 0)
         self._next_btn.setEnabled(self._page < self._page_count - 1)
 
@@ -247,6 +381,33 @@ class PdfViewer(QWidget):
         if self._page < self._page_count - 1:
             self._page += 1
             self._render()
+
+    def _fit(self) -> None:
+        if not self._page_count:
+            return
+        import fitz  # noqa: F811
+        vp_w = self._scroll.viewport().width()
+        page = self._doc[self._page]
+        if vp_w > 0 and page.rect.width > 0:
+            self._zoom_scale = vp_w / page.rect.width
+            self._render()
+
+    def keyPressEvent(self, event) -> None:  # noqa: N802
+        key = event.key()
+        if key in (Qt.Key.Key_Left, Qt.Key.Key_Up):
+            self._prev()
+        elif key in (Qt.Key.Key_Right, Qt.Key.Key_Down):
+            self._next()
+        elif key in (Qt.Key.Key_Plus, Qt.Key.Key_Equal):
+            self._zoom_scale = min(6.0, self._zoom_scale + 0.25)
+            self._render()
+        elif key == Qt.Key.Key_Minus:
+            self._zoom_scale = max(0.25, self._zoom_scale - 0.25)
+            self._render()
+        elif key in (Qt.Key.Key_F, Qt.Key.Key_0):
+            self._fit()
+        else:
+            super().keyPressEvent(event)
 
 
 # ---------------------------------------------------------------------------
@@ -525,7 +686,11 @@ class _OfficeViewerBase(QWidget):
             self._apply_zoom()
         super().resizeEvent(event)
 
-    def keyPressEvent(self, event) -> None:
+    def _zoom_step(self, direction: int) -> None:
+        cur = self._zoom_combo.currentIndex()
+        self._zoom_combo.setCurrentIndex(max(0, min(self._zoom_combo.count() - 1, cur + direction)))
+
+    def keyPressEvent(self, event) -> None:  # noqa: N802
         key = event.key()
         if key in (Qt.Key.Key_Left, Qt.Key.Key_Up):
             self._prev()
@@ -535,6 +700,12 @@ class _OfficeViewerBase(QWidget):
             self._go_to(0)
         elif key == Qt.Key.Key_End:
             self._go_to(len(self._pages) - 1)
+        elif key in (Qt.Key.Key_Plus, Qt.Key.Key_Equal):
+            self._zoom_step(1)
+        elif key == Qt.Key.Key_Minus:
+            self._zoom_step(-1)
+        elif key in (Qt.Key.Key_F, Qt.Key.Key_0):
+            self._zoom_combo.setCurrentText("Fit Width")
         else:
             super().keyPressEvent(event)
 
@@ -562,6 +733,8 @@ class XlsxViewer(QWidget):
 
     def __init__(self, file_path: str, parent: QWidget | None = None) -> None:
         super().__init__(parent)
+        self._matches: list[tuple[int, int]] = []
+        self._match_idx = 0
         lay = QVBoxLayout(self)
         lay.setContentsMargins(0, 0, 0, 0)
 
@@ -580,6 +753,13 @@ class XlsxViewer(QWidget):
         self._info.setStyleSheet("font-size: 10px;")
         tb.addWidget(self._info)
         lay.addLayout(tb)
+
+        self._find_bar = _FindBar()
+        self._find_bar.find_next.connect(self._find)
+        self._find_bar.find_prev.connect(lambda t: self._find(t, backward=True))
+        lay.addWidget(self._find_bar)
+
+        QShortcut(QKeySequence.StandardKey.Find, self).activated.connect(self._find_bar.open)
 
         try:
             from openpyxl import load_workbook
@@ -608,6 +788,29 @@ class XlsxViewer(QWidget):
                 self._table.setItem(r, c, QTableWidgetItem(str(val) if val is not None else ""))
         self._table.resizeColumnsToContents()
         self._info.setText(f"{len(rows)} rows x {ncols} columns - {name}")
+
+    def _find(self, text: str, backward: bool = False) -> None:
+        if not text:
+            self._matches = []
+            self._find_bar.set_status("")
+            return
+        self._matches = [
+            (r, c)
+            for r in range(self._table.rowCount())
+            for c in range(self._table.columnCount())
+            if (item := self._table.item(r, c)) and text.lower() in item.text().lower()
+        ]
+        if not self._matches:
+            self._find_bar.set_status("No results")
+            return
+        if backward:
+            self._match_idx = (self._match_idx - 1) % len(self._matches)
+        else:
+            self._match_idx = (self._match_idx + 1) % len(self._matches) if self._matches else 0
+        r, c = self._matches[self._match_idx]
+        self._table.setCurrentCell(r, c)
+        self._table.scrollToItem(self._table.item(r, c))
+        self._find_bar.set_status(f"{self._match_idx + 1} of {len(self._matches)}")
 
 
 class PptxViewer(_OfficeViewerBase):
