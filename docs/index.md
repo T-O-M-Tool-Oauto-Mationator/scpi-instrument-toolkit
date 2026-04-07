@@ -109,7 +109,7 @@ examples          # list bundled example scripts
 | Page | What it covers |
 |------|---------------|
 | [Python API](python.md) | Control instruments from Python — autodiscovery, enums, direct instantiation |
-| [General Commands](general.md) | scan, list, use, idn, raw, state, sleep, reload |
+| [General Commands](general.md) | scan, force_scan, list, use, idn, raw, state, sleep, reload |
 | [PSU](psu.md) | Power supply control and measurement |
 | [AWG](awg.md) | Function generator — waveforms, frequency, amplitude |
 | [DMM](dmm.md) | Multimeter — measurement modes, logging |

@@ -77,11 +77,12 @@ class GeneralCommands(BaseCommand):
                     self._docs_server.shutdown()
                     self._docs_server = None
             except FileNotFoundError:
-                ColorPrinter.warning("mkdocs not found. Install with: pip install mkdocs-material")
+                ColorPrinter.warning("mkdocs not found. Install with: pip install -e \".[docs]\"")
                 return
             except subprocess.CalledProcessError as exc:
-                stderr = (exc.stderr or "")[:200]
+                stderr = (exc.stderr or "")[:300]
                 ColorPrinter.error(f"mkdocs build failed: {stderr}")
+                ColorPrinter.info("Try: pip install -e \".[docs]\"")
                 return
 
         if not (site_dir / "index.html").exists():
@@ -136,14 +137,39 @@ class GeneralCommands(BaseCommand):
             else:
                 ColorPrinter.warning("No instruments found.")
 
-    def do_unscan(self, arg: str) -> None:
+    def do_force_scan(self, arg: str, discovery: Any, scan_done: Any) -> None:
+        args = self.parse_args(arg)
+        if self.is_help(args):
+            self.print_colored_usage(
+                [
+                    "# FORCE-SCAN",
+                    "",
+                    "force-scan",
+                    "  - disconnect all instruments and re-scan from scratch",
+                    "  - all outputs are set to safe defaults (0 V, off)",
+                    "  - use when you want a clean slate",
+                ]
+            )
+            return
+        if not scan_done.is_set():
+            ColorPrinter.info("Waiting for background scan to finish...")
+            scan_done.wait()
+        self.registry.devices = discovery.scan(verbose=True, force=True)
+        if self.registry.selected not in self.registry.devices:
+            self.registry.selected = None
+        if self.registry.devices:
+            ColorPrinter.success(f"Found {len(self.registry.devices)} device(s). All outputs set to safe defaults.")
+        else:
+            ColorPrinter.warning("No instruments found.")
+
+    def do_disconnect(self, arg: str) -> None:
         args = self.parse_args(arg)
         if self.is_help(args) or not args:
             self.print_colored_usage(
                 [
-                    "# UNSCAN",
+                    "# DISCONNECT",
                     "",
-                    "unscan <name>",
+                    "disconnect <name>",
                     "  - remove a scanned device from the session by name",
                     "  - use 'list' to see device names",
                     "  - the device is removed until the next 'scan'",
