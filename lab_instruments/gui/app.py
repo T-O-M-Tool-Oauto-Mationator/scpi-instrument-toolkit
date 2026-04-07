@@ -672,9 +672,13 @@ class _MainWindow(QMainWindow):
         self._refresh_ev_panels()
         self._refresh_scope_panels()
         n = len(self._d.registry.devices)
-        self._dev_count.setText(f"Devices: {n}")
-        label = "device" if n == 1 else "devices"
-        self._status.setText(f"{n} {label} \u2014 all outputs safe")
+        if n > 0:
+            label = "device" if n == 1 else "devices"
+            self._dev_count.setText(f"Devices: {n}")
+            self._status.setText(f"{n} {label} \u2014 all outputs safe")
+        else:
+            self._dev_count.setText("")
+            self._status.setText("Ready")
 
     def _on_tab_closed(self, widget: QWidget) -> None:
         # Check instrument blocks
@@ -776,6 +780,7 @@ class _MainWindow(QMainWindow):
     def _on_scan(self) -> None:
         """Non-blocking scan. Disables all interactive controls while running."""
         self._status.setText("Scanning for instruments...")
+        self._dev_count.setText("Scanning...")
         # Disable console and all instrument blocks to prevent lock contention
         self._console._input.setEnabled(False)
         self._device_panel._scan_btn.setEnabled(False)
@@ -809,6 +814,7 @@ class _MainWindow(QMainWindow):
     def _on_force_scan(self) -> None:
         """Force rescan — disconnect all instruments and re-scan from scratch."""
         self._status.setText("Force rescanning...")
+        self._dev_count.setText("Scanning...")
         self._console._input.setEnabled(False)
         self._device_panel._scan_btn.setEnabled(False)
         self._device_panel._force_scan_btn.setEnabled(False)
