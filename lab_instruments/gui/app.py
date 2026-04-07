@@ -38,6 +38,7 @@ from .instrument_blocks.smu_block import _SMUBlock
 from .panels.device_panel import _DevicePanel
 from .panels.file_explorer import FileExplorer
 from .widgets.console import _Console
+from .widgets.docs_viewer import DocsViewer
 from .widgets.editor import ScpiEditor
 from .widgets.file_viewers import CsvViewer, ImageViewer, TextViewer
 from .widgets.work_area import _WorkArea
@@ -86,6 +87,7 @@ class _MainWindow(QMainWindow):
         self._scope_blocks: dict[str, _ScopeBlock] = {}
         self._scope_closed: set[str] = set()
         self._open_files: dict[str, QWidget] = {}
+        self._docs_tabs: dict[str, QWidget] = {}
         self._workspace = Workspace()
 
         # Restore last workspace folder
@@ -128,6 +130,17 @@ class _MainWindow(QMainWindow):
         im.addAction(ea)
 
         self._view_menu = mb.addMenu("&View")
+
+        hm = mb.addMenu("&Help")
+        _pkg_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        _repl_docs = os.path.join(_pkg_root, "site")
+        _api_docs = os.path.join(_pkg_root, "site-library")
+        ra = QAction("REPL Command Reference", self)
+        ra.triggered.connect(lambda: self._open_docs(_repl_docs, "REPL Docs"))
+        hm.addAction(ra)
+        aa = QAction("Python API Reference", self)
+        aa.triggered.connect(lambda: self._open_docs(_api_docs, "API Docs"))
+        hm.addAction(aa)
 
         # ── Toolbar ───────────────────────────────────────────────────
         tb = self.addToolBar("Main")
@@ -302,6 +315,19 @@ class _MainWindow(QMainWindow):
                     w.stop()
                 del self._open_files[path]
                 return
+
+    def _open_docs(self, site_dir: str, tab_title: str) -> None:
+        """Open a DocsViewer tab; focus it if already open."""
+        if tab_title in self._docs_tabs:
+            widget = self._docs_tabs[tab_title]
+            for group in self._work_area.all_groups():
+                for i, (_, w) in enumerate(group._widgets):
+                    if w is widget:
+                        group.set_current_tab(i)
+                        return
+        viewer = DocsViewer(site_dir)
+        self._docs_tabs[tab_title] = viewer
+        self._work_area.add_widget(tab_title, viewer)
 
     def _run_script(self, path: str) -> None:
         """Run a .scpi script."""

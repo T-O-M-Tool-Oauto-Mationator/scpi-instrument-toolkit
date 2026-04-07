@@ -11,10 +11,10 @@
       
       
       
-        <link rel="prev" href="ev2300.html">
+        <link rel="prev" href="api/base.html">
       
       
-        <link rel="next" href="scripting.html">
+        <link rel="next" href="troubleshooting.html">
       
       
         
@@ -25,7 +25,7 @@
     
     
       
-        <title>NI PXIe-4139 Setup - SCPI Instrument Toolkit</title>
+        <title>Architecture - SCPI Instrument Toolkit</title>
       
     
     
@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#ni-pxie-4139-setup" class="md-skip">
+        <a href="#architecture-layers-of-abstraction" class="md-skip">
           Skip to content
         </a>
       
@@ -112,7 +112,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              NI PXIe-4139 Setup
+              Architecture
             
           </span>
         </div>
@@ -280,12 +280,10 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
+      <li class="md-tabs__item">
         <a href="general.html" class="md-tabs__link">
           
   
@@ -322,8 +320,10 @@
   
   
   
+    
   
-    <li class="md-tabs__item">
+  
+    <li class="md-tabs__item md-tabs__item--active">
       <a href="architecture.html" class="md-tabs__link">
         
   
@@ -486,31 +486,28 @@
       
   
   
-    
   
   
-  
     
     
     
     
-      
-        
-        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
         
           
-          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
             
   
   
@@ -528,7 +525,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
             
@@ -739,37 +736,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    NI PXIe-4139 Setup
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="ni_pxie.html" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="ni_pxie.html" class="md-nav__link">
         
   
   
@@ -785,131 +755,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#prerequisites" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Prerequisites
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Prerequisites">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#1-ni-daqmx-runtime" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1 — NI-DAQmx runtime
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-nidcpower-python-package" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2 — nidcpower Python package
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-verify-the-dll-is-found" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3 — Verify the DLL is found
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#hardware-setup" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Hardware setup
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#repl-auto-detection" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        REPL auto-detection
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#minimal-working-example" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Minimal working example
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#repl-usage" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        REPL usage
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#troubleshooting" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Troubleshooting
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1295,10 +1140,37 @@
       
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="architecture.html" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="architecture.html" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1314,6 +1186,109 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#layer-by-layer-breakdown" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Layer-by-layer breakdown
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Layer-by-layer breakdown">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#layer-0-hardware-os-interfaces" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Layer 0 — Hardware &amp; OS interfaces
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#layer-1-transport-libraries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Layer 1 — Transport libraries
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#layer-2-driver-layer-lab_instrumentssrc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Layer 2 — Driver layer (lab_instruments/src/)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#layer-3-repl-layer-lab_instrumentsrepl" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Layer 3 — REPL layer (lab_instruments/repl/)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#layer-4-frontends" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Layer 4 — Frontends
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-bypasses-what" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What bypasses what
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1372,22 +1347,22 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#prerequisites" class="md-nav__link">
+  <a href="#layer-by-layer-breakdown" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Prerequisites
+        Layer-by-layer breakdown
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Prerequisites">
+    <nav class="md-nav" aria-label="Layer-by-layer breakdown">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#1-ni-daqmx-runtime" class="md-nav__link">
+  <a href="#layer-0-hardware-os-interfaces" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1 — NI-DAQmx runtime
+        Layer 0 — Hardware &amp; OS interfaces
       
     </span>
   </a>
@@ -1395,10 +1370,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#2-nidcpower-python-package" class="md-nav__link">
+  <a href="#layer-1-transport-libraries" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2 — nidcpower Python package
+        Layer 1 — Transport libraries
       
     </span>
   </a>
@@ -1406,10 +1381,32 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#3-verify-the-dll-is-found" class="md-nav__link">
+  <a href="#layer-2-driver-layer-lab_instrumentssrc" class="md-nav__link">
     <span class="md-ellipsis">
       
-        3 — Verify the DLL is found
+        Layer 2 — Driver layer (lab_instruments/src/)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#layer-3-repl-layer-lab_instrumentsrepl" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Layer 3 — REPL layer (lab_instruments/repl/)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#layer-4-frontends" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Layer 4 — Frontends
       
     </span>
   </a>
@@ -1422,54 +1419,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#hardware-setup" class="md-nav__link">
+  <a href="#what-bypasses-what" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Hardware setup
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#repl-auto-detection" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        REPL auto-detection
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#minimal-working-example" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Minimal working example
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#repl-usage" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        REPL usage
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#troubleshooting" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Troubleshooting
+        What bypasses what
       
     </span>
   </a>
@@ -1496,106 +1449,151 @@
   
 
 
-<h1 id="ni-pxie-4139-setup">NI PXIe-4139 Setup<a class="headerlink" href="#ni-pxie-4139-setup" title="Permanent link">&para;</a></h1>
-<p>The NI PXIe-4139 is a ±60 V / 1 A four-quadrant Source Measure Unit (SMU). It uses the <strong>NI-DCPower</strong> driver — not VISA/SCPI — so it requires its own driver stack.</p>
+<h1 id="architecture-layers-of-abstraction">Architecture — Layers of Abstraction<a class="headerlink" href="#architecture-layers-of-abstraction" title="Permanent link">&para;</a></h1>
+<p>This page shows how the toolkit is layered, from hardware at the center out to the various user-facing frontends.</p>
 <hr />
-<h2 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h2>
-<h3 id="1-ni-daqmx-runtime">1 — NI-DAQmx runtime<a class="headerlink" href="#1-ni-daqmx-runtime" title="Permanent link">&para;</a></h3>
-<p>Download and install from:
-<a href="https://www.ni.com/en/support/downloads/drivers/download.ni-daqmx.html">NI-DAQmx Downloads</a></p>
-<p>This installs the NI instrument driver runtime that the <code>nidcpower</code> Python package calls into.</p>
-<div class="admonition note">
-<p class="admonition-title">Windows only</p>
-<p>The <code>nidcpower</code> package and NI-DAQmx runtime are only supported on Windows at this time. The REPL loads the NI PXIe-4139 driver conditionally — on Linux/macOS the instrument is silently skipped.</p>
-</div>
-<h3 id="2-nidcpower-python-package">2 — nidcpower Python package<a class="headerlink" href="#2-nidcpower-python-package" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip<span class="w"> </span>install<span class="w"> </span>nidcpower
-</code></pre></div>
-<h3 id="3-verify-the-dll-is-found">3 — Verify the DLL is found<a class="headerlink" href="#3-verify-the-dll-is-found" title="Permanent link">&para;</a></h3>
-<p>After installing NI-DAQmx, the required DLL (<code>nidcpower_64.dll</code> or <code>nidcpower.dll</code>) should be in one of:</p>
-<ul>
-<li><code>C:\Program Files\IVI Foundation\IVI\Bin\</code></li>
-<li><code>C:\Program Files (x86)\IVI Foundation\IVI\Bin\</code></li>
-</ul>
-<p>If Python can't find the DLL, add the IVI Bin directory to your system PATH.</p>
-<hr />
-<h2 id="hardware-setup">Hardware setup<a class="headerlink" href="#hardware-setup" title="Permanent link">&para;</a></h2>
-<ol>
-<li>Seat the PXIe-4139 card in the PXIe chassis.</li>
-<li>Connect the chassis to the host PC via MXI-Express or Thunderbolt.</li>
-<li>Open <strong>NI MAX</strong> (Measurement &amp; Automation Explorer) and verify the card appears under <code>My System &gt; Devices and Interfaces</code>.</li>
-<li>Note the <strong>resource name</strong> shown in NI MAX (e.g., <code>PXI1Slot2</code>). This name is needed for manual Python scripts (see the example below). The REPL typically auto-discovers the card without requiring manual resource specification; the resource name is only needed as a fallback if auto-detection fails or you need to force a specific device.</li>
-</ol>
-<hr />
-<h2 id="repl-auto-detection">REPL auto-detection<a class="headerlink" href="#repl-auto-detection" title="Permanent link">&para;</a></h2>
-<p>When <code>nidcpower</code> is installed and the card is present, the REPL assigns the SMU as <code>smu1</code> automatically on startup (or on <code>scan</code>).</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>eset&gt; scan
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>[scpi] Found: smu1  (NI PXIe-4139)
-</code></pre></div>
-<p>If the card is not found, run <code>scan</code> after the chassis is powered and the MXI link is established.</p>
-<hr />
-<h2 id="minimal-working-example">Minimal working example<a class="headerlink" href="#minimal-working-example" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># Verify nidcpower works outside the REPL</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">nidcpower</span>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="k">with</span> <span class="n">nidcpower</span><span class="o">.</span><span class="n">Session</span><span class="p">(</span><span class="s2">&quot;PXI1Slot2&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">session</span><span class="p">:</span>
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    <span class="n">session</span><span class="o">.</span><span class="n">output_function</span> <span class="o">=</span> <span class="n">nidcpower</span><span class="o">.</span><span class="n">OutputFunction</span><span class="o">.</span><span class="n">DC_VOLTAGE</span>
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    <span class="n">session</span><span class="o">.</span><span class="n">voltage_level</span> <span class="o">=</span> <span class="mf">5.0</span>
-<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    <span class="n">session</span><span class="o">.</span><span class="n">current_limit</span> <span class="o">=</span> <span class="mf">0.01</span>
-<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>    <span class="n">session</span><span class="o">.</span><span class="n">output_enabled</span> <span class="o">=</span> <span class="kc">True</span>
-<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>    <span class="n">session</span><span class="o">.</span><span class="n">initiate</span><span class="p">()</span>
-<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>    <span class="n">v</span> <span class="o">=</span> <span class="n">session</span><span class="o">.</span><span class="n">measure</span><span class="p">(</span><span class="n">nidcpower</span><span class="o">.</span><span class="n">MeasurementTypes</span><span class="o">.</span><span class="n">VOLTAGE</span><span class="p">)</span>
-<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>    <span class="n">i</span> <span class="o">=</span> <span class="n">session</span><span class="o">.</span><span class="n">measure</span><span class="p">(</span><span class="n">nidcpower</span><span class="o">.</span><span class="n">MeasurementTypes</span><span class="o">.</span><span class="n">CURRENT</span><span class="p">)</span>
-<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;V = </span><span class="si">{</span><span class="n">v</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2"> V   I = </span><span class="si">{</span><span class="n">i</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2"> A&quot;</span><span class="p">)</span>
-<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>    <span class="n">session</span><span class="o">.</span><span class="n">output_enabled</span> <span class="o">=</span> <span class="kc">False</span>
-</code></pre></div>
-<hr />
-<h2 id="repl-usage">REPL usage<a class="headerlink" href="#repl-usage" title="Permanent link">&para;</a></h2>
-<p>Once detected as <code>smu1</code>, use the standard SMU commands:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>upper_limit<span class="w"> </span>smu<span class="w"> </span>voltage<span class="w"> </span><span class="m">6</span>.0
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>upper_limit<span class="w"> </span>smu<span class="w"> </span>current<span class="w"> </span><span class="m">0</span>.05
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>smu<span class="w"> </span><span class="nb">set</span><span class="w"> </span><span class="m">5</span>.0<span class="w"> </span><span class="m">0</span>.02
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>smu<span class="w"> </span>on
-<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>sleep<span class="w"> </span><span class="m">0</span>.5
-<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>smu<span class="w"> </span>meas<span class="w"> </span>v
-<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>smu<span class="w"> </span>meas<span class="w"> </span>i
-<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>smu<span class="w"> </span>off
-</code></pre></div>
-<p>See <a href="smu.html">Source Measure Unit (SMU)</a> for the full command reference.</p>
-<hr />
-<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
+<p><img alt="Architecture diagram" src="img/architecture.png" /></p>
+<h2 id="layer-by-layer-breakdown">Layer-by-layer breakdown<a class="headerlink" href="#layer-by-layer-breakdown" title="Permanent link">&para;</a></h2>
+<h3 id="layer-0-hardware-os-interfaces">Layer 0 — Hardware &amp; OS interfaces<a class="headerlink" href="#layer-0-hardware-os-interfaces" title="Permanent link">&para;</a></h3>
+<p>The physical instruments and the OS-level drivers that expose them:</p>
 <table>
 <thead>
 <tr>
-<th>Symptom</th>
-<th>Likely cause</th>
-<th>Fix</th>
+<th>Interface</th>
+<th>Used by</th>
+<th>Notes</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>ImportError: No module named 'nidcpower'</code></td>
-<td>Package not installed</td>
-<td><code>pip install nidcpower</code></td>
+<td>NI-VISA / USBTMC</td>
+<td>SCPI instruments</td>
+<td>USB, GPIB, Serial</td>
 </tr>
 <tr>
-<td><code>nidcpower</code> imports but <code>smu1</code> not found</td>
-<td>Card not visible to driver</td>
-<td>Check NI MAX; re-seat card; power-cycle chassis</td>
+<td><code>/dev/hidrawN</code> (Linux) / <code>hid.dll</code> (Windows)</td>
+<td>TI EV2300</td>
+<td>Raw HID, no VISA needed</td>
 </tr>
 <tr>
-<td><code>DLL load failed</code></td>
-<td>NI-DAQmx not installed or DLL not on PATH</td>
-<td>Install NI-DAQmx runtime; add IVI Bin dir to PATH</td>
-</tr>
-<tr>
-<td><code>Resource not found</code></td>
-<td>Wrong resource name</td>
-<td>Open NI MAX and confirm the resource name shown there</td>
+<td>NI-DCPower runtime</td>
+<td>NI PXIe-4139</td>
+<td>PXIe chassis, proprietary SDK</td>
 </tr>
 </tbody>
 </table>
+<hr />
+<h3 id="layer-1-transport-libraries">Layer 1 — Transport libraries<a class="headerlink" href="#layer-1-transport-libraries" title="Permanent link">&para;</a></h3>
+<p>Python packages that talk to the OS interfaces:</p>
+<table>
+<thead>
+<tr>
+<th>Library</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>pyvisa</code></td>
+<td>Unified VISA session management — open, write, query, close</td>
+</tr>
+<tr>
+<td><code>ctypes</code> + OS HID APIs</td>
+<td>Low-level byte I/O for the EV2300 (no pip install needed)</td>
+</tr>
+<tr>
+<td><code>nidcpower</code></td>
+<td>NI's official Python SDK for the PXIe-4139 SMU</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="layer-2-driver-layer-lab_instrumentssrc">Layer 2 — Driver layer (<code>lab_instruments/src/</code>)<a class="headerlink" href="#layer-2-driver-layer-lab_instrumentssrc" title="Permanent link">&para;</a></h3>
+<p>One class per instrument model. Two families:</p>
+<p><strong>SCPI drivers</strong> inherit <code>DeviceManager</code> (which wraps a <code>pyvisa.Resource</code>) and speak the SCPI command set. Every public method is a named operation: <code>set_voltage</code>, <code>measure_current</code>, <code>enable_output</code>, etc.</p>
+<p><strong>Non-SCPI drivers</strong> own their own transport:</p>
+<ul>
+<li><code>TI_EV2300</code> — HID protocol over <code>ctypes</code>/hidraw, no <code>DeviceManager</code></li>
+<li><code>NI_PXIe_4139</code> — <code>nidcpower</code> session, no <code>DeviceManager</code></li>
+</ul>
+<p><code>DeviceManager</code> (base class) handles connect/disconnect/query/write.<br />
+<code>discovery.py</code> probes all VISA addresses, identifies models by <code>*IDN?</code>, and returns named instances (<code>psu1</code>, <code>dmm1</code>, …).<br />
+<code>mock_instruments.py</code> provides in-process fakes for testing without hardware.</p>
+<hr />
+<h3 id="layer-3-repl-layer-lab_instrumentsrepl">Layer 3 — REPL layer (<code>lab_instruments/repl/</code>)<a class="headerlink" href="#layer-3-repl-layer-lab_instrumentsrepl" title="Permanent link">&para;</a></h3>
+<p>Sits on top of the driver layer and adds interactive-session state:</p>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ReplContext</code> / <code>DeviceRegistry</code></td>
+<td>Holds the live instrument map (<code>psu1 → HP_E3631A instance</code>) and active selection</td>
+</tr>
+<tr>
+<td><code>commands/</code></td>
+<td>One file per instrument family — parses text args and calls driver methods</td>
+</tr>
+<tr>
+<td><code>ScriptEngine</code></td>
+<td>Loops, variables, <code>for</code>/<code>while</code>, <code>repeat</code>, <code>if</code> directives</td>
+</tr>
+<tr>
+<td><code>MeasurementStore</code></td>
+<td>Labelled measurement log, CSV export, <code>calc</code> expressions</td>
+</tr>
+<tr>
+<td><code>SafetySystem</code></td>
+<td>Voltage/current limits, interlock checks before writes</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="layer-4-frontends">Layer 4 — Frontends<a class="headerlink" href="#layer-4-frontends" title="Permanent link">&para;</a></h3>
+<p>All four frontends consume the driver layer (Layer 2) directly or via the REPL layer (Layer 3):</p>
+<table>
+<thead>
+<tr>
+<th>Frontend</th>
+<th>Entry point</th>
+<th>Uses</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>REPL / CLI</strong> (<code>scpi-repl</code>)</td>
+<td><code>shell.py</code> → <code>cmd.Cmd</code> loop</td>
+<td>Layer 3 (commands)</td>
+</tr>
+<tr>
+<td><strong>GUI</strong> (<code>scpi-gui</code>)</td>
+<td><code>gui/app.py</code> → Tkinter</td>
+<td>Layer 3 (commands) + driver layer directly for live widgets</td>
+</tr>
+<tr>
+<td><strong>LabVIEW bridge</strong></td>
+<td><code>labview_bridge.py</code></td>
+<td>Layer 3 — flat module-level functions that invoke REPL commands, LabVIEW-compatible types</td>
+</tr>
+<tr>
+<td><strong>Python scripts</strong></td>
+<td><code>from lab_instruments.src import ...</code></td>
+<td>Layer 2 directly</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="what-bypasses-what">What bypasses what<a class="headerlink" href="#what-bypasses-what" title="Permanent link">&para;</a></h2>
+<ul>
+<li>The <strong>GUI</strong> talks to instrument blocks (Layer 3) for command dispatch but reads driver objects directly for live polling (voltage readback, waveform capture).</li>
+<li>The <strong>LabVIEW bridge</strong> goes through Layer 3 — it exposes flat module-level functions that LabVIEW's Python Node can call with primitive types, and those functions invoke the same REPL command handlers. This means instrument logic, safety checks, and scripting stay in one place.</li>
+<li>The <strong>EV2300 and NI PXIe-4139</strong> are optional imports everywhere — missing hardware or missing SDK produces a clean <code>ImportError</code> fallback, not a crash.</li>
+<li><strong>Mocks</strong> live at Layer 2 and replace real driver instances, so Layers 3 and 4 are fully testable without hardware.</li>
+</ul>
 
 
 

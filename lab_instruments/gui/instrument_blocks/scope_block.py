@@ -4,6 +4,7 @@ import contextlib
 
 from PySide6.QtCore import Qt, Slot
 from PySide6.QtWidgets import (
+    QComboBox,
     QFrame,
     QGroupBox,
     QHBoxLayout,
@@ -15,13 +16,52 @@ from PySide6.QtWidgets import (
 )
 
 from ..core.dispatcher import _Dispatcher
-from ..core.helpers import _mono
+from ..core.helpers import _mono, _NumSpin
 
 _SCOPE_MEAS = [
     ("Freq", "measure_frequency", "Hz"),
     ("Vpp", "measure_peak_to_peak", "V"),
     ("RMS", "measure_rms", "V"),
     ("Mean", "measure_mean", "V"),
+]
+
+_HSCALE_LABELS = [
+    "1 ns", "2 ns", "5 ns",
+    "10 ns", "20 ns", "50 ns",
+    "100 ns", "200 ns", "500 ns",
+    "1 µs", "2 µs", "5 µs",
+    "10 µs", "20 µs", "50 µs",
+    "100 µs", "200 µs", "500 µs",
+    "1 ms", "2 ms", "5 ms",
+    "10 ms", "20 ms", "50 ms",
+    "100 ms", "200 ms", "500 ms",
+    "1 s", "2 s", "5 s",
+]
+_HSCALE_SECS = [
+    1e-9, 2e-9, 5e-9,
+    10e-9, 20e-9, 50e-9,
+    100e-9, 200e-9, 500e-9,
+    1e-6, 2e-6, 5e-6,
+    10e-6, 20e-6, 50e-6,
+    100e-6, 200e-6, 500e-6,
+    1e-3, 2e-3, 5e-3,
+    10e-3, 20e-3, 50e-3,
+    100e-3, 200e-3, 500e-3,
+    1.0, 2.0, 5.0,
+]
+_VSCALE_LABELS = [
+    "1 mV", "2 mV", "5 mV",
+    "10 mV", "20 mV", "50 mV",
+    "100 mV", "200 mV", "500 mV",
+    "1 V", "2 V", "5 V",
+    "10 V", "20 V", "50 V",
+]
+_VSCALE_VOLTS = [
+    1e-3, 2e-3, 5e-3,
+    10e-3, 20e-3, 50e-3,
+    100e-3, 200e-3, 500e-3,
+    1.0, 2.0, 5.0,
+    10.0, 20.0, 50.0,
 ]
 
 
@@ -103,9 +143,52 @@ class _ScopeBlock(QFrame):
         trig_row.addWidget(self._rate_lbl)
         grp_lay.addLayout(trig_row)
 
+        # H-scale row
+        hscale_row = QHBoxLayout()
+        hscale_row.setSpacing(4)
+        hscale_row.addWidget(QLabel("H Scale"))
+        self._hscale_combo = QComboBox()
+        self._hscale_combo.addItems(_HSCALE_LABELS)
+        self._hscale_combo.setCurrentIndex(18)  # 1 ms default
+        self._hscale_combo.activated.connect(lambda i: self._repl(f"scope hscale {_HSCALE_SECS[i]}"))
+        hscale_row.addWidget(self._hscale_combo)
+        hmove_left = QPushButton("◄")
+        hmove_left.setFixedWidth(28)
+        hmove_left.clicked.connect(lambda: self._repl("scope hmove -1"))
+        hscale_row.addWidget(hmove_left)
+        hmove_right = QPushButton("►")
+        hmove_right.setFixedWidth(28)
+        hmove_right.clicked.connect(lambda: self._repl("scope hmove 1"))
+        hscale_row.addWidget(hmove_right)
+        hscale_row.addStretch()
+        grp_lay.addLayout(hscale_row)
+
+        # Trigger config row
+        trig_cfg = QHBoxLayout()
+        trig_cfg.setSpacing(4)
+        trig_cfg.addWidget(QLabel("Trig"))
+        self._trig_src_combo = QComboBox()
+        self._trig_src_combo.addItems(["CH1", "CH2", "CH3", "CH4"])
+        trig_cfg.addWidget(self._trig_src_combo)
+        trig_cfg.addWidget(QLabel("Level"))
+        self._trig_level_spin = _NumSpin()
+        self._trig_level_spin.setRange(-50.0, 50.0)
+        self._trig_level_spin.setDecimals(3)
+        self._trig_level_spin.setSuffix(" V")
+        self._trig_level_spin.setMinimumWidth(88)
+        trig_cfg.addWidget(self._trig_level_spin)
+        set_trig_btn = QPushButton("Set Trig")
+        set_trig_btn.clicked.connect(self._set_trigger)
+        trig_cfg.addWidget(set_trig_btn)
+        trig_cfg.addStretch()
+        grp_lay.addLayout(trig_cfg)
+
         # Channel status rows
         self._ch_labels: dict[int, QLabel] = {}
         self._ch_btns: dict[int, QPushButton] = {}
+        self._ch_vscale: dict[int, QComboBox] = {}
+        self._ch_coupling: dict[int, QComboBox] = {}
+        self._ch_probe: dict[int, QComboBox] = {}
         ch_grid = QHBoxLayout()
         ch_grid.setSpacing(6)
         num_ch = getattr(dev, "num_channels", 4) if dev else 4
@@ -131,17 +214,43 @@ class _ScopeBlock(QFrame):
             lbl.setStyleSheet(f"color: {color};")
             col.addWidget(lbl)
             self._ch_labels[ch] = lbl
+            vscale = QComboBox()
+            vscale.addItems(_VSCALE_LABELS)
+            vscale.setCurrentIndex(9)  # 1 V default
+            vscale.activated.connect(lambda i, c=ch: self._repl(f"scope vscale {c} {_VSCALE_VOLTS[i]}"))
+            col.addWidget(vscale)
+            self._ch_vscale[ch] = vscale
+            coupling = QComboBox()
+            coupling.addItems(["DC", "AC", "GND"])
+            coupling.activated.connect(lambda i, c=ch, cb=coupling: self._repl(f"scope coupling {c} {cb.currentText()}"))
+            col.addWidget(coupling)
+            self._ch_coupling[ch] = coupling
+            probe = QComboBox()
+            probe.addItems(["1X", "10X", "100X"])
+            probe.activated.connect(lambda i, c=ch, cb=probe: self._repl(f"scope probe {c} {cb.currentText()}"))
+            col.addWidget(probe)
+            self._ch_probe[ch] = probe
             ch_grid.addLayout(col)
         grp_lay.addLayout(ch_grid)
 
-        # Measurement display (CH1 measurements)
+        # Measurement channel selector
+        meas_ch_row = QHBoxLayout()
+        meas_ch_row.setSpacing(4)
+        meas_ch_row.addWidget(QLabel("Measure"))
+        self._meas_ch_combo = QComboBox()
+        self._meas_ch_combo.addItems(["CH1", "CH2", "CH3", "CH4"])
+        meas_ch_row.addWidget(self._meas_ch_combo)
+        meas_ch_row.addStretch()
+        grp_lay.addLayout(meas_ch_row)
+
+        # Measurement display
         meas_row = QHBoxLayout()
         meas_row.setSpacing(6)
         self._meas_labels: dict[str, QLabel] = {}
-        for name, _, unit in _SCOPE_MEAS:
+        for meas_name, _, unit in _SCOPE_MEAS:
             col = QVBoxLayout()
             col.setSpacing(1)
-            hdr_l = QLabel(name)
+            hdr_l = QLabel(meas_name)
             hdr_l.setStyleSheet("font-size: 9px;")
             hdr_l.setAlignment(Qt.AlignmentFlag.AlignCenter)
             col.addWidget(hdr_l)
@@ -150,7 +259,7 @@ class _ScopeBlock(QFrame):
             val_l.setStyleSheet("color: #1e7a1e;")
             val_l.setAlignment(Qt.AlignmentFlag.AlignCenter)
             col.addWidget(val_l)
-            self._meas_labels[name] = val_l
+            self._meas_labels[meas_name] = val_l
             meas_row.addLayout(col)
         grp_lay.addLayout(meas_row)
 
@@ -167,6 +276,7 @@ class _ScopeBlock(QFrame):
             ("Stop", self._stop),
             ("Single", self._single),
             ("AutoSet", self._autoset),
+            ("Screenshot", self._screenshot),
         ]:
             b = QPushButton(text)
             b.setStyleSheet(
@@ -214,6 +324,14 @@ class _ScopeBlock(QFrame):
         self._repl("scope autoset")
         self._poll()
 
+    def _set_trigger(self) -> None:
+        src = self._trig_src_combo.currentText()
+        level = self._trig_level_spin.value()
+        self._repl(f"scope trigger {src} {level}")
+
+    def _screenshot(self) -> None:
+        self._repl("scope screenshot")
+
     @Slot()
     def _poll(self) -> None:
         dev = self._d.device(self._scope)
@@ -234,18 +352,26 @@ class _ScopeBlock(QFrame):
                 self._rate_lbl.setText(f"{rate / 1e6:.2f} MSa/s")
             else:
                 self._rate_lbl.setText(f"{rate / 1e3:.2f} kSa/s")
-        # CH1 measurements
-        for name, method, unit in _SCOPE_MEAS:
+        with contextlib.suppress(Exception):
+            tb = dev.get_timebase()
+            if tb is not None:
+                closest = min(range(len(_HSCALE_SECS)), key=lambda i: abs(_HSCALE_SECS[i] - tb))
+                self._hscale_combo.blockSignals(True)
+                self._hscale_combo.setCurrentIndex(closest)
+                self._hscale_combo.blockSignals(False)
+        # Measurements on the selected channel
+        meas_ch = self._meas_ch_combo.currentIndex() + 1
+        for meas_name, method, unit in _SCOPE_MEAS:
             with contextlib.suppress(Exception):
                 fn = getattr(dev, method, None)
                 if fn:
-                    val = fn(1)
-                    if unit == "Hz" and val >= 1e3:
-                        self._meas_labels[name].setText(f"{val / 1e3:.2f} kHz")
-                    elif unit == "Hz" and val >= 1e6:
-                        self._meas_labels[name].setText(f"{val / 1e6:.3f} MHz")
+                    val = fn(meas_ch)
+                    if unit == "Hz" and val >= 1e6:
+                        self._meas_labels[meas_name].setText(f"{val / 1e6:.3f} MHz")
+                    elif unit == "Hz" and val >= 1e3:
+                        self._meas_labels[meas_name].setText(f"{val / 1e3:.2f} kHz")
                     else:
-                        self._meas_labels[name].setText(f"{val:.4f} {unit}")
+                        self._meas_labels[meas_name].setText(f"{val:.4f} {unit}")
 
     def stop(self) -> None:
         pass

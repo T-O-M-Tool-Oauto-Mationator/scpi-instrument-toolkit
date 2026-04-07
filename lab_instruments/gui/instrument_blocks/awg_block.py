@@ -124,6 +124,31 @@ class _AWGChannel(QGroupBox):
         off_row.addStretch()
         layout.addLayout(off_row)
 
+        extras_row = QHBoxLayout()
+        extras_row.setSpacing(4)
+        duty_lbl = QLabel("Duty")
+        duty_lbl.setStyleSheet("font-size: 10px;")
+        extras_row.addWidget(duty_lbl)
+        self.duty_spin = _NumSpin()
+        self.duty_spin.setRange(0.0, 100.0)
+        self.duty_spin.setDecimals(1)
+        self.duty_spin.setSuffix(" %")
+        self.duty_spin.setMinimumWidth(75)
+        self.duty_spin.setStyleSheet("QDoubleSpinBox { font-size: 11px; }")
+        extras_row.addWidget(self.duty_spin)
+        phase_lbl = QLabel("Phase")
+        phase_lbl.setStyleSheet("font-size: 10px;")
+        extras_row.addWidget(phase_lbl)
+        self.phase_spin = _NumSpin()
+        self.phase_spin.setRange(-360.0, 360.0)
+        self.phase_spin.setDecimals(1)
+        self.phase_spin.setSuffix(" °")
+        self.phase_spin.setMinimumWidth(75)
+        self.phase_spin.setStyleSheet("QDoubleSpinBox { font-size: 11px; }")
+        extras_row.addWidget(self.phase_spin)
+        extras_row.addStretch()
+        layout.addLayout(extras_row)
+
     def _set_toggle_style(self, on: bool) -> None:
         if on:
             self.toggle_btn.setText(f"\u25cf  CH{self.channel} ON")
@@ -166,6 +191,16 @@ class _AWGChannel(QGroupBox):
                 self.offset_spin.blockSignals(True)
                 self.offset_spin.setValue(offset)
                 self.offset_spin.blockSignals(False)
+        with contextlib.suppress(Exception):
+            if hasattr(dev, "get_duty_cycle"):
+                self.duty_spin.blockSignals(True)
+                self.duty_spin.setValue(dev.get_duty_cycle(self.channel))
+                self.duty_spin.blockSignals(False)
+        with contextlib.suppress(Exception):
+            if hasattr(dev, "get_phase"):
+                self.phase_spin.blockSignals(True)
+                self.phase_spin.setValue(dev.get_phase(self.channel))
+                self.phase_spin.blockSignals(False)
         self.toggle_btn.blockSignals(True)
         self.toggle_btn.setChecked(on)
         self.toggle_btn.blockSignals(False)
@@ -282,6 +317,8 @@ class _AWGBlock(QFrame):
         self._run(f"awg chan {ch} set_frequency {freq}")
         self._run(f"awg chan {ch} set_amplitude {amp}")
         self._run(f"awg chan {ch} set_offset {offset}")
+        self._run(f"awg chan {ch} duty {w.duty_spin.value()}")
+        self._run(f"awg chan {ch} phase {w.phase_spin.value()}")
         self._status.setText(f"CH{ch}: {wave.upper()} {freq:.1f}Hz {amp:.4f}Vpp")
         self._status.setStyleSheet("color: #155724; font-size: 10px;")
         self._poll()

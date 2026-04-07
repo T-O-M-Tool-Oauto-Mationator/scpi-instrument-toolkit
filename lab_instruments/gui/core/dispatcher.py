@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import atexit
+import builtins as _builtins
 import contextlib
 import io
 import re
@@ -43,14 +44,24 @@ class _Dispatcher:
         """Execute a REPL command. Thread-safe via lock."""
         with self._lock:
             buf = io.StringIO()
+
+            def _no_input(prompt=""):
+                buf.write(f"\n[GUI] '{str(prompt).strip()}' — interactive input not supported in GUI mode.\n")
+                return ""
+
+            old_input = _builtins.input
+            _builtins.input = _no_input
             old_repl_stdout = self._repl.stdout
             self._repl.stdout = buf
-            with contextlib.redirect_stdout(buf):
-                for line in command.split("\n"):
-                    line = line.strip()
-                    if line:
-                        self._repl.onecmd(line)
-            self._repl.stdout = old_repl_stdout
+            try:
+                with contextlib.redirect_stdout(buf):
+                    for line in command.split("\n"):
+                        line = line.strip()
+                        if line:
+                            self._repl.onecmd(line)
+            finally:
+                _builtins.input = old_input
+                self._repl.stdout = old_repl_stdout
             return buf.getvalue()
 
     @property
