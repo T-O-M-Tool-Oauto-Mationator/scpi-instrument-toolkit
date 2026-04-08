@@ -70,15 +70,3 @@ Fake instruments — safe to experiment with everything.
 ```
 pip install --upgrade "git+https://github.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit.git"
 ```
-
----
-
-## Troubleshooting
-
-### `scpi-repl` is not recognized
-
-```powershell
-python -m lab_instruments
-```
-
-This always works. On Windows, the toolkit will try to fix your PATH automatically — open a new terminal after running it once.
