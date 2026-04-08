@@ -2,6 +2,8 @@
 
 Control oscilloscopes, power supplies, multimeters, and function generators from your computer.
 
+**Docs:** https://t-o-m-tool-oauto-mationator.github.io/scpi-instrument-toolkit/
+
 ---
 
 ## TAMU Students — Start Here
@@ -46,40 +48,6 @@ Fake instruments — safe to experiment with everything.
 
 ---
 
-## Quick Commands
-
-Once the REPL is running:
-
-| Command | What it does |
-|---|---|
-| `help` | Show all commands |
-| `docs` | Open full documentation in your browser |
-| `list` | Show connected instruments |
-| `scan` | Re-scan for instruments |
-| `psu chan 1 on` | Turn on the power supply |
-| `psu set 5.0 0.5` | Set PSU to 5 V, 0.5 A limit |
-| `psu meas v` | Measure output voltage |
-| `dmm meas vdc` | Measure DC voltage |
-| `awg wave 1 sine freq=1000 amp=2.0` | Output a 1 kHz sine wave |
-| `scope meas 1 FREQUENCY` | Measure frequency on scope CH1 |
-| `scope autoset` | Auto-configure the scope |
-| `state safe` | Put all instruments in a safe state |
-| `exit` | Quit |
-
-Type `help <command>` for details. Example: `help psu`
-
----
-
-## Documentation
-
-Type `docs` inside the REPL to open the full reference in your browser.
-
-- [REPL & Scripting Reference](docs/index.md)
-- [Python API Reference](docs-library/index.md)
-- [Troubleshooting](docs/troubleshooting.md)
-
----
-
 ## Supported Instruments
 
 | Instrument | Type |
@@ -94,22 +62,6 @@ Type `docs` inside the REPL to open the full reference in your browser.
 | Matrix MPS6010H | Power Supply |
 | JDS6600 | Function Generator |
 | NI PXIe-4139 | SMU |
-
----
-
-## Saving Scripts
-
-Save a sequence of commands as a script:
-
-```
-script new my_setup
-```
-
-Opens your editor. Write one command per line, save, and close. Run it with:
-
-```
-script run my_setup
-```
 
 ---
 
@@ -130,19 +82,3 @@ python -m lab_instruments
 ```
 
 This always works. On Windows, the toolkit will try to fix your PATH automatically — open a new terminal after running it once.
-
-### Managed machines (TAMU lab computers)
-
-Use the TAMU setup script at the top of this page — it handles everything including PATH without admin rights.
-
-### `git` is not recognized
-
-```powershell
-.\setup-git.ps1
-```
-
-Finds GitHub Desktop's bundled git and adds it to your user PATH. Open a new terminal after running.
-
----
-
-> **Using the Python drivers directly?** See the [Python API Reference](docs-library/index.md) for importing drivers into your own scripts.
