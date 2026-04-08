@@ -250,26 +250,10 @@ if (-not $gitExe) {
 Write-Step 5 "Checking / installing Python..."
 
 $pythonOk = $false
-$pythonVersion = $null
 try {
     $v = & python --version 2>$null
-    if ($LASTEXITCODE -eq 0 -and $v) {
-        $pythonOk = $true
-        $pythonVersion = $v
-        Write-Host "Python already available: $v" -ForegroundColor Yellow
-    }
+    if ($LASTEXITCODE -eq 0 -and $v) { $pythonOk = $true; Write-Host "Python already available: $v" -ForegroundColor Yellow }
 } catch {}
-
-if (-not $pythonOk) {
-    try {
-        $v = & py -3 --version 2>$null
-        if ($LASTEXITCODE -eq 0 -and $v) {
-            $pythonOk = $true
-            $pythonVersion = $v
-            Write-Host "Python launcher already available: $v" -ForegroundColor Yellow
-        }
-    } catch {}
-}
 
 if (-not $pythonOk) {
     Write-Host "Installing Python 3.12..."
@@ -278,69 +262,13 @@ if (-not $pythonOk) {
         --accept-package-agreements `
         --accept-source-agreements `
         --silent
-
-    $pythonWingetExit = $LASTEXITCODE
-    if ($pythonWingetExit -ne 0) {
-        Write-Host "winget Python install failed (exit code: $pythonWingetExit)." -ForegroundColor Yellow
-        Write-Host "Falling back to python.org per-user installer..." -ForegroundColor Yellow
-
-        $pyInstallerVersion = "3.12.10"
-        $pyInstallerUrl = "https://www.python.org/ftp/python/$pyInstallerVersion/python-$pyInstallerVersion-amd64.exe"
-        $pyInstallerPath = Join-Path $env:TEMP "python-$pyInstallerVersion-amd64.exe"
-
-        try {
-            Invoke-WebRequest -Uri $pyInstallerUrl -OutFile $pyInstallerPath -UseBasicParsing
-            $pyInstallArgs = @(
-                "/quiet",
-                "InstallAllUsers=0",
-                "PrependPath=1",
-                "Include_launcher=1",
-                "SimpleInstall=1",
-                "Shortcuts=0"
-            )
-            $pyProc = Start-Process -FilePath $pyInstallerPath -ArgumentList $pyInstallArgs -Wait -NoNewWindow -PassThru
-            if ($pyProc.ExitCode -ne 0) {
-                Write-Host "python.org installer failed with exit code $($pyProc.ExitCode)." -ForegroundColor Yellow
-            }
-        } catch {
-            Write-Host "python.org installer fallback failed: $_" -ForegroundColor Yellow
-        } finally {
-            Remove-Item $pyInstallerPath -Force -ErrorAction SilentlyContinue
-        }
-    }
-
-    # Refresh current session PATH before re-checking Python.
-    $machinePath = [Environment]::GetEnvironmentVariable("Path", "Machine")
-    $userPath2   = [Environment]::GetEnvironmentVariable("Path", "User")
-    $env:Path    = "$machinePath;$userPath2"
-
-    try {
-        $v = & python --version 2>$null
-        if ($LASTEXITCODE -eq 0 -and $v) {
-            $pythonOk = $true
-            $pythonVersion = $v
-        }
-    } catch {}
-
-    if (-not $pythonOk) {
-        try {
-            $v = & py -3 --version 2>$null
-            if ($LASTEXITCODE -eq 0 -and $v) {
-                $pythonOk = $true
-                $pythonVersion = $v
-            }
-        } catch {}
-    }
-
-    if (-not $pythonOk) {
-        Write-Host "Python installation failed after all attempts." -ForegroundColor Red
-        Write-Host "If this is a managed machine policy block, install Python 3.12 manually for Current User from python.org and rerun." -ForegroundColor Yellow
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "Python installation failed. Check winget output above." -ForegroundColor Red
         Wait-IfNeeded
         exit 1
     }
+    Write-Host "Python installed." -ForegroundColor Green
 }
-
-Write-Host "Python ready: $pythonVersion" -ForegroundColor Green
 
 # ---------------------------------------------------------------------------
 # Step 6: Refresh PATH in current session
@@ -353,97 +281,71 @@ $env:Path    = "$machinePath;$userPath2"
 Write-Host "PATH refreshed." -ForegroundColor Green
 
 # ---------------------------------------------------------------------------
-# Step 7: Install LibreOffice for headless document conversion (no-admin)
+# Step 7: Install LibreOffice for headless document conversion
 # ---------------------------------------------------------------------------
-Write-Step 7 "Installing LibreOffice (headless support, no admin)..."
+Write-Step 7 "Installing LibreOffice (headless support)..."
 
-$loUserDir = Join-Path $env:LOCALAPPDATA "Programs\LibreOffice"
 $sofficePath = $null
-
-function Find-SofficePath {
-    param([string[]]$SearchCandidates)
-
-    $cmd = Get-Command soffice -ErrorAction SilentlyContinue | Select-Object -First 1
-    if ($cmd -and $cmd.Source -and (Test-Path $cmd.Source)) {
-        return $cmd.Source
-    }
-
-    foreach ($path in $SearchCandidates) {
-        if ($path -and (Test-Path $path)) {
-            return $path
-        }
-    }
-
-    return $null
+$sofficeCmd = Get-Command soffice -ErrorAction SilentlyContinue | Select-Object -First 1
+if ($sofficeCmd -and $sofficeCmd.Source -and (Test-Path $sofficeCmd.Source)) {
+    $sofficePath = $sofficeCmd.Source
 }
 
-$candidates = @(
-    (Join-Path $loUserDir "program\soffice.exe")
-)
+$libreOfficeRoots = @()
 if ($env:ProgramFiles) {
-    $candidates += (Join-Path $env:ProgramFiles "LibreOffice\program\soffice.exe")
+    $libreOfficeRoots += (Join-Path $env:ProgramFiles "LibreOffice\program\soffice.exe")
 }
 $programFilesX86 = [Environment]::GetEnvironmentVariable("ProgramFiles(x86)")
 if ($programFilesX86) {
-    $candidates += (Join-Path $programFilesX86 "LibreOffice\program\soffice.exe")
+    $libreOfficeRoots += (Join-Path $programFilesX86 "LibreOffice\program\soffice.exe")
+}
+if ($env:LOCALAPPDATA) {
+    $libreOfficeRoots += (Join-Path $env:LOCALAPPDATA "Programs\LibreOffice\program\soffice.exe")
 }
 
-$sofficePath = Find-SofficePath -SearchCandidates $candidates
+if (-not $sofficePath) {
+    foreach ($candidate in $libreOfficeRoots) {
+        if ($candidate -and (Test-Path $candidate)) {
+            $sofficePath = $candidate
+            break
+        }
+    }
+}
 
 if ($sofficePath) {
     Write-Host "LibreOffice already installed at: $sofficePath" -ForegroundColor Yellow
 } else {
-    # Try winget user-scope first (works on some managed images).
-    Write-Host "Attempting winget install (user scope)..."
+    Write-Host "Installing LibreOffice via winget..."
     winget install TheDocumentFoundation.LibreOffice `
         --scope user `
         --accept-package-agreements `
         --accept-source-agreements `
         --silent
 
-    $sofficePath = Find-SofficePath -SearchCandidates $candidates
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "User-scope install failed. Retrying without scope..." -ForegroundColor Yellow
+        winget install TheDocumentFoundation.LibreOffice `
+            --accept-package-agreements `
+            --accept-source-agreements `
+            --silent
+    }
 
-    # Fallback: direct MSI install into user profile without elevation.
-    if (-not $sofficePath) {
-        Write-Host "Winget install failed or requires admin. Falling back to MSI user install..." -ForegroundColor Yellow
-
-        $loVersion = "25.2.2"
-        $msiUrl = "https://download.documentfoundation.org/libreoffice/stable/$loVersion/win/x86_64/LibreOffice_${loVersion}_Win_x86-64.msi"
-        $msiPath = Join-Path $env:TEMP "LibreOffice_install.msi"
-
-        try {
-            Write-Host "Downloading LibreOffice MSI (~350 MB)..."
-            Invoke-WebRequest -Uri $msiUrl -OutFile $msiPath -UseBasicParsing
-
-            Write-Host "Running MSI user-level install (no admin)..."
-            $msiArgs = @(
-                "/i", $msiPath,
-                "/quiet",
-                "/norestart",
-                "INSTALLDIR=$loUserDir",
-                'ALLUSERS=""',
-                "CREATEDESKTOPLINK=0",
-                "REGISTERVFW=0"
-            )
-
-            $msiProc = Start-Process msiexec.exe -ArgumentList $msiArgs -Wait -NoNewWindow -PassThru
-            if ($msiProc.ExitCode -ne 0) {
-                Write-Host "MSI install exited with code $($msiProc.ExitCode)." -ForegroundColor Yellow
+    $sofficeCmd = Get-Command soffice -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($sofficeCmd -and $sofficeCmd.Source -and (Test-Path $sofficeCmd.Source)) {
+        $sofficePath = $sofficeCmd.Source
+    } else {
+        foreach ($candidate in $libreOfficeRoots) {
+            if ($candidate -and (Test-Path $candidate)) {
+                $sofficePath = $candidate
+                break
             }
-        } catch {
-            Write-Host "MSI download/install failed: $_" -ForegroundColor Red
-        } finally {
-            Remove-Item $msiPath -Force -ErrorAction SilentlyContinue
         }
+    }
 
-        $sofficePath = Find-SofficePath -SearchCandidates $candidates
-        if ($sofficePath) {
-            Write-Host "LibreOffice installed via MSI." -ForegroundColor Green
-        } else {
-            Write-Host "LibreOffice install unavailable without admin on this machine." -ForegroundColor Yellow
-            Write-Host "Expected location: $loUserDir\program\soffice.exe" -ForegroundColor Yellow
-            Write-Host "Download manually: https://www.libreoffice.org/download/download-libreoffice/" -ForegroundColor Yellow
-        }
+    if ($sofficePath) {
+        Write-Host "LibreOffice installed." -ForegroundColor Green
+    } else {
+        Write-Host "LibreOffice install may have failed. Headless Office rendering may be unavailable." -ForegroundColor Yellow
     }
 }
 
@@ -452,25 +354,19 @@ if ($sofficePath) {
     $sofficeDir = Split-Path $sofficePath -Parent
     $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
     $parts = @()
-    if ($userPath) {
-        $parts = $userPath -split ";" | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne "" }
-    }
+    if ($userPath) { $parts = $userPath -split ";" | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne "" } }
     $already = $parts | Where-Object { $_.TrimEnd("\\").ToLowerInvariant() -eq $sofficeDir.TrimEnd("\\").ToLowerInvariant() }
 
     if (-not $already) {
-        $newPath = if ([string]::IsNullOrWhiteSpace($userPath)) { $sofficeDir } else { "$userPath;$sofficeDir" }
-        [Environment]::SetEnvironmentVariable("Path", $newPath, "User")
+        if ([string]::IsNullOrWhiteSpace($userPath)) {
+            [Environment]::SetEnvironmentVariable("Path", $sofficeDir, "User")
+        } else {
+            [Environment]::SetEnvironmentVariable("Path", "$userPath;$sofficeDir", "User")
+        }
         $env:Path = "$env:Path;$sofficeDir"
         Write-Host "Added LibreOffice to user PATH: $sofficeDir" -ForegroundColor Green
     } else {
         Write-Host "LibreOffice already on PATH." -ForegroundColor Yellow
-    }
-
-    $sofficeVersion = & $sofficePath --headless --version 2>$null
-    if ($LASTEXITCODE -eq 0 -and $sofficeVersion) {
-        Write-Host "Headless check OK: $sofficeVersion" -ForegroundColor Cyan
-    } else {
-        Write-Host "Headless check failed. Verify LibreOffice installation manually." -ForegroundColor Yellow
     }
 }
 
