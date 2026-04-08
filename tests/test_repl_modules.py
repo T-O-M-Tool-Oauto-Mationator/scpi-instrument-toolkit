@@ -194,8 +194,14 @@ class TestSafeEval:
         d = {"key": 42}
         assert safe_eval("m['key']", {"m": d}) == 42
 
-    def test_unknown_name_error(self):
-        with pytest.raises(ValueError, match="Unknown name"):
+    def test_unknown_name_returns_string(self):
+        # Unknown bare names fall back to their identifier string so that
+        # comparisons like `status == passed` work in REPL scripts.
+        assert safe_eval("z", {}) == "z"
+
+    def test_unknown_name_arithmetic_type_error(self):
+        # Unknown name becomes a string, so adding an int raises TypeError
+        with pytest.raises(TypeError):
             safe_eval("z + 1", {})
 
     def test_string_constant_allowed(self):
@@ -1315,10 +1321,12 @@ class TestLoggingCommands:
         assert "CALC" in out
 
     def test_do_calc_no_measurements(self, capsys):
+        # calc evaluates pure arithmetic even with no measurements in the log
         lc, ctx = self._make()
         lc.do_calc("x = 2 + 3")
         out = capsys.readouterr().out
-        assert "No measurements" in out
+        assert "x" in out
+        assert "5" in out
 
     def test_do_calc_no_equals(self, capsys):
         lc, ctx = self._make()
