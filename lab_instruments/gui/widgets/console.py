@@ -223,9 +223,9 @@ class _Console(QWidget):
                 continue
             filtered.append(line)
 
-        text = "\n".join(filtered)
+        text = "<br>".join(filtered)
         if text.strip():
-            self._output.append(text)
+            self._output.append(f"<span>{text}</span>")
             if self._autoscroll.isChecked():
                 self._output.moveCursor(QTextCursor.MoveOperation.End)
                 self._output.ensureCursorVisible()

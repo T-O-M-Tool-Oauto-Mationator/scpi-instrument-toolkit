@@ -645,6 +645,7 @@ ColorPrinter.success("Ramp complete")
     # ------------------------------------------------------------------
     "cross_script_demo": {
         "description": "SCPI collects data + sets vars, Python reads them for analysis",
+        "category": "cross_script",
         "lines": [
             "# cross_script_demo",
             "# Collects PSU measurements and stores them in REPL variables.",

@@ -147,16 +147,23 @@ class _MainWindow(QMainWindow):
 
             scpi_menu = em.addMenu("SCPI Scripts")
             py_menu = em.addMenu("Python Scripts")
+            cs_menu = em.addMenu("Cross Script")
             for ex_name, ex_info in _EXAMPLES.items():
                 desc = ex_info.get("description", "")
-                if ex_info.get("lines"):
+                category = ex_info.get("category", "")
+                if category == "cross_script":
                     act = QAction(f"{ex_name}  —  {desc}", self)
-                    act.triggered.connect(lambda checked, n=ex_name: self._import_example(n, "scpi"))
-                    scpi_menu.addAction(act)
-                if ex_info.get("code"):
-                    act = QAction(f"{ex_name}  —  {desc}", self)
-                    act.triggered.connect(lambda checked, n=ex_name: self._import_example(n, "python"))
-                    py_menu.addAction(act)
+                    act.triggered.connect(lambda checked, n=ex_name: self._import_cross_script_example(n))
+                    cs_menu.addAction(act)
+                else:
+                    if ex_info.get("lines"):
+                        act = QAction(f"{ex_name}  —  {desc}", self)
+                        act.triggered.connect(lambda checked, n=ex_name: self._import_example(n, "scpi"))
+                        scpi_menu.addAction(act)
+                    if ex_info.get("code"):
+                        act = QAction(f"{ex_name}  —  {desc}", self)
+                        act.triggered.connect(lambda checked, n=ex_name: self._import_example(n, "python"))
+                        py_menu.addAction(act)
         except ImportError:
             na = QAction("(no examples available)", self)
             na.setEnabled(False)
@@ -410,6 +417,55 @@ class _MainWindow(QMainWindow):
         self._status.setText(f"Imported: {name}{ext}")
         self.open_file(path)
 
+    def _import_cross_script_example(self, name: str) -> None:
+        """Copy both the SCPI and Python parts of a cross-script example and open both."""
+        from lab_instruments.examples import EXAMPLES
+
+        info = EXAMPLES.get(name)
+        if not info:
+            self._status.setText(f"Example '{name}' not found")
+            return
+        folder = self._workspace.folder or os.path.expanduser("~")
+
+        parts = [
+            (info.get("lines"), "scpi", ".scpi"),
+            (info.get("code"),  "python", ".py"),
+        ]
+
+        opened: list[str] = []
+        for content, subdir, ext in parts:
+            if not content:
+                continue
+            examples_dir = os.path.join(folder, "examples", "Cross Script")
+            os.makedirs(examples_dir, exist_ok=True)
+            path = os.path.join(examples_dir, f"{name}{ext}")
+
+            if os.path.exists(path):
+                reply = QMessageBox.question(
+                    self,
+                    "Replace example?",
+                    f"{os.path.basename(path)} already exists in your workspace.\n\n"
+                    "Replace it with the bundled version? Your changes will be lost.",
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                    QMessageBox.StandardButton.No,
+                )
+                if reply != QMessageBox.StandardButton.Yes:
+                    opened.append(path)
+                    continue
+
+            with open(path, "w", encoding="utf-8") as f:
+                if ext == ".scpi":
+                    f.write("\n".join(content) + "\n")
+                else:
+                    f.write(content)
+            opened.append(path)
+
+        if opened:
+            self._file_explorer.set_root(folder)
+            for path in opened:
+                self.open_file(path)
+            self._status.setText(f"Imported: {name} (.scpi + .py)")
+
     def open_file(self, path: str) -> None:
         """Open a file in the work area. Dispatches by extension."""
         if path in self._open_files:
@@ -483,25 +539,47 @@ class _MainWindow(QMainWindow):
         if ext == ".py":
             self._console._input.setEnabled(False)
             self._console.show_running(name)
+            self._d._repl.ctx.command_had_error = False  # reset before run
 
-            def _py_done(output):
-                if output.strip():
-                    self._console.log(_ansi_to_html(output))
+            _sig = _BgSignal(self)
+            _done_sig = _BgSignal(self)
+
+            def _line_output(text):
+                if text:
+                    self._console.log(_ansi_to_html(text))
+
+            def _py_done(_):
+                had_error = self._d._repl.ctx.command_had_error
+                if had_error:
+                    safe_out = self._d.run("state safe")
+                    if safe_out.strip():
+                        self._console.log(_ansi_to_html(safe_out))
+                    self._console.log(
+                        "<span style='color:#c0392b'>[SAFETY] Script failed — safe state applied</span>"
+                    )
                 self._console.log(f"<span style='color:#155724'>[DONE] {name}</span>")
                 self._console._input.setEnabled(True)
                 self._console.hide_running()
                 self._on_console_command()
 
+            _sig.finished.connect(_line_output, Qt.ConnectionType.QueuedConnection)
+            _done_sig.finished.connect(_py_done, Qt.ConnectionType.QueuedConnection)
+
             def _py_worker():
-                self._console._worker_thread_id = __import__("threading").current_thread().ident
+                self._console._worker_thread_id = threading.current_thread().ident
                 try:
-                    return self._d.run(f"python {path}")
+                    self._d.run_streaming(
+                        f"python {path}", lambda text: _sig.finished.emit(text)
+                    )
                 except KeyboardInterrupt:
-                    return "\033[93m[STOPPED]\033[0m"
+                    _sig.finished.emit("\033[93m[STOPPED]\033[0m")
                 finally:
                     self._console._worker_thread_id = None
+                _done_sig.finished.emit("")
 
-            self._run_in_background(_py_worker, _py_done, f"Running {name}...")
+            t = threading.Thread(target=_py_worker, name="py_run", daemon=True)
+            t.start()
+            self._status.setText(f"Running {name}...")
             return
 
         # .scpi files
@@ -582,8 +660,6 @@ class _MainWindow(QMainWindow):
         _done_sig = _BgSignal(self)
         _sig.finished.connect(_line_output, Qt.ConnectionType.QueuedConnection)
         _done_sig.finished.connect(_all_done, Qt.ConnectionType.QueuedConnection)
-
-        import threading
 
         def _worker():
             self._console._worker_thread_id = threading.current_thread().ident
@@ -951,8 +1027,6 @@ class _MainWindow(QMainWindow):
         self._refresh_ev_panels()
         self._refresh_scope_panels()
         self._device_panel.refresh()
-        # Auto-open any newly detected instrument blocks
-        self._auto_open_blocks()
         n = len(self._d.registry.devices)
         self._dev_count.setText(f"Devices: {n}")
         label = "device" if n == 1 else "devices"

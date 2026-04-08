@@ -249,9 +249,19 @@ class InstrumentDiscovery:
         for slot in self.PXI_SLOT_RANGE:
             resource_name = f"PXI1Slot{slot}"
             if resource_name in skip_resources:
-                if verbose:
-                    name, _ = skip_resources[resource_name]
-                    self._safe_print(f"Keeping {resource_name}... already connected as '{name}'")
+                try:
+                    session = nidcpower.Session(resource_name=resource_name, channels="0")
+                    session.close()
+                    name, drv = skip_resources[resource_name]
+                    generic = self.NAME_MAP.get(
+                        next((k for k in self.MODEL_MAP if isinstance(drv, self.MODEL_MAP[k])), ""), "smu"
+                    )
+                    results.append((generic, drv, generic, ""))
+                    if verbose:
+                        self._safe_print(f"Keeping {resource_name}... already connected as '{name}'")
+                except Exception:
+                    if verbose:
+                        self._safe_print(f"{resource_name}... no longer present, removing")
                 continue
             try:
                 session = nidcpower.Session(resource_name=resource_name, channels="0")
@@ -334,6 +344,8 @@ class InstrumentDiscovery:
                         if verbose:
                             name, _ = skip_resources[str(path)]
                             self._safe_print(f"Keeping EV2300... already connected as '{name}'")
+                        name, drv = skip_resources[str(path)]
+                        results.append(("ev2300", drv, "EV2300", ""))
                         continue
                     driver = TI_EV2300(path)
                     driver.connect()
@@ -572,24 +584,7 @@ class InstrumentDiscovery:
                         if verbose:
                             self._safe_print(f"{ColorPrinter.RED}Thread error during scan: {e}{ColorPrinter.RESET}")
 
-        # Add kept non-VISA devices (PXI, EV2300 HID) that weren't in the VISA
-        # resource list and therefore weren't added to kept_results above.
-        for _res_name, (name, drv) in existing_by_resource.items():
-            # Skip if already in kept_results (VISA devices handled above)
-            if any(d is drv for _, d, _, _ in results):
-                continue
-            model_key = ""
-            generic = ""
-            for key, cls in self.MODEL_MAP.items():
-                if isinstance(drv, cls):
-                    model_key = key
-                    generic = self.NAME_MAP.get(key, "")
-                    break
-            if not generic:
-                generic = name.rstrip("0123456789") or name
-            results.append((generic, drv, model_key, ""))
-
-        # Probe PXI slots for NI-DCPower devices (SMUs) — skip already-connected slots
+        # Probe PXI slots for NI-DCPower devices (SMUs) — re-verify already-connected slots
         nidcpower_results = self._probe_nidcpower(verbose, skip_resources=existing_by_resource)
         results.extend(nidcpower_results)
 

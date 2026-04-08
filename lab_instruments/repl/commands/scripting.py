@@ -251,7 +251,7 @@ class ScriptingCommands(BaseCommand):
             ColorPrinter.error(f"Failed to read file: {exc}")
             return
         exec_globals = {
-            "__name__": "__main__",
+            "__name__": os.path.splitext(os.path.basename(filename))[0],
             "__file__": os.path.abspath(filename),
             "repl": self.shell,
             "devices": self.registry.devices,
@@ -282,6 +282,7 @@ class ScriptingCommands(BaseCommand):
         except Exception as exc:
             ColorPrinter.error(f"Script execution failed: {exc}")
             traceback.print_exc()
+            self.ctx.command_had_error = True
         finally:
             if path_added:
                 with contextlib.suppress(ValueError):

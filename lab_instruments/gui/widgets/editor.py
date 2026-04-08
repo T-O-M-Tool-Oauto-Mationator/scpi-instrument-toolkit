@@ -96,6 +96,7 @@ _DEVICE_CMDS = {
     "calc",
     "data",
     "plot",
+    "liveplot",
     "check",
     "report",
     "clear",

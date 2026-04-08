@@ -45,6 +45,31 @@ class _InputBridge(QObject):
         return self._result
 
 
+class _StreamWriter(io.RawIOBase):
+    """Write-only IO that calls callback for each completed output line."""
+
+    def __init__(self, callback) -> None:
+        self._cb = callback
+        self._buf = ""
+
+    def write(self, data) -> int:
+        if not isinstance(data, str):
+            data = data.decode("utf-8", errors="replace")
+        self._buf += data
+        while "\n" in self._buf:
+            line, self._buf = self._buf.split("\n", 1)
+            self._cb(line)
+        return len(data)
+
+    def writable(self) -> bool:
+        return True
+
+    def flush(self) -> None:
+        if self._buf:
+            self._cb(self._buf)
+            self._buf = ""
+
+
 class _Dispatcher(QObject):
     # Emitted from any thread when a ``liveplot`` command executes.
     # Signature: (patterns: list[str], title: str, xlabel: str, ylabel: str)
@@ -107,6 +132,29 @@ class _Dispatcher(QObject):
                 _builtins.input = old_input
                 self._repl.stdout = old_repl_stdout
             return buf.getvalue()
+
+    def run_streaming(self, command: str, callback) -> None:
+        """Execute a REPL command; callback(line) is called per output line."""
+        with self._lock:
+            writer = _StreamWriter(callback)
+
+            def _gui_input(prompt=""):
+                return self._input_bridge.ask(str(prompt).strip())
+
+            old_input = _builtins.input
+            _builtins.input = _gui_input
+            old_repl_stdout = self._repl.stdout
+            self._repl.stdout = writer
+            try:
+                with contextlib.redirect_stdout(writer):
+                    for line in command.split("\n"):
+                        line = line.strip()
+                        if line:
+                            self._repl.onecmd(line)
+            finally:
+                _builtins.input = old_input
+                self._repl.stdout = old_repl_stdout
+                writer.flush()
 
     @property
     def registry(self):
