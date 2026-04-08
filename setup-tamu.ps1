@@ -250,10 +250,26 @@ if (-not $gitExe) {
 Write-Step 5 "Checking / installing Python..."
 
 $pythonOk = $false
+$pythonVersion = $null
 try {
     $v = & python --version 2>$null
-    if ($LASTEXITCODE -eq 0 -and $v) { $pythonOk = $true; Write-Host "Python already available: $v" -ForegroundColor Yellow }
+    if ($LASTEXITCODE -eq 0 -and $v) {
+        $pythonOk = $true
+        $pythonVersion = $v
+        Write-Host "Python already available: $v" -ForegroundColor Yellow
+    }
 } catch {}
+
+if (-not $pythonOk) {
+    try {
+        $v = & py -3 --version 2>$null
+        if ($LASTEXITCODE -eq 0 -and $v) {
+            $pythonOk = $true
+            $pythonVersion = $v
+            Write-Host "Python launcher already available: $v" -ForegroundColor Yellow
+        }
+    } catch {}
+}
 
 if (-not $pythonOk) {
     Write-Host "Installing Python 3.12..."
@@ -262,13 +278,69 @@ if (-not $pythonOk) {
         --accept-package-agreements `
         --accept-source-agreements `
         --silent
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host "Python installation failed. Check winget output above." -ForegroundColor Red
+
+    $pythonWingetExit = $LASTEXITCODE
+    if ($pythonWingetExit -ne 0) {
+        Write-Host "winget Python install failed (exit code: $pythonWingetExit)." -ForegroundColor Yellow
+        Write-Host "Falling back to python.org per-user installer..." -ForegroundColor Yellow
+
+        $pyInstallerVersion = "3.12.10"
+        $pyInstallerUrl = "https://www.python.org/ftp/python/$pyInstallerVersion/python-$pyInstallerVersion-amd64.exe"
+        $pyInstallerPath = Join-Path $env:TEMP "python-$pyInstallerVersion-amd64.exe"
+
+        try {
+            Invoke-WebRequest -Uri $pyInstallerUrl -OutFile $pyInstallerPath -UseBasicParsing
+            $pyInstallArgs = @(
+                "/quiet",
+                "InstallAllUsers=0",
+                "PrependPath=1",
+                "Include_launcher=1",
+                "SimpleInstall=1",
+                "Shortcuts=0"
+            )
+            $pyProc = Start-Process -FilePath $pyInstallerPath -ArgumentList $pyInstallArgs -Wait -NoNewWindow -PassThru
+            if ($pyProc.ExitCode -ne 0) {
+                Write-Host "python.org installer failed with exit code $($pyProc.ExitCode)." -ForegroundColor Yellow
+            }
+        } catch {
+            Write-Host "python.org installer fallback failed: $_" -ForegroundColor Yellow
+        } finally {
+            Remove-Item $pyInstallerPath -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    # Refresh current session PATH before re-checking Python.
+    $machinePath = [Environment]::GetEnvironmentVariable("Path", "Machine")
+    $userPath2   = [Environment]::GetEnvironmentVariable("Path", "User")
+    $env:Path    = "$machinePath;$userPath2"
+
+    try {
+        $v = & python --version 2>$null
+        if ($LASTEXITCODE -eq 0 -and $v) {
+            $pythonOk = $true
+            $pythonVersion = $v
+        }
+    } catch {}
+
+    if (-not $pythonOk) {
+        try {
+            $v = & py -3 --version 2>$null
+            if ($LASTEXITCODE -eq 0 -and $v) {
+                $pythonOk = $true
+                $pythonVersion = $v
+            }
+        } catch {}
+    }
+
+    if (-not $pythonOk) {
+        Write-Host "Python installation failed after all attempts." -ForegroundColor Red
+        Write-Host "If this is a managed machine policy block, install Python 3.12 manually for Current User from python.org and rerun." -ForegroundColor Yellow
         Wait-IfNeeded
         exit 1
     }
-    Write-Host "Python installed." -ForegroundColor Green
 }
+
+Write-Host "Python ready: $pythonVersion" -ForegroundColor Green
 
 # ---------------------------------------------------------------------------
 # Step 6: Refresh PATH in current session
