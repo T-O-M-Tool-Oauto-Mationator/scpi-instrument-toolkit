@@ -280,8 +280,18 @@ class VariableCommands(BaseCommand):
         return True
 
     def _assign_var(self, key: str, raw_val: str) -> None:
-        """Core variable assignment — shared by 'var = expr' and 'set var expr'."""
+        """Core variable assignment — shared by 'var = expr' and 'set var expr'.
+
+        Supports an optional ``unit=<str>`` suffix: if present, the computed value
+        is also recorded in the measurement store with the given unit.
+        """
         raw_val = substitute_vars(raw_val, self.ctx.script_vars, self.ctx.measurements)
+        # Extract optional unit= annotation (must appear at the very end)
+        unit = ""
+        unit_match = re.search(r"(?<!\S)unit=(\S+)\s*$", raw_val)
+        if unit_match:
+            unit = unit_match.group(1)
+            raw_val = raw_val[: unit_match.start()].strip()
         # input: VAR = input [prompt]
         inp_parts = raw_val.split(None, 1)
         if inp_parts and inp_parts[0] == "input":
@@ -316,7 +326,11 @@ class VariableCommands(BaseCommand):
             self.ctx.script_vars[key] = str(result)
         except Exception:
             self.ctx.script_vars[key] = raw_val
-        ColorPrinter.success(f"{key} = {self.ctx.script_vars[key]}")
+        if unit:
+            with contextlib.suppress(TypeError, ValueError):
+                self.ctx.measurements.record(key, float(self.ctx.script_vars[key]), unit, "assignment")
+        suffix = f" {unit}" if unit else ""
+        ColorPrinter.success(f"{key} = {self.ctx.script_vars[key]}{suffix}")
 
     def do_set(self, arg: str) -> None:
         """set -e / set +e — control exit-on-error behavior."""

@@ -104,7 +104,7 @@ psu meas 2 v       # channel 2 voltage
 
     | Parameter | Required | Values | Description |
     |-----------|----------|--------|-------------|
-    | `label` | required | string, no spaces | **Name for this entry in the log.** Appears as the row identifier in `log print` output. Also used as the dictionary key in `calc` expressions: `m["label"]`. Use underscores instead of spaces — e.g. `ch1_voltage`. |
+    | `label` | required | string, no spaces | **Name for this entry in the log.** Appears as the row identifier in `log print` output. Also used as the bare variable name in `calc` expressions. Use underscores instead of spaces — e.g. `ch1_voltage`. |
     | `channel` | required | `1`, `2`, `3` | Channel to measure. Single-channel PSUs use `1`. |
     | `v\|i` | required | `v`, `i` | Quantity to measure: `v` = voltage, `i` = current. |
     | `unit=` | optional | string | Unit label shown in `log print` output (e.g. `V`, `A`). **Display-only** — does not affect the stored numeric value or any calculation. |
@@ -120,7 +120,7 @@ psu meas 2 v       # channel 2 voltage
     ```
     psu_v = psu meas 1 v unit=V
     psu_i = psu meas 1 i unit=A
-    calc power m["psu_v"] * m["psu_i"] unit=W    # compute power
+    calc power psu_v * psu_i unit=W    # compute power
     log print
     ```
 

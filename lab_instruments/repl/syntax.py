@@ -125,6 +125,10 @@ def safe_eval(expr: str, names: dict[str, Any]) -> Any:
         "ceil": math.ceil,
         "floor": math.floor,
         "hypot": math.hypot,
+        # NaN / Inf checks
+        "is_nan": math.isnan,
+        "is_inf": math.isinf,
+        "is_finite": math.isfinite,
         # Constants
         "pi": math.pi,
         "e": math.e,
@@ -136,6 +140,8 @@ def safe_eval(expr: str, names: dict[str, Any]) -> Any:
         "False": False,
     }
 
+    # Rewrite || and && to Python boolean operators
+    expr = expr.replace("||", " or ").replace("&&", " and ")
     # Rewrite ^ to ** so users can write 2^3 to mean 2**3
     expr = expr.replace("^", "**")
 
@@ -151,7 +157,8 @@ def safe_eval(expr: str, names: dict[str, Any]) -> Any:
                 return names[node.id]
             if node.id in allowed_funcs:
                 return allowed_funcs[node.id]
-            raise ValueError(f"Unknown name '{node.id}'.")
+            # Treat unknown names as string literals for comparisons like: status == passed
+            return node.id
         if isinstance(node, ast.BinOp):
             left = _eval(node.left)
             right = _eval(node.right)
@@ -172,7 +179,10 @@ def safe_eval(expr: str, names: dict[str, Any]) -> Any:
             op_func = ops.get(type(node.op))
             if op_func is None:
                 raise ValueError("Operator not allowed.")
-            return op_func(left, right)
+            try:
+                return op_func(left, right)
+            except ZeroDivisionError:
+                return float("nan")
         if isinstance(node, ast.UnaryOp):
             operand = _eval(node.operand)
             if isinstance(node.op, ast.UAdd):

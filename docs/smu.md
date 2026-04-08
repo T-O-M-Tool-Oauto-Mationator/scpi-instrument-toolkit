@@ -126,7 +126,7 @@ Safety limits (`upper_limit` / `lower_limit`) are enforced before the mode switc
     ```bash
     smu_vout = smu meas v unit=V
     smu_iout = smu meas i unit=A
-    calc power m["smu_vout"] * m["smu_iout"] unit=W
+    calc power smu_vout * smu_iout unit=W
     ```
 
     See [Log & Calc](logging.md) for full details.
@@ -246,7 +246,7 @@ sleep 0.5
 
 vout = smu1 meas v unit=V
 iout = smu1 meas i unit=A
-calc power m["vout"] * m["iout"] unit=W
+calc power vout * iout unit=W
 
 log print
 smu1 off

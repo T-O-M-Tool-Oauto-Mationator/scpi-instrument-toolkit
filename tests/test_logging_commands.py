@@ -171,9 +171,11 @@ class TestCalc:
         assert "doubled" in out
 
     def test_calc_no_measurements(self, repl, capsys):
+        # calc now works even without prior measurements recorded
         repl.onecmd("calc result = 2 + 3")
         out = capsys.readouterr().out
-        assert "No measurements" in out
+        # Should succeed and print the result
+        assert "result" in out
 
     def test_calc_no_expression(self, repl, capsys):
         _store(repl, "v", 1.0)

@@ -119,7 +119,7 @@ dmm meas freq       # quick frequency reading
 
     | Parameter | Required | Values | Description |
     |-----------|----------|--------|-------------|
-    | `label` | required | string, no spaces | **Name for this entry in the log.** Appears as the row identifier in `log print` output. Also used as the dictionary key in `calc` expressions: `m["label"]`. Use underscores instead of spaces — e.g. `vout_mv`. |
+    | `label` | required | string, no spaces | **Name for this entry in the log.** Appears as the row identifier in `log print` output. Also used as the bare variable name in `calc` expressions. Use underscores instead of spaces — e.g. `vout_mv`. |
     | `scale=` | optional | float | **Multiply the raw reading by this factor before storing.** Useful for unit conversion — e.g. `scale=1000` to convert V → mV, or `scale=0.001` to convert mA → A. Default: `1.0` (no scaling). |
     | `unit=` | optional | string | Unit label shown in `log print` output (e.g. `V`, `mV`, `A`, `Ω`). **Display-only** — does not affect the stored value or calculations. |
 
@@ -128,7 +128,7 @@ dmm meas freq       # quick frequency reading
 
     ```
     dmm config vdc
-    vout = dmm meas unit=V                  # store as 'vout', access as m["vout"]
+    vout = dmm meas unit=V                  # store as 'vout', use as bare name in calc
 
     dmm config res
     r_load = dmm meas unit=Ω               # store resistance
@@ -146,7 +146,7 @@ dmm meas freq       # quick frequency reading
     dmm config idc
     current = dmm meas unit=A
 
-    calc power m["voltage"] * m["current"] unit=W    # compute power
+    calc power voltage * current unit=W    # compute power
     log print
     ```
 

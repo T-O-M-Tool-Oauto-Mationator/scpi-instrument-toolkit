@@ -947,7 +947,7 @@ export result    # {result} becomes available in the REPL after the script runs
 # measure_vout — measures PSU output, exports result
 VOUT = 0.0
 psu_reading = psu meas v unit=V
-VOUT = m["psu_reading"]
+VOUT = psu_reading
 export VOUT
 ```
 
@@ -1216,7 +1216,7 @@ for v 1.0 2.0 3.3 5.0 9.0 12.0
   sleep {delay}
   psu_{v} = psu1 meas v unit=V
   dmm_{v} = dmm1 meas unit=V
-  calc err_{v} (m["dmm_{v}"] - m["psu_{v}"]) / m["psu_{v}"] * 100 unit=%
+  calc err_{v} (dmm_{v} - psu_{v}) / psu_{v} * 100 unit=%
 end
 
 # ── Results ────────────────────────────────────

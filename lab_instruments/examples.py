@@ -747,4 +747,312 @@ ColorPrinter.info(f"\\nVariables set: mean_v={repl.ctx.script_vars['mean_v']}, "
                   f"error_pct={repl.ctx.script_vars['error_pct']}")
 ''',
     },
+    # ------------------------------------------------------------------
+    "conditional_psu_check": {
+        "description": "if/elif/else: check PSU voltage is in range and print status",
+        "lines": [
+            "# conditional_psu_check",
+            "# Demonstrates if/elif/else conditional branching.",
+            "# Works in --mock mode (mock PSU returns ~5.0 V).",
+            "",
+            "psu1 chan 1 on",
+            "psu1 set 1 5.0",
+            "sleep 0.3",
+            "psu_v = psu1 meas v unit=V",
+            "",
+            "if psu_v > 5.1",
+            '  print "[WARN] Overvoltage: {psu_v} V"',
+            "elif psu_v < 4.9",
+            '  print "[WARN] Undervoltage: {psu_v} V"',
+            "else",
+            '  print "[PASS] Voltage in range: {psu_v} V"',
+            "end",
+            "",
+            "psu1 chan 1 off",
+        ],
+        "code": '''\
+"""conditional_psu_check — Python API version."""
+import time
+
+psu = devices.get("psu") or devices.get("psu1")
+if not psu:
+    ColorPrinter.error("No PSU found. Run \'scan\' first.")
+    raise SystemExit
+
+psu.enable_output(True)
+psu.set_output(5.0, 0.5)
+time.sleep(0.3)
+psu_v = psu.measure_voltage()
+repl.ctx.script_vars["psu_v"] = str(psu_v)
+repl.ctx.measurements.record("psu_v", psu_v, "V", "psu")
+
+if psu_v > 5.1:
+    ColorPrinter.warning(f"[WARN] Overvoltage: {psu_v} V")
+elif psu_v < 4.9:
+    ColorPrinter.warning(f"[WARN] Undervoltage: {psu_v} V")
+else:
+    ColorPrinter.success(f"[PASS] Voltage in range: {psu_v} V")
+
+psu.enable_output(False)
+''',
+    },
+    # ------------------------------------------------------------------
+    "assert_limits": {
+        "description": "assert: verify PSU voltage is within hard safety bounds",
+        "lines": [
+            "# assert_limits",
+            "# Demonstrates assert statements for safety-limit checking.",
+            "# Works in --mock mode (mock PSU returns ~5.0 V).",
+            "",
+            "upper_limit psu1 voltage 5.5",
+            "psu1 chan 1 on",
+            "psu1 set 1 5.0",
+            "sleep 0.3",
+            "v = psu1 meas v unit=V",
+            "",
+            'assert v > 0.0 "Voltage must be positive"',
+            'assert v < 6.0 "Voltage must be below 6 V"',
+            'print "[PASS] Assertions passed — measured {v} V"',
+            "",
+            "psu1 chan 1 off",
+        ],
+        "code": '''\
+"""assert_limits — Python API version."""
+import time
+
+psu = devices.get("psu") or devices.get("psu1")
+if not psu:
+    ColorPrinter.error("No PSU found. Run \'scan\' first.")
+    raise SystemExit
+
+psu.enable_output(True)
+psu.set_output(5.0, 0.5)
+time.sleep(0.3)
+v = psu.measure_voltage()
+repl.ctx.script_vars["v"] = str(v)
+repl.ctx.measurements.record("v", v, "V", "psu")
+
+assert v > 0.0, f"Voltage must be positive (got {v})"
+assert v < 6.0, f"Voltage must be below 6 V (got {v})"
+ColorPrinter.success(f"[PASS] Assertions passed — measured {v} V")
+
+psu.enable_output(False)
+''',
+    },
+    # ------------------------------------------------------------------
+    "while_counter": {
+        "description": "while: take 5 PSU voltage samples with a counter and compute average",
+        "lines": [
+            "# while_counter",
+            "# Demonstrates while loop with += counter and average calculation.",
+            "# Works in --mock mode (mock PSU returns ~5.0 V).",
+            "",
+            "count = 0",
+            "total = 0.0",
+            "psu1 chan 1 on",
+            "psu1 set 1 5.0",
+            "sleep 0.2",
+            "",
+            "while count < 5",
+            "  count += 1",
+            "  sample = psu1 meas v unit=V",
+            "  total = total + sample",
+            '  print "Sample {count}: {sample} V"',
+            "  sleep 100ms",
+            "end",
+            "",
+            "avg = total / count unit=V",
+            'print "Average over {count} samples: {avg} V"',
+            "psu1 chan 1 off",
+            "log print",
+        ],
+        "code": '''\
+"""while_counter — Python API version."""
+import time
+
+psu = devices.get("psu") or devices.get("psu1")
+if not psu:
+    ColorPrinter.error("No PSU found. Run \'scan\' first.")
+    raise SystemExit
+
+psu.enable_output(True)
+psu.set_output(5.0, 0.5)
+time.sleep(0.2)
+
+samples = []
+for i in range(1, 6):
+    v = psu.measure_voltage()
+    samples.append(v)
+    repl.ctx.measurements.record(f"sample_{i}", v, "V", "psu")
+    ColorPrinter.info(f"Sample {i}: {v} V")
+    time.sleep(0.1)
+
+avg = sum(samples) / len(samples)
+repl.ctx.script_vars["avg"] = str(avg)
+repl.ctx.measurements.record("avg", avg, "V", "calc")
+ColorPrinter.success(f"Average over {len(samples)} samples: {avg:.6f} V")
+
+psu.enable_output(False)
+''',
+    },
+    # ------------------------------------------------------------------
+    "syntax_reference": {
+        "description": "Full syntax tour: variables, calc, if/elif/else, while, assert, augmented assign",
+        "lines": [
+            "# syntax_reference",
+            "# A complete tour of all REPL scripting features.",
+            "# Works in --mock mode — no real instruments required.",
+            "",
+            "# ── Variables & expressions ─────────────────────────────",
+            "x = 10",
+            "y = 3",
+            "z = x * y + 1          # arithmetic: z = 31",
+            'name = "voltage"        # string assignment',
+            "ratio = x / y          # float division",
+            "bits = 0xFF & 0x0F     # bitwise AND",
+            "shifted = 1 << 4       # left shift: 16",
+            "",
+            "# ── Augmented assignment & increment/decrement ───────────",
+            "count = 0",
+            "count += 1             # count = 1",
+            "count += 1             # count = 2",
+            "count -= 1             # count = 1",
+            "count++                # count = 2",
+            "count--                # count = 1",
+            'print "count = {count}"',
+            "",
+            "# ── Ternary expression ───────────────────────────────────",
+            "label = x > 5 if x > 5 else 0  # ternary: 10 > 5 → True",
+            "category = 10 if x > 5 else 0  # proper ternary: 10",
+            'print "category = {category}"',
+            "",
+            "# ── Math functions & constants ───────────────────────────",
+            "sq = sqrt(x)           # sqrt(10)",
+            "lg = log10(1000)       # 3.0",
+            "angle = degrees(pi)    # 180.0",
+            'print "sqrt(10) = {sq}  log10(1000) = {lg}  180deg = {angle}"',
+            "",
+            "# ── Computed assignment with unit logging ─────────────────",
+            "# Use  label = expression unit=X  to log a computed value.",
+            "# The result is stored in both script_vars AND the measurement log.",
+            "a = 5.0",
+            "b = 2.0",
+            "power = a * b unit=W   # power stored in log with unit W",
+            "error_pct = (a - b) / b * 100 unit=%",
+            'print "power = {power} W   error_pct = {error_pct} %"',
+            "",
+            "# ── calc keyword (alternative form) ─────────────────────",
+            "calc gain = a / b      # equivalent to: gain = a / b",
+            'print "gain = {gain}"',
+            "",
+            "# ── if / elif / else ─────────────────────────────────────",
+            "voltage = 5.05",
+            "if voltage > 5.1",
+            '  verdict = "OVER"',
+            "elif voltage < 4.9",
+            '  verdict = "UNDER"',
+            "else",
+            '  verdict = "OK"',
+            "end",
+            'print "Voltage {voltage} V → {verdict}"',
+            "",
+            "# ── assert ───────────────────────────────────────────────",
+            'assert voltage > 0.0 "voltage must be positive"',
+            'assert voltage < 6.0 "voltage below safety limit"',
+            'print "[PASS] Both asserts passed"',
+            "",
+            "# ── while loop ───────────────────────────────────────────",
+            "i = 0",
+            "total = 0",
+            "while i < 5",
+            "  i += 1",
+            "  total += i",
+            '  print "  iter {i}: total = {total}"',
+            "end",
+            'print "Sum 1..5 = {total}"',
+            "",
+            "# ── for loop ─────────────────────────────────────────────",
+            "for v 1.0 2.0 3.3 5.0",
+            '  print "  for: v = {v}"',
+            "end",
+            "",
+            "# ── Boolean operators (and / or / not / || / &&) ─────────",
+            "ok = voltage > 4.9 and voltage < 5.1",
+            'print "In spec: {ok}"',
+            "",
+            "# ── String comparison ────────────────────────────────────",
+            'state = "passed"',
+            "is_passed = state == passed   # bare name as string literal",
+            'print "is_passed = {is_passed}"',
+            "",
+            "# ── log print ────────────────────────────────────────────",
+            "log print",
+        ],
+        "code": '''\
+"""syntax_reference — Python API version demonstrating all script features."""
+import math
+
+# Variables & expressions
+x, y = 10, 3
+z = x * y + 1
+ratio = x / y
+bits = 0xFF & 0x0F
+shifted = 1 << 4
+
+# Augmented assignment
+count = 0
+count += 2
+count -= 1
+count += 1   # count = 2
+
+# Ternary
+category = 10 if x > 5 else 0
+
+# Math functions
+sq = math.sqrt(x)
+lg = math.log10(1000)
+angle = math.degrees(math.pi)
+ColorPrinter.info(f"sqrt(10)={sq:.4f}  log10(1000)={lg:.1f}  180deg={angle:.1f}")
+
+# Computed assignments with units
+a, b = 5.0, 2.0
+power = a * b
+repl.ctx.script_vars["power"] = str(power)
+repl.ctx.measurements.record("power", power, "W", "calc")
+error_pct = (a - b) / b * 100
+repl.ctx.script_vars["error_pct"] = str(error_pct)
+repl.ctx.measurements.record("error_pct", error_pct, "%", "calc")
+
+# if / elif / else
+voltage = 5.05
+if voltage > 5.1:
+    verdict = "OVER"
+elif voltage < 4.9:
+    verdict = "UNDER"
+else:
+    verdict = "OK"
+ColorPrinter.info(f"Voltage {voltage} V → {verdict}")
+
+# assert
+assert voltage > 0.0, "voltage must be positive"
+assert voltage < 6.0, "voltage below safety limit"
+ColorPrinter.success("[PASS] Both asserts passed")
+
+# while loop
+i = 0
+total = 0
+while i < 5:
+    i += 1
+    total += i
+ColorPrinter.info(f"Sum 1..5 = {total}")
+
+# for loop
+for v in [1.0, 2.0, 3.3, 5.0]:
+    ColorPrinter.info(f"  for: v = {v}")
+
+# Boolean operators
+ok = voltage > 4.9 and voltage < 5.1
+ColorPrinter.info(f"In spec: {ok}")
+''',
+    },
 }

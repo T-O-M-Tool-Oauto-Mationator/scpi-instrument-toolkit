@@ -355,17 +355,15 @@ class TestCalcAssignment:
         assert "x" not in repl.ctx.script_vars
         assert "expects" in out.lower() or "expression" in out.lower()
 
-    def test_standalone_calc_unchanged(self, make_repl, capsys):
-        """Standalone calc (not assignment) should still work as before."""
+    def test_standalone_calc_stores_in_both(self, make_repl, capsys):
+        """Standalone calc stores result in both measurements and script_vars."""
         repl = make_repl({})
-        # Record an initial measurement so do_calc doesn't bail out
-        repl.ctx.measurements.record("seed", 1.0, "", "test")
         repl.onecmd("calc power = 5 * 2 unit=W")
         entry = repl.ctx.measurements.get_by_label("power")
         assert entry is not None
         assert entry["value"] == 10
-        # Standalone calc should NOT set script_vars
-        assert "power" not in repl.ctx.script_vars
+        # calc now also stores in script_vars so result is usable in subsequent expressions
+        assert repl.ctx.script_vars.get("power") == "10"
 
     def test_calc_assign_no_unit(self, make_repl, capsys):
         """Calc assignment without unit= should still work."""

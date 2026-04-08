@@ -481,7 +481,7 @@ scope meas_loop all PK2PK interval=2.0               # all channels, every 2s
 
     | Parameter | Required | Values | Description |
     |-----------|----------|--------|-------------|
-    | `label` | required | string, no spaces | **Name for this entry in the log.** Appears in `log print` and used as the dictionary key in `calc` expressions: `m["label"]`. Use underscores — e.g. `ch1_freq`. |
+    | `label` | required | string, no spaces | **Name for this entry in the log.** Appears in `log print` and used as the bare variable name in `calc` expressions. Use underscores — e.g. `ch1_freq`. |
     | `1-4\|all` | required | `1`–`4`, `all` | Channel to measure. |
     | `type` | required | see measurement types above | Measurement type. |
     | `unit=` | optional | string | Unit shown in `log print` (e.g. `Hz`, `V`). **Display-only** — does not affect the stored value or calculations. |
@@ -505,7 +505,7 @@ scope meas_loop all PK2PK interval=2.0               # all channels, every 2s
     Then use in calculations:
 
     ```
-    calc crest_factor m["meas_pk2pk"] / m["meas_rms"]   # compute crest factor
+    calc crest_factor meas_pk2pk / meas_rms   # compute crest factor
     log print
     ```
 
