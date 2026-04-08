@@ -369,79 +369,6 @@ if ($claudeDir) {
 }
 
 # ---------------------------------------------------------------------------
-# Step 9: Install LibreOffice (portable, no admin) for headless document conversion
-# ---------------------------------------------------------------------------
-Write-Step 9 "Installing LibreOffice (portable, no-admin)..."
-
-$loExtractDir = Join-Path $env:LOCALAPPDATA "Programs\LibreOffice"
-$sofficePath  = $null
-
-# Check existing install inside our extract dir first, then PATH
-$existing = Get-ChildItem -Path $loExtractDir -Filter "soffice.exe" -Recurse `
-                -ErrorAction SilentlyContinue | Select-Object -First 1
-if ($existing) { $sofficePath = $existing.FullName }
-
-if (-not $sofficePath) {
-    $cmd = Get-Command soffice -ErrorAction SilentlyContinue
-    if ($cmd) { $sofficePath = $cmd.Source }
-}
-
-if ($sofficePath) {
-    Write-Host "LibreOffice already available at: $sofficePath" -ForegroundColor Yellow
-} else {
-    # msiexec /a performs an "administrative install" -- extracts MSI contents to
-    # disk without COM registration and WITHOUT requiring elevation on managed machines.
-    $loVersion = "25.2.2"
-    $msiUrl    = "https://download.documentfoundation.org/libreoffice/stable/$loVersion/win/x86_64/LibreOffice_${loVersion}_Win_x86-64.msi"
-    $msiPath   = Join-Path $env:TEMP "LibreOffice_install.msi"
-
-    try {
-        Write-Host "Downloading LibreOffice MSI (~350 MB) -- this may take several minutes..."
-        Invoke-WebRequest -Uri $msiUrl -OutFile $msiPath -UseBasicParsing
-
-        Write-Host "Extracting LibreOffice to user profile (no admin)..."
-        New-Item -ItemType Directory -Force -Path $loExtractDir | Out-Null
-
-        $proc = Start-Process -FilePath "msiexec.exe" `
-            -ArgumentList "/a", "`"$msiPath`"", "/qn", "TARGETDIR=`"$loExtractDir`"" `
-            -Wait -NoNewWindow -PassThru
-
-        Remove-Item $msiPath -Force -ErrorAction SilentlyContinue
-
-        if ($proc.ExitCode -eq 0) {
-            $found = Get-ChildItem -Path $loExtractDir -Filter "soffice.exe" -Recurse `
-                         -ErrorAction SilentlyContinue | Select-Object -First 1
-            if ($found) {
-                $sofficePath = $found.FullName
-                Write-Host "LibreOffice installed (portable)." -ForegroundColor Green
-            } else {
-                Write-Host "Extraction finished but soffice.exe not found under $loExtractDir" -ForegroundColor Yellow
-            }
-        } else {
-            Write-Host "msiexec /a exited $($proc.ExitCode) -- LibreOffice headless unavailable." -ForegroundColor Yellow
-        }
-    } catch {
-        Write-Host "LibreOffice install failed: $_" -ForegroundColor Yellow
-    }
-}
-
-# Add soffice directory to user PATH
-if ($sofficePath) {
-    $sofficeDir = Split-Path $sofficePath -Parent
-    $curPath    = [Environment]::GetEnvironmentVariable("Path", "User")
-    $parts      = if ($curPath) { $curPath -split ";" | ForEach-Object { $_.Trim() } | Where-Object { $_ } } else { @() }
-    $already    = $parts | Where-Object { $_.TrimEnd("\").ToLowerInvariant() -eq $sofficeDir.TrimEnd("\").ToLowerInvariant() }
-    if (-not $already) {
-        $newPath = if ([string]::IsNullOrWhiteSpace($curPath)) { $sofficeDir } else { "$curPath;$sofficeDir" }
-        [Environment]::SetEnvironmentVariable("Path", $newPath, "User")
-        $env:Path = "$env:Path;$sofficeDir"
-        Write-Host "Added LibreOffice to user PATH: $sofficeDir" -ForegroundColor Green
-    } else {
-        Write-Host "LibreOffice already on PATH." -ForegroundColor Yellow
-    }
-}
-
-# ---------------------------------------------------------------------------
 # Done
 # ---------------------------------------------------------------------------
 Write-Host ""
@@ -452,7 +379,6 @@ Write-Host ""
 Write-Host "Open a NEW terminal and verify:" -ForegroundColor Cyan
 Write-Host "  git --version"
 Write-Host "  python --version"
-Write-Host "  soffice --headless --version"
 Write-Host "  scpi-repl --mock"
 Write-Host ""
 Write-Host "NOTE: For real instruments you also need NI-VISA and NI-DCPower system drivers (require admin)." -ForegroundColor Yellow
