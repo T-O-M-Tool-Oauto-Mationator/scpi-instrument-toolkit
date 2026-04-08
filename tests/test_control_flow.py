@@ -133,16 +133,59 @@ class TestAssertInteractive:
         assert repl.ctx.command_had_error is False
         assert "PASS" in capsys.readouterr().out
 
-    def test_assert_fail(self, repl, capsys):
+    def test_assert_fail_stops(self, repl, capsys):
+        """Assert fail in interactive mode prints FAIL + aborted message."""
         repl.onecmd("x = 2")
         repl.ctx.command_had_error = False
         repl.onecmd("assert x > 5")
         assert repl.ctx.command_had_error is True
-        assert "FAIL" in capsys.readouterr().out
+        out = capsys.readouterr().out
+        assert "FAIL" in out
+        assert "aborted" in out.lower()
 
     def test_assert_with_message(self, repl, capsys):
         repl.onecmd("v = 4.0")
         repl.onecmd('assert v > 4.9 "Voltage too low"')
+        out = capsys.readouterr().out
+        assert "FAIL" in out
+        assert "Voltage too low" in out
+
+
+# ---------------------------------------------------------------------------
+# check (condition form) — interactive (onecmd)
+# ---------------------------------------------------------------------------
+
+
+class TestCheckConditionInteractive:
+    def test_check_pass(self, repl, capsys):
+        repl.onecmd("x = 10")
+        repl.onecmd("check x > 5")
+        assert repl.ctx.command_had_error is False
+        assert "PASS" in capsys.readouterr().out
+
+    def test_check_fail_continues(self, repl, capsys):
+        """Check fail records result but does NOT stop execution."""
+        repl.onecmd("x = 2")
+        repl.ctx.command_had_error = False
+        repl.onecmd("check x > 5")
+        assert repl.ctx.command_had_error is True
+        out = capsys.readouterr().out
+        assert "FAIL" in out
+        # Should NOT say "aborted"
+        assert "aborted" not in out.lower()
+
+    def test_check_records_in_test_results(self, repl):
+        repl.ctx.test_results = []
+        repl.onecmd("v = 5.0")
+        repl.onecmd('check v > 4.9 "above min"')
+        repl.onecmd('check v < 5.1 "below max"')
+        assert len(repl.ctx.test_results) == 2
+        assert repl.ctx.test_results[0]["passed"] is True
+        assert repl.ctx.test_results[1]["passed"] is True
+
+    def test_check_with_message(self, repl, capsys):
+        repl.onecmd("v = 4.0")
+        repl.onecmd('check v > 4.9 "Voltage too low"')
         out = capsys.readouterr().out
         assert "FAIL" in out
         assert "Voltage too low" in out
@@ -178,28 +221,27 @@ class TestScriptControlFlow:
         )
         assert float(repl.ctx.script_vars["x"]) == 5.0
 
-    def test_assert_pass_in_script(self, repl):
-        repl.ctx.test_results = []
+    def test_assert_pass_in_script(self, repl, capsys):
         repl._run_script_lines(
             [
                 "x = 10",
                 'assert x > 5 "x check"',
             ]
         )
-        assert repl.ctx.test_results[0]["passed"] is True
+        assert "PASS" in capsys.readouterr().out
 
-    def test_assert_fail_stops_script_with_set_e(self, repl):
-        repl.ctx.test_results = []
+    def test_assert_fail_stops_script(self, repl):
+        """Assert fail ALWAYS stops the script (no set -e needed)."""
         repl._run_script_lines(
             [
-                "set -e",
                 "x = 2",
                 'assert x > 5 "x check"',
                 "result = done",
             ]
         )
-        # With set -e, script should stop after assert fails
+        # Assert fail stops the script — result should NOT be set
         assert "result" not in repl.ctx.script_vars
+        assert repl.ctx.command_had_error is True
 
     def test_nested_if_inside_while(self, repl):
         repl._run_script_lines(
@@ -264,19 +306,54 @@ class TestScriptControlFlow:
         )
         assert float(repl.ctx.script_vars["x"]) == 7.0
 
-    def test_multiple_asserts_in_script(self, repl):
-        repl.ctx.test_results = []
+    def test_assert_stops_at_first_failure(self, repl, capsys):
+        """Assert stops the script at the first failure — later lines don't run."""
         repl._run_script_lines(
             [
                 "v = 5.0",
                 'assert v > 4.9 "above min"',
-                'assert v < 5.1 "below max"',
                 'assert v > 10.0 "this fails"',
+                'assert v < 5.1 "never reached"',
+                "result = done",
             ]
         )
+        assert "result" not in repl.ctx.script_vars
+        out = capsys.readouterr().out
+        assert "above min" in out
+        assert "this fails" in out
+        # "never reached" should not appear
+        assert "never reached" not in out
+
+    def test_multiple_checks_in_script(self, repl):
+        """Check records all results and continues past failures."""
+        repl.ctx.test_results = []
+        repl._run_script_lines(
+            [
+                "v = 5.0",
+                'check v > 4.9 "above min"',
+                'check v < 5.1 "below max"',
+                'check v > 10.0 "this fails"',
+            ]
+        )
+        assert len(repl.ctx.test_results) == 3
         assert repl.ctx.test_results[0]["passed"] is True
         assert repl.ctx.test_results[1]["passed"] is True
         assert repl.ctx.test_results[2]["passed"] is False
+
+    def test_check_continues_after_failure(self, repl):
+        """Check does NOT stop execution — subsequent checks still run."""
+        repl.ctx.test_results = []
+        repl._run_script_lines(
+            [
+                "v = 1.0",
+                'check v > 10 "this fails"',
+                'check v > 0 "this passes"',
+            ]
+        )
+        # Both checks ran — script was NOT aborted
+        assert len(repl.ctx.test_results) == 2
+        assert repl.ctx.test_results[0]["passed"] is False
+        assert repl.ctx.test_results[1]["passed"] is True
 
 
 # ---------------------------------------------------------------------------

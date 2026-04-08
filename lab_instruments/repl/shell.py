@@ -621,9 +621,12 @@ class InstrumentRepl(cmd.Cmd):
             ColorPrinter.info("(entering block - type 'end' to finish)")
             return False
 
-        # Handle assert as a single-line command
-        if tokens and tokens[0].lower() == "assert":
-            return self._execute_assert(stripped)
+        # Handle condition-form check: ``check <cond> ["msg"]``
+        # Falls through to do_check (measurement form) if no comparison operators found
+        if tokens and tokens[0].lower() == "check":
+            rest = stripped[len("check") :].strip()
+            if rest and self._COND_CHECK_RE.search(rest):
+                return self._execute_check(stripped)
 
         if ";" in line:
             should_exit = False
@@ -652,6 +655,9 @@ class InstrumentRepl(cmd.Cmd):
         if head == "while":
             try:
                 self._execute_while_block(self._loop_header, self._loop_lines)
+            except self._AssertFailure as exc:
+                ColorPrinter.error(f"Script aborted: {exc.message}")
+                self.ctx.command_had_error = True
             except KeyboardInterrupt:
                 ColorPrinter.warning("While loop interrupted by user")
             except Exception as e:
@@ -661,6 +667,9 @@ class InstrumentRepl(cmd.Cmd):
         if head == "if":
             try:
                 self._execute_if_block(all_lines)
+            except self._AssertFailure as exc:
+                ColorPrinter.error(f"Script aborted: {exc.message}")
+                self.ctx.command_had_error = True
             except KeyboardInterrupt:
                 ColorPrinter.warning("If block interrupted by user")
             except Exception as e:
@@ -690,11 +699,13 @@ class InstrumentRepl(cmd.Cmd):
 
     _WHILE_MAX_ITERATIONS = 10000
 
-    class _BreakSignal(Exception):
-        """Raised to break out of a while loop."""
+    # Import control-flow exceptions from runner (module-level definitions)
+    from .script_engine.runner import _AssertFailure, _BreakSignal, _ContinueSignal
 
-    class _ContinueSignal(Exception):
-        """Raised to continue to the next while iteration."""
+    # Detects comparison/boolean operators → condition-form check vs measurement check
+    _COND_CHECK_RE = re.compile(
+        r"(?:>=|<=|!=|==|>|<|&&|\|\||(?<![a-zA-Z0-9_])(?:and|or|not)(?![a-zA-Z0-9_]))"
+    )
 
     def _build_names_dict(self) -> dict:
         """Build a names dict from script_vars for safe_eval (float where possible)."""
@@ -790,6 +801,13 @@ class InstrumentRepl(cmd.Cmd):
             if head == "assert":
                 self._execute_assert(raw_line)
                 continue
+
+            if head == "check":
+                rest = raw_line[len("check") :].strip()
+                if rest and self._COND_CHECK_RE.search(rest):
+                    self._execute_check(raw_line)
+                    continue
+                # Fall through to onecmd for measurement-form check
 
             if head == "break":
                 raise self._BreakSignal()
@@ -897,23 +915,29 @@ class InstrumentRepl(cmd.Cmd):
                 self._execute_block_lines(body)
                 return
 
+    def _parse_condition_and_message(self, text: str) -> tuple[str, str | None]:
+        """Extract ``(condition, optional_message)`` from text after assert/check."""
+        message = None
+        msg_match = re.search(r"""(["'])(.*?)\1\s*$""", text)
+        if msg_match:
+            message = msg_match.group(2)
+            condition = text[: msg_match.start()].strip()
+        else:
+            condition = text
+        return condition, message
+
     def _execute_assert(self, line: str) -> bool:
-        """Execute an assert statement: ``assert <condition> ["message"]``."""
+        """Execute an assert statement: ``assert <condition> ["message"]``.
+
+        Hard assertion — always raises ``_AssertFailure`` on fail, stopping
+        the current script or block.
+        """
         after_assert = line[len("assert") :].strip()
         if not after_assert:
             ColorPrinter.error("assert: missing condition")
             return False
 
-        # Try to extract a trailing quoted message
-        message = None
-        # Match trailing "..." or '...'
-        msg_match = re.search(r"""(["'])(.*?)\1\s*$""", after_assert)
-        if msg_match:
-            message = msg_match.group(2)
-            condition = after_assert[: msg_match.start()].strip()
-        else:
-            condition = after_assert
-
+        condition, message = self._parse_condition_and_message(after_assert)
         if not condition:
             ColorPrinter.error("assert: missing condition")
             return False
@@ -922,6 +946,37 @@ class InstrumentRepl(cmd.Cmd):
             result = self._eval_condition(condition)
         except Exception as exc:
             ColorPrinter.error(f"assert evaluation error: {exc}")
+            label = message or condition
+            raise self._AssertFailure(f"assert failed: {label} ({exc})")
+
+        label = message or condition
+        if result:
+            ColorPrinter.success(f"PASS: {label}")
+        else:
+            ColorPrinter.error(f"FAIL: {label}")
+            raise self._AssertFailure(f"assert failed: {label}")
+        return False
+
+    def _execute_check(self, line: str) -> bool:
+        """Execute a check statement: ``check <condition> ["message"]``.
+
+        Soft test step — logs PASS/FAIL, records in test report, continues
+        execution regardless.
+        """
+        after_check = line[len("check") :].strip()
+        if not after_check:
+            ColorPrinter.error("check: missing condition")
+            return False
+
+        condition, message = self._parse_condition_and_message(after_check)
+        if not condition:
+            ColorPrinter.error("check: missing condition")
+            return False
+
+        try:
+            result = self._eval_condition(condition)
+        except Exception as exc:
+            ColorPrinter.error(f"check evaluation error: {exc}")
             self.ctx.command_had_error = True
             label = message or condition
             self.ctx.test_results.append({"test": label, "passed": False, "detail": str(exc)})
@@ -1248,6 +1303,24 @@ class InstrumentRepl(cmd.Cmd):
     def do_report(self, arg):
         """report <print|save|clear|title|operator>: manage reports"""
         self._log_cmd.do_report(arg)
+
+    def do_assert(self, arg):
+        """assert <condition> ["message"]: hard assertion — stops script on failure."""
+        try:
+            self._execute_assert(f"assert {arg}")
+        except self._AssertFailure as exc:
+            if self.ctx.in_script:
+                raise
+            ColorPrinter.error(f"Script aborted: {exc.message}")
+            self.ctx.command_had_error = True
+
+    def do_break(self, arg):
+        """break: exit the innermost while/for loop."""
+        raise self._BreakSignal()
+
+    def do_continue(self, arg):
+        """continue: skip to the next iteration of the innermost loop."""
+        raise self._ContinueSignal()
 
     def do_plot(self, arg):
         """plot [pattern ...] [--title "text"]: plot measurement log data"""

@@ -644,74 +644,63 @@ ColorPrinter.success("Ramp complete")
     },
     # ------------------------------------------------------------------
     "cross_script_demo": {
-        "description": "SCPI collects data + sets vars, Python reads them for analysis",
+        "description": "Single SCPI script that collects data then calls Python for analysis",
         "category": "cross_script",
         "lines": [
             "# cross_script_demo",
-            "# Collects PSU measurements and stores them in REPL variables.",
-            "# After running this, run the Python version to analyze the data.",
+            "# Collects PSU/DMM measurements, then calls Python inline for analysis.",
+            "# REPL variables are auto-injected into the Python script as native types.",
             "# Works with --mock.",
             "",
-            'print "=== Cross-Script Demo (SCPI) ==="',
+            'print "=== Cross-Script Demo ==="',
             "",
             "target = 5.0",
             "tolerance = 0.05",
             "",
             "psu1 chan 1 on",
             "dmm1 config vdc",
-            "sleep 0.3",
-            "",
-            "# Collect 10 readings at the target voltage",
             "psu1 set 1 {target}",
             "sleep 0.3",
             "",
+            "# Collect 10 readings at the target voltage",
             "for i 1 2 3 4 5 6 7 8 9 10",
             "  reading_{i} = dmm1 meas unit=V",
             "  sleep 100ms",
             "end",
             "",
-            "# Compute min and max from readings",
             "psu_v = psu1 meas v unit=V",
-            "",
             "psu1 chan 1 off",
-            'print "=== SCPI collection done ==="',
-            'print "Target: {target}V  Tolerance: {tolerance}V"',
-            'print "PSU readback: {psu_v}V"',
+            "",
+            "# Call Python for analysis — target, tolerance, psu_v are auto-available",
+            "python cross_script_demo.py",
+            "",
             "log print",
-            'print ""',
-            'print "Now run the Python version to analyze these measurements."',
+            'print "Analysis complete. See variables: mean_v, std_dev, error_pct"',
         ],
         "code": '''\
-"""Cross-script demo — Python analysis version.
+"""Cross-script demo — Python analysis called inline from SCPI.
 
-Reads measurements and REPL variables left by the SCPI version of this
-example, then performs statistical analysis.  Run the SCPI version first,
-then this one.  Works with --mock.
+All REPL variables (target, tolerance, psu_v, reading_1..10) are
+auto-injected as native Python types. No manual repl.ctx access needed.
+Works with --mock.
 """
 
-# --- Read REPL variables set by the SCPI script ---
-target = float(repl.ctx.script_vars.get("target", "5.0"))
-tolerance = float(repl.ctx.script_vars.get("tolerance", "0.05"))
-psu_v = repl.ctx.script_vars.get("psu_v", None)
-
+# target, tolerance, psu_v are auto-injected as floats
 ColorPrinter.header("Cross-Script Demo (Python Analysis)")
 ColorPrinter.info(f"Target: {target} V, Tolerance: +/- {tolerance} V")
-if psu_v:
-    ColorPrinter.info(f"PSU readback from SCPI run: {psu_v} V")
+ColorPrinter.info(f"PSU readback: {psu_v} V")
 
-# --- Gather all DMM readings from the measurement store ---
+# Gather all DMM readings from the measurement store
 readings = []
 for entry in repl.ctx.measurements.entries:
     if entry["label"].startswith("reading_") and entry["unit"] == "V":
         readings.append(entry["value"])
 
 if not readings:
-    ColorPrinter.error("No readings found. Run the SCPI version first!")
-    ColorPrinter.info("  examples load cross_script_demo")
-    ColorPrinter.info("  script run cross_script_demo")
+    ColorPrinter.error("No readings found — run the SCPI script, not this file directly.")
     raise SystemExit
 
-# --- Analyze ---
+# Analyze
 n = len(readings)
 mean_v = sum(readings) / n
 min_v = min(readings)
@@ -736,15 +725,11 @@ repl.ctx.script_vars["mean_v"] = str(round(mean_v, 6))
 repl.ctx.script_vars["std_dev"] = str(round(std_dev, 6))
 repl.ctx.script_vars["error_pct"] = str(round(error / target * 100, 4))
 
-# Pass/fail check
+# Pass/fail
 if abs(error) <= tolerance:
     ColorPrinter.success(f"PASS: error {error:+.6f} V is within +/- {tolerance} V")
 else:
     ColorPrinter.error(f"FAIL: error {error:+.6f} V exceeds +/- {tolerance} V")
-
-ColorPrinter.info(f"\\nVariables set: mean_v={repl.ctx.script_vars['mean_v']}, "
-                  f"std_dev={repl.ctx.script_vars['std_dev']}, "
-                  f"error_pct={repl.ctx.script_vars['error_pct']}")
 ''',
     },
     # ------------------------------------------------------------------
@@ -897,7 +882,7 @@ psu.enable_output(False)
     },
     # ------------------------------------------------------------------
     "syntax_reference": {
-        "description": "Full syntax tour: variables, calc, if/elif/else, while, assert, augmented assign",
+        "description": "Full syntax tour: variables, calc, if/elif/else, while, assert, check, boolean ops",
         "lines": [
             "# syntax_reference",
             "# A complete tour of all REPL scripting features.",
@@ -933,8 +918,6 @@ psu.enable_output(False)
             'print "sqrt(10) = {sq}  log10(1000) = {lg}  180deg = {angle}"',
             "",
             "# ── Computed assignment with unit logging ─────────────────",
-            "# Use  label = expression unit=X  to log a computed value.",
-            "# The result is stored in both script_vars AND the measurement log.",
             "a = 5.0",
             "b = 2.0",
             "power = a * b unit=W   # power stored in log with unit W",
@@ -956,10 +939,15 @@ psu.enable_output(False)
             "end",
             'print "Voltage {voltage} V → {verdict}"',
             "",
-            "# ── assert ───────────────────────────────────────────────",
+            "# ── assert (hard stop — script aborts on failure) ────────",
             'assert voltage > 0.0 "voltage must be positive"',
             'assert voltage < 6.0 "voltage below safety limit"',
             'print "[PASS] Both asserts passed"',
+            "",
+            "# ── check (soft — records PASS/FAIL, continues) ──────────",
+            'check voltage > 4.9 "above lower bound"',
+            'check voltage < 5.1 "below upper bound"',
+            'check voltage > 100 "this will fail but script continues"',
             "",
             "# ── while loop ───────────────────────────────────────────",
             "i = 0",
@@ -971,21 +959,31 @@ psu.enable_output(False)
             "end",
             'print "Sum 1..5 = {total}"',
             "",
+            "# ── while with break/continue ────────────────────────────",
+            "j = 0",
+            "while j < 20",
+            "  j++",
+            "  if j == 3",
+            "    continue           # skip 3",
+            "  end",
+            "  if j > 6",
+            "    break              # stop at 6",
+            "  end",
+            "end",
+            'print "j stopped at {j}"',
+            "",
             "# ── for loop ─────────────────────────────────────────────",
             "for v 1.0 2.0 3.3 5.0",
             '  print "  for: v = {v}"',
             "end",
             "",
-            "# ── Boolean operators (and / or / not / || / &&) ─────────",
+            "# ── Boolean operators (and / or / not / && / ||) ─────────",
             "ok = voltage > 4.9 and voltage < 5.1",
-            'print "In spec: {ok}"',
+            "also_ok = voltage > 4.9 && voltage < 5.1  # && is alias for and",
+            'print "In spec (and): {ok}  In spec (&&): {also_ok}"',
             "",
-            "# ── String comparison ────────────────────────────────────",
-            'state = "passed"',
-            "is_passed = state == passed   # bare name as string literal",
-            'print "is_passed = {is_passed}"',
-            "",
-            "# ── log print ────────────────────────────────────────────",
+            "# ── log report (shows check results) ────────────────────",
+            "log report",
             "log print",
         ],
         "code": '''\
@@ -999,7 +997,7 @@ ratio = x / y
 bits = 0xFF & 0x0F
 shifted = 1 << 4
 
-# Augmented assignment
+# Augmented assignment & increment
 count = 0
 count += 2
 count -= 1

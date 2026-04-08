@@ -237,6 +237,9 @@ class ScriptingCommands(BaseCommand):
                     "  - devices: dictionary of connected instruments",
                     "  - measurements: list of recorded measurements",
                     "  - ColorPrinter: for colored output",
+                    "  - vars: dict of all REPL script variables (string values)",
+                    "  - All REPL variables are auto-injected as native Python types",
+                    "    (int -> float -> str). E.g. voltage=5.0 becomes float 5.0",
                 ]
             )
             return
@@ -262,6 +265,24 @@ class ScriptingCommands(BaseCommand):
             "json": json,
             "time": time,
         }
+        # Auto-inject all current REPL script variables as native Python types.
+        # Conversion order: int → float → str.
+        def _to_python(v):
+            try:
+                return int(v)
+            except (ValueError, TypeError):
+                pass
+            try:
+                return float(v)
+            except (ValueError, TypeError):
+                pass
+            return v
+
+        script_vars = self.shell.ctx.script_vars
+        exec_globals["vars"] = dict(script_vars)
+        for _k, _v in script_vars.items():
+            exec_globals[_k] = _to_python(_v)
+
         # Pre-import lab_instruments so scripts can use it without boilerplate
         try:
             import lab_instruments

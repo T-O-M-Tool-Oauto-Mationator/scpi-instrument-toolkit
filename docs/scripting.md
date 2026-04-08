@@ -249,16 +249,59 @@ repl.onecmd("dmm1 config vdc")
 repl.onecmd('liveplot dmm_* --title "My Plot"')
 ```
 
-### Reading and writing REPL variables
+### REPL variables in Python scripts
 
-Access the same variables you set with `var = value` in SCPI scripts:
+All REPL script variables are **automatically injected** as native Python variables when you run `python <file.py>`. Types are auto-converted: integer strings become `int`, decimal strings become `float`, everything else stays `str`.
 
 ```python
-# Read REPL variables
-voltage = repl.ctx.script_vars.get("voltage", "5.0")
+# SCPI script set these:
+#   voltage = 5.0       → Python float 5.0
+#   steps   = 10        → Python int 10
+#   label   = vtest     → Python str "vtest"
 
-# Set REPL variables (available to subsequent SCPI commands)
-repl.ctx.script_vars["result"] = "3.14"
+result = voltage * 1.05        # direct float math — no float() needed
+for i in range(steps):         # direct int use
+    print(f"{label}: {result}")
+```
+
+You can also access the raw string values via the `vars` dict:
+
+```python
+raw = vars['voltage']          # always a string: "5.0"
+```
+
+To write variables back to the REPL (so subsequent SCPI commands can use them):
+
+```python
+repl.ctx.script_vars['result'] = str(computed)   # must be a string
+```
+
+#### Cross-script pattern
+
+A single SCPI script that collects data and calls Python for analysis:
+
+```
+# collect.scpi
+target = 5.0
+tolerance = 0.05
+psu1 set 1 {target}
+sleep 0.3
+
+for i 1 2 3 4 5
+  reading_{i} = dmm1 meas unit=V
+end
+
+python analyze.py   # analyze.py gets target, tolerance, reading_1..5 as Python variables
+```
+
+```python
+# analyze.py — all REPL vars are available directly
+error = abs(sum(vars[f'reading_{i}'] for i in range(1,6)) / 5 - target)
+if error <= tolerance:
+    ColorPrinter.success(f"PASS: error {error:.4f}V within {tolerance}V")
+else:
+    ColorPrinter.error(f"FAIL: error {error:.4f}V exceeds {tolerance}V")
+repl.ctx.script_vars['error'] = str(round(error, 6))
 ```
 
 ### Recording measurements
@@ -422,6 +465,63 @@ Variables are evaluated at **script expansion time** (before execution begins), 
 
 Supported operators: `+  -  *  /  **  %`
 Supported functions: `abs()  min()  max()  round()`
+
+#### Compound assignment
+
+Shorthand for updating a variable in place:
+
+```
+voltage += 0.1     # voltage = voltage + 0.1
+count  -= 1
+gain   *= 2.0
+step   /= 10
+```
+
+All augmented operators are supported: `+=  -=  *=  /=  //=  **=  %=  |=  &=  ^=  <<=  >>=`
+
+#### Increment / decrement
+
+```
+i++          # i = i + 1
+i--          # i = i - 1
+++j          # prefix form — same result
+--j
+```
+
+These are expanded at script-expansion time, the same phase that handles `for` loop unrolling.
+
+#### Expressions and boolean operators
+
+Conditions in `if`, `while`, `assert`, and `check` support comparison and boolean operators:
+
+| Syntax | Meaning | Notes |
+|--------|---------|-------|
+| `and` | logical AND | short-circuits |
+| `or` | logical OR | short-circuits |
+| `not` | logical NOT | unary |
+| `&&` | logical AND | alias for `and` — identical behavior |
+| `\|\|` | logical OR | alias for `or` — identical behavior |
+
+`&&` and `||` are rewritten to `and`/`or` before evaluation — they are 100% identical. Use whichever you prefer.
+
+```
+ok = voltage > 4.9 and voltage < 5.1
+ok = voltage > 4.9 && voltage < 5.1    # same thing
+
+if voltage > 0 or fallback_enabled
+  print "output available"
+end
+
+if not fault_detected
+  psu1 chan 1 on
+end
+
+while running && count < 100
+  count++
+end
+```
+
+All five operators work in `if`, `while`, `assert`, `check`, and `pyeval`.
 
 ### Variable substitution
 
@@ -907,6 +1007,193 @@ end
 ```
 
 Works at the interactive REPL prompt too.
+
+---
+
+## Control Flow
+
+### while — condition-based loop
+
+```
+while <condition>
+  <commands>
+end
+```
+
+Repeats the body as long as `<condition>` evaluates to true. There is no fixed iteration cap, but a safety limit of 10,000 iterations prevents accidental infinite loops.
+
+```
+x = 0
+while x < 10
+  x++
+  sample = dmm1 meas unit=V
+end
+```
+
+#### Poll-until-stable pattern
+
+```
+delta = 999
+prev = dmm1 meas unit=V
+while delta > 0.001
+  sleep 0.5
+  curr = dmm1 meas unit=V
+  delta = pyeval abs(float(vars['curr']) - float(vars['prev']))
+  prev = curr
+end
+print "Stable at {curr}V"
+```
+
+### if / elif / else — conditional branching
+
+```
+if <condition>
+  <commands>
+elif <condition>
+  <commands>
+else
+  <commands>
+end
+```
+
+Evaluates branches top-to-bottom. The first true condition's body runs; `else` is the fallback. `elif` and `else` are optional.
+
+```
+v = psu1 meas v unit=V
+if v > 5.1
+  print "OVER SPEC"
+elif v < 4.9
+  print "UNDER SPEC"
+else
+  print "IN RANGE"
+end
+```
+
+### break — exit a loop early
+
+```
+while x < 100
+  x++
+  if x == 7
+    break
+  end
+end
+# x is 7
+```
+
+Exits the innermost `while` or `for` loop immediately.
+
+### continue — skip to next iteration
+
+```
+for i 1 2 3 4 5
+  if i == 3
+    continue
+  end
+  print "processing {i}"
+end
+# prints 1, 2, 4, 5
+```
+
+Skips the rest of the current iteration and jumps to the next.
+
+### Interactive use
+
+`while`, `if`, `for`, and `repeat` all work at the interactive REPL prompt. Type the header, enter commands line by line, and type `end` to execute:
+
+```
+eset> while x < 3
+  > x++
+  > print $x
+  > end
+```
+
+---
+
+## Assertions and Checks
+
+Two commands for validating conditions. Use `assert` for preconditions that **must** hold, and `check` for test steps where you want a complete results table.
+
+### assert — hard assertion (stops on failure)
+
+```
+assert <condition> ["message"]
+```
+
+If the condition is true, prints PASS. If false, prints FAIL and **immediately stops the script**. No further lines execute.
+
+```
+assert voltage > 0 "PSU must be on before measuring"
+assert dmm_v > 4.9 and dmm_v < 5.1 "5V rail in spec"
+```
+
+Use `assert` for invariants and preconditions — things that must be true for the rest of the script to make sense.
+
+### check — soft test step (records and continues)
+
+`check` has two forms: **condition check** and **measurement check**.
+
+#### Condition check
+
+```
+check <condition> ["message"]
+```
+
+Logs PASS/FAIL, records the result in the test report, and **continues execution regardless**. Use this for test steps where you want all results, even after failures.
+
+```
+check voltage > 4.9 "voltage lower bound"
+check voltage < 5.1 "voltage upper bound"
+check current < 0.6 "current limit ok"
+log report    # shows PASS/FAIL summary table
+```
+
+#### Measurement check
+
+```
+check <label> <min> <max>          # pass if min ≤ value ≤ max
+check <label> <expected> tol=<N>   # pass if |value - expected| ≤ N
+check <label> <expected> tol=<N>%  # pass if |value - expected| ≤ N/100 * expected
+```
+
+Checks a previously recorded measurement (from `log`, instrument reads, etc.) against bounds or tolerance.
+
+```
+vout = psu1 meas v unit=V
+check vout 4.9 5.1
+check vout 5.0 tol=0.1
+check vout 5.0 tol=2%
+```
+
+### Interaction with `set -e`
+
+- `assert` **always** stops the script on failure, regardless of `set -e`.
+- `check` (condition form) sets `command_had_error` on failure. With `set -e` enabled, this stops the script. Without `set -e` (default), all checks run and the report shows everything.
+
+---
+
+## pyeval — Python expressions in variables
+
+```
+result = pyeval <python_expression>
+```
+
+Evaluate a Python expression with access to all current REPL variables, measurements, and math functions. The result is stored as a REPL variable.
+
+Available in the expression:
+
+| Name | Description |
+|------|-------------|
+| `vars` | dict of all script variables (string values) |
+| `m` | measurement values dict (label → float) |
+| `entries` | full measurement list |
+| `sqrt`, `log`, `sin`, `cos`, `abs`, `min`, `max`, `round`, `pi`, `e` | math functions and constants |
+
+```
+power = pyeval float(vars['voltage']) * float(vars['current'])
+rms   = pyeval sqrt(float(vars['v']) ** 2 + float(vars['i']) ** 2)
+avg   = pyeval sum(e['value'] for e in entries if e['label'].startswith('reading_')) / len(entries)
+```
 
 ---
 

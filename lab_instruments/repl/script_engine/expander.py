@@ -225,7 +225,7 @@ def expand_script_lines(
             expanded.append((raw_line, _loop_ctx + raw_line))
             continue
 
-        if head in ("assert", "break", "continue"):
+        if head in ("assert", "check", "break", "continue"):
             # Emit variable sync so assert can access expander-time variables
             for vk, vv in variables.items():
                 expanded.append((f"{vk} = {vv}", f"{_loop_ctx}[sync] {vk} = {vv}"))
