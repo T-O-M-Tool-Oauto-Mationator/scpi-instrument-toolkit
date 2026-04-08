@@ -281,71 +281,97 @@ $env:Path    = "$machinePath;$userPath2"
 Write-Host "PATH refreshed." -ForegroundColor Green
 
 # ---------------------------------------------------------------------------
-# Step 7: Install LibreOffice for headless document conversion
+# Step 7: Install LibreOffice for headless document conversion (no-admin)
 # ---------------------------------------------------------------------------
-Write-Step 7 "Installing LibreOffice (headless support)..."
+Write-Step 7 "Installing LibreOffice (headless support, no admin)..."
 
+$loUserDir = Join-Path $env:LOCALAPPDATA "Programs\LibreOffice"
 $sofficePath = $null
-$sofficeCmd = Get-Command soffice -ErrorAction SilentlyContinue | Select-Object -First 1
-if ($sofficeCmd -and $sofficeCmd.Source -and (Test-Path $sofficeCmd.Source)) {
-    $sofficePath = $sofficeCmd.Source
+
+function Find-SofficePath {
+    param([string[]]$SearchCandidates)
+
+    $cmd = Get-Command soffice -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($cmd -and $cmd.Source -and (Test-Path $cmd.Source)) {
+        return $cmd.Source
+    }
+
+    foreach ($path in $SearchCandidates) {
+        if ($path -and (Test-Path $path)) {
+            return $path
+        }
+    }
+
+    return $null
 }
 
-$libreOfficeRoots = @()
+$candidates = @(
+    (Join-Path $loUserDir "program\soffice.exe")
+)
 if ($env:ProgramFiles) {
-    $libreOfficeRoots += (Join-Path $env:ProgramFiles "LibreOffice\program\soffice.exe")
+    $candidates += (Join-Path $env:ProgramFiles "LibreOffice\program\soffice.exe")
 }
 $programFilesX86 = [Environment]::GetEnvironmentVariable("ProgramFiles(x86)")
 if ($programFilesX86) {
-    $libreOfficeRoots += (Join-Path $programFilesX86 "LibreOffice\program\soffice.exe")
-}
-if ($env:LOCALAPPDATA) {
-    $libreOfficeRoots += (Join-Path $env:LOCALAPPDATA "Programs\LibreOffice\program\soffice.exe")
+    $candidates += (Join-Path $programFilesX86 "LibreOffice\program\soffice.exe")
 }
 
-if (-not $sofficePath) {
-    foreach ($candidate in $libreOfficeRoots) {
-        if ($candidate -and (Test-Path $candidate)) {
-            $sofficePath = $candidate
-            break
-        }
-    }
-}
+$sofficePath = Find-SofficePath -SearchCandidates $candidates
 
 if ($sofficePath) {
     Write-Host "LibreOffice already installed at: $sofficePath" -ForegroundColor Yellow
 } else {
-    Write-Host "Installing LibreOffice via winget..."
+    # Try winget user-scope first (works on some managed images).
+    Write-Host "Attempting winget install (user scope)..."
     winget install TheDocumentFoundation.LibreOffice `
         --scope user `
         --accept-package-agreements `
         --accept-source-agreements `
         --silent
 
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host "User-scope install failed. Retrying without scope..." -ForegroundColor Yellow
-        winget install TheDocumentFoundation.LibreOffice `
-            --accept-package-agreements `
-            --accept-source-agreements `
-            --silent
-    }
+    $sofficePath = Find-SofficePath -SearchCandidates $candidates
 
-    $sofficeCmd = Get-Command soffice -ErrorAction SilentlyContinue | Select-Object -First 1
-    if ($sofficeCmd -and $sofficeCmd.Source -and (Test-Path $sofficeCmd.Source)) {
-        $sofficePath = $sofficeCmd.Source
-    } else {
-        foreach ($candidate in $libreOfficeRoots) {
-            if ($candidate -and (Test-Path $candidate)) {
-                $sofficePath = $candidate
-                break
+    # Fallback: direct MSI install into user profile without elevation.
+    if (-not $sofficePath) {
+        Write-Host "Winget install failed or requires admin. Falling back to MSI user install..." -ForegroundColor Yellow
+
+        $loVersion = "25.2.2"
+        $msiUrl = "https://download.documentfoundation.org/libreoffice/stable/$loVersion/win/x86_64/LibreOffice_${loVersion}_Win_x86-64.msi"
+        $msiPath = Join-Path $env:TEMP "LibreOffice_install.msi"
+
+        try {
+            Write-Host "Downloading LibreOffice MSI (~350 MB)..."
+            Invoke-WebRequest -Uri $msiUrl -OutFile $msiPath -UseBasicParsing
+
+            Write-Host "Running MSI user-level install (no admin)..."
+            $msiArgs = @(
+                "/i", $msiPath,
+                "/quiet",
+                "/norestart",
+                "INSTALLDIR=$loUserDir",
+                'ALLUSERS=""',
+                "CREATEDESKTOPLINK=0",
+                "REGISTERVFW=0"
+            )
+
+            $msiProc = Start-Process msiexec.exe -ArgumentList $msiArgs -Wait -NoNewWindow -PassThru
+            if ($msiProc.ExitCode -ne 0) {
+                Write-Host "MSI install exited with code $($msiProc.ExitCode)." -ForegroundColor Yellow
             }
+        } catch {
+            Write-Host "MSI download/install failed: $_" -ForegroundColor Red
+        } finally {
+            Remove-Item $msiPath -Force -ErrorAction SilentlyContinue
         }
-    }
 
-    if ($sofficePath) {
-        Write-Host "LibreOffice installed." -ForegroundColor Green
-    } else {
-        Write-Host "LibreOffice install may have failed. Headless Office rendering may be unavailable." -ForegroundColor Yellow
+        $sofficePath = Find-SofficePath -SearchCandidates $candidates
+        if ($sofficePath) {
+            Write-Host "LibreOffice installed via MSI." -ForegroundColor Green
+        } else {
+            Write-Host "LibreOffice install unavailable without admin on this machine." -ForegroundColor Yellow
+            Write-Host "Expected location: $loUserDir\program\soffice.exe" -ForegroundColor Yellow
+            Write-Host "Download manually: https://www.libreoffice.org/download/download-libreoffice/" -ForegroundColor Yellow
+        }
     }
 }
 
@@ -354,19 +380,25 @@ if ($sofficePath) {
     $sofficeDir = Split-Path $sofficePath -Parent
     $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
     $parts = @()
-    if ($userPath) { $parts = $userPath -split ";" | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne "" } }
+    if ($userPath) {
+        $parts = $userPath -split ";" | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne "" }
+    }
     $already = $parts | Where-Object { $_.TrimEnd("\\").ToLowerInvariant() -eq $sofficeDir.TrimEnd("\\").ToLowerInvariant() }
 
     if (-not $already) {
-        if ([string]::IsNullOrWhiteSpace($userPath)) {
-            [Environment]::SetEnvironmentVariable("Path", $sofficeDir, "User")
-        } else {
-            [Environment]::SetEnvironmentVariable("Path", "$userPath;$sofficeDir", "User")
-        }
+        $newPath = if ([string]::IsNullOrWhiteSpace($userPath)) { $sofficeDir } else { "$userPath;$sofficeDir" }
+        [Environment]::SetEnvironmentVariable("Path", $newPath, "User")
         $env:Path = "$env:Path;$sofficeDir"
         Write-Host "Added LibreOffice to user PATH: $sofficeDir" -ForegroundColor Green
     } else {
         Write-Host "LibreOffice already on PATH." -ForegroundColor Yellow
+    }
+
+    $sofficeVersion = & $sofficePath --headless --version 2>$null
+    if ($LASTEXITCODE -eq 0 -and $sofficeVersion) {
+        Write-Host "Headless check OK: $sofficeVersion" -ForegroundColor Cyan
+    } else {
+        Write-Host "Headless check failed. Verify LibreOffice installation manually." -ForegroundColor Yellow
     }
 }
 
