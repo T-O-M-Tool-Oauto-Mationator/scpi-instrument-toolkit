@@ -20,6 +20,7 @@ try:
 
     class _SilentPage(_QWebEnginePage):
         """Suppress noisy JS console messages (e.g. missing search_index.js)."""
+
         def javaScriptConsoleMessage(self, level, message, line, source):
             pass  # drop all JS console output from the docs viewer
 
@@ -44,9 +45,7 @@ class DocsViewer(QWidget):
 
             # ── Find bar ──────────────────────────────────────────────
             self._find_bar = QWidget()
-            self._find_bar.setStyleSheet(
-                "background:#313244; border-top:1px solid #45475a;"
-            )
+            self._find_bar.setStyleSheet("background:#313244; border-top:1px solid #45475a;")
             fb_lay = QHBoxLayout(self._find_bar)
             fb_lay.setContentsMargins(8, 4, 8, 4)
             fb_lay.setSpacing(6)
@@ -105,10 +104,7 @@ class DocsViewer(QWidget):
             QShortcut(QKeySequence("Escape"), self._find_bar, self._close_find)
 
         else:
-            lbl = QLabel(
-                f'QtWebEngineWidgets not available.<br>'
-                f'<a href="file://{index}">Open docs in browser</a>'
-            )
+            lbl = QLabel(f'QtWebEngineWidgets not available.<br><a href="file://{index}">Open docs in browser</a>')
             lbl.setOpenExternalLinks(False)
             lbl.linkActivated.connect(lambda _: webbrowser.open(index.as_uri()))
             lay.addWidget(lbl)
@@ -157,6 +153,7 @@ class DocsViewer(QWidget):
 
     def _find_prev(self) -> None:
         from PySide6.QtWebEngineCore import QWebEnginePage
+
         text = self._find_input.text()
         try:
             self._view.findText(text, QWebEnginePage.FindFlag.FindBackward, self._on_find_result)

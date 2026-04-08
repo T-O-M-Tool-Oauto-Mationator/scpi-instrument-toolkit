@@ -155,107 +155,125 @@ class TestAssertInteractive:
 
 class TestScriptControlFlow:
     def test_if_in_script(self, repl):
-        repl._run_script_lines([
-            "x = 10",
-            "if x > 5",
-            "result = 1",
-            "else",
-            "result = 2",
-            "end",
-        ])
+        repl._run_script_lines(
+            [
+                "x = 10",
+                "if x > 5",
+                "result = 1",
+                "else",
+                "result = 2",
+                "end",
+            ]
+        )
         assert repl.ctx.script_vars["result"] == "1"
 
     def test_while_in_script(self, repl):
-        repl._run_script_lines([
-            "x = 0",
-            "while x < 5",
-            "x++",
-            "end",
-        ])
+        repl._run_script_lines(
+            [
+                "x = 0",
+                "while x < 5",
+                "x++",
+                "end",
+            ]
+        )
         assert float(repl.ctx.script_vars["x"]) == 5.0
 
     def test_assert_pass_in_script(self, repl):
         repl.ctx.test_results = []
-        repl._run_script_lines([
-            "x = 10",
-            'assert x > 5 "x check"',
-        ])
+        repl._run_script_lines(
+            [
+                "x = 10",
+                'assert x > 5 "x check"',
+            ]
+        )
         assert repl.ctx.test_results[0]["passed"] is True
 
     def test_assert_fail_stops_script_with_set_e(self, repl):
         repl.ctx.test_results = []
-        repl._run_script_lines([
-            "set -e",
-            "x = 2",
-            'assert x > 5 "x check"',
-            "result = done",
-        ])
+        repl._run_script_lines(
+            [
+                "set -e",
+                "x = 2",
+                'assert x > 5 "x check"',
+                "result = done",
+            ]
+        )
         # With set -e, script should stop after assert fails
         assert "result" not in repl.ctx.script_vars
 
     def test_nested_if_inside_while(self, repl):
-        repl._run_script_lines([
-            "x = 0",
-            "evens = 0",
-            "odds = 0",
-            "while x < 6",
-            "x++",
-            "remainder = x % 2",
-            "if remainder == 0",
-            "evens++",
-            "else",
-            "odds++",
-            "end",
-            "end",
-        ])
+        repl._run_script_lines(
+            [
+                "x = 0",
+                "evens = 0",
+                "odds = 0",
+                "while x < 6",
+                "x++",
+                "remainder = x % 2",
+                "if remainder == 0",
+                "evens++",
+                "else",
+                "odds++",
+                "end",
+                "end",
+            ]
+        )
         assert float(repl.ctx.script_vars["evens"]) == 3.0
         assert float(repl.ctx.script_vars["odds"]) == 3.0
 
     def test_while_with_augmented_assign_in_script(self, repl):
-        repl._run_script_lines([
-            "count = 0",
-            "total = 0",
-            "while count < 5",
-            "count += 1",
-            "total += count",
-            "end",
-        ])
+        repl._run_script_lines(
+            [
+                "count = 0",
+                "total = 0",
+                "while count < 5",
+                "count += 1",
+                "total += count",
+                "end",
+            ]
+        )
         assert float(repl.ctx.script_vars["count"]) == 5.0
         assert float(repl.ctx.script_vars["total"]) == 15.0
 
     def test_if_elif_else_in_script(self, repl):
-        repl._run_script_lines([
-            "x = 50",
-            "if x > 100",
-            'grade = "A"',
-            "elif x > 40",
-            'grade = "B"',
-            "else",
-            'grade = "C"',
-            "end",
-        ])
+        repl._run_script_lines(
+            [
+                "x = 50",
+                "if x > 100",
+                'grade = "A"',
+                "elif x > 40",
+                'grade = "B"',
+                "else",
+                'grade = "C"',
+                "end",
+            ]
+        )
         assert repl.ctx.script_vars["grade"] == "B"
 
     def test_while_break_in_script(self, repl):
-        repl._run_script_lines([
-            "x = 0",
-            "while x < 100",
-            "x++",
-            "if x == 7",
-            "break",
-            "end",
-            "end",
-        ])
+        repl._run_script_lines(
+            [
+                "x = 0",
+                "while x < 100",
+                "x++",
+                "if x == 7",
+                "break",
+                "end",
+                "end",
+            ]
+        )
         assert float(repl.ctx.script_vars["x"]) == 7.0
 
     def test_multiple_asserts_in_script(self, repl):
         repl.ctx.test_results = []
-        repl._run_script_lines([
-            "v = 5.0",
-            'assert v > 4.9 "above min"',
-            'assert v < 5.1 "below max"',
-            'assert v > 10.0 "this fails"',
-        ])
+        repl._run_script_lines(
+            [
+                "v = 5.0",
+                'assert v > 4.9 "above min"',
+                'assert v < 5.1 "below max"',
+                'assert v > 10.0 "this fails"',
+            ]
+        )
         assert repl.ctx.test_results[0]["passed"] is True
         assert repl.ctx.test_results[1]["passed"] is True
         assert repl.ctx.test_results[2]["passed"] is False
@@ -291,6 +309,7 @@ class TestCalcWithBareNames:
         repl.onecmd("calc gain_db 20 * log10(gain) unit=dB")
         assert "gain_db" in repl.ctx.script_vars
         import math
+
         expected = 20 * math.log10(0.5)
         assert abs(float(repl.ctx.script_vars["gain_db"]) - expected) < 1e-9
 

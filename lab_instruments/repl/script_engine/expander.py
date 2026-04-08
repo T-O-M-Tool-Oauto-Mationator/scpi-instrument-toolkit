@@ -18,14 +18,10 @@ _ASSIGN_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_.]*)\s*=(?!=)\s*(.+)$")
 _INSTR_READ_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*)\s+(?:read|meas|read_word|read_byte|read_block)(?:\s+(.*))?$")
 
 # Matches augmented assignment: x += 5, x -= 2, x **= 3, etc.
-_AUGMENTED_RE = re.compile(
-    r"^([A-Za-z_][A-Za-z0-9_.]*)\s*(\+=|-=|\*\*=|\*=|//=|/=|%=|\|=|&=|\^=|<<=|>>=)\s*(.+)$"
-)
+_AUGMENTED_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_.]*)\s*(\+=|-=|\*\*=|\*=|//=|/=|%=|\|=|&=|\^=|<<=|>>=)\s*(.+)$")
 
 # Matches increment/decrement: x++, ++x, x--, --x
-_INCRDECR_RE = re.compile(
-    r"^(?:(\+\+|--)([A-Za-z_][A-Za-z0-9_.]*)$|([A-Za-z_][A-Za-z0-9_.]*)(\+\+|--)$)"
-)
+_INCRDECR_RE = re.compile(r"^(?:(\+\+|--)([A-Za-z_][A-Za-z0-9_.]*)$|([A-Za-z_][A-Za-z0-9_.]*)(\+\+|--)$)")
 
 
 def expand_script_lines(

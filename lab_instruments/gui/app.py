@@ -429,7 +429,7 @@ class _MainWindow(QMainWindow):
 
         parts = [
             (info.get("lines"), "scpi", ".scpi"),
-            (info.get("code"),  "python", ".py"),
+            (info.get("code"), "python", ".py"),
         ]
 
         opened: list[str] = []
@@ -554,9 +554,7 @@ class _MainWindow(QMainWindow):
                     safe_out = self._d.run("state safe")
                     if safe_out.strip():
                         self._console.log(_ansi_to_html(safe_out))
-                    self._console.log(
-                        "<span style='color:#c0392b'>[SAFETY] Script failed — safe state applied</span>"
-                    )
+                    self._console.log("<span style='color:#c0392b'>[SAFETY] Script failed — safe state applied</span>")
                 self._console.log(f"<span style='color:#155724'>[DONE] {name}</span>")
                 self._console._input.setEnabled(True)
                 self._console.hide_running()
@@ -568,9 +566,7 @@ class _MainWindow(QMainWindow):
             def _py_worker():
                 self._console._worker_thread_id = threading.current_thread().ident
                 try:
-                    self._d.run_streaming(
-                        f"python {path}", lambda text: _sig.finished.emit(text)
-                    )
+                    self._d.run_streaming(f"python {path}", lambda text: _sig.finished.emit(text))
                 except KeyboardInterrupt:
                     _sig.finished.emit("\033[93m[STOPPED]\033[0m")
                 finally:
