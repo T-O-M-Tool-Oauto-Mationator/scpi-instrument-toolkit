@@ -619,6 +619,7 @@ class ScpiEditor(QWidget):
     file_modified = Signal(bool)
     run_requested = Signal(str)
     debug_requested = Signal(str)
+    title_changed = Signal(str)  # emitted after save-as renames the tab
 
     def __init__(self, file_path: str | None = None, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -1014,6 +1015,33 @@ class ScpiEditor(QWidget):
         except Exception:
             self._suppress_reload = False
             return False
+
+    def save_as(self, default_dir: str = "") -> bool:
+        """Prompt for a save location, write the file, and emit title_changed."""
+        from PySide6.QtWidgets import QFileDialog
+
+        if self._file_path:
+            start = self._file_path
+        elif default_dir:
+            start = os.path.join(default_dir, "untitled.scpi")
+        else:
+            start = "untitled.scpi"
+
+        path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save As",
+            start,
+            "SCPI Scripts (*.scpi);;Python Files (*.py);;Text Files (*.txt);;All Files (*)",
+        )
+        if not path:
+            return False
+        self._file_path = path
+        if self._watcher.files():
+            self._watcher.removePaths(self._watcher.files())
+        saved = self.save()
+        if saved:
+            self.title_changed.emit(os.path.basename(path))
+        return saved
 
     # -- Run / Debug ---------------------------------------------------------
 

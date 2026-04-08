@@ -1,0 +1,42 @@
+# v1.0.2
+# _interop_helper.scpi — called from the Python script via repl.onecmd("script run interop_helper")
+#
+# Demonstrates patterns 14, 16, 18, 20 from the Python-side interop list:
+#   PATTERN 14: calling a SCPI file from Python
+#   PATTERN 16: Python var used in a SCPI file (Python stored in script_vars, SCPI reads {var})
+#   PATTERN 18: Python var modified by a SCPI file (SCPI modifies, Python reads back)
+#   PATTERN 20: SCPI file creates a value read back in Python
+#
+# Also called in a loop for PATTERN 12.
+#
+# Works with --mock mode.
+
+print "[helper.scpi] Running interop helper script"
+
+# ── PATTERN 16: read a Python variable inside a SCPI file ───────────
+# The Python script set py_to_scpi_file = "999" in script_vars before calling us.
+# Use 'if' block for runtime access to script_vars.
+if 1 > 0
+  print "[helper.scpi] PATTERN 16: read Python var py_to_scpi_file = {py_to_scpi_file}"
+end
+
+# ── PATTERN 18: modify a Python variable from a SCPI file ───────────
+# The Python script set py_modify_scpi_file = 200 in script_vars before calling us.
+# Must use 'if' block so the assignment happens at runtime (modifies script_vars).
+if 1 > 0
+  py_modify_scpi_file = {py_modify_scpi_file} + 1
+  print "[helper.scpi] PATTERN 18: incremented py_modify_scpi_file to {py_modify_scpi_file}"
+end
+
+# ── PATTERN 20: create a value for Python to read back ──────────────
+if 1 > 0
+  scpi_file_created = scpi_says_hello
+  print "[helper.scpi] PATTERN 20: set scpi_file_created = {scpi_file_created}"
+end
+
+# ── Used in PATTERN 12 (loop): record something per call ────────────
+# helper_loop_counter is set by the Python caller before each iteration.
+if 1 > 0
+  print "[helper.scpi] loop counter = {helper_loop_counter}"
+  print "[helper.scpi] Interop helper complete."
+end

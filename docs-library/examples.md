@@ -256,3 +256,157 @@ finally:
     psu.disconnect()
     dmm.disconnect()
 ```
+
+---
+
+## REPL Scripting Examples
+
+The REPL includes a full scripting engine with variables, loops, conditionals,
+and Python integration.  Use `--mock` mode to test without hardware:
+
+```bash
+scpi-repl --mock
+```
+
+### SCPI Script: Voltage Sweep with Glob Plots
+
+```scpi
+# voltage_sweep.scpi — run via: script run voltage_sweep
+psu1 chan 1 on
+dmm1 config vdc
+
+# linspace generates 10 evenly-spaced voltages from 0.5 to 12V
+sweep_voltages = linspace 0.5 12.0 10
+
+# Loop through voltages — labels like dmm_reading_0.5, dmm_reading_1.77, ...
+for v {sweep_voltages}
+  psu1 set 1 {v}
+  sleep 100ms
+  dmm_reading_{v} = dmm1 meas unit=V
+end
+
+psu1 chan 1 off
+
+# Glob patterns: dmm_reading_* matches all labels above
+plot dmm_reading_* --title "DMM Readings"
+liveplot dmm_reading_* --title "Live DMM" --xlabel "Step" --ylabel "V"
+log print
+log save sweep_results.csv
+```
+
+### Inline Python with `pyeval`
+
+`pyeval` evaluates a Python expression with access to all REPL variables:
+
+```scpi
+x = 5.0
+if 1 > 0
+  pyeval float(vars['x']) ** 2 + 1
+  result = {_}
+  pyeval "x squared plus one = " + str(vars.get('result', '?'))
+end
+```
+
+The `vars` dict contains all script variables.  The result is stored in `_`.
+Use `if 1 > 0 ... end` blocks to read runtime values (pyeval results,
+python file modifications) — outside if blocks, `{var}` is resolved at
+expansion time.
+
+---
+
+## Cross-Script Workflow (SCPI + Python)
+
+The toolkit supports a two-phase workflow:
+
+1. **SCPI phase** — collect measurements with instrument commands
+2. **Python phase** — analyze data with matplotlib, statistics, etc.
+
+Variables and measurements flow between the two via `repl.ctx.script_vars`
+and `repl.ctx.measurements`.
+
+### All 20 Python ↔ SCPI Interop Patterns
+
+The `complete_cross_script` example demonstrates all 20 permutations:
+
+**From SCPI context (patterns 1-10):**
+
+| # | Pattern | Mechanism |
+|---|---------|-----------|
+| 1 | Call Python inline | `pyeval <expr>` |
+| 2 | Call Python file in a loop | `python file.py` inside `for` |
+| 3 | Call Python inline in a loop | `pyeval` inside `for` |
+| 4 | Call Python file | `python file.py` |
+| 5 | SCPI var → pyeval | `pyeval vars['varname']` |
+| 6 | SCPI var → Python file | Python reads `repl.ctx.script_vars` |
+| 7 | SCPI var modified by pyeval | `pyeval` computes, `_ = {result}` |
+| 8 | SCPI var modified by Python file | Python writes `repl.ctx.script_vars` |
+| 9 | pyeval value → SCPI | pyeval result in `_`, SCPI uses `{_}` |
+| 10 | Python file value → SCPI | Python sets `repl.ctx.script_vars`, SCPI reads |
+
+**From Python context (patterns 11-20):**
+
+| # | Pattern | Mechanism |
+|---|---------|-----------|
+| 11 | Call SCPI inline | `repl.onecmd("psu1 set 1 5.0")` |
+| 12 | Call SCPI file in a loop | `repl.onecmd("script run X")` in `for` |
+| 13 | Call SCPI inline in a loop | `repl.onecmd()` in Python `for` |
+| 14 | Call SCPI file | `repl.onecmd("script run X")` |
+| 15 | Python var → SCPI inline | f-string: `repl.onecmd(f"psu1 set 1 {v}")` |
+| 16 | Python var → SCPI file | Store in `script_vars`, script reads `{var}` |
+| 17 | Python var modified by SCPI inline | SCPI modifies `script_vars`, Python reads back |
+| 18 | Python var modified by SCPI file | Script modifies `script_vars`, Python reads back |
+| 19 | SCPI inline value → Python | `repl.onecmd` sets var, Python reads `script_vars` |
+| 20 | SCPI file value → Python | Script sets var, Python reads `script_vars` |
+
+### Key Concept: Expansion Time vs Runtime
+
+In SCPI scripts, `{variable}` substitution happens at **expansion time**
+(before the script runs).  To read values set at **runtime** (by `pyeval`,
+`python`, or instrument reads), wrap the dependent code in an
+`if 1 > 0 ... end` block — inside `if`/`while` blocks, all commands
+execute at runtime with live variable access.
+
+```scpi
+# This does NOT work (expansion-time substitution):
+pyeval 6 * 7
+print "Result: {_}"     # Shows old value of _
+
+# This DOES work (runtime context):
+if 1 > 0
+  pyeval 6 * 7
+  print "Result: {_}"   # Shows 42
+end
+```
+
+### Running the Complete Example
+
+```bash
+scpi-repl --mock
+```
+
+```
+examples load complete_cross_script
+script run complete_cross_script
+python examples/Cross\ Script/complete_cross_script.py
+```
+
+Or load from files directly:
+
+```
+script import complete "examples/Cross Script/complete_cross_script.scpi"
+script run complete
+python "examples/Cross Script/complete_cross_script.py"
+```
+
+### Glob Patterns in Plots
+
+Measurement labels created in loops (e.g. `dmm_reading_{v}`) produce
+labels like `dmm_reading_1.0`, `dmm_reading_2.0`, etc.  Use glob patterns
+to match them:
+
+```scpi
+plot dmm_reading_*                           # single pattern
+plot psu_v_* psu_i_* --title "V and I"      # multiple series
+liveplot sweep_* --title "Live" --xlabel "Step" --ylabel "V"
+plot sweep_* --save results.png              # save to file
+```

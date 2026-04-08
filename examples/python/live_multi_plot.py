@@ -1,3 +1,4 @@
+# v1.0.2
 """Multi-plot PSU ramp -- Python API version.
 
 Opens two independent live-plot tabs (voltage and current) and ramps the PSU

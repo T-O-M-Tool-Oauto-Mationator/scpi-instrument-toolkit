@@ -197,3 +197,53 @@ inst.disconnect()
 ```
 
 See [DeviceManager](instruments/device-manager.md) for the full reference.
+
+---
+
+## Interactive REPL
+
+The toolkit includes a powerful interactive REPL for controlling instruments
+without writing Python scripts:
+
+```bash
+scpi-repl              # Start with real instruments
+scpi-repl --mock       # Start with simulated instruments (no hardware needed)
+```
+
+### Mock Mode
+
+Use `--mock` to test scripts and learn the REPL without any hardware connected.
+Mock mode simulates all supported instruments with realistic random values:
+
+```bash
+scpi-repl --mock
+```
+
+### REPL Scripting
+
+The REPL supports a full scripting engine with:
+
+- **Variables**: `x = 5.0`, `x += 1`, `x = linspace 0 10 5`
+- **Loops**: `for v 1 2 3 ... end`, `repeat 5 ... end`, `while x < 10 ... end`
+- **Conditionals**: `if x > 5 ... elif ... else ... end`
+- **Measurement storage**: `reading = dmm1 meas unit=V`
+- **Glob plots**: `plot dmm_reading_*`, `liveplot sweep_*`
+- **Python integration**: `pyeval expr`, `python file.py`
+- **Safety limits**: `upper_limit psu voltage 15.0`
+- **Logging**: `log print`, `log save data.csv`
+- **Reporting**: `report title "Test"`, `report save report.pdf`
+
+### Cross-Script Workflow
+
+SCPI scripts can call Python files and vice versa.  Variables flow between
+them via `repl.ctx.script_vars`.  See [Examples](examples.md) for all 20
+Python ↔ SCPI interop patterns.
+
+### Built-in Examples
+
+```
+examples                          # List all examples
+examples load voltage_sweep       # Load an example
+script run voltage_sweep          # Run it
+examples load all                 # Load all examples
+```

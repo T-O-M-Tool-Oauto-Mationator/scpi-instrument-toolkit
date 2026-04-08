@@ -1,3 +1,4 @@
+# v1.0.2
 # cross_script_demo.scpi
 # Collects PSU measurements and stores them in REPL variables.
 # After running this, run the Python version to analyze the data.

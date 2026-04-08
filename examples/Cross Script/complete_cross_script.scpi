@@ -1,0 +1,1100 @@
+# v1.0.2
+# complete_cross_script.scpi — Comprehensive REPL Feature Showcase
+#
+# Demonstrates EVERY scripting feature and instrument command available in the
+# SCPI Instrument Toolkit REPL.  This is the definitive reference example.
+#
+# Run with:
+#   examples load complete_cross_script
+#   script run complete_cross_script
+#
+# Works with --mock mode (no real hardware needed).
+#
+# After running, execute the Python analysis phase:
+#   python examples/Cross\ Script/complete_cross_script.py
+#
+# IMPORTANT: Run from the project root directory so that relative paths
+# to helper files resolve correctly.
+#
+# ============================================================================
+
+# ============================================================================
+# SECTION 1: SETUP & ERROR CONTROL
+# ============================================================================
+
+print "================================================================"
+print "=== Complete Cross Script — REPL Feature Showcase ==="
+print "================================================================"
+
+# set -e makes the script stop on any error (like bash)
+set -e
+
+# Report metadata — used by 'report save' to generate PDF headers
+report title "Complete Cross Script — Full Feature Test"
+report operator "SCPI Toolkit Demo"
+
+# Disable exit-on-error for the exploratory sections (we re-enable later)
+set +e
+
+# ============================================================================
+# SECTION 2: VARIABLES & EXPRESSIONS
+# ============================================================================
+
+print ""
+print "--- Section 2: Variables & Expressions ---"
+
+# Simple assignment
+target = 5.0
+tolerance = 0.05
+label_prefix = psu_sweep
+
+# Math expressions (uses safe_eval with trig, log, etc.)
+half = target / 2
+doubled = target * 2
+squared = target ** 2
+remainder = 17 % 5
+int_div = 17 // 3
+
+print "target={target}  half={half}  doubled={doubled}  squared={squared}"
+print "17 mod 5 = {remainder}   17 // 3 = {int_div}"
+
+# Linspace generates evenly-spaced values
+sweep_voltages = linspace 0.5 12.0 10
+print "Sweep voltages: {sweep_voltages}"
+
+# Augmented assignment operators
+counter = 0
+counter += 5
+print "counter after += 5: {counter}"
+counter -= 2
+print "counter after -= 2: {counter}"
+counter *= 3
+print "counter after *= 3: {counter}"
+counter //= 2
+print "counter after //= 2: {counter}"
+counter **= 2
+print "counter after **= 2: {counter}"
+counter %= 7
+print "counter after %%= 7: {counter}"
+
+# Increment / decrement
+step = 0
+step++
+print "step after ++: {step}"
+step++
+++step
+print "step after ++ and ++: {step}"
+step--
+print "step after --: {step}"
+
+# pyeval — inline Python expression evaluator
+# Result is stored in the special variable '_'
+pyeval 2 ** 16
+print "2^16 = {_}"
+pyeval [x**2 for x in range(6)]
+print "Squares 0-5: {_}"
+
+# calc — compute a derived value and log it with a unit
+calc target_mw = {target} * 1000 unit=mW
+print "Target in milliwatts: {target_mw}"
+
+# ============================================================================
+# SECTION 3: SAFETY LIMITS
+# ============================================================================
+
+print ""
+print "--- Section 3: Safety Limits ---"
+
+# Safety limits prevent accidental over-voltage/current
+# PSU limits
+upper_limit psu voltage 15.0
+upper_limit psu current 1.0
+lower_limit psu voltage 0.0
+
+# AWG limits
+upper_limit awg voltage 10.0
+upper_limit awg freq 1000000
+
+# SMU limits
+upper_limit smu voltage 20.0
+upper_limit smu current 0.5
+
+# Per-channel limits
+upper_limit psu chan 1 voltage 13.0
+upper_limit awg chan 1 voltage 8.0
+
+print "Safety limits configured."
+
+# ============================================================================
+# SECTION 4: PSU (Power Supply) OPERATIONS
+# ============================================================================
+
+print ""
+print "--- Section 4: PSU Operations ---"
+
+# Enable channel 1
+psu1 chan 1 on
+
+# Set voltage and optional current limit
+psu1 set 1 3.3
+sleep 100ms
+psu1 set 1 5.0 0.5
+sleep 100ms
+
+# Measure voltage and current
+psu1 meas 1 v
+psu1 meas 1 i
+
+# Store measurements in variables (auto-logged to measurement store)
+psu_v_reading = psu1 meas v unit=V
+psu_i_reading = psu1 meas i unit=A
+
+print "PSU voltage: {psu_v_reading} V"
+print "PSU current: {psu_i_reading} A"
+
+# Ramp through several voltages using a for loop
+for v 1.0 2.0 3.3 5.0 9.0 12.0
+  psu1 set 1 {v}
+  sleep 100ms
+  psu_sweep_{v} = psu1 meas v unit=V
+end
+
+# Disable PSU channel
+psu1 chan 1 off
+
+# ============================================================================
+# SECTION 5: DMM (Digital Multimeter) OPERATIONS
+# ============================================================================
+
+print ""
+print "--- Section 5: DMM Operations ---"
+
+# Configure for DC voltage measurement
+dmm1 config vdc
+sleep 100ms
+
+# Read a measurement
+dmm1 read
+
+# Store measurement in a variable with unit tracking
+dmm_dc_v = dmm1 meas unit=V
+print "DMM DC voltage: {dmm_dc_v} V"
+
+# Cycle through multiple DMM modes
+dmm1 config vac
+sleep 100ms
+dmm_ac_v = dmm1 meas unit=V
+print "DMM AC voltage: {dmm_ac_v} V"
+
+dmm1 config idc
+sleep 100ms
+dmm_dc_i = dmm1 meas unit=A
+print "DMM DC current: {dmm_dc_i} A"
+
+dmm1 config res
+sleep 100ms
+dmm_res = dmm1 meas unit=ohms
+print "DMM resistance: {dmm_res} ohms"
+
+dmm1 config freq
+sleep 100ms
+dmm_freq = dmm1 meas unit=Hz
+print "DMM frequency: {dmm_freq} Hz"
+
+# Return to DC voltage for later use
+dmm1 config vdc
+
+# ============================================================================
+# SECTION 6: AWG (Function Generator) OPERATIONS
+# ============================================================================
+
+print ""
+print "--- Section 6: AWG Operations ---"
+
+# Enable channel 1
+awg1 chan 1 on
+
+# Configure waveform with all parameters
+awg1 wave 1 sine freq=1000 amp=2.0 offset=0
+
+sleep 100ms
+print "AWG: 1kHz sine, 2Vpp"
+
+# Change individual parameters
+awg1 freq 1 5000
+print "AWG freq -> 5kHz"
+
+awg1 amp 1 3.0
+print "AWG amp -> 3Vpp"
+
+awg1 offset 1 1.5
+print "AWG offset -> 1.5V"
+
+# Demonstrate all waveform types
+awg1 wave 1 square freq=1000 amp=2.0 duty=50
+sleep 50ms
+print "AWG: square wave"
+
+awg1 wave 1 ramp freq=1000 amp=2.0
+sleep 50ms
+print "AWG: ramp wave"
+
+awg1 wave 1 triangle freq=1000 amp=2.0
+sleep 50ms
+print "AWG: triangle wave"
+
+awg1 wave 1 pulse freq=1000 amp=2.0
+sleep 50ms
+print "AWG: pulse wave"
+
+awg1 wave 1 noise amp=1.0
+sleep 50ms
+print "AWG: noise"
+
+awg1 wave 1 dc offset=2.5
+sleep 50ms
+print "AWG: DC 2.5V"
+
+# Phase and duty cycle control
+awg1 wave 1 sine freq=1000 amp=2.0 offset=0 phase=90
+print "AWG: sine with 90 deg phase"
+
+awg1 wave 1 square freq=1000 amp=2.0 duty=25
+print "AWG: square with 25%% duty"
+
+# Channel 2 operations
+awg1 chan 2 on
+awg1 wave 2 sine freq=1000 amp=1.0 offset=0
+print "AWG CH2: 1kHz sine, 1Vpp"
+
+# Sync output
+awg1 sync on
+print "AWG sync output enabled"
+awg1 sync off
+
+# Disable channels
+awg1 chan 1 off
+awg1 chan 2 off
+
+# ============================================================================
+# SECTION 7: OSCILLOSCOPE OPERATIONS
+# ============================================================================
+
+print ""
+print "--- Section 7: Oscilloscope Operations ---"
+
+# Channel control
+scope1 chan 1 on
+scope1 chan 2 on
+scope1 chan all on
+
+# Acquisition control
+scope1 run
+sleep 100ms
+scope1 stop
+scope1 single
+scope1 run
+
+# Autoset (auto-adjusts scale/trigger)
+scope1 autoset
+sleep 200ms
+
+# Coupling and probe
+scope1 coupling 1 DC
+scope1 probe 1 10
+
+# Horizontal scale and position
+scope1 hscale 1e-3
+# scope1 hpos 0  # (not all scopes support set_horizontal_offset)
+
+# Vertical scale and position
+scope1 vscale 1 0.5
+scope1 vpos 1 0
+
+# Trigger configuration
+scope1 trigger 1 0.5 RISE AUTO
+
+# Measurements — all types
+scope1 meas 1 FREQUENCY
+scope1 meas 1 PK2PK
+scope1 meas 1 RMS
+scope1 meas 1 MEAN
+
+# Store a measurement in a variable
+scope_freq = scope1 meas 1 FREQUENCY unit=Hz
+scope_vpp = scope1 meas 1 PK2PK unit=V
+scope_rms = scope1 meas 1 RMS unit=V
+print "Scope: freq={scope_freq}Hz  Vpp={scope_vpp}V  RMS={scope_rms}V"
+
+# Measurement delay between channels
+scope1 meas_delay 1 2
+
+# Save waveform data to CSV
+scope1 save 1 scope_ch1_data.csv
+
+# Channel labels and display options
+scope1 label 1 "Signal"
+scope1 invert 1 off
+scope1 bwlimit 1 OFF
+
+# Display control
+scope1 display clear
+scope1 display grid FULL
+scope1 display brightness 80
+
+# Acquisition settings
+scope1 acquire type NORMAL
+
+# Math channels
+scope1 math on 1
+scope1 math op 1 ADD CH1 CH2
+scope1 math off 1
+
+# FFT
+scope1 math on 1
+scope1 math fft 1 CH1 window=RECT
+scope1 math off 1
+
+# Digital filter
+scope1 math on 1
+scope1 math filter 1 LPAS CH1 upper=10000
+scope1 math off 1
+
+# Cursor control
+scope1 cursor manual X
+scope1 cursor read
+scope1 cursor off
+
+# Built-in scope AWG (DHO804/DSOX1204G)
+scope1 awg set SINusoid 1000 1.0
+scope1 awg chan off
+
+# Frequency counter
+scope1 counter on
+scope1 counter source 1
+scope1 counter read
+scope1 counter off
+
+# Digital voltmeter
+scope1 dvm on
+scope1 dvm source 1
+scope1 dvm read
+scope1 dvm off
+
+# Recording (frame-based)
+scope1 record on
+scope1 record frames 100
+scope1 record off
+
+# Mask testing
+scope1 mask on
+scope1 mask source 1
+scope1 mask tolerance 0.5 0.3
+scope1 mask off
+
+# Force trigger
+scope1 force
+
+# Screenshot
+scope1 screenshot scope_screenshot.png
+
+# Cleanup
+scope1 stop
+scope1 chan 1 off
+scope1 chan 2 off
+
+# ============================================================================
+# SECTION 8: SMU (Source Measure Unit) OPERATIONS
+# ============================================================================
+
+print ""
+print "--- Section 8: SMU Operations ---"
+
+# Power on
+smu1 on
+
+# Set voltage with current limit
+smu1 set 3.3 0.01
+sleep 100ms
+
+# Measure voltage, current, or both
+smu1 meas v
+smu1 meas i
+smu1 meas vi
+
+# Store measurements
+smu_v = smu1 meas v unit=V
+smu_i = smu1 meas i unit=A
+print "SMU: V={smu_v}  I={smu_i}"
+
+# Voltage source mode with current limit
+smu1 set_mode voltage 5.0 0.1
+sleep 100ms
+smu_v2 = smu1 meas v unit=V
+print "SMU voltage mode: {smu_v2} V"
+
+# Current source mode with voltage limit
+smu1 set_mode current 0.01 10.0
+sleep 100ms
+smu_i2 = smu1 meas i unit=A
+print "SMU current mode: {smu_i2} A"
+
+# Query compliance state
+smu1 compliance
+
+# Configuration commands
+smu1 source_delay 0.01
+smu1 avg 10
+
+# Temperature reading
+smu1 temp
+
+# Get current setpoints
+smu1 get
+
+# Power off
+smu1 off
+
+# ============================================================================
+# SECTION 9: EV2300 (USB-to-I2C Adapter) OPERATIONS
+# ============================================================================
+
+print ""
+print "--- Section 9: EV2300 Operations ---"
+
+# Device info
+ev2300 info
+
+# SMBus read operations
+ev2300 read_word 0x08 0x09
+ev2300 read_byte 0x08 0x0C
+ev2300 read_block 0x08 0x20
+
+# SMBus write operations
+ev2300 write_word 0x08 0x00 0x0021
+ev2300 write_byte 0x08 0x00 0x21
+ev2300 write_block 0x08 0x04 AABB
+
+# Send byte (no register address)
+ev2300 send_byte 0x08 0x13
+
+# Read and display (ev2300 read results are displayed directly)
+ev2300 read_word 0x08 0x09
+
+# ============================================================================
+# SECTION 10: LOOP CONSTRUCTS
+# ============================================================================
+
+print ""
+print "--- Section 10: Loop Constructs ---"
+
+# --- 10a: Basic FOR loop with inline values ---
+print "10a: Basic for loop"
+psu1 chan 1 on
+dmm1 config vdc
+sleep 100ms
+
+for v 1.0 3.3 5.0
+  psu1 set 1 {v}
+  sleep 100ms
+  loop_basic_{v} = dmm1 meas unit=V
+  print "  Set {v}V -> measured {loop_basic_{v}}V"
+end
+
+psu1 chan 1 off
+
+# --- 10b: FOR loop with variable expansion ---
+print "10b: For loop with variable expansion"
+test_freqs = linspace 100 10000 5
+awg1 chan 1 on
+awg1 wave 1 sine amp=2.0 offset=0
+
+for f {test_freqs}
+  awg1 freq 1 {f}
+  sleep 100ms
+  print "  AWG freq = {f} Hz"
+end
+
+awg1 chan 1 off
+
+# --- 10c: Tuple-unpacking FOR loop ---
+print "10c: Tuple-unpacking for loop"
+psu1 chan 1 on
+for v,ilim 3.3,0.1 5.0,0.2 12.0,0.5
+  psu1 set 1 {v} {ilim}
+  sleep 100ms
+  tuple_v_{v} = psu1 meas v unit=V
+  print "  Set {v}V @ {ilim}A limit -> {tuple_v_{v}}V"
+end
+psu1 chan 1 off
+
+# --- 10d: REPEAT block ---
+print "10d: Repeat block (5 iterations)"
+dmm1 config vdc
+repeat_count = 0
+
+repeat 5
+  repeat_count++
+  repeat_r{repeat_count} = dmm1 meas unit=V
+  print "  Repeat iteration {repeat_count}: {repeat_r{repeat_count}} V"
+  sleep 50ms
+end
+
+print "Total repeat iterations: {repeat_count}"
+
+# --- 10e: WHILE loop ---
+# Note: while blocks run at runtime. Compound assignment (w_voltage += 1.5)
+# requires all script_vars to be float-parseable, so we use pyeval to increment
+# to work around string variables already set (label_prefix, etc.).
+print "10e: While loop"
+psu1 chan 1 on
+w_voltage = 1.0
+
+while w_voltage < 6.0
+  psu1 set 1 {w_voltage}
+  sleep 100ms
+  while_v_{w_voltage} = psu1 meas v unit=V
+  print "  While loop: {w_voltage}V -> {while_v_{w_voltage}}V"
+  pyeval float(vars['w_voltage']) + 1.5
+  w_voltage = {_}
+end
+
+psu1 chan 1 off
+
+# --- 10f: BREAK and CONTINUE ---
+print "10f: Break and continue"
+psu1 chan 1 on
+
+for v 1.0 2.0 3.0 4.0 5.0 6.0 7.0 8.0 9.0 10.0
+  # Skip odd voltages with continue
+  pyeval int(float({v})) % 2
+  if _ == 1
+    print "  Skipping {v}V (odd)"
+    continue
+  end
+  psu1 set 1 {v}
+  sleep 50ms
+  print "  Set {v}V (even)"
+  # Break at 8V
+  if {v} >= 8.0
+    print "  Breaking at {v}V"
+    break
+  end
+end
+
+psu1 chan 1 off
+
+# --- 10g: Nested loops ---
+print "10g: Nested loops (voltage x current)"
+psu1 chan 1 on
+
+for v 3.3 5.0
+  for ilim 0.1 0.5
+    psu1 set 1 {v} {ilim}
+    sleep 50ms
+    nested_{v}V_{ilim}A = psu1 meas v unit=V
+    print "  Nested: {v}V @ {ilim}A -> {nested_{v}V_{ilim}A}V"
+  end
+end
+
+psu1 chan 1 off
+
+# --- 10h: DMM readings in a loop with glob-friendly labels ---
+print "10h: DMM readings loop (for glob demo)"
+dmm1 config vdc
+psu1 chan 1 on
+psu1 set 1 5.0
+sleep 100ms
+
+for i 1 2 3 4 5
+  dmm_reading_{i} = dmm1 meas unit=V
+  sleep 50ms
+end
+
+psu1 chan 1 off
+
+# ============================================================================
+# SECTION 11: ARRAY BUILDING
+# ============================================================================
+
+print ""
+print "--- Section 11: Array Building ---"
+
+# array ... end builds a space-separated list variable
+array custom_voltages
+  1.0
+  2.5
+  3.3
+  5.0
+  7.5
+end
+
+print "Custom voltage array: {custom_voltages}"
+
+# Use the array in a for loop
+psu1 chan 1 on
+for v {custom_voltages}
+  psu1 set 1 {v}
+  sleep 50ms
+  array_v_{v} = psu1 meas v unit=V
+end
+psu1 chan 1 off
+
+# ============================================================================
+# SECTION 12: CONTROL FLOW (if / elif / else)
+# ============================================================================
+
+print ""
+print "--- Section 12: Control Flow ---"
+
+psu1 chan 1 on
+psu1 set 1 5.0
+sleep 200ms
+cf_voltage = psu1 meas v unit=V
+
+# Basic if / elif / else
+if cf_voltage > 6.0
+  print "  Voltage is HIGH (> 6.0V): {cf_voltage}V"
+elif cf_voltage > 3.0
+  print "  Voltage is MEDIUM (3.0-6.0V): {cf_voltage}V"
+else
+  print "  Voltage is LOW (< 3.0V): {cf_voltage}V"
+end
+
+# Boolean operators: and, or, not
+test_val = 5.0
+if test_val > 3.0 and test_val < 10.0
+  print "  {test_val} is between 3 and 10 (and operator)"
+end
+
+if test_val < 1.0 or test_val > 4.0
+  print "  {test_val} is outside 1-4 range (or operator)"
+end
+
+psu1 chan 1 off
+
+# ============================================================================
+# SECTION 13: ASSERTIONS & CHECKS
+# ============================================================================
+
+print ""
+print "--- Section 13: Assertions & Checks ---"
+
+# First, take a known measurement
+psu1 chan 1 on
+psu1 set 1 5.0 0.5
+sleep 200ms
+check_voltage = psu1 meas v unit=V
+dmm1 config vdc
+check_dmm = dmm1 meas unit=V
+
+# check with range: pass if min <= value <= max
+check check_voltage 4.5 5.5
+
+# check with absolute tolerance: pass if |value - expected| <= tol
+check check_voltage 5.0 tol=0.5
+
+# check with percentage tolerance: pass if |value - expected| <= N% * expected
+check check_voltage 5.0 tol=10%
+
+# check on DMM reading
+check check_dmm 0.0 20.0
+
+# assert — hard assertion (stops script on failure)
+# Using set +e so we don't stop on check failures above, but assert is always hard
+assert check_voltage > 0 "PSU voltage must be positive"
+assert check_voltage < 20 "PSU voltage must be under 20V"
+
+psu1 chan 1 off
+print "All assertions passed."
+
+# ============================================================================
+# SECTION 14: LOGGING & DATA MANAGEMENT
+# ============================================================================
+
+print ""
+print "--- Section 14: Logging & Data ---"
+
+# Print the measurement log table
+log print
+
+# Save measurements to CSV
+log save complete_measurements.csv
+
+# Data directory management
+data dir
+print "Data dir shown above."
+
+# ============================================================================
+# SECTION 15: PLOTTING & GLOB PATTERNS
+# ============================================================================
+
+print ""
+print "--- Section 15: Plotting & Glob Patterns ---"
+
+# Live plot — opens a real-time updating chart (works in GUI)
+# Glob pattern: psu_sweep_* matches psu_sweep_1.0, psu_sweep_2.0, etc.
+liveplot psu_sweep_* --title "PSU Voltage Sweep" --xlabel "Setpoint" --ylabel "Measured (V)"
+
+# Static plot — renders a chart of logged measurements
+plot psu_sweep_* --title "PSU Sweep Results"
+
+# Multiple glob patterns on one chart — each pattern is a separate series
+liveplot loop_basic_* while_v_* --title "Multi-Series Plot" --xlabel "Step" --ylabel "Voltage (V)"
+
+# Glob pattern for DMM readings created in the loop (Section 10h)
+plot dmm_reading_* --title "DMM Readings (Glob Demo)"
+
+# Multiple measurement families on one chart
+liveplot psu_v_reading psu_i_reading --title "PSU V & I Readings"
+
+# Glob for nested loop labels
+plot nested_* --title "Nested Loop Results"
+
+# ============================================================================
+# SECTION 16: SLEEP WITH ALL UNIT SUFFIXES
+# ============================================================================
+
+print ""
+print "--- Section 16: Sleep Units ---"
+
+print "Sleeping 100 microseconds..."
+sleep 100us
+
+print "Sleeping 50 milliseconds..."
+sleep 50ms
+
+print "Sleeping 0.1 seconds..."
+sleep 0.1
+
+print "Sleeping 0.1s (explicit suffix)..."
+sleep 0.1s
+
+# Note: 'sleep Nm' uses minutes — skipping long waits for demo
+print "All sleep units demonstrated."
+
+# ============================================================================
+# SECTION 17: SEMICOLONS (Multi-command lines)
+# ============================================================================
+
+print ""
+print "--- Section 17: Semicolons ---"
+
+# Multiple commands on one line separated by semicolons
+psu1 chan 1 on; psu1 set 1 5.0; sleep 100ms; semi_v = psu1 meas v unit=V; psu1 chan 1 off
+print "Semicolons: set 5V, measured {semi_v}V, channel off — all one line"
+
+# ============================================================================
+# SECTION 18: STATE MANAGEMENT
+# ============================================================================
+
+print ""
+print "--- Section 18: State Management ---"
+
+# Show all connected devices
+list
+
+# Show device status
+status
+
+# Version
+version
+
+# Individual device state control
+psu1 state safe
+awg1 state safe
+scope1 state safe
+smu1 state safe
+
+# Bulk state control
+all safe
+print "All instruments set to safe state."
+
+# ============================================================================
+# SECTION 19: GENERAL COMMANDS
+# ============================================================================
+
+print ""
+print "--- Section 19: General Commands ---"
+
+# Identity query
+idn psu1
+
+# Raw SCPI command (queries end with ?)
+raw psu1 *IDN?
+
+# Variable display
+set
+
+# ============================================================================
+# SECTION 20: CROSS-INSTRUMENT WORKFLOW
+# ============================================================================
+
+print ""
+print "--- Section 20: Cross-Instrument Workflow ---"
+print "PSU sets voltage, DMM verifies, AWG generates signal, scope measures"
+
+psu1 chan 1 on
+awg1 chan 1 on
+scope1 chan 1 on
+dmm1 config vdc
+
+# Set PSU to 5V
+psu1 set 1 5.0 0.5
+sleep 200ms
+
+# DMM verifies PSU output
+cross_dmm = dmm1 meas unit=V
+print "PSU set 5V, DMM reads: {cross_dmm}V"
+
+# AWG outputs 1kHz sine
+awg1 wave 1 sine freq=1000 amp=2.0 offset=0
+sleep 200ms
+
+# Scope measures the AWG signal
+cross_freq = scope1 meas 1 FREQUENCY unit=Hz
+cross_vpp = scope1 meas 1 PK2PK unit=V
+print "AWG 1kHz sine -> Scope: freq={cross_freq}Hz, Vpp={cross_vpp}V"
+
+# Check results
+check cross_dmm 4.5 5.5
+check cross_freq 500 1500
+
+# Cleanup
+awg1 chan 1 off
+psu1 chan 1 off
+scope1 chan 1 off
+
+# ============================================================================
+# SECTION 21: PYTHON <-> SCPI INTEROP (Patterns 1-10)
+# ============================================================================
+#
+# This section demonstrates all 10 SCPI-context interop patterns.
+#
+# KEY INSIGHT: pyeval and python commands run at RUNTIME, but {var}
+# substitution in print/assignment outside if/while blocks happens at
+# EXPANSION TIME.  To read runtime values (set by pyeval/python), wrap
+# the pyeval + print in an  if 1 > 0 ... end  block — inside if/while
+# blocks, everything is runtime-evaluated.
+#
+# Helper file: examples/Cross Script/_interop_helper.py
+# ============================================================================
+
+print ""
+print "================================================================"
+print "=== Section 21: Python <-> SCPI Interop (Patterns 1-10) ==="
+print "================================================================"
+
+# ── PATTERN 1: calling python inline (pyeval) ────────────────────────
+# pyeval evaluates a Python expression. Result is printed and stored in '_'.
+print ""
+print "--- PATTERN 1: calling python inline (pyeval) ---"
+if 1 > 0
+  pyeval 6 * 7
+  pyeval "PATTERN 1: pyeval computed 6*7 = " + str(vars.get('_', '?'))
+end
+
+# ── PATTERN 2: calling python file in a loop ─────────────────────────
+# Call _interop_helper.py 3 times in a for loop.  The helper reads
+# helper_loop_idx and increments scpi_modify_py_file each call.
+# Variables must be set inside 'if' so they land in script_vars at runtime.
+print ""
+print "--- PATTERN 2: calling python file in a loop ---"
+if 1 > 0
+  scpi_to_py_file = 42
+  scpi_modify_py_file = 0
+end
+for helper_loop_idx 1 2 3
+  python "examples/Cross Script/_interop_helper.py"
+end
+# Verify: helper incremented scpi_modify_py_file 3 times (0->1->2->3)
+if 1 > 0
+  pyeval "PATTERN 2: after 3 loop calls, scpi_modify_py_file = " + vars.get('scpi_modify_py_file', '?')
+end
+
+# ── PATTERN 3: calling python inline in a loop (pyeval in for) ───────
+# pyeval inside a for loop — each iteration evaluates at runtime.
+print ""
+print "--- PATTERN 3: calling python inline in a loop (pyeval in for) ---"
+for n 1 2 3 4 5
+  pyeval "  pyeval in loop: " + str({n}) + "^2 = " + str({n}**2)
+end
+if 1 > 0
+  pyeval "PATTERN 3: sum of squares 1-5 = " + str(sum(i**2 for i in range(1,6)))
+end
+
+# ── PATTERN 4: calling python file ───────────────────────────────────
+# Call a Python file once.  It has access to repl, devices, vars, etc.
+print ""
+print "--- PATTERN 4: calling python file ---"
+if 1 > 0
+  scpi_to_py_file = 42
+  scpi_modify_py_file = 100
+  helper_loop_idx = 0
+  python "examples/Cross Script/_interop_helper.py"
+  print "PATTERN 4: called _interop_helper.py (see helper output above)"
+end
+
+# ── PATTERN 5: SCPI var → pyeval reads via vars dict ─────────────────
+# Set a variable in SCPI, then pyeval reads it using vars['name'].
+print ""
+print "--- PATTERN 5: SCPI var used in python inline (pyeval) ---"
+scpi_greeting = hello_world
+if 1 > 0
+  pyeval "PATTERN 5: scpi_greeting = '" + vars.get('scpi_greeting','?') + "', upper = '" + vars.get('scpi_greeting','').upper() + "'"
+end
+
+# ── PATTERN 6: SCPI var → python file reads via repl.ctx.script_vars ─
+# Set a variable in SCPI (inside if block for runtime), call python file.
+print ""
+print "--- PATTERN 6: SCPI var used in python file ---"
+if 1 > 0
+  scpi_to_py_file = 42
+  helper_loop_idx = 0
+  python "examples/Cross Script/_interop_helper.py"
+  # The helper prints: "[helper.py] PATTERN 6: read SCPI var scpi_to_py_file = 42"
+  print "PATTERN 6: see helper output above — it read scpi_to_py_file = 42"
+end
+
+# ── PATTERN 7: SCPI var → pyeval modifies via _ → SCPI reads back ───
+# pyeval computes from an SCPI var.  Result stored in '_', then SCPI
+# assigns {_} to another var inside an if block (runtime context).
+print ""
+print "--- PATTERN 7: SCPI var modified by pyeval, SCPI reads back ---"
+modify_me = 10
+if 1 > 0
+  pyeval "PATTERN 7 (before): modify_me = " + vars.get('modify_me', '?')
+  pyeval float(vars.get('modify_me', '0')) * 3 + 7
+  modify_me = {_}
+  pyeval "PATTERN 7 (after):  modify_me = " + vars.get('modify_me', '?') + " (10*3+7=37)"
+end
+
+# ── PATTERN 8: SCPI var → python file modifies → SCPI reads back ────
+# Set var in runtime, call python file which modifies it, read back.
+print ""
+print "--- PATTERN 8: SCPI var modified by python file, SCPI reads back ---"
+if 1 > 0
+  scpi_modify_py_file = 100
+  helper_loop_idx = 0
+  pyeval "PATTERN 8 (before): scpi_modify_py_file = " + vars.get('scpi_modify_py_file', '?')
+  python "examples/Cross Script/_interop_helper.py"
+  # The helper adds 1: 100 -> 101
+  pyeval "PATTERN 8 (after):  scpi_modify_py_file = " + vars.get('scpi_modify_py_file', '?')
+end
+
+# ── PATTERN 9: pyeval creates value → SCPI uses it ──────────────────
+# pyeval stores result in '_'.  Inside an if block, SCPI reads {_}.
+print ""
+print "--- PATTERN 9: value created in pyeval, used in SCPI ---"
+if 1 > 0
+  pyeval 2 ** 10
+  pyeval_result = {_}
+  pyeval "PATTERN 9: pyeval created _ = " + str(vars.get('_', '?')) + ", stored as pyeval_result = " + vars.get('pyeval_result', '?')
+  print "  SCPI can now use pyeval_result = {pyeval_result} in runtime context"
+end
+
+# ── PATTERN 10: python file creates value → SCPI uses it ────────────
+# Python file stores a new key in repl.ctx.script_vars, SCPI reads it.
+print ""
+print "--- PATTERN 10: value created in python file, used in SCPI ---"
+if 1 > 0
+  scpi_to_py_file = 42
+  scpi_modify_py_file = 200
+  helper_loop_idx = 0
+  python "examples/Cross Script/_interop_helper.py"
+  # The helper sets py_file_created = "hello_from_python_file"
+  pyeval "PATTERN 10: py_file_created = '" + vars.get('py_file_created', 'NOT_SET') + "'"
+end
+
+print ""
+print "=== All 10 SCPI-context interop patterns demonstrated ==="
+
+# ============================================================================
+# SECTION 22: SMU IV CURVE (Advanced Workflow)
+# ============================================================================
+
+print ""
+print "--- Section 22: SMU IV Curve ---"
+
+smu1 on
+smu1 source_delay 0.005
+smu1 avg 5
+
+# Sweep voltage and measure current for an IV curve
+iv_voltages = linspace 0.0 5.0 10
+for v {iv_voltages}
+  smu1 set {v} 0.1
+  sleep 50ms
+  iv_v_{v} = smu1 meas v unit=V
+  iv_i_{v} = smu1 meas i unit=A
+end
+
+smu1 off
+
+# Plot the IV data using glob patterns
+liveplot iv_v_* --title "SMU IV Curve — Voltage" --xlabel "Step" --ylabel "V"
+liveplot iv_i_* --title "SMU IV Curve — Current" --xlabel "Step" --ylabel "A"
+
+# ============================================================================
+# SECTION 23: AWG FREQUENCY SWEEP WITH SCOPE MEASUREMENT
+# ============================================================================
+
+print ""
+print "--- Section 23: Frequency Sweep ---"
+
+awg1 chan 1 on
+awg1 wave 1 sine amp=2.0 offset=0
+scope1 chan 1 on
+scope1 autoset
+sleep 200ms
+
+for f 100 500 1000 5000 10000 50000 100000
+  awg1 freq 1 {f}
+  sleep 200ms
+  fsweep_{f} = scope1 meas 1 FREQUENCY unit=Hz
+  print "  AWG={f}Hz -> Scope={fsweep_{f}}Hz"
+end
+
+awg1 chan 1 off
+scope1 chan 1 off
+
+# Plot frequency sweep results using glob
+plot fsweep_* --title "Frequency Sweep Results"
+
+# ============================================================================
+# SECTION 24: REPORTING & CLEANUP
+# ============================================================================
+
+print ""
+print "--- Section 24: Reporting & Cleanup ---"
+
+# Print test results summary
+report print
+
+# Save PDF report (requires fpdf2)
+# report save complete_report.pdf
+
+# Final measurement log
+log print
+
+# Set everything to safe
+all safe
+
+# Store final data for Python analysis phase
+final_target = {target}
+final_tolerance = {tolerance}
+
+pyeval len(entries)
+total_measurements = {_}
+
+print ""
+print "================================================================"
+print "=== SCPI Phase Complete ==="
+print "=== Total measurements: {total_measurements} ==="
+print "================================================================"
+print ""
+print "Next: run the Python analysis phase:"
+print "  python examples/Cross\\ Script/complete_cross_script.py"
+print ""
+print "Variables and measurements are now available to the Python script"
+print "via repl.ctx.script_vars and repl.ctx.measurements.entries."

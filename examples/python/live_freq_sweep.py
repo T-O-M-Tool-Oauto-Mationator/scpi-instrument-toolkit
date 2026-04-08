@@ -1,3 +1,4 @@
+# v1.0.2
 """Live frequency sweep -- Python API version.
 
 Sweeps AWG through frequencies while a live plot tracks scope measurements.

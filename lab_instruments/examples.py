@@ -19,6 +19,7 @@ EXAMPLES: dict[str, dict] = {
     "psu_dmm_test": {
         "description": "Set PSU to a voltage, measure with DMM, log result",
         "lines": [
+            "# v1.0.2",
             "# psu_dmm_test",
             "# Params: voltage (default 5.0), label (default 'vtest')",
             "#",
@@ -47,6 +48,7 @@ EXAMPLES: dict[str, dict] = {
             "log print",
         ],
         "code": '''\
+# v1.0.2
 """PSU + DMM voltage test — Python API version."""
 import time
 
@@ -88,6 +90,7 @@ ColorPrinter.success("Test complete")
     "voltage_sweep": {
         "description": "Sweep PSU through a list of voltages, log DMM reading at each step",
         "lines": [
+            "# v1.0.2",
             "# voltage_sweep",
             "# Sweeps PSU through preset voltages and logs DMM measurements",
             "# Edit the 'for' line to change the voltage list",
@@ -110,6 +113,7 @@ ColorPrinter.success("Test complete")
             "log save voltage_sweep.csv",
         ],
         "code": '''\
+# v1.0.2
 """Voltage sweep — Python API version."""
 import time
 
@@ -156,6 +160,7 @@ for target, meas in results:
     "awg_scope_check": {
         "description": "Output sine wave on AWG ch1, measure frequency and PK2PK on scope",
         "lines": [
+            "# v1.0.2",
             "# awg_scope_check",
             "# Params: freq (default 1000), amp (default 2.0)",
             "#",
@@ -182,6 +187,7 @@ for target, meas in results:
             "log print",
         ],
         "code": '''\
+# v1.0.2
 """AWG + Scope signal check — Python API version."""
 import time
 
@@ -217,6 +223,7 @@ ColorPrinter.success("Check complete — verify waveform on scope display")
     "freq_sweep": {
         "description": "Sweep AWG through a list of frequencies, scope measures each",
         "lines": [
+            "# v1.0.2",
             "# freq_sweep",
             "# Sweeps AWG ch1 through frequencies, measures scope CH1 at each",
             "# Edit the 'for' line to change the frequency list",
@@ -239,6 +246,7 @@ ColorPrinter.success("Check complete — verify waveform on scope display")
             "log save freq_sweep.csv",
         ],
         "code": '''\
+# v1.0.2
 """Frequency sweep — Python API version."""
 import time
 
@@ -271,6 +279,7 @@ ColorPrinter.success("Sweep complete")
     "psu_ramp": {
         "description": "Ramp PSU voltage from start to end in N equal steps",
         "lines": [
+            "# v1.0.2",
             "# psu_ramp",
             "# Params: v_start, v_end, steps, delay",
             "#",
@@ -299,6 +308,7 @@ ColorPrinter.success("Sweep complete")
             "log print",
         ],
         "code": '''\
+# v1.0.2
 """PSU voltage ramp — Python API version."""
 import time
 
@@ -344,6 +354,7 @@ for target, meas in results:
     "live_voltage_sweep": {
         "description": "Sweep PSU voltages with a live plot tracking DMM readings",
         "lines": [
+            "# v1.0.2",
             "# live_voltage_sweep",
             "# Sweeps PSU through voltages while a live plot shows DMM measurements",
             "# in real time.  Works with --mock.",
@@ -371,6 +382,7 @@ for target, meas in results:
             "log print",
         ],
         "code": '''\
+# v1.0.2
 """Live voltage sweep — Python API version.
 
 Sweeps the PSU through voltages and records DMM measurements.
@@ -423,6 +435,7 @@ ColorPrinter.success("Sweep complete")
     "live_multi_plot": {
         "description": "Two live plots: PSU voltage + current during a ramp",
         "lines": [
+            "# v1.0.2",
             "# live_multi_plot",
             "# Opens two independent live plots — one for voltage, one for current.",
             "# Watch both update in real time as the PSU ramps.  Works with --mock.",
@@ -450,6 +463,7 @@ ColorPrinter.success("Sweep complete")
             "log print",
         ],
         "code": '''\
+# v1.0.2
 """Multi-plot PSU ramp — Python API version.
 
 Opens two independent live-plot tabs (voltage and current) and ramps the PSU
@@ -500,6 +514,7 @@ ColorPrinter.success("Ramp complete")
     "live_freq_sweep": {
         "description": "Live plot of scope frequency measurements during AWG sweep",
         "lines": [
+            "# v1.0.2",
             "# live_freq_sweep",
             "# Sweeps AWG frequencies while a live plot tracks scope measurements.",
             "# Works with --mock.",
@@ -524,6 +539,7 @@ ColorPrinter.success("Ramp complete")
             "log print",
         ],
         "code": '''\
+# v1.0.2
 """Live frequency sweep — Python API version.
 
 Sweeps AWG through frequencies while a live plot tracks scope measurements.
@@ -568,6 +584,7 @@ ColorPrinter.success("Sweep complete")
     "live_combined_plot": {
         "description": "PSU voltage + current overlaid on ONE live plot during a ramp",
         "lines": [
+            "# v1.0.2",
             "# live_combined_plot",
             "# Plots voltage AND current as two series on a single chart.",
             "# Multiple glob patterns on one liveplot = multiple series, one chart.",
@@ -595,6 +612,7 @@ ColorPrinter.success("Sweep complete")
             "log print",
         ],
         "code": '''\
+# v1.0.2
 """Combined live plot — Python API version.
 
 Plots PSU voltage AND current as two series overlaid on a single chart.
@@ -647,6 +665,7 @@ ColorPrinter.success("Ramp complete")
         "description": "Single SCPI script that collects data then calls Python for analysis",
         "category": "cross_script",
         "lines": [
+            "# v1.0.2",
             "# cross_script_demo",
             "# Collects PSU/DMM measurements, then calls Python inline for analysis.",
             "# REPL variables are auto-injected into the Python script as native types.",
@@ -678,6 +697,7 @@ ColorPrinter.success("Ramp complete")
             'print "Analysis complete. See variables: mean_v, std_dev, error_pct"',
         ],
         "code": '''\
+# v1.0.2
 """Cross-script demo — Python analysis called inline from SCPI.
 
 All REPL variables (target, tolerance, psu_v, reading_1..10) are
@@ -736,6 +756,7 @@ else:
     "conditional_psu_check": {
         "description": "if/elif/else: check PSU voltage is in range and print status",
         "lines": [
+            "# v1.0.2",
             "# conditional_psu_check",
             "# Demonstrates if/elif/else conditional branching.",
             "# Works in --mock mode (mock PSU returns ~5.0 V).",
@@ -756,6 +777,7 @@ else:
             "psu1 chan 1 off",
         ],
         "code": '''\
+# v1.0.2
 """conditional_psu_check — Python API version."""
 import time
 
@@ -785,6 +807,7 @@ psu.enable_output(False)
     "assert_limits": {
         "description": "assert: verify PSU voltage is within hard safety bounds",
         "lines": [
+            "# v1.0.2",
             "# assert_limits",
             "# Demonstrates assert statements for safety-limit checking.",
             "# Works in --mock mode (mock PSU returns ~5.0 V).",
@@ -802,6 +825,7 @@ psu.enable_output(False)
             "psu1 chan 1 off",
         ],
         "code": '''\
+# v1.0.2
 """assert_limits — Python API version."""
 import time
 
@@ -828,6 +852,7 @@ psu.enable_output(False)
     "while_counter": {
         "description": "while: take 5 PSU voltage samples with a counter and compute average",
         "lines": [
+            "# v1.0.2",
             "# while_counter",
             "# Demonstrates while loop with += counter and average calculation.",
             "# Works in --mock mode (mock PSU returns ~5.0 V).",
@@ -852,6 +877,7 @@ psu.enable_output(False)
             "log print",
         ],
         "code": '''\
+# v1.0.2
 """while_counter — Python API version."""
 import time
 
@@ -884,6 +910,7 @@ psu.enable_output(False)
     "syntax_reference": {
         "description": "Full syntax tour: variables, calc, if/elif/else, while, assert, check, boolean ops",
         "lines": [
+            "# v1.0.2",
             "# syntax_reference",
             "# A complete tour of all REPL scripting features.",
             "# Works in --mock mode — no real instruments required.",
@@ -987,6 +1014,7 @@ psu.enable_output(False)
             "log print",
         ],
         "code": '''\
+# v1.0.2
 """syntax_reference — Python API version demonstrating all script features."""
 import math
 
@@ -1051,6 +1079,154 @@ for v in [1.0, 2.0, 3.3, 5.0]:
 # Boolean operators
 ok = voltage > 4.9 and voltage < 5.1
 ColorPrinter.info(f"In spec: {ok}")
+''',
+    },
+    # ------------------------------------------------------------------
+    # ===  COMPLETE CROSS-SCRIPT EXAMPLE  ================================
+    # ------------------------------------------------------------------
+    "complete_cross_script": {
+        "description": "Comprehensive showcase: every instrument, loop, syntax feature, and all 20 Python/SCPI interop patterns",
+        "category": "cross_script",
+        "lines": [
+            "# v1.0.2",
+            "# complete_cross_script",
+            "# Comprehensive REPL feature showcase.",
+            "# Demonstrates EVERY scripting feature, instrument command,",
+            "# and all 10 SCPI-context Python interop patterns (1-10).",
+            "#",
+            "# Run with: examples load complete_cross_script",
+            "#           script run complete_cross_script",
+            "#",
+            "# Then run the Python analysis phase:",
+            "#   python examples/Cross\\ Script/complete_cross_script.py",
+            "#",
+            "# Works with --mock mode.",
+            "#",
+            "# Full source: examples/Cross Script/complete_cross_script.scpi",
+            "",
+            'print "=== Complete Cross Script — REPL Feature Showcase ==="',
+            "",
+            "# -- Setup --",
+            "set +e",
+            "target = 5.0",
+            "tolerance = 0.05",
+            "",
+            "# -- PSU sweep with glob-friendly labels --",
+            "psu1 chan 1 on",
+            "for v 1.0 2.0 3.3 5.0 9.0 12.0",
+            "  psu1 set 1 {v}",
+            "  sleep 100ms",
+            "  psu_sweep_{v} = psu1 meas v unit=V",
+            "end",
+            "psu1 chan 1 off",
+            "",
+            "# -- DMM readings in a loop (glob: dmm_reading_*) --",
+            "dmm1 config vdc",
+            "for i 1 2 3 4 5",
+            "  dmm_reading_{i} = dmm1 meas unit=V",
+            "  sleep 50ms",
+            "end",
+            "",
+            "# -- Glob pattern plots --",
+            'plot psu_sweep_* --title "PSU Sweep"',
+            'plot dmm_reading_* --title "DMM Readings"',
+            "",
+            "# -- Python interop patterns (1, 3, 5, 7, 9 shown inline) --",
+            "",
+            "# PATTERN 1: pyeval inline",
+            "pyeval 6 * 7",
+            'print "Pattern 1: 6*7 = {_}"',
+            "",
+            "# PATTERN 3: pyeval in a loop",
+            "for n 1 2 3",
+            "  pyeval {n} ** 2",
+            '  print "  {n}^2 = {_}"',
+            "end",
+            "",
+            "# PATTERN 5: SCPI var read by pyeval",
+            "scpi_greeting = hello_world",
+            "pyeval vars['scpi_greeting'].upper()",
+            'print "Pattern 5: {_}"',
+            "",
+            "# PATTERN 7: SCPI var modified by pyeval",
+            "modify_me = 10",
+            "pyeval float(vars['modify_me']) * 3 + 7",
+            "modify_me = {_}",
+            'print "Pattern 7: modify_me = {modify_me}"',
+            "",
+            "# PATTERN 9: pyeval creates value for SCPI",
+            "pyeval 2 ** 10",
+            "pyeval_result = {_}",
+            'print "Pattern 9: pyeval_result = {pyeval_result}"',
+            "",
+            "# Patterns 2, 4, 6, 8, 10 require helper file —",
+            "# see full script: examples/Cross Script/complete_cross_script.scpi",
+            "",
+            "log print",
+            'print "=== SCPI phase complete ==="',
+        ],
+        "code": '''\
+# v1.0.2
+"""Complete cross-script demo — Python analysis phase (summary).
+
+Full source: examples/Cross Script/complete_cross_script.py
+
+Demonstrates all 10 Python-context interop patterns (11-20),
+statistical analysis, matplotlib plots, and glob pattern demos.
+Works with --mock mode.
+"""
+
+ColorPrinter.header("Complete Cross-Script Analysis (Python Phase)")
+script_vars = repl.ctx.script_vars
+all_entries = repl.ctx.measurements.entries
+
+ColorPrinter.info(f"Total measurements: {len(all_entries)}")
+ColorPrinter.info(f"Total variables: {len(script_vars)}")
+
+# PATTERN 11: calling SCPI inline
+repl.onecmd("psu1 chan 1 on")
+repl.onecmd("psu1 set 1 5.0")
+repl.onecmd("sleep 100ms")
+repl.onecmd("p11_v = psu1 meas v unit=V")
+repl.onecmd("psu1 chan 1 off")
+ColorPrinter.info(f"Pattern 11: p11_v = {repl.ctx.script_vars.get('p11_v')}")
+
+# PATTERN 13: SCPI inline in a loop
+repl.onecmd("psu1 chan 1 on")
+for step_v in [1.0, 2.0, 3.0]:
+    repl.onecmd(f"psu1 set 1 {step_v}")
+    repl.onecmd("sleep 50ms")
+    repl.onecmd(f"p13_{step_v} = psu1 meas v unit=V")
+repl.onecmd("psu1 chan 1 off")
+ColorPrinter.info("Pattern 13: SCPI inline loop complete")
+
+# PATTERN 15: Python var in SCPI inline via f-string
+py_voltage = 7.5
+repl.onecmd("psu1 chan 1 on")
+repl.onecmd(f"psu1 set 1 {py_voltage}")
+repl.onecmd("p15_v = psu1 meas v unit=V")
+repl.onecmd("psu1 chan 1 off")
+ColorPrinter.info(f"Pattern 15: set {py_voltage}V, read {repl.ctx.script_vars.get('p15_v')}")
+
+# PATTERN 17: Python var modified by SCPI inline
+repl.ctx.script_vars["py_counter"] = "50"
+repl.onecmd("py_counter += 25")
+ColorPrinter.info(f"Pattern 17: 50 + 25 = {repl.ctx.script_vars.get('py_counter')}")
+
+# PATTERN 19: value created in SCPI inline, read in Python
+repl.onecmd("scpi_inline_val = from_scpi")
+ColorPrinter.info(f"Pattern 19: {repl.ctx.script_vars.get('scpi_inline_val')}")
+
+# Patterns 12, 14, 16, 18, 20 require helper SCPI file —
+# see full script: examples/Cross Script/complete_cross_script.py
+
+# Glob pattern demos
+repl.onecmd('plot psu_sweep_* --title "PSU Sweep (from Python)"')
+repl.onecmd('plot dmm_reading_* --title "DMM Readings (from Python)"')
+
+repl.ctx.script_vars["python_was_here"] = "true"
+repl.ctx.script_vars["verdict"] = "PASS"
+ColorPrinter.success("Analysis complete.")
 ''',
     },
 }

@@ -13,9 +13,29 @@ import tempfile
 from pathlib import Path
 
 
+def _init_mupdf() -> None:
+    """Suppress MuPDF C-level error output (e.g. structure tree warnings).
+
+    Uses PyMuPDF's own API so suppression works across threads and doesn't
+    redirect fd 2 globally.  Safe to call multiple times.
+    """
+    try:
+        import fitz
+
+        fitz.TOOLS.mupdf_display_errors(False)
+        fitz.TOOLS.mupdf_warnings()  # clear any buffered warnings
+    except Exception:
+        pass
+
+
 @contextlib.contextmanager
 def _silence_mupdf():
-    """Suppress MuPDF C-level stderr spam (e.g. structure tree warnings)."""
+    """Suppress MuPDF C-level stderr spam (e.g. structure tree warnings).
+
+    Belt-and-suspenders: calls the PyMuPDF API *and* redirects fd 2 so that
+    warnings printed before the API takes effect are also hidden.
+    """
+    _init_mupdf()
     devnull = os.open(os.devnull, os.O_WRONLY)
     saved = os.dup(2)
     os.dup2(devnull, 2)
@@ -25,6 +45,12 @@ def _silence_mupdf():
     finally:
         os.dup2(saved, 2)
         os.close(saved)
+        try:
+            import fitz
+
+            fitz.TOOLS.mupdf_warnings()  # clear any warnings accumulated during the call
+        except Exception:
+            pass
 
 
 from PySide6.QtCore import QEvent, Qt, QThread, Signal
@@ -46,6 +72,10 @@ from PySide6.QtWidgets import (
 )
 
 from ..core.helpers import _mono
+
+# Suppress MuPDF C-level error output as early as possible so that warnings
+# like "No common ancestor in structure tree" never reach the terminal.
+_init_mupdf()
 
 
 class _FindBar(QWidget):

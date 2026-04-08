@@ -1,3 +1,4 @@
+# v1.0.2
 # live_voltage_sweep.scpi
 # Sweeps PSU through voltages while a live plot shows DMM measurements
 # in real time.  Run with:  python repl.py --mock

@@ -10,7 +10,7 @@ import os
 import sys
 import threading
 
-from PySide6.QtCore import QObject, QSettings, Qt, QTimer, Signal, Slot
+from PySide6.QtCore import QEvent, QObject, QSettings, Qt, QTimer, Signal, Slot
 from PySide6.QtGui import QAction, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication,
@@ -107,10 +107,12 @@ class _MainWindow(QMainWindow):
         # ── Menu bar ──────────────────────────────────────────────────
         mb = self.menuBar()
         fm = mb.addMenu("&File")
-        nf = QAction("&New Script", self)
-        nf.setShortcut("Ctrl+N")
-        nf.triggered.connect(self._on_new_script)
+        nf = QAction("&New Tab\tCtrl+T", self)
+        nf.triggered.connect(self._new_scratch)
         fm.addAction(nf)
+        nfs = QAction("Restore &Closed Tab\tCtrl+Shift+T", self)
+        nfs.triggered.connect(self._restore_tab)
+        fm.addAction(nfs)
         opf = QAction("&Open File...", self)
         opf.setShortcut("Ctrl+O")
         opf.triggered.connect(self._on_open_file)
@@ -119,8 +121,7 @@ class _MainWindow(QMainWindow):
         of.setShortcut("Ctrl+Shift+O")
         of.triggered.connect(self._on_open_folder)
         fm.addAction(of)
-        sv = QAction("&Save", self)
-        sv.setShortcut("Ctrl+S")
+        sv = QAction("&Save\tCtrl+S", self)
         sv.triggered.connect(self._save_current)
         fm.addAction(sv)
         fm.addSeparator()
@@ -260,6 +261,7 @@ class _MainWindow(QMainWindow):
         self._file_explorer.file_selected.connect(self.open_file)
         self._file_explorer.run_script.connect(self._run_script)
         self._file_explorer.debug_script.connect(self._debug_script)
+        self._file_explorer.files_deleted.connect(self._on_files_deleted)
         _explorer_dock = QDockWidget("Explorer", self)
         _explorer_dock.setObjectName("ExplorerDock")
         _explorer_dock.setWidget(self._file_explorer)
@@ -285,13 +287,10 @@ class _MainWindow(QMainWindow):
         # ── Command palette ────────────────────────────────────────────
         self._palette = CommandPalette(self)
 
-        # ── VS Code keybinds ───────────────────────────────────────────
-        QShortcut(QKeySequence("Ctrl+Shift+P"), self, self._show_palette)
-        QShortcut(QKeySequence("Ctrl+P"), self, self._quick_open)
-        QShortcut(QKeySequence("Ctrl+W"), self, self._close_current_tab)
-        QShortcut(QKeySequence("Ctrl+G"), self, self._goto_line)
-        QShortcut(QKeySequence("F5"), self, lambda: self._run_current_script(debug=False))
-        QShortcut(QKeySequence("Shift+F5"), self, lambda: self._run_current_script(debug=True))
+        # ── Keybinds handled by _GlobalKeyFilter (installed in main()) ──────
+        # F5 / Shift+F5 are fine as plain QShortcuts (no widget eats them)
+        QShortcut(QKeySequence("F5"),       self).activated.connect(lambda: self._run_current_script(debug=False))
+        QShortcut(QKeySequence("Shift+F5"), self).activated.connect(lambda: self._run_current_script(debug=True))
 
         # ── Restore geometry ───────────────────────────────────────────
         s = QSettings("SCPIToolkit", "GUI")
@@ -465,6 +464,37 @@ class _MainWindow(QMainWindow):
             for path in opened:
                 self.open_file(path)
             self._status.setText(f"Imported: {name} (.scpi + .py)")
+
+    # ── Unnamed buffers (Ctrl+T browser-style) ───────────────────────────────
+
+    _untitled_counter: int = 0
+
+    def _new_scratch(self) -> None:
+        """Ctrl+T — open a new unnamed buffer.  Ctrl+S prompts Save As."""
+        _MainWindow._untitled_counter += 1
+        n     = _MainWindow._untitled_counter
+        title = f"Untitled-{n}"
+
+        widget = ScpiEditor(None)
+        widget.run_requested.connect(self._run_script)
+        widget.debug_requested.connect(self._debug_script)
+
+        # When saved-as, rename the tab and register in _open_files
+        def _on_saved(new_title: str, w=widget) -> None:
+            path = w.file_path()
+            if path:
+                self._open_files[path] = w
+            for group in self._work_area.all_groups():
+                for i, (_, tw) in enumerate(group._widgets):
+                    if tw is w:
+                        group._widgets[i] = (new_title, tw)
+                        group._tab_strip._tabs[i] = new_title
+                        group._tab_strip.update()
+                        return
+
+        widget.title_changed.connect(_on_saved)
+        self._work_area.add_widget(title, widget)
+        self._status.setText(f"New buffer — Ctrl+S to save")
 
     def open_file(self, path: str) -> None:
         """Open a file in the work area. Dispatches by extension."""
@@ -685,8 +715,16 @@ class _MainWindow(QMainWindow):
 
     def _save_current(self) -> None:
         ed = self._current_editor()
-        if ed and ed.save():
-            self._status.setText(f"Saved: {ed.file_path()}")
+        if not ed:
+            return
+        if ed.file_path():
+            if ed.save():
+                self._status.setText(f"Saved: {ed.file_path()}")
+        else:
+            # Unnamed buffer → Save As, defaulting to workspace folder
+            default_dir = self._workspace.folder or os.path.expanduser("~")
+            if ed.save_as(default_dir=default_dir):
+                self._status.setText(f"Saved: {ed.file_path()}")
 
     # ── Viewer dispatch helpers ────────────────────────────────────────────────
 
@@ -752,11 +790,43 @@ class _MainWindow(QMainWindow):
         if isinstance(v, (TextViewer, ScpiEditor)):
             v._find_bar.open_replace()
 
-    def _close_current_tab(self) -> None:
+    def _focused_group(self):
+        """Return the _PanelGroup that currently contains the focused widget, or the first non-empty group."""
+        from .widgets.panel_group import _PanelGroup
+
+        w = QApplication.focusWidget()
+        while w:
+            if isinstance(w, _PanelGroup):
+                return w
+            w = w.parent()
+        # Fall back to first non-empty group
         for group in self._work_area.all_groups():
-            if hasattr(group, "_tab_strip") and group._tab_strip._current >= 0 and group._tab_strip.count() > 0:
-                group.close_tab(group._tab_strip._current)
-                return
+            if group.count() > 0:
+                return group
+        return None
+
+    def _next_tab(self) -> None:
+        group = self._focused_group()
+        if group and group.count() > 1:
+            next_idx = (group._tab_strip._current + 1) % group.count()
+            group.set_current_tab(next_idx)
+
+    def _prev_tab(self) -> None:
+        group = self._focused_group()
+        if group and group.count() > 1:
+            prev_idx = (group._tab_strip._current - 1) % group.count()
+            group.set_current_tab(prev_idx)
+
+    def _close_current_tab(self) -> None:
+        group = self._focused_group()
+        if group and group.count() > 0:
+            group.close_tab(group._tab_strip._current)
+
+    def _close_all_tabs(self) -> None:
+        group = self._focused_group()
+        if group:
+            for i in range(group.count() - 1, -1, -1):
+                group.close_tab(i)
 
     def _goto_line(self) -> None:
         ed = self._current_editor()
@@ -777,8 +847,13 @@ class _MainWindow(QMainWindow):
     def _show_palette(self) -> None:
         actions = [
             ActionItem("open_folder", "Open Folder", "Ctrl+Shift+O", self._on_open_folder, "File"),
+            ActionItem("new_scratch", "New Scratch Pad", "Ctrl+N", self._new_scratch, "File"),
+            ActionItem("new_scpi", "New SCPI Script", "Ctrl+Shift+N", self._new_scpi, "File"),
             ActionItem("save", "Save", "Ctrl+S", self._save_current, "File"),
             ActionItem("close_tab", "Close Tab", "Ctrl+W", self._close_current_tab, "File"),
+            ActionItem("close_all_tabs", "Close All Tabs", "Ctrl+Shift+W", self._close_all_tabs, "File"),
+            ActionItem("next_tab", "Next Tab", "Ctrl+Tab", self._next_tab, "View"),
+            ActionItem("prev_tab", "Previous Tab", "Ctrl+Shift+Tab", self._prev_tab, "View"),
             ActionItem("goto_line", "Go to Line", "Ctrl+G", self._goto_line, "Go"),
             ActionItem("run_script", "Run Script", "F5", lambda: self._run_current_script(False), "Script"),
             ActionItem("debug_script", "Debug Script", "Shift+F5", lambda: self._run_current_script(True), "Script"),
@@ -947,6 +1022,79 @@ class _MainWindow(QMainWindow):
             self._dev_count.setText("Scanning...")
             self._status.setText("Scanning for instruments...")
 
+    # Closed-tab restore stack (browser Ctrl+Shift+T behaviour)
+    # Each entry: (title, file_path_or_None)  — only file-backed tabs can be restored
+    _closed_tab_stack: list
+
+    def _on_files_deleted(self, paths: list) -> None:
+        """Close any open tabs whose backing file was just deleted."""
+        abs_paths = {os.path.abspath(p) for p in paths}
+        for group in self._work_area.all_groups():
+            for i in range(group.count() - 1, -1, -1):
+                _, w = group._widgets[i]
+                file_path = getattr(w, "_file_path", None) or getattr(w, "_path", None)
+                if file_path and os.path.abspath(file_path) in abs_paths:
+                    # File is already gone — skip the unsaved-changes nag
+                    w._skip_close_confirm = True
+                    group.close_tab(i)
+
+    def _confirm_close_tab(self, widget: QWidget) -> bool:
+        """Return True if the tab may be closed.  Shows a nag for unsaved buffers."""
+        from .widgets.editor import ScpiEditor
+        from PySide6.QtWidgets import QMessageBox
+        if not isinstance(widget, ScpiEditor):
+            return True
+        if getattr(widget, "_skip_close_confirm", False):
+            return True
+        path = widget.file_path()
+        dirty = widget.is_dirty()
+        # Named file with no unsaved changes — always fine
+        if path and not dirty:
+            return True
+        # Named file with unsaved changes
+        if path and dirty:
+            name = os.path.basename(path)
+            mb = QMessageBox(self)
+            mb.setWindowTitle("Unsaved Changes")
+            mb.setText(f"<b>{name}</b> has unsaved changes.")
+            mb.setInformativeText("Save before closing?")
+            mb.setStandardButtons(
+                QMessageBox.StandardButton.Save |
+                QMessageBox.StandardButton.Discard |
+                QMessageBox.StandardButton.Cancel
+            )
+            mb.setDefaultButton(QMessageBox.StandardButton.Save)
+            result = mb.exec()
+            if result == QMessageBox.StandardButton.Cancel:
+                return False
+            if result == QMessageBox.StandardButton.Save:
+                widget.save()
+            return True
+        # Unnamed buffer — nag only if it has content
+        if not path:
+            content = widget._editor.toPlainText().strip()
+            if not content:
+                return True  # empty buffer, close silently
+            mb = QMessageBox(self)
+            mb.setWindowTitle("Unsaved Buffer")
+            mb.setText("This buffer has never been saved.")
+            mb.setInformativeText("Save it before closing?")
+            mb.setStandardButtons(
+                QMessageBox.StandardButton.Save |
+                QMessageBox.StandardButton.Discard |
+                QMessageBox.StandardButton.Cancel
+            )
+            mb.setDefaultButton(QMessageBox.StandardButton.Save)
+            result = mb.exec()
+            if result == QMessageBox.StandardButton.Cancel:
+                return False
+            if result == QMessageBox.StandardButton.Save:
+                default_dir = self._workspace.folder or os.path.expanduser("~")
+                if not widget.save_as(default_dir=default_dir):
+                    return False  # user cancelled the save dialog
+            return True
+        return True
+
     def _on_tab_closed(self, widget: QWidget) -> None:
         # Check instrument blocks
         for blocks, closed in [
@@ -962,8 +1110,28 @@ class _MainWindow(QMainWindow):
                     block.stop()
                     closed.add(name)
                     return
-        # Check open files
+        # File tab — push onto restore stack before cleaning up
+        from .widgets.editor import ScpiEditor
+        if isinstance(widget, ScpiEditor):
+            path = widget.file_path()
+            if path and os.path.isfile(path):
+                stack = getattr(self, "_closed_tab_stack", [])
+                stack.append(path)
+                # cap at 20 entries
+                self._closed_tab_stack = stack[-20:]
         self._on_tab_closed_file(widget)
+
+    def _restore_tab(self) -> None:
+        """Ctrl+Shift+T — reopen the most recently closed file tab."""
+        stack = getattr(self, "_closed_tab_stack", [])
+        while stack:
+            path = stack.pop()
+            if os.path.isfile(path):
+                self._closed_tab_stack = stack
+                self.open_file(path)
+                self._status.setText(f"Restored: {os.path.basename(path)}")
+                return
+        self._status.setText("No closed tabs to restore")
 
     def _on_device_selected(self, name: str) -> None:
         base = self._d.registry.base_type(name)
@@ -1182,6 +1350,48 @@ class _MainWindow(QMainWindow):
 # -- Entry point -------------------------------------------------------------
 
 
+class _GlobalKeyFilter(QObject):
+    """Application-level event filter that fires hotkeys before any widget sees them."""
+
+    _CTRL       = Qt.KeyboardModifier.ControlModifier
+    _SHIFT      = Qt.KeyboardModifier.ShiftModifier
+    _CTRL_SHIFT = Qt.KeyboardModifier.ControlModifier | Qt.KeyboardModifier.ShiftModifier
+    _RELEVANT   = (Qt.KeyboardModifier.ControlModifier |
+                   Qt.KeyboardModifier.ShiftModifier   |
+                   Qt.KeyboardModifier.AltModifier)
+
+    def __init__(self, win: "_MainWindow") -> None:
+        super().__init__(win)
+        self._win = win
+        # Browser-style tab management
+        # (key, modifiers) -> callable
+        self._map = [
+            (Qt.Key.Key_T,   self._CTRL,       win._new_scratch),       # Ctrl+T  new tab
+            (Qt.Key.Key_T,   self._CTRL_SHIFT, win._restore_tab),       # Ctrl+Shift+T  restore
+            (Qt.Key.Key_W,   self._CTRL,       win._close_current_tab), # Ctrl+W  close tab
+            (Qt.Key.Key_W,   self._CTRL_SHIFT, win._close_all_tabs),    # Ctrl+Shift+W  close all
+            (Qt.Key.Key_Tab, self._CTRL,       win._next_tab),          # Ctrl+Tab  next
+            (Qt.Key.Key_Tab, self._CTRL_SHIFT, win._prev_tab),          # Ctrl+Shift+Tab  prev
+            (Qt.Key.Key_S,   self._CTRL,       win._save_current),      # Ctrl+S  save
+            (Qt.Key.Key_P,   self._CTRL_SHIFT, win._show_palette),      # Ctrl+Shift+P  palette
+            (Qt.Key.Key_P,   self._CTRL,       win._quick_open),        # Ctrl+P  quick open
+            (Qt.Key.Key_G,   self._CTRL,       win._goto_line),         # Ctrl+G  go to line
+        ]
+
+    def eventFilter(self, obj: QObject, event: QEvent) -> bool:
+        if event.type() == QEvent.Type.KeyPress:
+            raw_key = event.key()
+            mods    = event.modifiers() & self._RELEVANT
+            for k, m, fn in self._map:
+                if raw_key == k.value and mods == m:
+                    try:
+                        fn()
+                    except Exception as exc:
+                        import traceback; traceback.print_exc()
+                    return True
+        return False
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="SCPI Instrument Toolkit GUI")
     parser.add_argument("--mock", action="store_true", help="Use mock instruments")
@@ -1205,6 +1415,10 @@ def main(argv: list[str] | None = None) -> None:
     win = _MainWindow(d)
     win.resize(1400, 820)
     win.show()
+
+    # Global key filter — intercepts hotkeys before any widget can swallow them
+    _key_filter = _GlobalKeyFilter(win)
+    app.installEventFilter(_key_filter)
 
     # Kick off an initial scan after the window is visible
     if not args.mock:

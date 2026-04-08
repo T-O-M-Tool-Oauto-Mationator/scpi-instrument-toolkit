@@ -1,3 +1,4 @@
+# v1.0.2
 # live_multi_plot.scpi
 # Opens two independent live plots -- one for voltage, one for current.
 # Watch both update in real time as the PSU ramps.  Run with --mock.
