@@ -48,6 +48,14 @@ Fake instruments — safe to experiment with everything.
 
 ---
 
+## Updating
+
+```
+pip install --upgrade "git+https://github.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit.git"
+```
+
+---
+
 ## Supported Instruments
 
 | Instrument | Type |
@@ -62,11 +70,3 @@ Fake instruments — safe to experiment with everything.
 | Matrix MPS6010H | Power Supply |
 | JDS6600 | Function Generator |
 | NI PXIe-4139 | SMU |
-
----
-
-## Updating
-
-```
-pip install --upgrade "git+https://github.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit.git"
-```
