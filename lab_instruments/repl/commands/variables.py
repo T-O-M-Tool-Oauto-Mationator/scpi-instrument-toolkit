@@ -227,6 +227,47 @@ class VariableCommands(BaseCommand):
     def _assign_var(self, key: str, raw_val: str) -> None:
         """Core variable assignment — shared by 'var = expr' and 'set var expr'."""
         raw_val = substitute_vars(raw_val, self.ctx.script_vars, self.ctx.measurements)
+        # pyeval: VAR = pyeval <python_expression>
+        # Evaluate a Python expression with access to current REPL variables.
+        py_parts = raw_val.split(None, 1)
+        if py_parts and py_parts[0] == "pyeval":
+            import math
+            expr = py_parts[1] if len(py_parts) > 1 else ""
+            num_vars: dict = {}
+            for k, v in self.ctx.script_vars.items():
+                try:
+                    num_vars[k] = int(v)
+                except (ValueError, TypeError):
+                    try:
+                        num_vars[k] = float(v)
+                    except (ValueError, TypeError):
+                        num_vars[k] = v
+            safe_globals = {
+                "__builtins__": {},
+                "sqrt": math.sqrt,
+                "log": math.log,
+                "sin": math.sin,
+                "cos": math.cos,
+                "tan": math.tan,
+                "exp": math.exp,
+                "abs": abs,
+                "min": min,
+                "max": max,
+                "round": round,
+                "pi": math.pi,
+                "e": math.e,
+                "vars": dict(self.ctx.script_vars),
+                "m": {e["label"]: e["value"] for e in self.ctx.measurements.entries},
+                **num_vars,
+            }
+            try:
+                result = eval(expr, safe_globals)  # noqa: S307
+                self.ctx.script_vars[key] = str(result)
+                ColorPrinter.success(f"{key} = {self.ctx.script_vars[key]}")
+            except Exception as exc:
+                ColorPrinter.error(f"pyeval failed: {exc}")
+                self.ctx.command_had_error = True
+            return
         # input: VAR = input [prompt]
         inp_parts = raw_val.split(None, 1)
         if inp_parts and inp_parts[0] == "input":
@@ -260,7 +301,12 @@ class VariableCommands(BaseCommand):
             result = safe_eval(raw_val, num_vars)
             self.ctx.script_vars[key] = str(result)
         except Exception:
-            self.ctx.script_vars[key] = raw_val
+            # Strip surrounding quotes from string literals: "fast" → fast
+            _stripped = raw_val.strip()
+            if len(_stripped) >= 2 and _stripped[0] == _stripped[-1] and _stripped[0] in ('"', "'"):
+                self.ctx.script_vars[key] = _stripped[1:-1]
+            else:
+                self.ctx.script_vars[key] = raw_val
         ColorPrinter.success(f"{key} = {self.ctx.script_vars[key]}")
 
     def do_set(self, arg: str) -> None:

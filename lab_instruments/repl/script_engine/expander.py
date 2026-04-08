@@ -19,6 +19,21 @@ _INSTR_READ_RE = re.compile(
     r"^([A-Za-z_][A-Za-z0-9_]*)\s+(?:read|meas|read_word|read_byte|read_block)(?:\s+(.*))?$"
 )
 
+# Increment/decrement patterns: x++ / x-- / ++x / --x
+_POSTFIX_INC_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*)\s*(\+\+|--)$")
+_PREFIX_INC_RE = re.compile(r"^(\+\+|--)([A-Za-z_][A-Za-z0-9_]*)$")
+
+# Compound assignment: x += expr / x -= expr / x *= expr / x /= expr
+_COMPOUND_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*)\s*([+\-*/])=\s*(.+)$")
+
+
+def _can_float(v: str) -> bool:
+    try:
+        float(v)
+        return True
+    except (TypeError, ValueError):
+        return False
+
 
 def expand_script_lines(
     lines: list[str],
@@ -28,12 +43,13 @@ def expand_script_lines(
     parent_vars: dict[str, str] | None = None,
     exports: dict[str, str] | None = None,
     _loop_ctx: str = "",
-) -> list[tuple[str, str]]:
+) -> list[tuple]:
     """Expand script lines into (command, source_display) tuples.
 
     Handles: import, export, breakpoint, set, call, repeat, array, for,
-    lower_limit, upper_limit. Returns list of (cmd, source) where cmd may
-    be '__NOP__' (metadata) or '__BREAKPOINT__'.
+    while, if/elif/else, break, continue, lower_limit, upper_limit.
+    Returns list of (cmd, source) tuples where cmd may be '__NOP__',
+    '__BREAKPOINT__', or a special block tuple for while/if/break/continue.
     """
     if depth > 10:
         ColorPrinter.error("Maximum script call depth (10) exceeded.")
@@ -41,7 +57,7 @@ def expand_script_lines(
     if depth == 0:
         ctx.safety_limits = {}
         ctx.awg_channel_state = {}
-    expanded: list[tuple[str, str]] = []
+    expanded: list[tuple] = []
     idx = 0
     while idx < len(lines):
         raw_line = lines[idx].strip()
@@ -78,6 +94,14 @@ def expand_script_lines(
 
         if head == "breakpoint":
             expanded.append(("__BREAKPOINT__", "breakpoint"))
+            continue
+
+        if head == "break":
+            expanded.append(("__BREAK__", _loop_ctx + raw_line))
+            continue
+
+        if head == "continue":
+            expanded.append(("__CONTINUE__", _loop_ctx + raw_line))
             continue
 
         if head == "set" and len(tokens) >= 2:
@@ -196,6 +220,65 @@ def expand_script_lines(
                     )
             continue
 
+        # ── while <condition> ──────────────────────────────────────────────
+        if head == "while" and len(tokens) >= 2:
+            # Use raw_line split to preserve quoted strings in condition
+            _raw_parts = raw_line.split(None, 1)
+            condition = substitute_expand(_raw_parts[1] if len(_raw_parts) > 1 else "", variables)
+            block, idx = _collect_block(lines, idx)
+            expanded.append(("__WHILE__", _loop_ctx + raw_line, condition, block, dict(variables)))
+            continue
+
+        # ── if / elif / else / end ─────────────────────────────────────────
+        if head == "if" and len(tokens) >= 2:
+            # Use raw_line split to preserve quoted strings in condition
+            _raw_parts = raw_line.split(None, 1)
+            condition = substitute_expand(_raw_parts[1] if len(_raw_parts) > 1 else "", variables)
+            branches: list[tuple[str, list[str]]] = []
+            else_block: list[str] = []
+            cur_block: list[str] = []
+            cur_cond = condition
+            depth_if = 1
+            while idx < len(lines):
+                ln = lines[idx].strip()
+                idx += 1
+                if not ln or ln.startswith("#"):
+                    continue
+                try:
+                    ln_toks = shlex.split(ln)
+                except ValueError:
+                    ln_toks = ln.split()
+                if not ln_toks:
+                    continue
+                lh = ln_toks[0].lower()
+                if lh in ("for", "repeat", "array", "while", "if"):
+                    depth_if += 1
+                    cur_block.append(ln)
+                    continue
+                if depth_if == 1 and lh == "elif" and len(ln_toks) >= 2:
+                    branches.append((cur_cond, cur_block))
+                    # Preserve quoted strings in elif condition
+                    _elif_parts = ln.split(None, 1)
+                    cur_cond = substitute_expand(_elif_parts[1] if len(_elif_parts) > 1 else "", variables)
+                    cur_block = []
+                    continue
+                if depth_if == 1 and lh == "else":
+                    branches.append((cur_cond, cur_block))
+                    cur_cond = "__else__"
+                    cur_block = []
+                    continue
+                if lh == "end":
+                    depth_if -= 1
+                    if depth_if == 0:
+                        if cur_cond == "__else__":
+                            else_block = cur_block
+                        else:
+                            branches.append((cur_cond, cur_block))
+                        break
+                cur_block.append(ln)
+            expanded.append(("__IF__", _loop_ctx + raw_line, branches, else_block, dict(variables)))
+            continue
+
         if head == "end":
             expanded.append(("__NOP__", _loop_ctx + raw_line))
             continue
@@ -204,7 +287,58 @@ def expand_script_lines(
             _parse_limit(head, tokens, ctx, expanded, _loop_ctx, raw_line)
             continue
 
-        # Python-style assignment: identifier = expression
+        # ── Postfix increment/decrement: x++ / x-- ────────────────────────
+        _inc_m = _POSTFIX_INC_RE.match(raw_line)
+        if _inc_m:
+            key = _inc_m.group(1)
+            op = _inc_m.group(2)
+            delta = 1.0 if op == "++" else -1.0
+            try:
+                new_val = float(variables.get(key, "0")) + delta
+            except (ValueError, TypeError):
+                new_val = delta
+            variables[key] = str(new_val)
+            # Emit runtime command to keep ctx.script_vars in sync
+            expanded.append((f"{key} = {variables[key]}", f"{_loop_ctx}{raw_line}  →  {key} = {variables[key]}"))
+            continue
+
+        # ── Prefix increment/decrement: ++x / --x ─────────────────────────
+        _pre_m = _PREFIX_INC_RE.match(raw_line)
+        if _pre_m:
+            op = _pre_m.group(1)
+            key = _pre_m.group(2)
+            delta = 1.0 if op == "++" else -1.0
+            try:
+                new_val = float(variables.get(key, "0")) + delta
+            except (ValueError, TypeError):
+                new_val = delta
+            variables[key] = str(new_val)
+            expanded.append((f"{key} = {variables[key]}", f"{_loop_ctx}{raw_line}  →  {key} = {variables[key]}"))
+            continue
+
+        # ── Compound assignment: x += expr / x -= expr etc. ───────────────
+        _comp_m = _COMPOUND_RE.match(raw_line)
+        if _comp_m:
+            key = _comp_m.group(1)
+            op = _comp_m.group(2)
+            rhs_raw = substitute_expand(_comp_m.group(3).strip(), variables)
+            try:
+                num_vars = {}
+                for k, v in variables.items():
+                    with contextlib.suppress(TypeError, ValueError):
+                        num_vars[k] = float(v)
+                rhs_val = safe_eval(rhs_raw, num_vars)
+                cur_val = float(variables.get(key, "0"))
+                ops = {"+": cur_val + rhs_val, "-": cur_val - rhs_val,
+                       "*": cur_val * rhs_val, "/": cur_val / rhs_val}
+                new_val = ops[op]
+                variables[key] = str(new_val)
+            except Exception:
+                variables[key] = rhs_raw
+            expanded.append((f"{key} = {variables[key]}", f"{_loop_ctx}{raw_line}  →  {key} = {variables[key]}"))
+            continue
+
+        # ── Python-style assignment: identifier = expression ───────────────
         _assign_match = _ASSIGN_RE.match(raw_line)
         if _assign_match:
             key = _assign_match.group(1)
@@ -219,6 +353,11 @@ def expand_script_lines(
             # Must run at runtime (user interaction), so emit as command
             inp_parts = raw_val.split(None, 1)
             if inp_parts and inp_parts[0] == "input":
+                expanded.append((raw_line, _loop_ctx + raw_line))
+                continue
+            # pyeval assignment: VAR = pyeval <python_expression>
+            # Must run at runtime (needs ctx.script_vars and measurements)
+            if inp_parts and inp_parts[0] == "pyeval":
                 expanded.append((raw_line, _loop_ctx + raw_line))
                 continue
             # linspace assignment: VAR = linspace start stop [count]
@@ -245,7 +384,12 @@ def expand_script_lines(
                 result = safe_eval(raw_val, num_vars)
                 variables[key] = str(result)
             except Exception:
-                variables[key] = raw_val
+                # Strip surrounding quotes from string literals: "fast" → fast
+                _stripped = raw_val.strip()
+                if len(_stripped) >= 2 and _stripped[0] == _stripped[-1] and _stripped[0] in ('"', "'"):
+                    variables[key] = _stripped[1:-1]
+                else:
+                    variables[key] = raw_val
             expanded.append(("__NOP__", f"{_loop_ctx}{raw_line}  →  {key} = {variables[key]}"))
             continue
 
@@ -268,7 +412,7 @@ def _collect_block(lines: list[str], idx: int) -> tuple[list[str], int]:
             line_tokens = line.split()
         if not line_tokens:
             continue
-        if line_tokens[0].lower() in ("repeat", "for", "array"):
+        if line_tokens[0].lower() in ("repeat", "for", "array", "while", "if"):
             depth_inner += 1
         elif line_tokens[0].lower() == "end":
             depth_inner -= 1
@@ -282,7 +426,7 @@ def _parse_limit(
     head: str,
     tokens: list[str],
     ctx: Any,
-    expanded: list[tuple[str, str]],
+    expanded: list[tuple],
     _loop_ctx: str,
     raw_line: str,
 ) -> None:

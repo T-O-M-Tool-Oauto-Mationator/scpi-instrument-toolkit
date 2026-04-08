@@ -229,6 +229,43 @@ python my_script.py
 python /home/user/projects/lab_sequence.py
 ```
 
+### Auto-injected REPL variables
+
+All current REPL script variables are automatically injected into the Python script's namespace as native Python types (int, float, or str). This means you can use them directly in Python expressions without any conversion.
+
+| Injection | How |
+|-----------|-----|
+| Integer-valued vars | Injected as `int` |
+| Float-valued vars | Injected as `float` |
+| Other vars | Injected as `str` |
+| `vars` dict | Always injected — full `{name: value}` dict of all script vars |
+
+**Example — SCPI script sets variables, Python script uses them natively:**
+
+```
+# test_sequence.scpi
+voltage = 5.0
+tolerance = 0.05
+label = output_test
+steps = 10
+
+python /home/user/analysis.py
+```
+
+```python
+# analysis.py  — no float() conversions needed
+print(f"Testing {label} at {voltage} V ± {tolerance*100:.1f}%")
+low  = voltage * (1 - tolerance)
+high = voltage * (1 + tolerance)
+
+# 'steps' is already an int
+for i in range(steps):
+    print(f"  step {i+1}/{steps}")
+
+# 'vars' always available as a plain dict
+print("All vars:", vars)
+```
+
 !!! note
     Use `python` for automation that needs the full Python ecosystem (NumPy, matplotlib, etc.) beyond what the script language provides.
 
@@ -755,6 +792,313 @@ end
 ```
 
 Works at the interactive REPL prompt too.
+
+---
+
+## Control Flow
+
+### while — loop until condition is false
+
+```
+while <condition>
+  <commands>
+end
+```
+
+Evaluates `<condition>` before each iteration; exits when it is false or when `break` is reached.
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `condition` | required | Boolean expression (see [Boolean Operators](#boolean-operators)). |
+
+```
+x = 0
+while x < 5
+  print x = {x}
+  x++
+end
+```
+
+```
+retries = 0
+result = fail
+while result == "fail" and retries < 3
+  result = dmm read
+  retries++
+end
+```
+
+### if / elif / else
+
+```
+if <condition>
+  <commands>
+elif <condition>
+  <commands>
+else
+  <commands>
+end
+```
+
+Only the first matching branch runs. `elif` and `else` are optional.
+
+```
+v = psu meas v
+if v > 4.9 and v < 5.1
+  print PASS: {v}V
+elif v > 4.5
+  print MARGINAL: {v}V
+else
+  print FAIL: {v}V
+end
+```
+
+**String comparison:**
+
+```
+mode = fast
+if mode == "fast"
+  awg1 freq 1 1000000
+else
+  awg1 freq 1 1000
+end
+```
+
+### break — exit the innermost loop
+
+```
+break
+```
+
+Exits the innermost `while` or `for`/`repeat` loop immediately.
+
+```
+x = 0
+while x < 100
+  if x == 10
+    break
+  end
+  x++
+end
+# x is now 10
+```
+
+### continue — skip to next iteration
+
+```
+continue
+```
+
+Skips the rest of the current loop body and re-evaluates the loop condition (for `while`) or advances to the next value (for `for`).
+
+```
+total = 0
+x = 0
+while x < 10
+  x++
+  if x == 5
+    continue
+  end
+  total += x
+end
+# total is sum of 1..10 excluding 5 = 50
+```
+
+#### Interactive block entry
+
+`while` and `if` blocks work at the interactive prompt exactly like `for`/`repeat`:
+
+```
+eset> x = 0
+eset> while x < 3
+  >   print x={x}
+  >   x++
+  > end
+x=0
+x=1
+x=2
+eset>
+```
+
+---
+
+## Assertions
+
+### assert — hard stop on failure
+
+```
+assert <condition> ["message"]
+```
+
+Evaluates a boolean condition. If true, prints `PASS`. If false, prints `FAIL` and **immediately stops the script**. Use this to enforce required conditions before proceeding.
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `condition` | required | Boolean expression (same syntax as `if`/`while`). |
+| `"message"` | optional | Quoted string shown in the failure message. |
+
+```
+v = dmm read
+assert v > 4.9 and v < 5.1
+assert v > 4.9 and v < 5.1 "Output voltage out of tolerance"
+```
+
+```
+# Guard against missing instrument
+assert psu_v > 0 "PSU must be on before running test"
+```
+
+### check vs assert
+
+| Command | On failure | Script continues? | Use case |
+|---------|------------|-------------------|----------|
+| `assert <cond>` | Print FAIL, stop script | No | Guard conditions — must pass to proceed |
+| `check <label> <min> <max>` | Record FAIL in test report | Yes | Soft measurement checks — log all results |
+
+```
+# Hard stop if supply is off
+assert supply_v > 1.0 "Power supply must be on"
+
+# Soft checks logged to report
+check output_voltage 4.75 5.25
+check output_current 0.0 0.5
+```
+
+---
+
+## Boolean Operators
+
+Conditions in `while`, `if`, and `assert` support the following operators:
+
+| Operator | Aliases | Example |
+|----------|---------|---------|
+| `and` | `&&` | `x > 0 and x < 10` |
+| `or` | `\|\|` | `x < 0 or x > 10` |
+| `not` | — | `not x == 0` |
+| `==` | — | `mode == "fast"` |
+| `!=` | — | `mode != "off"` |
+| `<`, `>` | — | `v < 5.1` |
+| `<=`, `>=` | — | `v >= 4.9` |
+
+`&&` and `||` are accepted as aliases for `and`/`or` — they work identically:
+
+```
+while x > 0 && x < 100
+  x--
+end
+
+if v >= 4.9 || v <= 0.1
+  print Edge case: {v}
+end
+```
+
+**Chained comparisons** are evaluated left-to-right using standard Python operator precedence:
+
+```
+if a > 0 and b > 0 and a + b < 100
+  print Valid
+end
+```
+
+---
+
+## Compound Assignment & Increment
+
+### Increment / Decrement
+
+```
+<var>++        # increment by 1 (postfix)
+<var>--        # decrement by 1 (postfix)
+++<var>        # increment by 1 (prefix)
+--<var>        # decrement by 1 (prefix)
+```
+
+```
+count = 0
+count++
+count++
+# count is now 2
+```
+
+### Compound Assignment
+
+```
+<var> += <expr>
+<var> -= <expr>
+<var> *= <expr>
+<var> /= <expr>
+```
+
+| Operator | Equivalent to |
+|----------|--------------|
+| `x += n` | `x = x + n` |
+| `x -= n` | `x = x - n` |
+| `x *= n` | `x = x * n` |
+| `x /= n` | `x = x / n` |
+
+```
+total = 0
+for v 1.0 2.0 3.0 4.0 5.0
+  total += v
+end
+# total = 15.0
+```
+
+```
+gain = 1.0
+repeat 4
+  gain *= 2
+end
+# gain = 16.0
+```
+
+These work at the interactive REPL prompt and inside loops.
+
+---
+
+## pyeval — Inline Python Expressions
+
+```
+<var> = pyeval <python_expression>
+```
+
+Evaluates a Python expression and stores the result in a variable. Useful for math that goes beyond simple arithmetic.
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `python_expression` | required | Any Python expression; current script vars available by name and in `vars` dict. |
+
+Available names inside `pyeval`:
+
+| Name | Description |
+|------|-------------|
+| Script variable names | All current script vars as int/float/str |
+| `vars` | Dict of all script vars (as strings) |
+| `m` | Dict of measurement values keyed by label |
+| `sqrt`, `log`, `sin`, `cos`, `tan`, `exp` | Math functions |
+| `abs`, `min`, `max`, `round` | Built-ins |
+| `pi`, `e` | Math constants |
+
+```
+power = pyeval voltage * current
+rms   = pyeval sqrt(pk2pk ** 2 / 8)
+gain  = pyeval 20 * log(vout / vin)
+```
+
+```
+voltage = 5.0
+current = 0.25
+power = pyeval voltage * current
+print Power: {power}W
+```
+
+```
+# Access measurement log
+v = dmm read
+rms = pyeval sqrt(v * v)
+```
+
+`pyeval` is evaluated at **runtime**, so it sees the latest value of every variable, including those updated by instrument reads.
 
 ---
 

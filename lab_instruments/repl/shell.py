@@ -447,7 +447,8 @@ class InstrumentRepl(cmd.Cmd):
 
     def default(self, line):
         """Handle numbered device names ('awg1', 'scope2') and var = expr assignment."""
-        parts = line.split(None, 1)
+        stripped_cmd = line.strip()
+        parts = stripped_cmd.split(None, 1)
         cmd_token = parts[0]
         rest = parts[1] if len(parts) > 1 else ""
 
@@ -470,9 +471,32 @@ class InstrumentRepl(cmd.Cmd):
                     self.ctx.registry._device_override = None
                 return
 
+        # ── Postfix increment/decrement: x++ / x-- ────────────────────────
+        m = re.match(r"^([A-Za-z_][A-Za-z0-9_]*)\s*(\+\+|--)$", stripped_cmd)
+        if m:
+            var, op = m.group(1), m.group(2)
+            delta = "1" if op == "++" else "-1"
+            self._var_cmd._assign_var(var, f"{var} + ({delta})")
+            return
+
+        # ── Prefix increment/decrement: ++x / --x ─────────────────────────
+        m = re.match(r"^(\+\+|--)([A-Za-z_][A-Za-z0-9_]*)$", stripped_cmd)
+        if m:
+            op, var = m.group(1), m.group(2)
+            delta = "1" if op == "++" else "-1"
+            self._var_cmd._assign_var(var, f"{var} + ({delta})")
+            return
+
+        # ── Compound assignment: x += expr / x -= expr etc. ───────────────
+        m = re.match(r"^([A-Za-z_][A-Za-z0-9_]*)\s*([+\-*/])=\s*(.+)$", stripped_cmd)
+        if m:
+            var, op, rhs = m.group(1), m.group(2), m.group(3)
+            self._var_cmd._assign_var(var, f"{var} {op} ({rhs})")
+            return
+
         # Python-style assignment: voltage = 5.0  /  label = "mytest"
         # Also handles: value = dmm read  /  value = psu1 read unit=V
-        m = self._ASSIGN_RE.match(line.strip())
+        m = self._ASSIGN_RE.match(stripped_cmd)
         if m:
             varname = m.group(1)
             rhs = m.group(2).strip()
@@ -551,7 +575,7 @@ class InstrumentRepl(cmd.Cmd):
                     tokens = shlex.split(stripped)
                 except ValueError:
                     tokens = stripped.split()
-                if tokens and tokens[0].lower() in ("for", "repeat"):
+                if tokens and tokens[0].lower() in ("for", "repeat", "while", "if"):
                     self._loop_depth += 1
                 self._loop_lines.append(line)
             return False
@@ -561,13 +585,13 @@ class InstrumentRepl(cmd.Cmd):
             tokens = shlex.split(stripped)
         except ValueError:
             tokens = stripped.split()
-        if tokens and tokens[0].lower() in ("for", "repeat"):
+        if tokens and tokens[0].lower() in ("for", "repeat", "while", "if"):
             self._in_loop = True
             self._loop_depth = 1
             self._loop_header = stripped
             self._loop_lines = []
             self.prompt = "  > "
-            ColorPrinter.info("(entering loop block - type 'end' to exit)")
+            ColorPrinter.info("(entering block - type 'end' to finish)")
             return False
 
         if ";" in line:
@@ -624,7 +648,13 @@ class InstrumentRepl(cmd.Cmd):
         return run_expanded(expanded, self, self.ctx, debug=debug)
 
     def _run_script_lines(self, lines):
-        expanded = self._expand_script_lines(lines, {})
+        compile_vars: dict = {}
+        expanded = self._expand_script_lines(lines, compile_vars)
+        # Seed ctx.script_vars with compile-time NOP variable assignments so
+        # runtime commands (assert, pyeval, etc.) can reference them.
+        for k, v in compile_vars.items():
+            if k not in self.ctx.script_vars:
+                self.ctx.script_vars[k] = v
         return self._run_expanded(expanded)
 
     def _record_measurement(self, label, value, unit="", source=""):
@@ -905,6 +935,57 @@ class InstrumentRepl(cmd.Cmd):
     def do_check(self, arg):
         """check <label> <min> <max>: pass/fail assertion"""
         self._log_cmd.do_check(arg)
+
+    def do_assert(self, arg):
+        """assert <condition> ["message"]: evaluate boolean condition; stops script on failure."""
+        from .script_engine.runner import _AssertFailure
+        from .syntax import safe_eval_bool
+        import contextlib as _contextlib
+
+        args = arg.strip()
+        message = None
+        # Parse optional trailing quoted message: assert x > 0 "message"
+        for q in ('"', "'"):
+            if args.endswith(q):
+                qi = args.rfind(q, 0, len(args) - 1)
+                if qi > 0 and args[qi - 1] == " ":
+                    message = args[qi + 1 : -1]
+                    args = args[: qi - 1].strip()
+                    break
+
+        if not args:
+            ColorPrinter.warning("Usage: assert <condition> [\"message\"]")
+            return
+
+        condition = substitute_vars(args, self.ctx.script_vars, self.ctx.measurements)
+        label = message or condition
+
+        num_vars: dict = {}
+        for k, v in self.ctx.script_vars.items():
+            with _contextlib.suppress(TypeError, ValueError):
+                num_vars[k] = float(v)
+        try:
+            result = safe_eval_bool(condition, num_vars)
+        except Exception as exc:
+            ColorPrinter.error(f"assert: could not evaluate '{condition}': {exc}")
+            self.ctx.command_had_error = True
+            return
+
+        if result:
+            ColorPrinter.success(f"PASS: {label}")
+        else:
+            ColorPrinter.error(f"FAIL: {label}")
+            raise _AssertFailure(f"assert failed: {label}")
+
+    def do_break(self, arg):
+        """break: exit the innermost while/for loop in a script."""
+        from .script_engine.runner import _BreakSignal
+        raise _BreakSignal()
+
+    def do_continue(self, arg):
+        """continue: skip to the next iteration of the innermost while/for loop."""
+        from .script_engine.runner import _ContinueSignal
+        raise _ContinueSignal()
 
     def do_report(self, arg):
         """report <print|save|clear|title|operator>: manage reports"""

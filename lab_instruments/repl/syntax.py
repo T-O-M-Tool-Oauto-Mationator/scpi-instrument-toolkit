@@ -139,3 +139,119 @@ def safe_eval(expr: str, names: dict[str, Any]) -> Any:
 
     parsed = ast.parse(expr, mode="eval")
     return _eval(parsed)
+
+
+# Operator aliases: rewrite before parsing
+_BOOL_ALIASES = [("&&", " and "), ("||", " or ")]
+
+
+def safe_eval_bool(expr: str, names: dict[str, Any]) -> bool:
+    """Evaluate a boolean condition safely using AST walking.
+
+    Extends safe_eval with:
+    - Comparison ops: <, >, <=, >=, ==, !=
+    - Boolean ops: and, or, not  (and aliases: &&, ||)
+    - String constants (for x == "ok")
+    """
+    for old, new in _BOOL_ALIASES:
+        expr = expr.replace(old, new)
+
+    def _eval(node: ast.AST) -> Any:
+        if isinstance(node, ast.Expression):
+            return _eval(node.body)
+        if isinstance(node, ast.Constant):
+            if isinstance(node.value, (int, float, bool, str)):
+                return node.value
+            raise ValueError("Only numeric/string/bool constants are allowed.")
+        if isinstance(node, ast.Name):
+            if node.id in ("True", "true"):
+                return True
+            if node.id in ("False", "false"):
+                return False
+            if node.id in names:
+                return names[node.id]
+            raise ValueError(f"Unknown name '{node.id}'.")
+        if isinstance(node, ast.BinOp):
+            left = _eval(node.left)
+            right = _eval(node.right)
+            ops = {
+                ast.Add: lambda a, b: a + b,
+                ast.Sub: lambda a, b: a - b,
+                ast.Mult: lambda a, b: a * b,
+                ast.Div: lambda a, b: a / b,
+                ast.Pow: lambda a, b: a**b,
+                ast.Mod: lambda a, b: a % b,
+            }
+            op_func = ops.get(type(node.op))
+            if op_func is None:
+                raise ValueError("Operator not allowed.")
+            return op_func(left, right)
+        if isinstance(node, ast.UnaryOp):
+            operand = _eval(node.operand)
+            if isinstance(node.op, ast.UAdd):
+                return +operand
+            if isinstance(node.op, ast.USub):
+                return -operand
+            if isinstance(node.op, ast.Not):
+                return not operand
+            raise ValueError("Unary operator not allowed.")
+        if isinstance(node, ast.BoolOp):
+            if isinstance(node.op, ast.And):
+                result = True
+                for val in node.values:
+                    result = _eval(val)
+                    if not result:
+                        return result
+                return result
+            if isinstance(node.op, ast.Or):
+                result = False
+                for val in node.values:
+                    result = _eval(val)
+                    if result:
+                        return result
+                return result
+            raise ValueError("Bool operator not allowed.")
+        if isinstance(node, ast.Compare):
+            left = _eval(node.left)
+            for op, comparator in zip(node.ops, node.comparators):
+                right = _eval(comparator)
+                op_map = {
+                    ast.Lt: lambda a, b: a < b,
+                    ast.LtE: lambda a, b: a <= b,
+                    ast.Gt: lambda a, b: a > b,
+                    ast.GtE: lambda a, b: a >= b,
+                    ast.Eq: lambda a, b: a == b,
+                    ast.NotEq: lambda a, b: a != b,
+                }
+                op_func = op_map.get(type(op))
+                if op_func is None:
+                    raise ValueError("Comparison operator not allowed.")
+                if not op_func(left, right):
+                    return False
+                left = right
+            return True
+        if isinstance(node, ast.Subscript):
+            value = _eval(node.value)
+            if not isinstance(value, dict):
+                raise ValueError("Subscript base must be a dict.")
+            slice_node = node.slice
+            if hasattr(ast, "Index") and isinstance(slice_node, ast.Index):
+                slice_node = slice_node.value
+            if isinstance(slice_node, ast.Constant):
+                key = slice_node.value
+            elif isinstance(slice_node, ast.Name):
+                key = slice_node.id
+            else:
+                key = _eval(slice_node)
+            return value[key]
+        if isinstance(node, ast.Call):
+            allowed_funcs = {"abs": abs, "min": min, "max": max, "round": round}
+            if isinstance(node.func, ast.Name) and node.func.id in allowed_funcs:
+                func = allowed_funcs[node.func.id]
+                call_args = [_eval(a) for a in node.args]
+                return func(*call_args)
+            raise ValueError("Function not allowed.")
+        raise ValueError(f"Expression type not allowed: {type(node).__name__}")
+
+    parsed = ast.parse(expr, mode="eval")
+    return bool(_eval(parsed))
