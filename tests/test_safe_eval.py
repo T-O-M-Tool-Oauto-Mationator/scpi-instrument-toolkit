@@ -1,5 +1,6 @@
 """Unit tests for safe_eval — the sandboxed expression evaluator in syntax.py."""
 
+# isort: skip_file
 import math
 import os
 import sys
