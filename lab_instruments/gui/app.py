@@ -433,7 +433,7 @@ class _MainWindow(QMainWindow):
         ]
 
         opened: list[str] = []
-        for content, subdir, ext in parts:
+        for content, _subdir, ext in parts:
             if not content:
                 continue
             examples_dir = os.path.join(folder, "examples", "Cross Script")

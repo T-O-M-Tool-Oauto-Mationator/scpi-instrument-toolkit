@@ -166,9 +166,7 @@ class LoggingCommands(BaseCommand):
         raw = arg.strip()
         raw_after_label = re.sub(r"^\S+\s*", "", raw, count=1)
         # Strip optional = sign
-        if raw_after_label.startswith("= ") or raw_after_label == "=":
-            raw_after_label = raw_after_label[1:].lstrip()
-        elif raw_after_label.startswith("="):
+        if raw_after_label.startswith("= ") or raw_after_label == "=" or raw_after_label.startswith("="):
             raw_after_label = raw_after_label[1:].lstrip()
         expr = re.sub(r"(?<!\S)unit=\S+", "", raw_after_label).strip()
         if not expr:

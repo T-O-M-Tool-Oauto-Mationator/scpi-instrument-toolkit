@@ -3,7 +3,7 @@ from __future__ import annotations
 import pathlib
 import webbrowser
 
-from PySide6.QtCore import Qt, QUrl
+from PySide6.QtCore import QUrl
 from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QHBoxLayout,
