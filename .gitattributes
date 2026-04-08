@@ -1,0 +1,2 @@
+# Tell GitHub Linguist to ignore generated documentation output
+lab_instruments/site/** linguist-generated=true
