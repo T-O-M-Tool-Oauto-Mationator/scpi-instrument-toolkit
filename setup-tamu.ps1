@@ -281,99 +281,9 @@ $env:Path    = "$machinePath;$userPath2"
 Write-Host "PATH refreshed." -ForegroundColor Green
 
 # ---------------------------------------------------------------------------
-# Step 7: Install LibreOffice for headless document conversion
+# Step 7: pip install scpi-instrument-toolkit
 # ---------------------------------------------------------------------------
-Write-Step 7 "Installing LibreOffice (headless support)..."
-
-$sofficePath = $null
-$sofficeCmd = Get-Command soffice -ErrorAction SilentlyContinue | Select-Object -First 1
-if ($sofficeCmd -and $sofficeCmd.Source -and (Test-Path $sofficeCmd.Source)) {
-    $sofficePath = $sofficeCmd.Source
-}
-
-$libreOfficeRoots = @()
-if ($env:ProgramFiles) {
-    $libreOfficeRoots += (Join-Path $env:ProgramFiles "LibreOffice\program\soffice.exe")
-}
-$programFilesX86 = [Environment]::GetEnvironmentVariable("ProgramFiles(x86)")
-if ($programFilesX86) {
-    $libreOfficeRoots += (Join-Path $programFilesX86 "LibreOffice\program\soffice.exe")
-}
-if ($env:LOCALAPPDATA) {
-    $libreOfficeRoots += (Join-Path $env:LOCALAPPDATA "Programs\LibreOffice\program\soffice.exe")
-}
-
-if (-not $sofficePath) {
-    foreach ($candidate in $libreOfficeRoots) {
-        if ($candidate -and (Test-Path $candidate)) {
-            $sofficePath = $candidate
-            break
-        }
-    }
-}
-
-if ($sofficePath) {
-    Write-Host "LibreOffice already installed at: $sofficePath" -ForegroundColor Yellow
-} else {
-    Write-Host "Installing LibreOffice via winget..."
-    winget install TheDocumentFoundation.LibreOffice `
-        --scope user `
-        --accept-package-agreements `
-        --accept-source-agreements `
-        --silent
-
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host "User-scope install failed. Retrying without scope..." -ForegroundColor Yellow
-        winget install TheDocumentFoundation.LibreOffice `
-            --accept-package-agreements `
-            --accept-source-agreements `
-            --silent
-    }
-
-    $sofficeCmd = Get-Command soffice -ErrorAction SilentlyContinue | Select-Object -First 1
-    if ($sofficeCmd -and $sofficeCmd.Source -and (Test-Path $sofficeCmd.Source)) {
-        $sofficePath = $sofficeCmd.Source
-    } else {
-        foreach ($candidate in $libreOfficeRoots) {
-            if ($candidate -and (Test-Path $candidate)) {
-                $sofficePath = $candidate
-                break
-            }
-        }
-    }
-
-    if ($sofficePath) {
-        Write-Host "LibreOffice installed." -ForegroundColor Green
-    } else {
-        Write-Host "LibreOffice install may have failed. Headless Office rendering may be unavailable." -ForegroundColor Yellow
-    }
-}
-
-# Ensure LibreOffice program directory is on user PATH for `soffice --headless`.
-if ($sofficePath) {
-    $sofficeDir = Split-Path $sofficePath -Parent
-    $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
-    $parts = @()
-    if ($userPath) { $parts = $userPath -split ";" | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne "" } }
-    $already = $parts | Where-Object { $_.TrimEnd("\\").ToLowerInvariant() -eq $sofficeDir.TrimEnd("\\").ToLowerInvariant() }
-
-    if (-not $already) {
-        if ([string]::IsNullOrWhiteSpace($userPath)) {
-            [Environment]::SetEnvironmentVariable("Path", $sofficeDir, "User")
-        } else {
-            [Environment]::SetEnvironmentVariable("Path", "$userPath;$sofficeDir", "User")
-        }
-        $env:Path = "$env:Path;$sofficeDir"
-        Write-Host "Added LibreOffice to user PATH: $sofficeDir" -ForegroundColor Green
-    } else {
-        Write-Host "LibreOffice already on PATH." -ForegroundColor Yellow
-    }
-}
-
-# ---------------------------------------------------------------------------
-# Step 8: pip install scpi-instrument-toolkit
-# ---------------------------------------------------------------------------
-Write-Step 8 "Installing scpi-instrument-toolkit..."
+Write-Step 7 "Installing scpi-instrument-toolkit..."
 
 $pipCmd = $null
 if (Get-Command pip -ErrorAction SilentlyContinue)         { $pipCmd = "pip" }
@@ -403,9 +313,9 @@ if (-not $pipCmd) {
 }
 
 # ---------------------------------------------------------------------------
-# Step 9: Install Claude Code
+# Step 8: Install Claude Code
 # ---------------------------------------------------------------------------
-Write-Step 9 "Installing the TOM-a-natior..."
+Write-Step 8 "Installing the TOM-a-natior..."
 
 $claudeDir = $null
 try {
@@ -469,7 +379,6 @@ Write-Host ""
 Write-Host "Open a NEW terminal and verify:" -ForegroundColor Cyan
 Write-Host "  git --version"
 Write-Host "  python --version"
-Write-Host "  soffice --headless --version"
 Write-Host "  scpi-repl --mock"
 Write-Host ""
 Write-Host "NOTE: For real instruments you also need NI-VISA and NI-DCPower system drivers (require admin)." -ForegroundColor Yellow
