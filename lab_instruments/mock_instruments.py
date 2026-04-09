@@ -743,6 +743,12 @@ class MockDSOX1204G(MockScope):
     def set_cursor_source(self, channel):
         pass
 
+    def set_manual_cursor_type(self, cursor_type):
+        pass
+
+    def set_manual_cursor_source(self, source):
+        pass
+
     def set_manual_cursor_positions(self, x1=None, y1=None, x2=None, y2=None):
         pass
 

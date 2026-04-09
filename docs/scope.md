@@ -12,7 +12,7 @@ Controls oscilloscopes over VISA.
     4-channel oscilloscope with USB interface. Full feature set including counter, DVM, cursors, recording, mask test, and built-in AWG.
 
 === "Keysight DSOX1204G"
-    4-channel InfiniiVision 1000 X-Series oscilloscope with USB/LAN interface. Supports screenshot, display, acquire, math, mask test, labels, invert, bwlimit, built-in AWG (WGEN), and DVM. No counter, cursor, or recording support.
+    4-channel InfiniiVision 1000 X-Series oscilloscope (70 MHz, 2 GSa/s) with USB/LAN interface. Full feature set including counter, DVM, cursors, mask test, built-in AWG (WGEN), screenshot, display, acquire, math, labels, invert, bwlimit, segmented acquisition, and measurement statistics. No recording support.
 
 === "Tektronix MSO2024"
     4-channel oscilloscope with USB/GPIB interface. Basic scope commands only.
@@ -65,6 +65,14 @@ Use after `scope single` to ensure the trigger has fired before querying measure
     scope single
     scope wait_stop timeout=10    # wait up to 10 s for trigger
     scope meas_force              # force DSP to finalize values
+    freq = scope meas 1 FREQUENCY unit=Hz
+    ```
+
+=== "Keysight DSOX1204G"
+
+    ```bash
+    scope single
+    scope wait_stop timeout=10    # wait up to 10 s for trigger
     freq = scope meas 1 FREQUENCY unit=Hz
     ```
 
@@ -675,9 +683,9 @@ scope state <on|off|safe|reset>
 
 ---
 
-## DHO804-Specific Features
+## Extended Features
 
-The following commands are available on the Rigol DHO804 and similar Rigol oscilloscopes.
+The following commands are available on the Rigol DHO804 and Keysight DSOX1204G (and similar models).
 
 ### scope screenshot
 
@@ -691,6 +699,14 @@ Capture the scope display and save as PNG.
     ```
 
     Screenshots are saved to `~/Documents/scpi-instrument-toolkit/data/` by default.
+
+=== "Keysight DSOX1204G"
+    ```
+    scope screenshot                    # auto-named: screenshot_HHMMSS.png
+    scope screenshot capture.png        # save as capture.png in data dir
+    ```
+
+    Screenshots are captured as PNG via `:DISPlay:DATA? PNG,COLor`.
 
 === "Tektronix MSO2024"
     Not supported on this model.
@@ -715,6 +731,15 @@ Capture the scope display and save as PNG.
     scope invert 2 on
     scope bwlimit 1 20M
     ```
+
+=== "Keysight DSOX1204G"
+    ```
+    scope label <1-4> <text>        # set channel label (max 10 chars)
+    scope invert <1-4> <on|off>     # invert channel display
+    scope bwlimit <1-4> <20M|OFF>   # 25 MHz bandwidth limit (mapped to ON/OFF)
+    ```
+
+    On the Keysight 1000X, `20M` is mapped to `ON` internally (enables 25 MHz BW limit).
 
 === "Tektronix MSO2024"
     Not supported on this model.
@@ -764,6 +789,18 @@ Sends `*RST` to restore factory defaults. Works on all scope models.
     | `persist` | `MIN`, `1`, `5`, `10`, `INF`, `OFF` | Persistence time |
     | `type` | `VECTORS`, `DOTS` | Waveform rendering mode |
 
+=== "Keysight DSOX1204G"
+    Control display settings.
+
+    ```
+    scope display clear                  # clear waveform display
+    scope display brightness <1-100>     # set waveform brightness
+    scope display persist <MIN|INF|OFF>  # set persistence time
+    scope display type VECTORS           # set display type (always vectors)
+    ```
+
+    Grid style and grid brightness are not available on the Keysight 1000X.
+
 === "Tektronix MSO2024"
     Not supported on this model.
 
@@ -787,6 +824,17 @@ Sends `*RST` to restore factory defaults. Works on all scope models.
     | `averages` | integer (2, 4, 8, … 8192) | Number of averages |
     | `depth` | `AUTO`, `1K`, `10K`, `100K`, `1M`, `10M` | Memory depth |
     | `rate` | — | Display current sample rate |
+
+=== "Keysight DSOX1204G"
+    Control acquisition settings.
+
+    ```
+    scope acquire type <NORMAL|AVERAGE|HRESOLUTION|PEAK>  # set acquisition type
+    scope acquire averages <count>                        # set number of averages
+    scope acquire rate                                    # show current sample rate
+    ```
+
+    Memory depth control is not available via REPL on the Keysight 1000X.
 
 === "Tektronix MSO2024"
     Not supported on this model.
@@ -815,6 +863,22 @@ Sends `*RST` to restore factory defaults. Works on all scope models.
     ```
     scope cursor manual X CH1         # enable X cursors on channel 1
     scope cursor set 0.001 0.002      # set A and B cursor positions
+    scope cursor read                 # read delta values
+    ```
+
+=== "Keysight DSOX1204G"
+    Control measurement cursors. The Keysight uses `:MARKer:` SCPI commands internally but the REPL interface is identical.
+
+    ```
+    scope cursor off                        # disable cursors
+    scope cursor manual <X|Y|XY> [source]   # enable manual cursors
+    scope cursor set <x1> [y1] [x2] [y2]    # set cursor positions
+    scope cursor read                       # read cursor values and deltas
+    ```
+
+    ```
+    scope cursor manual X CH1         # enable X cursors on channel 1
+    scope cursor set 0.001 0.002      # set X1 and X2 positions
     scope cursor read                 # read delta values
     ```
 
@@ -853,6 +917,25 @@ Sends `*RST` to restore factory defaults. Works on all scope models.
     scope math filter 1 LPAS CH1 upper=1000  # 1 kHz low-pass filter
     ```
 
+=== "Keysight DSOX1204G"
+    Control the single math channel via the `:FUNCtion` subsystem.
+
+    ```
+    scope math on|off 1                                 # enable/disable math channel
+    scope math op 1 <ADD|SUB|MUL> <src1> [src2]         # arithmetic operation
+    scope math func 1 <INTG|DIFF|SQRT> <src>            # math function
+    scope math fft 1 <src> [window=RECT]                # FFT analysis
+    scope math scale 1 <scale> [offset]                 # set math channel scale
+    ```
+
+    The Keysight 1000X has one math channel. Digital filter is not available.
+
+    ```
+    scope math on 1                        # enable math channel
+    scope math op 1 SUB CH1 CH2            # Math = CH1 - CH2
+    scope math fft 1 CH1 window=HANN       # FFT of CH1 with Hanning window
+    ```
+
 === "Tektronix MSO2024"
     Not supported on this model.
 
@@ -887,6 +970,9 @@ Sends `*RST` to restore factory defaults. Works on all scope models.
     scope record status           # check status
     scope record play             # play back recording
     ```
+
+=== "Keysight DSOX1204G"
+    Not supported on this model.
 
 === "Tektronix MSO2024"
     Not supported on this model.
@@ -924,6 +1010,20 @@ Sends `*RST` to restore factory defaults. Works on all scope models.
     scope mask create                  # create mask from current waveform
     scope mask start                  # start testing
     scope mask stats                  # view results
+    ```
+
+=== "Keysight DSOX1204G"
+    Control pass/fail mask testing. Same syntax as Rigol.
+
+    ```
+    scope mask on|off                 # enable/disable mask testing
+    scope mask source <1-4>           # set mask source channel
+    scope mask tolerance <x> <y>      # set X and Y tolerance (divisions)
+    scope mask create                 # auto-create mask from current waveform
+    scope mask start                  # start mask test
+    scope mask stop                   # stop mask test
+    scope mask stats                  # show pass/fail statistics
+    scope mask reset                  # reset statistics
     ```
 
 === "Tektronix MSO2024"
