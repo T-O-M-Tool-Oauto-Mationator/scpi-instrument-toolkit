@@ -197,7 +197,9 @@ class TestLabel:
     def test_set_label(self, scope):
         dev, mi = scope
         dev.set_channel_label(3, "Clock")
-        mi.write.assert_called_with(':CHANnel3:LABel "Clock"')
+        cmds = _writes(mi)
+        assert ":DISPlay:LABel ON" in cmds
+        assert ':CHANnel3:LABel "Clock"' in cmds
 
 
 # ===========================================================================
@@ -434,10 +436,15 @@ class TestDisplay:
         dev.set_waveform_brightness(75)
         mi.write.assert_called_with(":DISPlay:INTensity:WAVeform 75")
 
-    def test_persistence(self, scope):
+    def test_persistence_inf(self, scope):
         dev, mi = scope
-        dev.set_persistence("INFinite")
+        dev.set_persistence("INF")
         mi.write.assert_called_with(":DISPlay:PERSistence INFinite")
+
+    def test_persistence_min(self, scope):
+        dev, mi = scope
+        dev.set_persistence("MIN")
+        mi.write.assert_called_with(":DISPlay:PERSistence MINimum")
 
 
 # ===========================================================================
@@ -577,7 +584,9 @@ class TestMaskTest:
     def test_reset_mask_statistics(self, scope):
         dev, mi = scope
         dev.reset_mask_statistics()
-        mi.write.assert_called_with(":MTESt:COUNt:RESet")
+        cmds = _writes(mi)
+        assert ":MTESt:ENABle OFF" in cmds
+        assert ":MTESt:ENABle ON" in cmds
 
     def test_set_mask_tolerance_x(self, scope):
         dev, mi = scope
@@ -1082,12 +1091,12 @@ class TestMeasurementStatistics:
     def test_set_statistics_on(self, scope):
         dev, mi = scope
         dev.set_measurement_statistics(True)
-        mi.write.assert_called_with(":MEASure:STATistics ON")
+        mi.write.assert_called_with(":MEASure:STATistics:DISPlay ON")
 
     def test_set_statistics_off(self, scope):
         dev, mi = scope
         dev.set_measurement_statistics(False)
-        mi.write.assert_called_with(":MEASure:STATistics OFF")
+        mi.write.assert_called_with(":MEASure:STATistics:DISPlay OFF")
 
     def test_reset_statistics(self, scope):
         dev, mi = scope
@@ -1272,12 +1281,12 @@ class TestDisplayExtras:
     def test_set_display_vectors_on(self, scope):
         dev, mi = scope
         dev.set_display_vectors(True)
-        mi.write.assert_called_with(":DISPlay:VECtors 1")
+        mi.write.assert_called_with(":DISPlay:VECtors ON")
 
     def test_set_display_vectors_off(self, scope):
         dev, mi = scope
         dev.set_display_vectors(False)
-        mi.write.assert_called_with(":DISPlay:VECtors 0")
+        mi.write.assert_called_with(":DISPlay:VECtors OFF")
 
     def test_set_display_annotation(self, scope):
         dev, mi = scope

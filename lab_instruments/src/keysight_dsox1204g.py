@@ -285,6 +285,8 @@ class Keysight_DSOX1204G(DeviceManager):
             show: True to show label (Keysight shows label when set)
         """
         self._validate_channel(channel)
+        if show:
+            self._write(":DISPlay:LABel ON")
         self._write(f':CHANnel{channel}:LABel "{label}"', **{f"ch{channel}_label": label})
         print(f'CH{channel} label: "{label}"')
 
@@ -613,9 +615,10 @@ class Keysight_DSOX1204G(DeviceManager):
         print("Measurement items cleared from display")
 
     def set_measurement_statistics(self, enable: bool) -> None:
-        """Enable or disable measurement statistics."""
+        """Enable or disable measurement statistics display."""
+        # Keysight 1000X uses :MEASure:STATistics:DISPlay ON|OFF
         state = "ON" if enable else "OFF"
-        self._write(f":MEASure:STATistics {state}", meas_statistics=enable)
+        self._write(f":MEASure:STATistics:DISPlay {state}", meas_statistics=enable)
         print(f"Measurement statistics: {state}")
 
     def reset_measurement_statistics(self) -> None:
@@ -999,15 +1002,25 @@ class Keysight_DSOX1204G(DeviceManager):
         self._write(f":DISPlay:INTensity:WAVeform {brightness}", display_brightness=brightness)
         print(f"Waveform brightness set to {brightness}%")
 
+    _PERSISTENCE_MAP = {
+        "MIN": "MINimum",
+        "MINIMUM": "MINimum",
+        "INF": "INFinite",
+        "INFINITE": "INFinite",
+        "OFF": "MINimum",
+        "CLEAR": "MINimum",
+    }
+
     def set_persistence(self, time_val: str) -> None:
         """
         Set the waveform persistence time.
 
         Args:
-            time_val: Persistence time value
+            time_val: 'MIN', 'INF', or a numeric seconds value
         """
-        self._write(f":DISPlay:PERSistence {time_val}", display_persistence=time_val)
-        print(f"Persistence set to {time_val}")
+        mapped = self._PERSISTENCE_MAP.get(time_val.upper(), time_val)
+        self._write(f":DISPlay:PERSistence {mapped}", display_persistence=mapped)
+        print(f"Persistence set to {mapped}")
 
     def set_display_type(self, display_type: str) -> None:
         """
@@ -1539,8 +1552,9 @@ class Keysight_DSOX1204G(DeviceManager):
         return {"passed": passed, "failed": failed, "total": total}
 
     def reset_mask_statistics(self) -> None:
-        """Reset the mask test statistics counters."""
-        self._write(":MTESt:COUNt:RESet")
+        """Reset the mask test statistics by toggling mask off and on."""
+        self._write(":MTESt:ENABle OFF", mask_enable=False)
+        self._write(":MTESt:ENABle ON", mask_enable=True)
         print("Mask statistics reset")
 
     def get_mask_test_status(self) -> str:
@@ -1731,9 +1745,9 @@ class Keysight_DSOX1204G(DeviceManager):
 
     def set_display_vectors(self, enable: bool) -> None:
         """Enable or disable connect-the-dots waveform display."""
-        val = 1 if enable else 0
+        val = "ON" if enable else "OFF"
         self._write(f":DISPlay:VECtors {val}", display_vectors=enable)
-        print(f"Display vectors: {'ON' if enable else 'OFF'}")
+        print(f"Display vectors: {val}")
 
     def set_display_annotation(self, text: str) -> None:
         """
