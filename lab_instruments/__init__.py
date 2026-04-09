@@ -1,4 +1,4 @@
-__version__ = "0.1.141"
+__version__ = "0.1.142"
 __author__ = "Brighton Sikarskie, Cesar Magana"
 
 from .enums import CouplingMode, DMMMode, SMUSourceMode, TriggerEdge, TriggerMode, WaveformType
