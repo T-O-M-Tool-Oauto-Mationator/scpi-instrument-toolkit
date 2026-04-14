@@ -485,15 +485,9 @@ class TestWaitForBq:
             ]
         )
         monkeypatch.setattr("time.sleep", lambda _: None)
-        # Monotonic: call 1 -> deadline; calls 2+ stay within window
-        _calls = [0]
-
-        def _mono():
-            v = _calls[0]
-            _calls[0] += 1
-            return v
-
-        monkeypatch.setattr("time.monotonic", _mono)
+        # Always return 0 so deadline = 30 and every subsequent check is well inside
+        # the window -- independent of how many times monotonic() is called.
+        monkeypatch.setattr("time.monotonic", lambda: 0.0)
         dev.wait_for_bq(timeout_s=30.0)
         assert dev.read_byte.call_count == 3
 
