@@ -455,3 +455,55 @@ class TestStaticHelpers:
     def test_parse_response_accessible(self):
         resp = TI_EV2300.parse_response(None)
         assert resp["ok"] is False
+
+
+# =========================================================================
+# wait_for_bq tests
+# =========================================================================
+
+
+class TestWaitForBq:
+    def test_returns_immediately_on_first_success(self, ev2300, monkeypatch):
+        """Returns without sleeping when read_byte succeeds on the first try."""
+        dev, _ = ev2300
+        dev.read_byte = MagicMock(return_value={"ok": True, "value": 0x19})
+        sleep_calls = []
+        monkeypatch.setattr("time.sleep", lambda s: sleep_calls.append(s))
+        dev.wait_for_bq(timeout_s=30.0)
+        dev.read_byte.assert_called_once_with(0x08, 0x0B)
+        assert sleep_calls == []
+
+    def test_retries_then_succeeds(self, ev2300, monkeypatch):
+        """Retries when read_byte fails, returns when it succeeds on a later attempt."""
+        dev, _ = ev2300
+        # First two calls fail (both addresses on first poll), third succeeds
+        dev.read_byte = MagicMock(
+            side_effect=[
+                {"ok": False},  # 0x08, poll 1
+                {"ok": False},  # 0x18, poll 1
+                {"ok": True, "value": 0x19},  # 0x08, poll 2
+            ]
+        )
+        monkeypatch.setattr("time.sleep", lambda _: None)
+        # Monotonic: call 1 -> deadline; calls 2+ stay within window
+        _calls = [0]
+
+        def _mono():
+            v = _calls[0]
+            _calls[0] += 1
+            return v
+
+        monkeypatch.setattr("time.monotonic", _mono)
+        dev.wait_for_bq(timeout_s=30.0)
+        assert dev.read_byte.call_count == 3
+
+    def test_raises_timeout_when_never_succeeds(self, ev2300, monkeypatch):
+        """Raises TimeoutError when read_byte never returns ok within the timeout."""
+        dev, _ = ev2300
+        dev.read_byte = MagicMock(return_value={"ok": False})
+        monkeypatch.setattr("time.sleep", lambda _: None)
+        # First call sets deadline (returns 0), second call is past deadline (returns 31)
+        _seq = iter([0, 31])
+        monkeypatch.setattr("time.monotonic", lambda: next(_seq))
+        with pytest.raises(TimeoutError, match="BQ76920 did not respond"):
+            dev.wait_for_bq(timeout_s=30.0)

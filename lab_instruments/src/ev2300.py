@@ -972,6 +972,43 @@ class TI_EV2300:
             self._core = None
             raise ConnectionError(f"EV2300: {result['status_text']}")
 
+    def wait_for_bq(self, timeout_s: float = 30.0, poll_interval_s: float = 0.5) -> None:
+        """Block until the BQ76920 IC is detected and responding on the bridge.
+
+        The STM32 bridge retries BQ76920 init every 2 s after a failed startup
+        detection (e.g. EVM not powered when bridge connected).  This method
+        polls CC_CFG (reg 0x0B) at both possible I2C addresses until a
+        successful read confirms the IC is live, or raises TimeoutError.
+
+        Parameters
+        ----------
+        timeout_s : float
+            Maximum seconds to wait (default 30).
+        poll_interval_s : float
+            Seconds between probe attempts (default 0.5).
+
+        Raises
+        ------
+        TimeoutError
+            If the BQ76920 does not respond within timeout_s seconds.
+        ConnectionError
+            If the EV2300 bridge is not open.
+        """
+        import time
+
+        self._require_open()
+        deadline = time.monotonic() + timeout_s
+        # Try no-CRC address first (EVM default), then CRC address
+        _BQ_ADDRS = (0x08, 0x18)
+        _CC_CFG = 0x0B
+        while time.monotonic() < deadline:
+            for addr in _BQ_ADDRS:
+                r = self.read_byte(addr, _CC_CFG)
+                if r["ok"]:
+                    return
+            time.sleep(poll_interval_s)
+        raise TimeoutError(f"BQ76920 did not respond within {timeout_s:.0f}s -- ensure EVM is powered")
+
     def disconnect(self) -> None:
         """Close the EV2300 device."""
         if self._core is not None:
