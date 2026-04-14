@@ -4,19 +4,17 @@ from __future__ import annotations
 
 import os
 import shutil
-import tempfile
 from collections import deque
-from pathlib import Path
 
-from PySide6.QtCore import QDir, QModelIndex, QPoint, QRect, QSize, Qt, QTimer, Signal, QUrl
+from PySide6.QtCore import QDir, QModelIndex, QPoint, QRect, Qt, QTimer, QUrl, Signal
 from PySide6.QtGui import (
     QColor,
     QDrag,
     QFont,
     QFontMetrics,
+    QKeySequence,
     QPainter,
     QPixmap,
-    QKeySequence,
 )
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -92,9 +90,9 @@ _HOVER_EXPAND_MS = 600  # how long to hover over a folder before it auto-expands
 class _FileTree(QTreeView):
     """QTreeView with ghost drag preview, drag-and-drop, Delete key, and Ctrl+Z."""
 
-    delete_requested = Signal(list)       # list[str] paths
-    move_requested   = Signal(list, str)  # (src_paths, dest_dir)
-    copy_requested   = Signal(list, str)  # (src_paths, dest_dir)
+    delete_requested = Signal(list)  # list[str] paths
+    move_requested = Signal(list, str)  # (src_paths, dest_dir)
+    copy_requested = Signal(list, str)  # (src_paths, dest_dir)
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -149,6 +147,7 @@ class _FileTree(QTreeView):
         mime = self.model().mimeData(self.selectedIndexes())
         if mime is None:
             from PySide6.QtCore import QMimeData
+
             mime = QMimeData()
         mime.setUrls([QUrl.fromLocalFile(p) for p in paths])
         drag.setMimeData(mime)
@@ -159,9 +158,10 @@ class _FileTree(QTreeView):
     # -- drag-and-drop --------------------------------------------------------
 
     def _expand_hovered(self) -> None:
-        if self._hover_index is not None and self._hover_index.isValid():
-            if self.model().isDir(self._hover_index):  # type: ignore[union-attr]
-                self.expand(self._hover_index)
+        if (
+            self._hover_index is not None and self._hover_index.isValid() and self.model().isDir(self._hover_index)  # type: ignore[union-attr]
+        ):
+            self.expand(self._hover_index)
 
     def dragEnterEvent(self, event) -> None:  # noqa: N802
         if event.mimeData().hasUrls():
@@ -225,9 +225,9 @@ class _FileTree(QTreeView):
 class FileExplorer(QWidget):
     """File tree sidebar for browsing workspace files."""
 
-    file_selected = Signal(str)   # absolute path
-    run_script    = Signal(str)   # absolute path of .scpi to run
-    debug_script  = Signal(str)   # absolute path of .scpi to debug
+    file_selected = Signal(str)  # absolute path
+    run_script = Signal(str)  # absolute path of .scpi to run
+    debug_script = Signal(str)  # absolute path of .scpi to debug
     files_deleted = Signal(list)  # list[str] of absolute paths that were deleted
 
     def __init__(self, parent: QWidget | None = None) -> None:
@@ -269,6 +269,7 @@ class FileExplorer(QWidget):
 
         # Ctrl+Z inside the explorer panel
         from PySide6.QtGui import QShortcut
+
         undo_sc = QShortcut(QKeySequence("Ctrl+Z"), self)
         undo_sc.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
         undo_sc.activated.connect(self._undo)
@@ -318,7 +319,7 @@ class FileExplorer(QWidget):
 
     def _on_context_menu(self, pos) -> None:
         index = self._tree.indexAt(pos)
-        path   = self._model.filePath(index) if index.isValid() else None
+        path = self._model.filePath(index) if index.isValid() else None
         is_dir = self._model.isDir(index) if index.isValid() else False
         ctx_dir = self._context_dir(index)
         selected = self._selected_paths()
@@ -330,15 +331,15 @@ class FileExplorer(QWidget):
             menu.addAction("Open", lambda: self.file_selected.emit(path))
             ext = os.path.splitext(path)[1].lower()
             if ext in (".scpi", ".py"):
-                menu.addAction("Run Script",   lambda: self.run_script.emit(path))
+                menu.addAction("Run Script", lambda: self.run_script.emit(path))
                 menu.addAction("Debug Script", lambda: self.debug_script.emit(path))
             menu.addSeparator()
 
         if not multi:
-            menu.addAction("New File…",        lambda: self._new_file(ctx_dir, None))
-            menu.addAction("New Script",       lambda: self._new_file(ctx_dir, ".scpi"))
-            menu.addAction("New Python File",  lambda: self._new_file(ctx_dir, ".py"))
-            menu.addAction("New Folder",       lambda: self._new_folder(ctx_dir))
+            menu.addAction("New File…", lambda: self._new_file(ctx_dir, None))
+            menu.addAction("New Script", lambda: self._new_file(ctx_dir, ".scpi"))
+            menu.addAction("New Python File", lambda: self._new_file(ctx_dir, ".py"))
+            menu.addAction("New Folder", lambda: self._new_folder(ctx_dir))
             menu.addSeparator()
 
         targets = selected if selected else ([path] if path else [])
@@ -349,7 +350,7 @@ class FileExplorer(QWidget):
             menu.addAction(lbl, lambda: self._delete_paths(targets))
             if not multi and path:
                 menu.addSeparator()
-                menu.addAction("Copy Path",          lambda: self._copy_to_clipboard(os.path.abspath(path)))
+                menu.addAction("Copy Path", lambda: self._copy_to_clipboard(os.path.abspath(path)))
                 menu.addAction("Copy Relative Path", lambda: self._copy_to_clipboard(os.path.relpath(path)))
 
         if self._undo_stack:
@@ -411,7 +412,7 @@ class FileExplorer(QWidget):
 
     def _delete_paths(self, paths: list[str]) -> None:
         names = "\n".join(f"  • {os.path.basename(p)}" for p in paths)
-        kind  = "items" if len(paths) > 1 else ("folder" if os.path.isdir(paths[0]) else "file")
+        kind = "items" if len(paths) > 1 else ("folder" if os.path.isdir(paths[0]) else "file")
         reply = QMessageBox.question(
             self,
             f"Delete {kind}",
@@ -426,7 +427,7 @@ class FileExplorer(QWidget):
             try:
                 if os.path.isdir(path):
                     # collect all files inside the directory before removing
-                    for root, dirs, files in os.walk(path):
+                    for root, _dirs, files in os.walk(path):
                         for f in files:
                             deleted.append(os.path.join(root, f))
                     deleted.append(path)
@@ -442,12 +443,15 @@ class FileExplorer(QWidget):
     def _move_paths(self, src_paths: list[str], dest_dir: str) -> None:
         moved: list[tuple[str, str]] = []
         for src in src_paths:
-            if os.path.dirname(os.path.abspath(src)) == os.path.abspath(dest_dir) or os.path.abspath(src) == os.path.abspath(dest_dir):
+            if os.path.dirname(os.path.abspath(src)) == os.path.abspath(dest_dir) or os.path.abspath(
+                src
+            ) == os.path.abspath(dest_dir):
                 continue
             dest = os.path.join(dest_dir, os.path.basename(src))
             if os.path.exists(dest):
                 reply = QMessageBox.question(
-                    self, "Overwrite?",
+                    self,
+                    "Overwrite?",
                     f"'{os.path.basename(src)}' already exists in the destination.\nOverwrite?",
                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                     QMessageBox.StandardButton.No,
@@ -460,11 +464,13 @@ class FileExplorer(QWidget):
             except Exception as exc:
                 QMessageBox.warning(self, "Move Failed", f"Could not move {os.path.basename(src)}:\n{exc}")
         if moved:
+
             def _undo_move(pairs=moved):
                 for dest_path, orig_dir in reversed(pairs):
                     back = os.path.join(orig_dir, os.path.basename(dest_path))
                     if os.path.exists(dest_path):
                         shutil.move(dest_path, back)
+
             self._push_undo(_undo_move)
 
     def _copy_paths(self, src_paths: list[str], dest_dir: str) -> None:
@@ -482,10 +488,12 @@ class FileExplorer(QWidget):
             except Exception as exc:
                 QMessageBox.warning(self, "Copy Failed", f"Could not copy {os.path.basename(src)}:\n{exc}")
         if copied:
+
             def _undo_copy(paths=copied):
                 for p in paths:
                     if os.path.isdir(p):
                         shutil.rmtree(p, ignore_errors=True)
                     elif os.path.isfile(p):
                         os.remove(p)
+
             self._push_undo(_undo_copy)

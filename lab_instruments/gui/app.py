@@ -289,7 +289,7 @@ class _MainWindow(QMainWindow):
 
         # ── Keybinds handled by _GlobalKeyFilter (installed in main()) ──────
         # F5 / Shift+F5 are fine as plain QShortcuts (no widget eats them)
-        QShortcut(QKeySequence("F5"),       self).activated.connect(lambda: self._run_current_script(debug=False))
+        QShortcut(QKeySequence("F5"), self).activated.connect(lambda: self._run_current_script(debug=False))
         QShortcut(QKeySequence("Shift+F5"), self).activated.connect(lambda: self._run_current_script(debug=True))
 
         # ── Restore geometry ───────────────────────────────────────────
@@ -472,7 +472,7 @@ class _MainWindow(QMainWindow):
     def _new_scratch(self) -> None:
         """Ctrl+T — open a new unnamed buffer.  Ctrl+S prompts Save As."""
         _MainWindow._untitled_counter += 1
-        n     = _MainWindow._untitled_counter
+        n = _MainWindow._untitled_counter
         title = f"Untitled-{n}"
 
         widget = ScpiEditor(None)
@@ -494,7 +494,7 @@ class _MainWindow(QMainWindow):
 
         widget.title_changed.connect(_on_saved)
         self._work_area.add_widget(title, widget)
-        self._status.setText(f"New buffer — Ctrl+S to save")
+        self._status.setText("New buffer — Ctrl+S to save")
 
     def open_file(self, path: str) -> None:
         """Open a file in the work area. Dispatches by extension."""
@@ -1040,8 +1040,10 @@ class _MainWindow(QMainWindow):
 
     def _confirm_close_tab(self, widget: QWidget) -> bool:
         """Return True if the tab may be closed.  Shows a nag for unsaved buffers."""
-        from .widgets.editor import ScpiEditor
         from PySide6.QtWidgets import QMessageBox
+
+        from .widgets.editor import ScpiEditor
+
         if not isinstance(widget, ScpiEditor):
             return True
         if getattr(widget, "_skip_close_confirm", False):
@@ -1059,9 +1061,7 @@ class _MainWindow(QMainWindow):
             mb.setText(f"<b>{name}</b> has unsaved changes.")
             mb.setInformativeText("Save before closing?")
             mb.setStandardButtons(
-                QMessageBox.StandardButton.Save |
-                QMessageBox.StandardButton.Discard |
-                QMessageBox.StandardButton.Cancel
+                QMessageBox.StandardButton.Save | QMessageBox.StandardButton.Discard | QMessageBox.StandardButton.Cancel
             )
             mb.setDefaultButton(QMessageBox.StandardButton.Save)
             result = mb.exec()
@@ -1080,9 +1080,7 @@ class _MainWindow(QMainWindow):
             mb.setText("This buffer has never been saved.")
             mb.setInformativeText("Save it before closing?")
             mb.setStandardButtons(
-                QMessageBox.StandardButton.Save |
-                QMessageBox.StandardButton.Discard |
-                QMessageBox.StandardButton.Cancel
+                QMessageBox.StandardButton.Save | QMessageBox.StandardButton.Discard | QMessageBox.StandardButton.Cancel
             )
             mb.setDefaultButton(QMessageBox.StandardButton.Save)
             result = mb.exec()
@@ -1112,6 +1110,7 @@ class _MainWindow(QMainWindow):
                     return
         # File tab — push onto restore stack before cleaning up
         from .widgets.editor import ScpiEditor
+
         if isinstance(widget, ScpiEditor):
             path = widget.file_path()
             if path and os.path.isfile(path):
@@ -1353,41 +1352,43 @@ class _MainWindow(QMainWindow):
 class _GlobalKeyFilter(QObject):
     """Application-level event filter that fires hotkeys before any widget sees them."""
 
-    _CTRL       = Qt.KeyboardModifier.ControlModifier
-    _SHIFT      = Qt.KeyboardModifier.ShiftModifier
+    _CTRL = Qt.KeyboardModifier.ControlModifier
+    _SHIFT = Qt.KeyboardModifier.ShiftModifier
     _CTRL_SHIFT = Qt.KeyboardModifier.ControlModifier | Qt.KeyboardModifier.ShiftModifier
-    _RELEVANT   = (Qt.KeyboardModifier.ControlModifier |
-                   Qt.KeyboardModifier.ShiftModifier   |
-                   Qt.KeyboardModifier.AltModifier)
+    _RELEVANT = (
+        Qt.KeyboardModifier.ControlModifier | Qt.KeyboardModifier.ShiftModifier | Qt.KeyboardModifier.AltModifier
+    )
 
-    def __init__(self, win: "_MainWindow") -> None:
+    def __init__(self, win: _MainWindow) -> None:
         super().__init__(win)
         self._win = win
         # Browser-style tab management
         # (key, modifiers) -> callable
         self._map = [
-            (Qt.Key.Key_T,   self._CTRL,       win._new_scratch),       # Ctrl+T  new tab
-            (Qt.Key.Key_T,   self._CTRL_SHIFT, win._restore_tab),       # Ctrl+Shift+T  restore
-            (Qt.Key.Key_W,   self._CTRL,       win._close_current_tab), # Ctrl+W  close tab
-            (Qt.Key.Key_W,   self._CTRL_SHIFT, win._close_all_tabs),    # Ctrl+Shift+W  close all
-            (Qt.Key.Key_Tab, self._CTRL,       win._next_tab),          # Ctrl+Tab  next
-            (Qt.Key.Key_Tab, self._CTRL_SHIFT, win._prev_tab),          # Ctrl+Shift+Tab  prev
-            (Qt.Key.Key_S,   self._CTRL,       win._save_current),      # Ctrl+S  save
-            (Qt.Key.Key_P,   self._CTRL_SHIFT, win._show_palette),      # Ctrl+Shift+P  palette
-            (Qt.Key.Key_P,   self._CTRL,       win._quick_open),        # Ctrl+P  quick open
-            (Qt.Key.Key_G,   self._CTRL,       win._goto_line),         # Ctrl+G  go to line
+            (Qt.Key.Key_T, self._CTRL, win._new_scratch),  # Ctrl+T  new tab
+            (Qt.Key.Key_T, self._CTRL_SHIFT, win._restore_tab),  # Ctrl+Shift+T  restore
+            (Qt.Key.Key_W, self._CTRL, win._close_current_tab),  # Ctrl+W  close tab
+            (Qt.Key.Key_W, self._CTRL_SHIFT, win._close_all_tabs),  # Ctrl+Shift+W  close all
+            (Qt.Key.Key_Tab, self._CTRL, win._next_tab),  # Ctrl+Tab  next
+            (Qt.Key.Key_Tab, self._CTRL_SHIFT, win._prev_tab),  # Ctrl+Shift+Tab  prev
+            (Qt.Key.Key_S, self._CTRL, win._save_current),  # Ctrl+S  save
+            (Qt.Key.Key_P, self._CTRL_SHIFT, win._show_palette),  # Ctrl+Shift+P  palette
+            (Qt.Key.Key_P, self._CTRL, win._quick_open),  # Ctrl+P  quick open
+            (Qt.Key.Key_G, self._CTRL, win._goto_line),  # Ctrl+G  go to line
         ]
 
     def eventFilter(self, obj: QObject, event: QEvent) -> bool:
         if event.type() == QEvent.Type.KeyPress:
             raw_key = event.key()
-            mods    = event.modifiers() & self._RELEVANT
+            mods = event.modifiers() & self._RELEVANT
             for k, m, fn in self._map:
                 if raw_key == k.value and mods == m:
                     try:
                         fn()
-                    except Exception as exc:
-                        import traceback; traceback.print_exc()
+                    except Exception:
+                        import traceback
+
+                        traceback.print_exc()
                     return True
         return False
 

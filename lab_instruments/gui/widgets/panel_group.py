@@ -85,9 +85,8 @@ class _PanelGroup(QFrame):
         _title, widget = self._widgets[idx]
         # Give the main window a chance to veto (e.g. unsaved-buffer nag)
         win = self._find_main_win()
-        if win and hasattr(win, "_confirm_close_tab"):
-            if not win._confirm_close_tab(widget):
-                return  # user cancelled
+        if win and hasattr(win, "_confirm_close_tab") and not win._confirm_close_tab(widget):
+            return  # user cancelled
         item = self.remove_widget_at(idx)
         if item is None:
             return

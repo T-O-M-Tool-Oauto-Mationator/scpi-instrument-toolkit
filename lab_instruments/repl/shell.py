@@ -703,9 +703,7 @@ class InstrumentRepl(cmd.Cmd):
     from .script_engine.runner import _AssertFailure, _BreakSignal, _ContinueSignal
 
     # Detects comparison/boolean operators → condition-form check vs measurement check
-    _COND_CHECK_RE = re.compile(
-        r"(?:>=|<=|!=|==|>|<|&&|\|\||(?<![a-zA-Z0-9_])(?:and|or|not)(?![a-zA-Z0-9_]))"
-    )
+    _COND_CHECK_RE = re.compile(r"(?:>=|<=|!=|==|>|<|&&|\|\||(?<![a-zA-Z0-9_])(?:and|or|not)(?![a-zA-Z0-9_]))")
 
     def _build_names_dict(self) -> dict:
         """Build a names dict from script_vars for safe_eval (float where possible)."""
@@ -947,7 +945,7 @@ class InstrumentRepl(cmd.Cmd):
         except Exception as exc:
             ColorPrinter.error(f"assert evaluation error: {exc}")
             label = message or condition
-            raise self._AssertFailure(f"assert failed: {label} ({exc})")
+            raise self._AssertFailure(f"assert failed: {label} ({exc})") from exc
 
         label = message or condition
         if result:

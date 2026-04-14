@@ -265,6 +265,7 @@ class ScriptingCommands(BaseCommand):
             "json": json,
             "time": time,
         }
+
         # Auto-inject all current REPL script variables as native Python types.
         # Conversion order: int → float → str.
         def _to_python(v):
