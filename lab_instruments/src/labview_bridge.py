@@ -10,7 +10,32 @@ Usage from LabVIEW:
     2. Call open_psu("USB0::...", "HP_E3631A") -> returns "psu_1"
     3. Call psu_set_voltage("psu_1", 1, 5.0) -> returns "OK"
     4. Call close_instrument("psu_1") -> returns "OK"
+
+LabVIEW loads .py files by path as standalone scripts, so __package__ is None and
+relative imports (from .xyz) would normally fail. The block below detects that case
+and patches sys.path + __package__ before the relative imports are executed.
 """
+
+# ruff: noqa: E402 -- bootstrap block must precede relative imports (LabVIEW standalone load)
+
+import os as _os
+import sys as _sys
+
+if not __package__:
+    # Standalone load: lab_instruments/src/labview_bridge.py -> parent = lab_instruments/src/
+    # Two dirname() calls reach the directory that contains the lab_instruments package.
+    _pkg_root = _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
+    if _pkg_root not in _sys.path:
+        _sys.path.insert(0, _pkg_root)
+    # Pre-import the package hierarchy so Python's relative-import resolver can find them.
+    import importlib as _il
+
+    _il.import_module("lab_instruments")
+    _il.import_module("lab_instruments.src")
+    __package__ = "lab_instruments.src"
+    del _il, _pkg_root
+
+del _os, _sys
 
 import contextlib
 import json

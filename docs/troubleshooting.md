@@ -166,6 +166,36 @@ $g=(Get-ChildItem "$env:LOCALAPPDATA\GitHubDesktop\app-*\resources\app\git\cmd\g
 
 ---
 
+## LabVIEW: "attempted relative import with no known parent package"
+
+This error appears in LabVIEW's Python Node error cluster when the function name is `open_ev2300` (or any other bridge function) and the full class is `ImportError`.
+
+**Cause:** LabVIEW loads the `.py` file by its absolute path as a standalone script. That strips the package context (`__package__ = None`), so every `from .xyz import` statement inside `lab_instruments/src/labview_bridge.py` fails immediately.
+
+**Fix:** Upgrade to version 1.0.5 or later, which patches the file to handle standalone loads:
+
+```powershell
+pip install --upgrade git+https://github.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit.git
+```
+
+If you cannot upgrade (e.g. a managed machine with no internet access), use the top-level shim instead. Change the Python Node's module path from:
+
+```
+...\site-packages\lab_instruments\src\labview_bridge.py
+```
+
+to the `labview_bridge.py` at the repository root:
+
+```
+C:\path\to\scpi-instrument-toolkit\labview_bridge.py
+```
+
+The shim sets up the correct import context before delegating to the real bridge. All function names remain the same.
+
+See [LabVIEW Bridge - Troubleshooting](labview.md#troubleshooting) for more details.
+
+---
+
 ## EV2300 communication errors
 
 ### "Device error (0x46)" or I2C read/write failures
