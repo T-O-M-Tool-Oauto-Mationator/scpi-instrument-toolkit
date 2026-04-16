@@ -573,7 +573,12 @@ class InstrumentRepl(cmd.Cmd):
                 expr = f"{cur} {op} ({rhs_val})"
                 from .syntax import safe_eval
 
-                result = safe_eval(expr, {k: float(v) for k, v in self.ctx.script_vars.items() if k != varname})
+                num_vars = {}
+                for k, v in self.ctx.script_vars.items():
+                    if k != varname:
+                        with contextlib.suppress(TypeError, ValueError):
+                            num_vars[k] = float(v)
+                result = safe_eval(expr, num_vars)
                 self.ctx.script_vars[varname] = str(result)
                 ColorPrinter.success(f"{varname} = {self.ctx.script_vars[varname]}")
             except Exception as exc:
