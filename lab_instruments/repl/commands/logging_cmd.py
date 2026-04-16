@@ -1,5 +1,6 @@
 """Logging commands: log, calc, check, report, data."""
 
+import contextlib
 import os
 import re
 
@@ -133,11 +134,22 @@ class LoggingCommands(BaseCommand):
         if help_flag or len(args) < 2:
             self.print_colored_usage(
                 [
-                    "# CALC (short for calculator)",
+                    "# CALC — compute a derived value and log it",
                     "",
-                    "calc <label> = <expr> [unit=]",
-                    "  - expr can use {label}, {last}, and functions abs, min, max, round",
-                    "  - example: calc power = {psu_v} * {psu_i} unit=W",
+                    "calc <label> = <expression> [unit=<str>]",
+                    "  - label   : name for the result (stored in log + variables)",
+                    "  - expression : any math expression using variable/label names",
+                    "  - unit=   : optional unit string shown in log print",
+                    "",
+                    "  Tip: you can also write this as a plain assignment:",
+                    "    power = psu_v * psu_i unit=W",
+                    "  Both forms are equivalent; the plain assignment is preferred.",
+                    "",
+                    "  Examples:",
+                    "    calc power = psu_v * psu_i unit=W",
+                    "    calc error = (dmm_v - psu_v) / psu_v * 100 unit=%",
+                    "    calc gain_db = 20 * log10(v_out / v_in) unit=dB",
+                    "    calc rms = sqrt((v1**2 + v2**2) / 2) unit=V",
                 ]
             )
             return
@@ -154,23 +166,28 @@ class LoggingCommands(BaseCommand):
         raw = arg.strip()
         raw_after_label = re.sub(r"^\S+\s*", "", raw, count=1)
         # Strip optional = sign
-        if raw_after_label.startswith("= ") or raw_after_label.startswith("="):
-            raw_after_label = raw_after_label.lstrip("= ")
+        if raw_after_label.startswith("= ") or raw_after_label == "=" or raw_after_label.startswith("="):
+            raw_after_label = raw_after_label[1:].lstrip()
         expr = re.sub(r"(?<!\S)unit=\S+", "", raw_after_label).strip()
         if not expr:
             ColorPrinter.warning("calc expects an expression.")
             return
         # Substitute {name} and $name variables in expr
         expr = substitute_vars(expr, self.ctx.script_vars, self.ctx.measurements)
-        if not self.measurements:
-            ColorPrinter.warning("No measurements recorded. Use 'value = <instrument> read' to take measurements.")
-            return
         last_entry = self.measurements.get_last()
         last = last_entry["value"] if last_entry else 0
-        names = {"last": last}
+        # Build names: last + script_vars (numeric) + measurement labels
+        names: dict = {"last": last}
+        for k, v in self.ctx.script_vars.items():
+            with contextlib.suppress(TypeError, ValueError):
+                names[k] = float(v)
+        for entry in self.ctx.measurements.entries:
+            with contextlib.suppress(TypeError, ValueError):
+                names[entry["label"]] = float(entry["value"])
         try:
             value = safe_eval(expr, names)
             self.measurements.record(label, value, unit, "calc")
+            self.ctx.script_vars[label] = str(value)
             suffix = f" {unit}" if unit else ""
             C, G, Y, R = ColorPrinter.CYAN, ColorPrinter.GREEN, ColorPrinter.YELLOW, ColorPrinter.RESET
             print(f"{C}{label}{R} = {G}{value}{R}{Y}{suffix}{R}")

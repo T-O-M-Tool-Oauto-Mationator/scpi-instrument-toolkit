@@ -1,3 +1,4 @@
+# v1.0.2
 """Cross-script demo -- Python analysis version.
 
 Reads measurements and REPL variables left by the SCPI version of this

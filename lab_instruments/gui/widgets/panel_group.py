@@ -80,11 +80,17 @@ class _PanelGroup(QFrame):
         return len(self._widgets)
 
     def close_tab(self, idx: int) -> None:
+        if not 0 <= idx < len(self._widgets):
+            return
+        _title, widget = self._widgets[idx]
+        # Give the main window a chance to veto (e.g. unsaved-buffer nag)
+        win = self._find_main_win()
+        if win and hasattr(win, "_confirm_close_tab") and not win._confirm_close_tab(widget):
+            return  # user cancelled
         item = self.remove_widget_at(idx)
         if item is None:
             return
         _title, widget = item
-        win = self._find_main_win()
         if win and hasattr(win, "_on_tab_closed"):
             win._on_tab_closed(widget)
         if self.count() == 0:

@@ -23,6 +23,13 @@ class Keysight_DSOX1204G(DeviceManager):
 
     num_channels = 4
 
+    # ---- ALLOWLIST constants (SCPI Driver Contract) ----
+    _COUPLING_ALLOWLIST = ("DC", "AC")
+    _ACQ_TYPE_ALLOWLIST = ("NORMAL", "AVERAGE", "HRESOLUTION", "PEAK")
+    _TRIGGER_SWEEP_ALLOWLIST = ("AUTO", "NORMAL")
+    _AWG_FUNC_ALLOWLIST = ("SINusoid", "SQUare", "RAMP", "PULSe", "DC", "NOISe")
+    _BW_LIMIT_MAP = {"20M": "ON", "ON": "ON", "OFF": "OFF"}
+
     # Measurement type mapping for Keysight InfiniiVision 1000X
     _MEAS_MAP = {
         "vpp": "VPP",
@@ -63,6 +70,19 @@ class Keysight_DSOX1204G(DeviceManager):
     def __init__(self, resource_name):
         """Initialize the Keysight DSOX1204G oscilloscope."""
         super().__init__(resource_name)
+        self._cache = {}
+
+    def __enter__(self):
+        """Context manager entry: clear status, disable channels and AWG."""
+        self.clear_status()
+        self.disable_all_channels()
+        self.awg_set_output_enable(False)
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        """Context manager exit: ensure safe state (fires even after exceptions)."""
+        self.disable_all_channels()
+        self.awg_set_output_enable(False)
 
     # ========================================
     # Connection
@@ -90,34 +110,62 @@ class Keysight_DSOX1204G(DeviceManager):
         """Map a user-facing measurement name to its Keysight SCPI measurement string."""
         return self._MEAS_MAP.get(measurement_type.lower(), measurement_type)
 
+    def _write(self, cmd: str, **cache_updates) -> None:
+        """Write a SCPI command and atomically update the cache."""
+        self.instrument.write(cmd)
+        if cache_updates:
+            self._cache.update(cache_updates)
+
     # ========================================
     # Basic Control
     # ========================================
 
     def run(self) -> None:
         """Start running the oscilloscope (continuous acquisition)."""
-        self.instrument.write(":RUN")
+        self._write(":RUN", state="running")
         print("Oscilloscope running")
 
     def stop(self) -> None:
         """Stop the oscilloscope acquisition."""
-        self.instrument.write(":STOP")
+        self._write(":STOP", state="stopped")
         print("Oscilloscope stopped")
 
     def single(self) -> None:
         """Set oscilloscope to single trigger mode and arm for one acquisition."""
-        self.instrument.write(":SINGle")
+        self._write(":SINGle", state="single")
         print("Single trigger armed")
 
     def autoset(self) -> None:
         """Perform an autoscale on the oscilloscope (Keysight uses AUToscale)."""
-        self.instrument.write(":AUToscale")
+        self._write(":AUToscale")
         print("Autoscale executed - optimizing display settings...")
 
     def force_trigger(self) -> None:
         """Generate a trigger signal forcefully (Keysight uses TRIGger:FORCe)."""
-        self.instrument.write(":TRIGger:FORCe")
+        self._write(":TRIGger:FORCe")
         print("Trigger forced")
+
+    def digitize(self, channel: int = None) -> None:
+        """
+        Blocking acquisition -- stops when acquisition completes.
+
+        Args:
+            channel: Channel number (1-4) or None for all displayed channels
+        """
+        if channel is not None:
+            self._validate_channel(channel)
+
+        saved_timeout = self.instrument.timeout
+        self.instrument.timeout = 60000  # 60s for slow triggers
+        try:
+            if channel is not None:
+                self._write(f":DIGitize CHANnel{channel}")
+                print(f"Digitize CH{channel} complete")
+            else:
+                self._write(":DIGitize")
+                print("Digitize complete")
+        finally:
+            self.instrument.timeout = saved_timeout
 
     # ========================================
     # Channel Control
@@ -126,13 +174,13 @@ class Keysight_DSOX1204G(DeviceManager):
     def enable_channel(self, channel: int) -> None:
         """Enable a channel."""
         self._validate_channel(channel)
-        self.instrument.write(f":CHANnel{channel}:DISPlay ON")
+        self._write(f":CHANnel{channel}:DISPlay ON", **{f"ch{channel}_display": True})
         print(f"CH{channel} enabled")
 
     def disable_channel(self, channel: int) -> None:
         """Disable a channel."""
         self._validate_channel(channel)
-        self.instrument.write(f":CHANnel{channel}:DISPlay OFF")
+        self._write(f":CHANnel{channel}:DISPlay OFF", **{f"ch{channel}_display": False})
         print(f"CH{channel} disabled")
 
     def enable_all_channels(self) -> None:
@@ -155,8 +203,8 @@ class Keysight_DSOX1204G(DeviceManager):
             offset: Vertical offset in volts
         """
         self._validate_channel(channel)
-        self.instrument.write(f":CHANnel{channel}:SCALe {volts_per_div}")
-        self.instrument.write(f":CHANnel{channel}:OFFSet {offset}")
+        self._write(f":CHANnel{channel}:SCALe {volts_per_div}", **{f"ch{channel}_scale": volts_per_div})
+        self._write(f":CHANnel{channel}:OFFSet {offset}", **{f"ch{channel}_offset": offset})
         print(f"CH{channel}: {volts_per_div} V/div, offset {offset} V")
 
     def set_vertical_position(self, channel: int, position: float) -> None:
@@ -168,7 +216,7 @@ class Keysight_DSOX1204G(DeviceManager):
             position: Vertical offset in volts
         """
         self._validate_channel(channel)
-        self.instrument.write(f":CHANnel{channel}:OFFSet {position}")
+        self._write(f":CHANnel{channel}:OFFSet {position}", **{f"ch{channel}_offset": position})
         print(f"CH{channel} vertical offset: {position} V")
 
     def get_vertical_position(self, channel: int) -> float:
@@ -209,10 +257,10 @@ class Keysight_DSOX1204G(DeviceManager):
         coupling = coupling.upper()
         if coupling == "GND":
             raise ValueError("Keysight DSOX1204G does not support GND coupling. Use DC or AC.")
-        if coupling not in ("DC", "AC"):
-            raise ValueError("Coupling must be 'DC' or 'AC'")
+        if coupling not in self._COUPLING_ALLOWLIST:
+            raise ValueError(f"Coupling must be one of {self._COUPLING_ALLOWLIST}, got '{coupling}'")
 
-        self.instrument.write(f":CHANnel{channel}:COUPling {coupling}")
+        self._write(f":CHANnel{channel}:COUPling {coupling}", **{f"ch{channel}_coupling": coupling})
         print(f"CH{channel} coupling: {coupling}")
 
     def set_probe_attenuation(self, channel: int, ratio: float) -> None:
@@ -224,7 +272,7 @@ class Keysight_DSOX1204G(DeviceManager):
             ratio: Probe attenuation ratio (e.g., 1, 10, 100)
         """
         self._validate_channel(channel)
-        self.instrument.write(f":CHANnel{channel}:PROBe {ratio}")
+        self._write(f":CHANnel{channel}:PROBe {ratio}", **{f"ch{channel}_probe": ratio})
         print(f"CH{channel} probe ratio: {ratio}X")
 
     def set_channel_label(self, channel: int, label: str, show: bool = True) -> None:
@@ -237,7 +285,9 @@ class Keysight_DSOX1204G(DeviceManager):
             show: True to show label (Keysight shows label when set)
         """
         self._validate_channel(channel)
-        self.instrument.write(f':CHANnel{channel}:LABel "{label}"')
+        if show:
+            self._write(":DISPlay:LABel ON")
+        self._write(f':CHANnel{channel}:LABel "{label}"', **{f"ch{channel}_label": label})
         print(f'CH{channel} label: "{label}"')
 
     def invert_channel(self, channel: int, enable: bool) -> None:
@@ -250,7 +300,7 @@ class Keysight_DSOX1204G(DeviceManager):
         """
         self._validate_channel(channel)
         value = "ON" if enable else "OFF"
-        self.instrument.write(f":CHANnel{channel}:INVert {value}")
+        self._write(f":CHANnel{channel}:INVert {value}", **{f"ch{channel}_inverted": enable})
         state = "inverted" if enable else "normal"
         print(f"CH{channel} display: {state}")
 
@@ -268,13 +318,14 @@ class Keysight_DSOX1204G(DeviceManager):
         self._validate_channel(channel)
         limit = limit.upper()
 
-        # Map Rigol-style "20M" to Keysight "ON"
-        bw_map = {"20M": "ON", "ON": "ON", "OFF": "OFF"}
-        if limit not in bw_map:
-            raise ValueError(f"Limit must be '20M', 'ON', or 'OFF', got {limit}")
+        if limit not in self._BW_LIMIT_MAP:
+            raise ValueError(f"Limit must be one of {tuple(self._BW_LIMIT_MAP.keys())}, got '{limit}'")
 
-        keysight_limit = bw_map[limit]
-        self.instrument.write(f":CHANnel{channel}:BWLimit {keysight_limit}")
+        keysight_limit = self._BW_LIMIT_MAP[limit]
+        self._write(
+            f":CHANnel{channel}:BWLimit {keysight_limit}",
+            **{f"ch{channel}_bwlimit": keysight_limit},
+        )
         print(f"CH{channel} bandwidth limit: {keysight_limit}")
 
     # ========================================
@@ -288,7 +339,7 @@ class Keysight_DSOX1204G(DeviceManager):
         Args:
             seconds_per_div: Time per division in seconds
         """
-        self.instrument.write(f":TIMebase:SCALe {seconds_per_div}")
+        self._write(f":TIMebase:SCALe {seconds_per_div}", timebase_scale=seconds_per_div)
         print(f"Timebase: {seconds_per_div} s/div")
 
     def set_horizontal_offset(self, offset: float) -> None:
@@ -300,7 +351,7 @@ class Keysight_DSOX1204G(DeviceManager):
         Args:
             offset: Time offset in seconds
         """
-        self.instrument.write(f":TIMebase:POSition {offset}")
+        self._write(f":TIMebase:POSition {offset}", timebase_position=offset)
         print(f"Horizontal position: {offset} s")
 
     def set_horizontal_position(self, offset: float) -> None:
@@ -328,6 +379,47 @@ class Keysight_DSOX1204G(DeviceManager):
         new_pos = current_pos + delta
         self.set_horizontal_offset(new_pos)
         print(f"Horizontal position moved to: {new_pos:.6f} s")
+
+    _TIMEBASE_MODE_ALLOWLIST = ("MAIN", "WINDOW", "XY", "ROLL")
+    _TIMEBASE_REF_ALLOWLIST = ("LEFT", "CENTER", "RIGHT")
+
+    def set_timebase_mode(self, mode: str) -> None:
+        """
+        Set the timebase mode.
+
+        Args:
+            mode: 'MAIN', 'WINDow', 'XY', or 'ROLL'
+        """
+        mode_upper = mode.upper()
+        if mode_upper not in self._TIMEBASE_MODE_ALLOWLIST:
+            raise ValueError(f"Timebase mode must be one of {self._TIMEBASE_MODE_ALLOWLIST}, got '{mode}'")
+        mode_map = {"MAIN": "MAIN", "WINDOW": "WINDow", "XY": "XY", "ROLL": "ROLL"}
+        self._write(f":TIMebase:MODE {mode_map[mode_upper]}", timebase_mode=mode_upper)
+        print(f"Timebase mode: {mode_upper}")
+
+    def get_timebase_mode(self) -> str:
+        """Query the current timebase mode."""
+        response = self.instrument.query(":TIMebase:MODE?")
+        return response.strip()
+
+    def set_timebase_reference(self, ref: str) -> None:
+        """
+        Set the timebase reference position.
+
+        Args:
+            ref: 'LEFT', 'CENTer', or 'RIGHt'
+        """
+        ref_upper = ref.upper()
+        if ref_upper not in self._TIMEBASE_REF_ALLOWLIST:
+            raise ValueError(f"Timebase reference must be one of {self._TIMEBASE_REF_ALLOWLIST}, got '{ref}'")
+        ref_map = {"LEFT": "LEFT", "CENTER": "CENTer", "RIGHT": "RIGHt"}
+        self._write(f":TIMebase:REFerence {ref_map[ref_upper]}", timebase_reference=ref_upper)
+        print(f"Timebase reference: {ref_upper}")
+
+    def get_timebase_reference(self) -> str:
+        """Query the current timebase reference position."""
+        response = self.instrument.query(":TIMebase:REFerence?")
+        return response.strip()
 
     # ========================================
     # Trigger Control
@@ -361,11 +453,11 @@ class Keysight_DSOX1204G(DeviceManager):
         mode_map = {"AUTO": "AUTO", "NORMAL": "NORMal", "SINGLE": "NORMal"}
         sweep_cmd = mode_map.get(mode_upper, "AUTO")
 
-        self.instrument.write(":TRIGger:MODE EDGE")
-        self.instrument.write(f":TRIGger:EDGE:SOURce CHANnel{channel}")
-        self.instrument.write(f":TRIGger:EDGE:SLOPe {slope_cmd}")
-        self.instrument.write(f":TRIGger:EDGE:LEVel {level},CHANnel{channel}")
-        self.instrument.write(f":TRIGger:SWEep {sweep_cmd}")
+        self._write(":TRIGger:MODE EDGE", trigger_mode="EDGE")
+        self._write(f":TRIGger:EDGE:SOURce CHANnel{channel}", trigger_source=channel)
+        self._write(f":TRIGger:EDGE:SLOPe {slope_cmd}", trigger_slope=slope_cmd)
+        self._write(f":TRIGger:EDGE:LEVel {level},CHANnel{channel}", trigger_level=level)
+        self._write(f":TRIGger:SWEep {sweep_cmd}", trigger_sweep=sweep_cmd)
 
         # If SINGLE mode requested, also arm single shot
         if mode_upper == "SINGLE":
@@ -381,12 +473,60 @@ class Keysight_DSOX1204G(DeviceManager):
             sweep: 'AUTO' or 'NORMal'
         """
         sweep = sweep.upper()
-        if sweep not in ("AUTO", "NORMAL"):
-            raise ValueError(f"Sweep must be 'AUTO' or 'NORMal', got {sweep}")
+        if sweep not in self._TRIGGER_SWEEP_ALLOWLIST:
+            raise ValueError(f"Sweep must be one of {self._TRIGGER_SWEEP_ALLOWLIST}, got '{sweep}'")
 
         sweep_cmd = "NORMal" if sweep == "NORMAL" else "AUTO"
-        self.instrument.write(f":TRIGger:SWEep {sweep_cmd}")
+        self._write(f":TRIGger:SWEep {sweep_cmd}", trigger_sweep=sweep_cmd)
         print(f"Trigger sweep mode: {sweep}")
+
+    _TRIGGER_COUPLING_ALLOWLIST = ("AC", "DC", "LFREJECT")
+
+    def set_trigger_holdoff(self, holdoff: float) -> None:
+        """
+        Set trigger holdoff time.
+
+        Args:
+            holdoff: Holdoff time in seconds (minimum 60 ns)
+        """
+        if holdoff < 60e-9:
+            raise ValueError(f"Holdoff must be >= 60 ns, got {holdoff}")
+        self._write(f":TRIGger:HOLDoff {holdoff}", trigger_holdoff=holdoff)
+        print(f"Trigger holdoff: {holdoff} s")
+
+    def get_trigger_holdoff(self) -> float:
+        """Query the current trigger holdoff time."""
+        response = self.instrument.query(":TRIGger:HOLDoff?")
+        return float(response.strip())
+
+    def set_trigger_noise_reject(self, enable: bool) -> None:
+        """Enable or disable trigger noise reject filter."""
+        val = 1 if enable else 0
+        self._write(f":TRIGger:NREJect {val}", trigger_nreject=enable)
+        print(f"Trigger noise reject: {'ON' if enable else 'OFF'}")
+
+    def set_trigger_hf_reject(self, enable: bool) -> None:
+        """Enable or disable trigger high-frequency reject filter."""
+        val = 1 if enable else 0
+        self._write(f":TRIGger:HFReject {val}", trigger_hfreject=enable)
+        print(f"Trigger HF reject: {'ON' if enable else 'OFF'}")
+
+    def set_trigger_coupling(self, coupling: str) -> None:
+        """
+        Set trigger coupling mode.
+
+        Args:
+            coupling: 'AC', 'DC', or 'LFReject'
+        """
+        coupling_upper = coupling.upper()
+        if coupling_upper not in self._TRIGGER_COUPLING_ALLOWLIST:
+            raise ValueError(f"Trigger coupling must be one of {self._TRIGGER_COUPLING_ALLOWLIST}, got '{coupling}'")
+        coupling_map = {"AC": "AC", "DC": "DC", "LFREJECT": "LFReject"}
+        self._write(
+            f":TRIGger:EDGE:COUPling {coupling_map[coupling_upper]}",
+            trigger_coupling=coupling_upper,
+        )
+        print(f"Trigger coupling: {coupling_upper}")
 
     def get_trigger_status(self) -> str:
         """
@@ -467,12 +607,34 @@ class Keysight_DSOX1204G(DeviceManager):
         """
         self._validate_channel(channel)
         meas_type = self._resolve_meas_type(measurement_type)
-        self.instrument.write(f":MEASure:{meas_type} CHANnel{channel}")
+        self._write(f":MEASure:{meas_type} CHANnel{channel}")
 
     def clear_measurements(self) -> None:
         """Clear all measurement items from the display."""
-        self.instrument.write(":MEASure:CLEar")
+        self._write(":MEASure:CLEar")
         print("Measurement items cleared from display")
+
+    def set_measurement_statistics(self, enable: bool) -> None:
+        """Enable or disable measurement statistics display."""
+        # Keysight 1000X uses :MEASure:STATistics:DISPlay ON|OFF
+        state = "ON" if enable else "OFF"
+        self._write(f":MEASure:STATistics:DISPlay {state}", meas_statistics=enable)
+        print(f"Measurement statistics: {state}")
+
+    def reset_measurement_statistics(self) -> None:
+        """Reset all measurement statistics."""
+        self._write(":MEASure:STATistics:RESet")
+        print("Measurement statistics reset")
+
+    def get_measurement_results(self) -> str:
+        """
+        Query all active measurement results.
+
+        Returns:
+            str: Raw results string from the instrument
+        """
+        response = self.instrument.query(":MEASure:RESults?")
+        return response.strip()
 
     def measure_delay(
         self,
@@ -526,6 +688,66 @@ class Keysight_DSOX1204G(DeviceManager):
         """Measure amplitude (Vtop - Vbase)."""
         return self.measure(channel, "VAMPlitude")
 
+    def measure_peak_to_peak(self, channel: int) -> float:
+        """Measure peak-to-peak voltage (alias for measure_vpp)."""
+        return self.measure(channel, "VPP")
+
+    def measure_rms(self, channel: int) -> float:
+        """Measure RMS voltage (alias for measure_vrms)."""
+        return self.measure(channel, "VRMS")
+
+    def measure_mean(self, channel: int) -> float:
+        """Measure mean (average) voltage."""
+        return self.measure(channel, "VAVerage")
+
+    def measure_rise_time(self, channel: int) -> float:
+        """Measure rise time."""
+        return self.measure(channel, "RISetime")
+
+    def measure_fall_time(self, channel: int) -> float:
+        """Measure fall time."""
+        return self.measure(channel, "FALLtime")
+
+    def measure_duty_cycle(self, channel: int) -> float:
+        """Measure duty cycle in percent."""
+        return self.measure(channel, "DUTYcycle")
+
+    def measure_pos_width(self, channel: int) -> float:
+        """Measure positive pulse width."""
+        return self.measure(channel, "PWIDth")
+
+    def measure_neg_width(self, channel: int) -> float:
+        """Measure negative pulse width."""
+        return self.measure(channel, "NWIDth")
+
+    def measure_overshoot(self, channel: int) -> float:
+        """Measure overshoot in percent."""
+        return self.measure(channel, "OVERshoot")
+
+    def measure_preshoot(self, channel: int) -> float:
+        """Measure preshoot in percent."""
+        return self.measure(channel, "PREShoot")
+
+    def measure_counter(self, channel: int = None) -> float:
+        """
+        Read the hardware frequency counter (higher accuracy than measure_frequency).
+
+        Args:
+            channel: Channel number (1-4) or None for current source
+
+        Returns:
+            float: Frequency in Hz
+        """
+        if channel is not None:
+            self._validate_channel(channel)
+            response = self.instrument.query(f":MEASure:COUNter? CHANnel{channel}")
+        else:
+            response = self.instrument.query(":MEASure:COUNter?")
+        try:
+            return float(response.strip())
+        except (ValueError, TypeError):
+            return float("nan")
+
     # ========================================
     # Waveform Acquisition
     # ========================================
@@ -572,10 +794,10 @@ class Keysight_DSOX1204G(DeviceManager):
         mode = mode.upper()
 
         # Configure waveform acquisition
-        self.instrument.write(f":WAVeform:SOURce CHANnel{channel}")
+        self._write(f":WAVeform:SOURce CHANnel{channel}", waveform_source=channel)
         # Keysight uses :WAVeform:POINts:MODE (not :WAVeform:MODE)
-        self.instrument.write(f":WAVeform:POINts:MODE {mode}")
-        self.instrument.write(":WAVeform:FORMat BYTE")
+        self._write(f":WAVeform:POINts:MODE {mode}", waveform_points_mode=mode)
+        self._write(":WAVeform:FORMat BYTE", waveform_format="BYTE")
 
         # Get preamble (scaling parameters)
         preamble = self.get_waveform_preamble()
@@ -720,6 +942,32 @@ class Keysight_DSOX1204G(DeviceManager):
         channels_list = ",".join(str(ch) for ch in sorted(channel_data.keys()))
         print(f"Waveforms from CH{channels_list} saved to {filename}")
 
+    def get_waveform_data(self, channel: int) -> list:
+        """
+        Get raw waveform data as a list of byte values (REPL-compatible).
+
+        Args:
+            channel: Channel number (1-4)
+
+        Returns:
+            list: Raw byte values (0-255)
+        """
+        waveform = self.acquire_waveform(channel)
+        return waveform.voltage.tolist()
+
+    def get_waveform_scaled(self, channel: int) -> tuple:
+        """
+        Get scaled waveform data as (time_list, voltage_list) tuple (REPL-compatible).
+
+        Args:
+            channel: Channel number (1-4)
+
+        Returns:
+            tuple: (time_values, voltage_values) as Python lists
+        """
+        waveform = self.acquire_waveform(channel)
+        return waveform.time.tolist(), waveform.voltage.tolist()
+
     # ========================================
     # Display Control
     # ========================================
@@ -738,7 +986,7 @@ class Keysight_DSOX1204G(DeviceManager):
 
     def clear_display(self) -> None:
         """Clear all waveforms on the screen."""
-        self.instrument.write(":DISPlay:CLEar")
+        self._write(":DISPlay:CLEar")
         print("Display cleared")
 
     def set_waveform_brightness(self, brightness: int) -> None:
@@ -751,18 +999,28 @@ class Keysight_DSOX1204G(DeviceManager):
         if brightness < 1 or brightness > 100:
             raise ValueError(f"Brightness must be between 1 and 100, got {brightness}")
 
-        self.instrument.write(f":DISPlay:INTensity:WAVeform {brightness}")
+        self._write(f":DISPlay:INTensity:WAVeform {brightness}", display_brightness=brightness)
         print(f"Waveform brightness set to {brightness}%")
+
+    _PERSISTENCE_MAP = {
+        "MIN": "MINimum",
+        "MINIMUM": "MINimum",
+        "INF": "INFinite",
+        "INFINITE": "INFinite",
+        "OFF": "MINimum",
+        "CLEAR": "MINimum",
+    }
 
     def set_persistence(self, time_val: str) -> None:
         """
         Set the waveform persistence time.
 
         Args:
-            time_val: Persistence time value
+            time_val: 'MIN', 'INF', or a numeric seconds value
         """
-        self.instrument.write(f":DISPlay:PERSistence {time_val}")
-        print(f"Persistence set to {time_val}")
+        mapped = self._PERSISTENCE_MAP.get(time_val.upper(), time_val)
+        self._write(f":DISPlay:PERSistence {mapped}", display_persistence=mapped)
+        print(f"Persistence set to {mapped}")
 
     def set_display_type(self, display_type: str) -> None:
         """
@@ -771,7 +1029,7 @@ class Keysight_DSOX1204G(DeviceManager):
         Args:
             display_type: Display type (e.g., 'VECTORS')
         """
-        self.instrument.write(":DISPlay:VECTors ON")
+        self._write(":DISPlay:VECTors ON", display_vectors=True)
         print("Display type set to VECTORS")
 
     # ========================================
@@ -786,11 +1044,10 @@ class Keysight_DSOX1204G(DeviceManager):
             acq_type: 'NORMal', 'AVERage', 'HRESolution', or 'PEAK'
         """
         acq_type = acq_type.upper()
-        valid_types = ["NORMAL", "AVERAGE", "HRESOLUTION", "PEAK"]
-        if acq_type not in valid_types:
-            raise ValueError(f"Acquisition type must be one of {valid_types}, got {acq_type}")
+        if acq_type not in self._ACQ_TYPE_ALLOWLIST:
+            raise ValueError(f"Acquisition type must be one of {self._ACQ_TYPE_ALLOWLIST}, got '{acq_type}'")
 
-        self.instrument.write(f":ACQuire:TYPE {acq_type}")
+        self._write(f":ACQuire:TYPE {acq_type}", acq_type=acq_type)
         print(f"Acquisition type set to {acq_type}")
 
     def set_average_count(self, count: int) -> None:
@@ -800,7 +1057,7 @@ class Keysight_DSOX1204G(DeviceManager):
         Args:
             count: Number of averages
         """
-        self.instrument.write(f":ACQuire:COUNt {count}")
+        self._write(f":ACQuire:COUNt {count}", acq_count=count)
         print(f"Average count set to {count}")
 
     def get_sample_rate(self) -> float:
@@ -815,6 +1072,55 @@ class Keysight_DSOX1204G(DeviceManager):
         print(f"Sample rate: {sample_rate:.3e} Sa/s")
         return sample_rate
 
+    _ACQ_MODE_ALLOWLIST = ("RTIM", "SEGM")
+
+    def set_acquisition_mode(self, mode: str) -> None:
+        """
+        Set acquisition mode.
+
+        Args:
+            mode: 'RTIM' (real-time) or 'SEGM' (segmented)
+        """
+        mode = mode.upper()
+        if mode not in self._ACQ_MODE_ALLOWLIST:
+            raise ValueError(f"Acquisition mode must be one of {self._ACQ_MODE_ALLOWLIST}, got '{mode}'")
+        self._write(f":ACQuire:MODE {mode}", acq_mode=mode)
+        print(f"Acquisition mode: {mode}")
+
+    def set_segment_count(self, count: int) -> None:
+        """
+        Set the number of segments for segmented acquisition.
+
+        Args:
+            count: Number of segments (>= 2)
+        """
+        if count < 2:
+            raise ValueError(f"Segment count must be >= 2, got {count}")
+        self._write(f":ACQuire:SEGMented:COUNt {count}", segment_count=count)
+        print(f"Segment count: {count}")
+
+    def get_segment_count(self) -> int:
+        """Query the current segment count."""
+        response = self.instrument.query(":ACQuire:SEGMented:COUNt?")
+        return int(float(response.strip()))
+
+    def set_segment_index(self, index: int) -> None:
+        """
+        Select a segment for waveform readback.
+
+        Args:
+            index: Segment index (1-based)
+        """
+        if index < 1:
+            raise ValueError(f"Segment index must be >= 1, got {index}")
+        self._write(f":ACQuire:SEGMented:INDex {index}", segment_index=index)
+        print(f"Segment index: {index}")
+
+    def get_segment_index(self) -> int:
+        """Query the current segment index."""
+        response = self.instrument.query(":ACQuire:SEGMented:INDex?")
+        return int(float(response.strip()))
+
     # ========================================
     # AWG (WGEN subsystem -- G-suffix models)
     # ========================================
@@ -827,7 +1133,7 @@ class Keysight_DSOX1204G(DeviceManager):
             enable: True to enable output, False to disable
         """
         state = 1 if enable else 0
-        self.instrument.write(f":WGEN:OUTPut {state}")
+        self._write(f":WGEN:OUTPut {state}", awg_output=enable)
         print(f"AWG output {'enabled' if enable else 'disabled'}")
 
     def awg_set_function(self, function: str) -> None:
@@ -837,11 +1143,10 @@ class Keysight_DSOX1204G(DeviceManager):
         Args:
             function: 'SINusoid', 'SQUare', 'RAMP', 'PULSe', 'DC', or 'NOISe'
         """
-        valid_functions = ["SINusoid", "SQUare", "RAMP", "PULSe", "DC", "NOISe"]
-        if function not in valid_functions:
-            raise ValueError(f"Function must be one of {valid_functions}, got '{function}'")
+        if function not in self._AWG_FUNC_ALLOWLIST:
+            raise ValueError(f"Function must be one of {self._AWG_FUNC_ALLOWLIST}, got '{function}'")
 
-        self.instrument.write(f":WGEN:FUNCtion {function}")
+        self._write(f":WGEN:FUNCtion {function}", awg_function=function)
         print(f"AWG function set to {function}")
 
     def awg_set_frequency(self, freq: float) -> None:
@@ -851,7 +1156,7 @@ class Keysight_DSOX1204G(DeviceManager):
         Args:
             freq: Frequency in Hz
         """
-        self.instrument.write(f":WGEN:FREQuency {freq}")
+        self._write(f":WGEN:FREQuency {freq}", awg_frequency=freq)
         print(f"AWG frequency set to {freq} Hz")
 
     def awg_set_amplitude(self, amp: float) -> None:
@@ -861,7 +1166,7 @@ class Keysight_DSOX1204G(DeviceManager):
         Args:
             amp: Amplitude in volts (Vpp)
         """
-        self.instrument.write(f":WGEN:VOLTage {amp}")
+        self._write(f":WGEN:VOLTage {amp}", awg_amplitude=amp)
         print(f"AWG amplitude set to {amp} Vpp")
 
     def awg_set_offset(self, offset: float) -> None:
@@ -871,7 +1176,7 @@ class Keysight_DSOX1204G(DeviceManager):
         Args:
             offset: DC offset in volts
         """
-        self.instrument.write(f":WGEN:VOLTage:OFFSet {offset}")
+        self._write(f":WGEN:VOLTage:OFFSet {offset}", awg_offset=offset)
         print(f"AWG offset set to {offset} V")
 
     def awg_set_square_duty(self, duty: float) -> None:
@@ -881,7 +1186,7 @@ class Keysight_DSOX1204G(DeviceManager):
         Args:
             duty: Duty cycle percentage
         """
-        self.instrument.write(f":WGEN:FUNCtion:SQUare:DCYCle {duty}")
+        self._write(f":WGEN:FUNCtion:SQUare:DCYCle {duty}", awg_square_duty=duty)
         print(f"AWG square duty cycle set to {duty}%")
 
     def awg_set_ramp_symmetry(self, sym: float) -> None:
@@ -891,7 +1196,7 @@ class Keysight_DSOX1204G(DeviceManager):
         Args:
             sym: Symmetry percentage
         """
-        self.instrument.write(f":WGEN:FUNCtion:RAMP:SYMMetry {sym}")
+        self._write(f":WGEN:FUNCtion:RAMP:SYMMetry {sym}", awg_ramp_symmetry=sym)
         print(f"AWG ramp symmetry set to {sym}%")
 
     def awg_configure_simple(
@@ -929,6 +1234,39 @@ class Keysight_DSOX1204G(DeviceManager):
 
         print("AWG configured successfully")
 
+    _WGEN_MOD_TYPE_ALLOWLIST = ("AM", "FM", "FSK")
+
+    def awg_set_modulation_enable(self, enable: bool) -> None:
+        """Enable or disable AWG modulation."""
+        val = 1 if enable else 0
+        self._write(f":WGEN:MODulation:STATe {val}", awg_mod_enable=enable)
+        print(f"AWG modulation: {'ON' if enable else 'OFF'}")
+
+    def awg_set_modulation_type(self, mod_type: str) -> None:
+        """
+        Set AWG modulation type.
+
+        Args:
+            mod_type: 'AM', 'FM', or 'FSK'
+        """
+        mod_type = mod_type.upper()
+        if mod_type not in self._WGEN_MOD_TYPE_ALLOWLIST:
+            raise ValueError(f"Modulation type must be one of {self._WGEN_MOD_TYPE_ALLOWLIST}, got '{mod_type}'")
+        self._write(f":WGEN:MODulation:TYPE {mod_type}", awg_mod_type=mod_type)
+        print(f"AWG modulation type: {mod_type}")
+
+    def awg_set_pulse_width(self, width: float) -> None:
+        """
+        Set AWG pulse width.
+
+        Args:
+            width: Pulse width in seconds (must be > 0)
+        """
+        if width <= 0:
+            raise ValueError(f"Pulse width must be > 0, got {width}")
+        self._write(f":WGEN:FUNCtion:PULSe:WIDTh {width}", awg_pulse_width=width)
+        print(f"AWG pulse width: {width} s")
+
     # ========================================
     # DVM (Digital Voltmeter)
     # ========================================
@@ -941,7 +1279,7 @@ class Keysight_DSOX1204G(DeviceManager):
             enable: True to enable, False to disable
         """
         state = "ON" if enable else "OFF"
-        self.instrument.write(f":DVM:ENABle {state}")
+        self._write(f":DVM:ENABle {state}", dvm_enable=enable)
         print(f"DVM {'enabled' if enable else 'disabled'}")
 
     def get_dvm_current(self) -> float:
@@ -963,9 +1301,8 @@ class Keysight_DSOX1204G(DeviceManager):
         Args:
             source: Channel number (1-4)
         """
-        if source not in (1, 2, 3, 4):
-            raise ValueError(f"Source must be 1-4, got {source}")
-        self.instrument.write(f":DVM:SOURce CHANnel{source}")
+        self._validate_channel(source)
+        self._write(f":DVM:SOURce CHANnel{source}", dvm_source=source)
         print(f"DVM source set to CH{source}")
 
     def set_dvm_mode(self, mode: str) -> None:
@@ -975,7 +1312,7 @@ class Keysight_DSOX1204G(DeviceManager):
         Args:
             mode: DVM mode (e.g., 'DC', 'ACRMs', 'DCRMS')
         """
-        self.instrument.write(f":DVM:MODE {mode}")
+        self._write(f":DVM:MODE {mode}", dvm_mode=mode)
         print(f"DVM mode set to {mode}")
 
     # ========================================
@@ -993,7 +1330,7 @@ class Keysight_DSOX1204G(DeviceManager):
             enable: True to enable, False to disable
         """
         state = "ON" if enable else "OFF"
-        self.instrument.write(f":FUNCtion:DISPlay {state}")
+        self._write(f":FUNCtion:DISPlay {state}", math_display=enable)
         print(f"Math channel {'enabled' if enable else 'disabled'}")
 
     def configure_math_operation(self, math_ch: int, operation: str, source1: str, source2: str = None) -> None:
@@ -1014,15 +1351,15 @@ class Keysight_DSOX1204G(DeviceManager):
         operation = operation.upper()
         scpi_op = op_map.get(operation, operation)
 
-        self.instrument.write(f":FUNCtion:OPERation {scpi_op}")
+        self._write(f":FUNCtion:OPERation {scpi_op}", math_operation=scpi_op)
 
         # Set sources
         scpi_source1 = source1.upper().replace("CHAN", "CHANnel")
-        self.instrument.write(f":FUNCtion:SOURce1 {scpi_source1}")
+        self._write(f":FUNCtion:SOURce1 {scpi_source1}", math_source1=scpi_source1)
 
         if source2:
             scpi_source2 = source2.upper().replace("CHAN", "CHANnel")
-            self.instrument.write(f":FUNCtion:SOURce2 {scpi_source2}")
+            self._write(f":FUNCtion:SOURce2 {scpi_source2}", math_source2=scpi_source2)
 
         print(f"Math configured: {source1} {operation} {source2 if source2 else ''}")
 
@@ -1035,9 +1372,9 @@ class Keysight_DSOX1204G(DeviceManager):
             function: 'INTG', 'DIFF', 'SQRT', etc.
             source: Source channel (e.g., 'CHAN1')
         """
-        self.instrument.write(f":FUNCtion:OPERation {function}")
+        self._write(f":FUNCtion:OPERation {function}", math_operation=function)
         scpi_source = source.upper().replace("CHAN", "CHANnel")
-        self.instrument.write(f":FUNCtion:SOURce1 {scpi_source}")
+        self._write(f":FUNCtion:SOURce1 {scpi_source}", math_source1=scpi_source)
         print(f"Math configured: {function}({source})")
 
     def configure_fft(self, math_ch: int, source: str, window: str = "RECT") -> None:
@@ -1049,9 +1386,9 @@ class Keysight_DSOX1204G(DeviceManager):
             source: Source channel (e.g., 'CHAN1')
             window: FFT window ('RECT', 'HANN', 'FLAT', 'BLAC')
         """
-        self.instrument.write(":FUNCtion:OPERation FFT")
+        self._write(":FUNCtion:OPERation FFT", math_operation="FFT")
         scpi_source = source.upper().replace("CHAN", "CHANnel")
-        self.instrument.write(f":FUNCtion:SOURce1 {scpi_source}")
+        self._write(f":FUNCtion:SOURce1 {scpi_source}", math_source1=scpi_source)
 
         window_map = {
             "RECT": "RECTangular",
@@ -1061,7 +1398,7 @@ class Keysight_DSOX1204G(DeviceManager):
             "BLACK": "BLACkman",
         }
         scpi_window = window_map.get(window.upper(), window)
-        self.instrument.write(f":FUNCtion:FFT:WINDow {scpi_window}")
+        self._write(f":FUNCtion:FFT:WINDow {scpi_window}", math_fft_window=scpi_window)
         print(f"FFT configured: source={source}, window={window}")
 
     def set_math_scale(self, math_ch: int, scale: float, offset: float = None) -> None:
@@ -1073,9 +1410,9 @@ class Keysight_DSOX1204G(DeviceManager):
             scale: Vertical scale (V/div)
             offset: Vertical offset (optional)
         """
-        self.instrument.write(f":FUNCtion:SCALe {scale}")
+        self._write(f":FUNCtion:SCALe {scale}", math_scale=scale)
         if offset is not None:
-            self.instrument.write(f":FUNCtion:OFFSet {offset}")
+            self._write(f":FUNCtion:OFFSet {offset}", math_offset=offset)
             print(f"Math scale: {scale} V/div, offset: {offset} V")
         else:
             print(f"Math scale: {scale} V/div")
@@ -1092,7 +1429,7 @@ class Keysight_DSOX1204G(DeviceManager):
             enable: True to enable, False to disable
         """
         state = "ON" if enable else "OFF"
-        self.instrument.write(f":MTESt:ENABle {state}")
+        self._write(f":MTESt:ENABle {state}", mask_enable=enable)
         status = "enabled" if enable else "disabled"
         print(f"Mask testing {status}")
 
@@ -1115,7 +1452,7 @@ class Keysight_DSOX1204G(DeviceManager):
             channel: Channel number (1-4)
         """
         self._validate_channel(channel)
-        self.instrument.write(f":MTESt:SOURce CHANnel{channel}")
+        self._write(f":MTESt:SOURce CHANnel{channel}", mask_source=channel)
         print(f"Mask test source set to CH{channel}")
 
     def get_mask_source(self) -> str:
@@ -1135,7 +1472,7 @@ class Keysight_DSOX1204G(DeviceManager):
         Args:
             tol: Horizontal tolerance in divisions
         """
-        self.instrument.write(f":MTESt:AMASk:XDELta {tol}")
+        self._write(f":MTESt:AMASk:XDELta {tol}", mask_tolerance_x=tol)
         print(f"Mask horizontal tolerance: {tol}")
 
     def set_mask_tolerance_y(self, tol: float) -> None:
@@ -1145,22 +1482,22 @@ class Keysight_DSOX1204G(DeviceManager):
         Args:
             tol: Vertical tolerance in divisions
         """
-        self.instrument.write(f":MTESt:AMASk:YDELta {tol}")
+        self._write(f":MTESt:AMASk:YDELta {tol}", mask_tolerance_y=tol)
         print(f"Mask vertical tolerance: {tol}")
 
     def create_mask(self) -> None:
         """Create a mask from the current waveform using auto mask."""
-        self.instrument.write(":MTESt:AMASk:CREate")
+        self._write(":MTESt:AMASk:CREate")
         print("Mask created from current waveform")
 
     def start_mask_test(self) -> None:
         """Start the mask test."""
-        self.instrument.write(":MTESt:ENABle ON")
+        self._write(":MTESt:ENABle ON", mask_enable=True)
         print("Mask test started")
 
     def stop_mask_test(self) -> None:
         """Stop the mask test."""
-        self.instrument.write(":MTESt:ENABle OFF")
+        self._write(":MTESt:ENABle OFF", mask_enable=False)
         print("Mask test stopped")
 
     def get_mask_failed_count(self) -> int:
@@ -1215,8 +1552,9 @@ class Keysight_DSOX1204G(DeviceManager):
         return {"passed": passed, "failed": failed, "total": total}
 
     def reset_mask_statistics(self) -> None:
-        """Reset the mask test statistics counters."""
-        self.instrument.write(":MTESt:COUNt:RESet")
+        """Reset the mask test statistics by toggling mask off and on."""
+        self._write(":MTESt:ENABle OFF", mask_enable=False)
+        self._write(":MTESt:ENABle ON", mask_enable=True)
         print("Mask statistics reset")
 
     def get_mask_test_status(self) -> str:
@@ -1232,18 +1570,114 @@ class Keysight_DSOX1204G(DeviceManager):
         return status
 
     # ========================================
+    # Cursor Measurements (:MARKer subsystem)
+    # ========================================
+
+    _CURSOR_MODE_ALLOWLIST = ("OFF", "MANual", "WAVeform", "MEASurement")
+
+    def set_cursor_mode(self, mode: str) -> None:
+        """
+        Set cursor mode.
+
+        Args:
+            mode: 'OFF', 'MANual', 'WAVeform', or 'MEASurement'
+        """
+        if mode not in self._CURSOR_MODE_ALLOWLIST:
+            raise ValueError(f"Cursor mode must be one of {self._CURSOR_MODE_ALLOWLIST}, got '{mode}'")
+        self._write(f":MARKer:MODE {mode}", cursor_mode=mode)
+        print(f"Cursor mode: {mode}")
+
+    def set_cursor_source(self, channel: int) -> None:
+        """
+        Set cursor source channel (both X1Y1 and X2Y2).
+
+        Args:
+            channel: Channel number (1-4)
+        """
+        self._validate_channel(channel)
+        self._write(f":MARKer:X1Y1source CHANnel{channel}", cursor_source=channel)
+        self._write(f":MARKer:X2Y2source CHANnel{channel}")
+
+    def set_cursor_x1_position(self, position: float) -> None:
+        """Set X1 cursor position in seconds."""
+        self._write(f":MARKer:X1Position {position}", cursor_x1=position)
+
+    def set_cursor_x2_position(self, position: float) -> None:
+        """Set X2 cursor position in seconds."""
+        self._write(f":MARKer:X2Position {position}", cursor_x2=position)
+
+    def set_cursor_y1_position(self, position: float) -> None:
+        """Set Y1 cursor position in volts."""
+        self._write(f":MARKer:Y1Position {position}", cursor_y1=position)
+
+    def set_cursor_y2_position(self, position: float) -> None:
+        """Set Y2 cursor position in volts."""
+        self._write(f":MARKer:Y2Position {position}", cursor_y2=position)
+
+    def get_cursor_x_delta(self) -> float:
+        """Get the delta between X1 and X2 cursors in seconds."""
+        response = self.instrument.query(":MARKer:XDELta?")
+        return float(response.strip())
+
+    def get_cursor_y_delta(self) -> float:
+        """Get the delta between Y1 and Y2 cursors in volts."""
+        response = self.instrument.query(":MARKer:YDELta?")
+        return float(response.strip())
+
+    def set_manual_cursor_positions(
+        self,
+        x1: float = None,
+        y1: float = None,
+        x2: float = None,
+        y2: float = None,
+    ) -> None:
+        """
+        Set one or more cursor positions at once.
+
+        Args:
+            x1: X1 cursor position in seconds
+            y1: Y1 cursor position in volts
+            x2: X2 cursor position in seconds
+            y2: Y2 cursor position in volts
+        """
+        if x1 is not None:
+            self.set_cursor_x1_position(x1)
+        if y1 is not None:
+            self.set_cursor_y1_position(y1)
+        if x2 is not None:
+            self.set_cursor_x2_position(x2)
+        if y2 is not None:
+            self.set_cursor_y2_position(y2)
+
+    def get_manual_cursor_values(self) -> dict:
+        """
+        Query all cursor positions and deltas.
+
+        Returns:
+            dict: Keys x1, y1, x2, y2, dx, dy
+        """
+        x1 = float(self.instrument.query(":MARKer:X1Position?").strip())
+        y1 = float(self.instrument.query(":MARKer:Y1Position?").strip())
+        x2 = float(self.instrument.query(":MARKer:X2Position?").strip())
+        y2 = float(self.instrument.query(":MARKer:Y2Position?").strip())
+        dx = float(self.instrument.query(":MARKer:XDELta?").strip())
+        dy = float(self.instrument.query(":MARKer:YDELta?").strip())
+        return {"x1": x1, "y1": y1, "x2": x2, "y2": y2, "dx": dx, "dy": dy}
+
+    # ========================================
     # System Commands
     # ========================================
 
     def reset(self) -> None:
         """Reset oscilloscope to factory default settings."""
-        self.instrument.write("*RST")
-        self.instrument.write("*CLS")
+        self._write("*RST")
+        self._write("*CLS")
+        self._cache.clear()
         print("Oscilloscope reset to factory defaults")
 
     def clear_status(self) -> None:
         """Clear status byte and error queue."""
-        self.instrument.write("*CLS")
+        self._write("*CLS")
         print("Status cleared")
 
     def get_error(self) -> str:
@@ -1254,4 +1688,114 @@ class Keysight_DSOX1204G(DeviceManager):
             str: Error message string
         """
         response = self.instrument.query(":SYSTem:ERRor?")
+        return response.strip()
+
+    def save_setup(self, slot: int) -> None:
+        """
+        Save the current instrument setup to a memory slot.
+
+        Args:
+            slot: Memory slot (0-9)
+        """
+        if not 0 <= slot <= 9:
+            raise ValueError(f"Slot must be 0-9, got {slot}")
+        self._write(f"*SAV {slot}")
+        print(f"Setup saved to slot {slot}")
+
+    def recall_setup(self, slot: int) -> None:
+        """
+        Recall an instrument setup from a memory slot.
+
+        Args:
+            slot: Memory slot (0-9)
+        """
+        if not 0 <= slot <= 9:
+            raise ValueError(f"Slot must be 0-9, got {slot}")
+        self._write(f"*RCL {slot}")
+        print(f"Setup recalled from slot {slot}")
+
+    def self_test(self) -> int:
+        """
+        Run instrument self-test.
+
+        Returns:
+            int: 0 for pass, non-zero for fail
+        """
+        response = self.instrument.query("*TST?")
+        return int(response.strip())
+
+    def set_system_lock(self, enable: bool) -> None:
+        """Lock or unlock the front panel."""
+        state = "ON" if enable else "OFF"
+        self._write(f":SYSTem:LOCK {state}", system_lock=enable)
+        print(f"Front panel {'locked' if enable else 'unlocked'}")
+
+    def set_system_message(self, message: str) -> None:
+        """
+        Display a message on the oscilloscope screen.
+
+        Args:
+            message: Text to display (empty string clears)
+        """
+        if message:
+            self._write(f':SYSTem:DSP "{message}"')
+        else:
+            self._write(':SYSTem:DSP ""')
+        print(f"System message: {message!r}")
+
+    def set_display_vectors(self, enable: bool) -> None:
+        """Enable or disable connect-the-dots waveform display."""
+        val = "ON" if enable else "OFF"
+        self._write(f":DISPlay:VECtors {val}", display_vectors=enable)
+        print(f"Display vectors: {val}")
+
+    def set_display_annotation(self, text: str) -> None:
+        """
+        Display an annotation on screen.
+
+        Args:
+            text: Annotation text
+        """
+        self._write(f':DISPlay:ANNotation:TEXT "{text}"')
+        self._write(":DISPlay:ANNotation ON", display_annotation=True)
+        print(f"Annotation: {text}")
+
+    def clear_display_annotation(self) -> None:
+        """Remove the on-screen annotation."""
+        self._write(":DISPlay:ANNotation OFF", display_annotation=False)
+        print("Annotation cleared")
+
+    _CHANNEL_UNITS_ALLOWLIST = ("VOLT", "AMPERE")
+
+    def set_channel_units(self, channel: int, units: str) -> None:
+        """
+        Set vertical axis units for a channel.
+
+        Args:
+            channel: Channel number (1-4)
+            units: 'VOLT' or 'AMPere'
+        """
+        self._validate_channel(channel)
+        units_upper = units.upper()
+        if units_upper not in self._CHANNEL_UNITS_ALLOWLIST:
+            raise ValueError(f"Units must be one of {self._CHANNEL_UNITS_ALLOWLIST}, got '{units}'")
+        units_map = {"VOLT": "VOLT", "AMPERE": "AMPere"}
+        self._write(
+            f":CHANnel{channel}:UNITs {units_map[units_upper]}",
+            **{f"ch{channel}_units": units_upper},
+        )
+        print(f"CH{channel} units: {units_upper}")
+
+    def get_channel_units(self, channel: int) -> str:
+        """
+        Query the vertical axis units for a channel.
+
+        Args:
+            channel: Channel number (1-4)
+
+        Returns:
+            str: 'VOLT' or 'AMP'
+        """
+        self._validate_channel(channel)
+        response = self.instrument.query(f":CHANnel{channel}:UNITs?")
         return response.strip()

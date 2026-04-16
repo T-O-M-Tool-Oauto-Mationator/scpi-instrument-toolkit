@@ -71,14 +71,77 @@ def substitute_expand(text: str, variables: dict[str, str]) -> str:
 
 
 def safe_eval(expr: str, names: dict[str, Any]) -> Any:
-    """Evaluate a math expression safely using AST walking.
+    """Evaluate an expression safely using AST walking (no exec/eval).
 
-    Supports: +, -, *, /, **, %, unary +/-, parentheses,
-    numeric constants, named variables, subscript (dict[key]),
-    and functions: abs, min, max, round.
+    Operators: ``+ - * / // ** % ^ | & << >>``
+    Unary: ``+ - not ~``
+    Comparisons: ``== != < <= > >=``
+    Boolean: ``and or not``
+    Ternary: ``a if cond else b``
+    Containers: ``[list]`` ``(tuple)`` subscript ``x[i]``
+    Constants: ``pi e inf nan True False`` and string/number literals
+    Functions: ``abs min max sum round pow divmod len``
+               ``int float str bool hex bin oct ord chr``
+               ``sqrt log log2 log10 exp ceil floor hypot``
+               ``sin cos tan asin acos atan atan2 degrees radians``
     """
-    allowed_funcs = {"abs": abs, "min": min, "max": max, "round": round, "int": int, "float": float}
+    import math
 
+    allowed_funcs: dict[str, Any] = {
+        # Type conversions
+        "int": int,
+        "float": float,
+        "str": str,
+        "bool": bool,
+        "hex": hex,
+        "bin": bin,
+        "oct": oct,
+        "ord": ord,
+        "chr": chr,
+        # Math basics
+        "abs": abs,
+        "round": round,
+        "min": min,
+        "max": max,
+        "sum": sum,
+        "pow": pow,
+        "divmod": divmod,
+        "len": len,
+        # Math module
+        "sqrt": math.sqrt,
+        "log": math.log,
+        "log2": math.log2,
+        "log10": math.log10,
+        "exp": math.exp,
+        "sin": math.sin,
+        "cos": math.cos,
+        "tan": math.tan,
+        "asin": math.asin,
+        "acos": math.acos,
+        "atan": math.atan,
+        "atan2": math.atan2,
+        "degrees": math.degrees,
+        "radians": math.radians,
+        "ceil": math.ceil,
+        "floor": math.floor,
+        "hypot": math.hypot,
+        # NaN / Inf checks
+        "is_nan": math.isnan,
+        "is_inf": math.isinf,
+        "is_finite": math.isfinite,
+        # Constants
+        "pi": math.pi,
+        "e": math.e,
+        "inf": math.inf,
+        "nan": math.nan,
+        "true": True,
+        "True": True,
+        "false": False,
+        "False": False,
+    }
+
+    # Rewrite || and && to Python boolean operators
+    expr = expr.replace("||", " or ").replace("&&", " and ")
     # Rewrite ^ to ** so users can write 2^3 to mean 2**3
     expr = expr.replace("^", "**")
 
@@ -86,15 +149,16 @@ def safe_eval(expr: str, names: dict[str, Any]) -> Any:
         if isinstance(node, ast.Expression):
             return _eval(node.body)
         if isinstance(node, ast.Constant):
-            if isinstance(node.value, (int, float)):
+            if isinstance(node.value, (int, float, str, bool)):
                 return node.value
-            raise ValueError("Only numeric constants are allowed.")
+            raise ValueError(f"Constant type not allowed: {type(node.value).__name__}")
         if isinstance(node, ast.Name):
             if node.id in names:
                 return names[node.id]
             if node.id in allowed_funcs:
                 return allowed_funcs[node.id]
-            raise ValueError(f"Unknown name '{node.id}'.")
+            # Treat unknown names as string literals for comparisons like: status == passed
+            return node.id
         if isinstance(node, ast.BinOp):
             left = _eval(node.left)
             right = _eval(node.right)
@@ -115,19 +179,64 @@ def safe_eval(expr: str, names: dict[str, Any]) -> Any:
             op_func = ops.get(type(node.op))
             if op_func is None:
                 raise ValueError("Operator not allowed.")
-            return op_func(left, right)
+            try:
+                return op_func(left, right)
+            except ZeroDivisionError:
+                return float("nan")
         if isinstance(node, ast.UnaryOp):
             operand = _eval(node.operand)
             if isinstance(node.op, ast.UAdd):
                 return +operand
             if isinstance(node.op, ast.USub):
                 return -operand
+            if isinstance(node.op, ast.Not):
+                return not operand
+            if isinstance(node.op, ast.Invert):
+                return ~int(operand)
             raise ValueError("Unary operator not allowed.")
+        if isinstance(node, ast.Compare):
+            left = _eval(node.left)
+            for op, comparator in zip(node.ops, node.comparators, strict=False):
+                right = _eval(comparator)
+                cmp_ops = {
+                    ast.Eq: lambda a, b: a == b,
+                    ast.NotEq: lambda a, b: a != b,
+                    ast.Lt: lambda a, b: a < b,
+                    ast.LtE: lambda a, b: a <= b,
+                    ast.Gt: lambda a, b: a > b,
+                    ast.GtE: lambda a, b: a >= b,
+                }
+                cmp_func = cmp_ops.get(type(op))
+                if cmp_func is None:
+                    raise ValueError("Comparison not allowed.")
+                if not cmp_func(left, right):
+                    return False
+                left = right
+            return True
+        if isinstance(node, ast.BoolOp):
+            if isinstance(node.op, ast.And):
+                result = True
+                for v in node.values:
+                    result = _eval(v)
+                    if not result:
+                        return result
+                return result
+            if isinstance(node.op, ast.Or):
+                result = False
+                for v in node.values:
+                    result = _eval(v)
+                    if result:
+                        return result
+                return result
+            raise ValueError("Boolean operator not allowed.")
+        if isinstance(node, ast.IfExp):
+            return _eval(node.body) if _eval(node.test) else _eval(node.orelse)
+        if isinstance(node, ast.List):
+            return [_eval(el) for el in node.elts]
+        if isinstance(node, ast.Tuple):
+            return tuple(_eval(el) for el in node.elts)
         if isinstance(node, ast.Subscript):
             value = _eval(node.value)
-            if not isinstance(value, dict):
-                raise ValueError("Subscript base must be a dict.")
-            # Python 3.8 wraps slice in ast.Index; 3.9+ does not
             slice_node = node.slice
             if hasattr(ast, "Index") and isinstance(slice_node, ast.Index):
                 slice_node = slice_node.value
@@ -141,10 +250,17 @@ def safe_eval(expr: str, names: dict[str, Any]) -> Any:
         if isinstance(node, ast.Call):
             func = _eval(node.func)
             call_args = [_eval(a) for a in node.args]
-            if func in allowed_funcs.values():
-                return func(*call_args)
+            # Handle keyword arguments (e.g. round(3.14, ndigits=2))
+            call_kwargs = {}
+            for kw in node.keywords:
+                call_kwargs[kw.arg] = _eval(kw.value)
+            if callable(func) and (func in allowed_funcs.values() or func in (True, False)):
+                return func(*call_args, **call_kwargs)
             raise ValueError("Function not allowed.")
-        raise ValueError("Expression not allowed.")
+        if isinstance(node, ast.Attribute):
+            # Allow method calls on results, e.g. str methods
+            raise ValueError("Attribute access not allowed in expressions.")
+        raise ValueError(f"Expression node not allowed: {type(node).__name__}")
 
     parsed = ast.parse(expr, mode="eval")
     return _eval(parsed)

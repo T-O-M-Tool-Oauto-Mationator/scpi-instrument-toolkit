@@ -280,8 +280,18 @@ class VariableCommands(BaseCommand):
         return True
 
     def _assign_var(self, key: str, raw_val: str) -> None:
-        """Core variable assignment — shared by 'var = expr' and 'set var expr'."""
+        """Core variable assignment — shared by 'var = expr' and 'set var expr'.
+
+        Supports an optional ``unit=<str>`` suffix: if present, the computed value
+        is also recorded in the measurement store with the given unit.
+        """
         raw_val = substitute_vars(raw_val, self.ctx.script_vars, self.ctx.measurements)
+        # Extract optional unit= annotation (must appear at the very end)
+        unit = ""
+        unit_match = re.search(r"(?<!\S)unit=(\S+)\s*$", raw_val)
+        if unit_match:
+            unit = unit_match.group(1)
+            raw_val = raw_val[: unit_match.start()].strip()
         # input: VAR = input [prompt]
         inp_parts = raw_val.split(None, 1)
         if inp_parts and inp_parts[0] == "input":
@@ -316,7 +326,11 @@ class VariableCommands(BaseCommand):
             self.ctx.script_vars[key] = str(result)
         except Exception:
             self.ctx.script_vars[key] = raw_val
-        ColorPrinter.success(f"{key} = {self.ctx.script_vars[key]}")
+        if unit:
+            with contextlib.suppress(TypeError, ValueError):
+                self.ctx.measurements.record(key, float(self.ctx.script_vars[key]), unit, "assignment")
+        suffix = f" {unit}" if unit else ""
+        ColorPrinter.success(f"{key} = {self.ctx.script_vars[key]}{suffix}")
 
     def do_set(self, arg: str) -> None:
         """set -e / set +e — control exit-on-error behavior."""
@@ -350,6 +364,130 @@ class VariableCommands(BaseCommand):
             ColorPrinter.success(f"Unset '{varname}'")
         else:
             ColorPrinter.warning(f"Variable '{varname}' is not defined")
+
+    def do_pyeval(self, arg: str) -> None:
+        """pyeval <expr> — evaluate a Python expression with access to REPL variables.
+
+        The expression has access to all script_vars as local names,
+        measurements via the ``m`` dict, and common builtins.
+        The result is printed and stored in the special variable ``_``.
+
+        Examples:
+            pyeval 2 ** 10
+            pyeval sum(float(v) for k, v in vars.items() if k.startswith("reading_"))
+            pyeval [v for v in sorted(vars.keys())]
+            pyeval f"Power: {float(voltage) * float(current):.4f} W"
+        """
+        args_raw = arg.strip()
+        if not args_raw:
+            self.print_colored_usage(
+                [
+                    "# PYEVAL — inline Python expression evaluator",
+                    "",
+                    "pyeval <expression>",
+                    "  - evaluate any Python expression",
+                    "  - has access to: vars (script variables), m (measurements dict)",
+                    '  - result is printed and stored in variable "_"',
+                    "",
+                    "  Available names:",
+                    "    vars     — dict of all REPL script variables",
+                    "    m        — {label: value} from measurements",
+                    "    entries  — full measurement entry list",
+                    "    pi, e    — math constants",
+                    "    sin, cos, tan, sqrt, log, log10, exp, ceil, floor",
+                    "    abs, min, max, sum, round, pow, len, int, float, str",
+                    "    hex, bin, oct, ord, chr, bool, sorted, reversed, range",
+                    "    enumerate, zip, map, filter, list, tuple, dict, set",
+                    "",
+                    "  Examples:",
+                    "    pyeval 2 ** 10",
+                    "    pyeval sqrt(float(vars['voltage']) ** 2 + float(vars['current']) ** 2)",
+                    "    pyeval f\"Power = {float(vars['v']) * float(vars['i']):.2f} W\"",
+                    "    pyeval sorted(vars.keys())",
+                    "    pyeval sum(e['value'] for e in entries if e['unit'] == 'V')",
+                ]
+            )
+            return
+
+        import math as _math
+
+        # Build a safe namespace with useful builtins
+        ns: dict = {
+            # REPL state
+            "vars": dict(self.ctx.script_vars),
+            "m": self.ctx.measurements.as_value_dict(),
+            "entries": self.ctx.measurements.entries,
+            # Math constants
+            "pi": _math.pi,
+            "e": _math.e,
+            "inf": _math.inf,
+            "nan": _math.nan,
+            # Math functions
+            "sqrt": _math.sqrt,
+            "log": _math.log,
+            "log2": _math.log2,
+            "log10": _math.log10,
+            "exp": _math.exp,
+            "sin": _math.sin,
+            "cos": _math.cos,
+            "tan": _math.tan,
+            "asin": _math.asin,
+            "acos": _math.acos,
+            "atan": _math.atan,
+            "atan2": _math.atan2,
+            "degrees": _math.degrees,
+            "radians": _math.radians,
+            "ceil": _math.ceil,
+            "floor": _math.floor,
+            "hypot": _math.hypot,
+            # Builtins
+            "abs": abs,
+            "min": min,
+            "max": max,
+            "sum": sum,
+            "round": round,
+            "pow": pow,
+            "len": len,
+            "divmod": divmod,
+            "int": int,
+            "float": float,
+            "str": str,
+            "bool": bool,
+            "hex": hex,
+            "bin": bin,
+            "oct": oct,
+            "ord": ord,
+            "chr": chr,
+            "sorted": sorted,
+            "reversed": reversed,
+            "range": range,
+            "enumerate": enumerate,
+            "zip": zip,
+            "map": map,
+            "filter": filter,
+            "list": list,
+            "tuple": tuple,
+            "dict": dict,
+            "set": set,
+            "True": True,
+            "False": False,
+            "None": None,
+        }
+        # Also inject vars directly so you can write `voltage` instead of `vars['voltage']`
+        for k, v in self.ctx.script_vars.items():
+            if k.isidentifier() and k not in ns:
+                try:
+                    ns[k] = float(v)
+                except (ValueError, TypeError):
+                    ns[k] = v
+
+        try:
+            result = eval(args_raw, {"__builtins__": {}}, ns)  # noqa: S307
+            if result is not None:
+                builtins.print(result)
+            self.ctx.script_vars["_"] = str(result)
+        except Exception as exc:
+            ColorPrinter.error(f"pyeval: {exc}")
 
     def do_sleep(self, arg: str) -> None:
         args = self.parse_args(arg)

@@ -194,40 +194,41 @@ class TestSafeEval:
         d = {"key": 42}
         assert safe_eval("m['key']", {"m": d}) == 42
 
-    def test_unknown_name_error(self):
-        with pytest.raises(ValueError, match="Unknown name"):
+    def test_unknown_name_returns_string(self):
+        # Unknown bare names fall back to their identifier string so that
+        # comparisons like `status == passed` work in REPL scripts.
+        assert safe_eval("z", {}) == "z"
+
+    def test_unknown_name_arithmetic_type_error(self):
+        # Unknown name becomes a string, so adding an int raises TypeError
+        with pytest.raises(TypeError):
             safe_eval("z + 1", {})
 
-    def test_string_constant_error(self):
-        with pytest.raises(ValueError, match="Only numeric constants"):
-            safe_eval("'hello'", {})
+    def test_string_constant_allowed(self):
+        assert safe_eval("'hello'", {}) == "hello"
 
-    def test_disallowed_operator(self):
-        # Bitwise operators are not allowed
-        with pytest.raises(ValueError):
-            safe_eval("3 & 1", {})
+    def test_bitwise_operators_allowed(self):
+        assert safe_eval("3 & 1", {}) == 1
+        assert safe_eval("3 | 4", {}) == 7
 
-    def test_disallowed_unary_operator(self):
-        with pytest.raises(ValueError):
-            safe_eval("~5", {})
+    def test_bitwise_not_allowed(self):
+        assert safe_eval("~5", {}) == -6
 
-    def test_disallowed_expression(self):
-        # List comprehension or similar
-        with pytest.raises(ValueError):
-            safe_eval("[x for x in range(3)]", {})
+    def test_list_literal_allowed(self):
+        assert safe_eval("[1, 2, 3]", {}) == [1, 2, 3]
 
     def test_function_not_allowed(self):
         with pytest.raises(ValueError, match="Function not allowed"):
-            safe_eval("int(3.5)", {"int": int})
+            safe_eval("open('test.txt')", {"open": open})
 
     def test_allowed_func_name_resolves(self):
         # abs/min/max/round should be resolvable as names
         result = safe_eval("abs(-3)", {})
         assert result == 3
 
-    def test_subscript_non_dict_error(self):
-        with pytest.raises(ValueError, match="Subscript base must be a dict"):
-            safe_eval("x[0]", {"x": [1, 2, 3]})
+    def test_subscript_on_list(self):
+        assert safe_eval("x[0]", {"x": [10, 20, 30]}) == 10
+        assert safe_eval("x[2]", {"x": [10, 20, 30]}) == 30
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -1320,10 +1321,12 @@ class TestLoggingCommands:
         assert "CALC" in out
 
     def test_do_calc_no_measurements(self, capsys):
+        # calc evaluates pure arithmetic even with no measurements in the log
         lc, ctx = self._make()
         lc.do_calc("x = 2 + 3")
         out = capsys.readouterr().out
-        assert "No measurements" in out
+        assert "x" in out
+        assert "5" in out
 
     def test_do_calc_no_equals(self, capsys):
         lc, ctx = self._make()

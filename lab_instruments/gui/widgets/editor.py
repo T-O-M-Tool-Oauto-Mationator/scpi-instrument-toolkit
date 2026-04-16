@@ -36,19 +36,74 @@ from .file_viewers import _TextFindReplaceBar
 # -- Syntax highlighter ------------------------------------------------------
 
 _KEYWORDS = {
-    "set", "for", "end", "repeat", "call", "import", "export", "array",
-    "breakpoint", "sleep", "print", "use", "if", "else", "linspace",
-    "upper_limit", "lower_limit", "record", "script", "examples", "python",
-    "input", "unset",
+    "set",
+    "for",
+    "end",
+    "repeat",
+    "call",
+    "import",
+    "export",
+    "array",
+    "breakpoint",
+    "sleep",
+    "print",
+    "use",
+    "if",
+    "else",
+    "linspace",
+    "upper_limit",
+    "lower_limit",
+    "record",
+    "script",
+    "examples",
+    "python",
+    "input",
+    "unset",
 }
 
 _DEVICE_CMDS = {
-    "psu", "psu1", "psu2", "psu3", "awg", "awg1", "awg2", "awg3",
-    "dmm", "dmm1", "dmm2", "dmm3", "smu", "scope", "scope1", "scope2",
-    "scope3", "ev2300", "scan", "force_scan", "state", "help", "all",
-    "disconnect", "docs", "list", "idn", "raw", "reload", "status",
-    "log", "calc", "data", "plot", "check", "report", "clear", "close",
-    "version", "exit", "pause",
+    "psu",
+    "psu1",
+    "psu2",
+    "psu3",
+    "awg",
+    "awg1",
+    "awg2",
+    "awg3",
+    "dmm",
+    "dmm1",
+    "dmm2",
+    "dmm3",
+    "smu",
+    "scope",
+    "scope1",
+    "scope2",
+    "scope3",
+    "ev2300",
+    "scan",
+    "force_scan",
+    "state",
+    "help",
+    "all",
+    "disconnect",
+    "docs",
+    "list",
+    "idn",
+    "raw",
+    "reload",
+    "status",
+    "log",
+    "calc",
+    "data",
+    "plot",
+    "liveplot",
+    "check",
+    "report",
+    "clear",
+    "close",
+    "version",
+    "exit",
+    "pause",
 }
 
 # Context-aware sub-command completions for each device/command prefix
@@ -56,12 +111,40 @@ _SUB_COMMANDS: dict[str, list[str]] = {
     "psu": ["set", "meas", "chan", "on", "off", "get", "state", "track", "save", "recall"],
     "awg": ["chan", "wave", "freq", "amp", "offset", "duty", "phase", "on", "off", "sync", "state"],
     "dmm": ["config", "read", "meas", "display", "text", "state"],
-    "scope": ["run", "stop", "single", "autoset", "chan", "coupling", "probe",
-              "vscale", "vpos", "hscale", "trigger", "meas", "label", "invert",
-              "bwlimit", "force", "state"],
+    "scope": [
+        "run",
+        "stop",
+        "single",
+        "autoset",
+        "chan",
+        "coupling",
+        "probe",
+        "vscale",
+        "vpos",
+        "hscale",
+        "trigger",
+        "meas",
+        "label",
+        "invert",
+        "bwlimit",
+        "force",
+        "state",
+    ],
     "smu": ["set", "meas", "on", "off", "mode", "state", "compliance", "delay"],
-    "ev2300": ["info", "read_word", "write_word", "read_byte", "write_byte",
-               "read_block", "write_block", "send_byte", "scan", "probe", "fix", "state"],
+    "ev2300": [
+        "info",
+        "read_word",
+        "write_word",
+        "read_byte",
+        "write_byte",
+        "read_block",
+        "write_block",
+        "send_byte",
+        "scan",
+        "probe",
+        "fix",
+        "state",
+    ],
     "state": ["on", "off", "safe", "reset"],
     "log": ["print", "save", "clear", "delete"],
     "script": ["run", "list", "show", "delete", "save"],
@@ -81,32 +164,114 @@ _TOP_COMMANDS = sorted(_KEYWORDS | _DEVICE_CMDS)
 
 # Python keywords and builtins for .py file completions
 _PY_KEYWORDS = {
-    "def", "class", "return", "if", "else", "elif", "for", "while", "try",
-    "except", "finally", "with", "as", "import", "from", "True", "False",
-    "None", "and", "or", "not", "in", "is", "lambda", "pass", "break",
-    "continue", "raise", "yield", "global", "nonlocal", "del", "assert",
+    "def",
+    "class",
+    "return",
+    "if",
+    "else",
+    "elif",
+    "for",
+    "while",
+    "try",
+    "except",
+    "finally",
+    "with",
+    "as",
+    "import",
+    "from",
+    "True",
+    "False",
+    "None",
+    "and",
+    "or",
+    "not",
+    "in",
+    "is",
+    "lambda",
+    "pass",
+    "break",
+    "continue",
+    "raise",
+    "yield",
+    "global",
+    "nonlocal",
+    "del",
+    "assert",
 }
 
 _PY_BUILTINS = {
-    "print", "len", "range", "str", "int", "float", "list", "dict", "set",
-    "tuple", "open", "isinstance", "type", "super", "enumerate", "zip",
-    "map", "filter", "sorted", "reversed", "abs", "max", "min", "sum",
-    "any", "all", "hasattr", "getattr", "setattr", "input", "bool", "hex",
-    "oct", "bin", "round", "format",
+    "print",
+    "len",
+    "range",
+    "str",
+    "int",
+    "float",
+    "list",
+    "dict",
+    "set",
+    "tuple",
+    "open",
+    "isinstance",
+    "type",
+    "super",
+    "enumerate",
+    "zip",
+    "map",
+    "filter",
+    "sorted",
+    "reversed",
+    "abs",
+    "max",
+    "min",
+    "sum",
+    "any",
+    "all",
+    "hasattr",
+    "getattr",
+    "setattr",
+    "input",
+    "bool",
+    "hex",
+    "oct",
+    "bin",
+    "round",
+    "format",
 }
 
 # Injected context vars available in scripts run via `python <file>`
 _PY_CONTEXT = [
-    "devices", "repl", "measurements", "ColorPrinter", "time", "os", "sys",
-    "json", "lab_instruments",
+    "devices",
+    "repl",
+    "measurements",
+    "ColorPrinter",
+    "time",
+    "os",
+    "sys",
+    "json",
+    "lab_instruments",
     # Common device access patterns
-    'devices.get("psu")', 'devices.get("dmm")', 'devices.get("awg")',
-    'devices.get("scope")', 'devices.get("smu")', 'devices.get("ev2300")',
+    'devices.get("psu")',
+    'devices.get("dmm")',
+    'devices.get("awg")',
+    'devices.get("scope")',
+    'devices.get("smu")',
+    'devices.get("ev2300")',
     # Common driver methods
-    "set_output_channel", "measure_voltage", "measure_current",
-    "enable_output", "set_waveform", "set_frequency", "set_amplitude",
-    "get_output_state", "select_channel", "set_voltage", "set_current_limit",
-    "read_byte", "write_byte", "read_word", "write_word",
+    "set_output_channel",
+    "measure_voltage",
+    "measure_current",
+    "enable_output",
+    "set_waveform",
+    "set_frequency",
+    "set_amplitude",
+    "get_output_state",
+    "select_channel",
+    "set_voltage",
+    "set_current_limit",
+    "read_byte",
+    "write_byte",
+    "read_word",
+    "write_word",
 ]
 
 _PY_COMPLETIONS = sorted(_PY_KEYWORDS | _PY_BUILTINS | set(_PY_CONTEXT))
@@ -128,7 +293,7 @@ def _get_scpi_completions(line_text: str) -> list[str]:
 
     # Also try base device type (psu1 → psu)
     base = re.sub(r"\d+$", "", parts[0].lower())
-    remaining = " ".join(parts[1:]).lower() if len(parts) > 1 else ""
+    " ".join(parts[1:]).lower() if len(parts) > 1 else ""
     for n in range(len(parts), 0, -1):
         prefix = base + (" " + " ".join(parts[1:n]).lower() if n > 1 else "")
         prefix = prefix.strip()
@@ -288,6 +453,7 @@ class _CodeEditor(QPlainTextEdit):
     def _update_completions(self, words: list[str]) -> None:
         """Replace the completer's word list."""
         from PySide6.QtCore import QStringListModel
+
         model = self._completer.model()
         if isinstance(model, QStringListModel):
             model.setStringList(words)
@@ -453,6 +619,7 @@ class ScpiEditor(QWidget):
     file_modified = Signal(bool)
     run_requested = Signal(str)
     debug_requested = Signal(str)
+    title_changed = Signal(str)  # emitted after save-as renames the tab
 
     def __init__(self, file_path: str | None = None, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -662,8 +829,9 @@ class ScpiEditor(QWidget):
     def _on_search_changed(self, pattern: str, use_regex: bool, case_sensitive: bool) -> None:
         self._update_matches(pattern, use_regex, case_sensitive)
 
-    def _update_matches(self, pattern: str | None = None, use_regex: bool | None = None,
-                        case_sensitive: bool | None = None) -> None:
+    def _update_matches(
+        self, pattern: str | None = None, use_regex: bool | None = None, case_sensitive: bool | None = None
+    ) -> None:
         if pattern is None:
             pattern = self._find_bar.pattern()
         if use_regex is None:
@@ -848,6 +1016,33 @@ class ScpiEditor(QWidget):
             self._suppress_reload = False
             return False
 
+    def save_as(self, default_dir: str = "") -> bool:
+        """Prompt for a save location, write the file, and emit title_changed."""
+        from PySide6.QtWidgets import QFileDialog
+
+        if self._file_path:
+            start = self._file_path
+        elif default_dir:
+            start = os.path.join(default_dir, "untitled.scpi")
+        else:
+            start = "untitled.scpi"
+
+        path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save As",
+            start,
+            "SCPI Scripts (*.scpi);;Python Files (*.py);;Text Files (*.txt);;All Files (*)",
+        )
+        if not path:
+            return False
+        self._file_path = path
+        if self._watcher.files():
+            self._watcher.removePaths(self._watcher.files())
+        saved = self.save()
+        if saved:
+            self.title_changed.emit(os.path.basename(path))
+        return saved
+
     # -- Run / Debug ---------------------------------------------------------
 
     def _on_run(self, debug: bool = False) -> None:
@@ -991,6 +1186,7 @@ class ScpiEditor(QWidget):
                 self._debug_update_position()
 
         from ..app import _BgSignal
+
         sig = _BgSignal(self)
         sig.finished.connect(lambda _: _done())
         t = threading.Thread(target=lambda: (_run(), sig.finished.emit("")), daemon=True)
@@ -1066,6 +1262,7 @@ class ScpiEditor(QWidget):
 
         # Real command — execute in background thread (avoids deadlock with input/pause)
         import threading
+
         st["busy"] = True
 
         def _run():
@@ -1077,7 +1274,9 @@ class ScpiEditor(QWidget):
             self._debug_state["busy"] = False
             new_idx = self._next_actionable_line(next_act + 1)
             # Check breakpoints in the gap we're about to skip
-            if self._has_breakpoint_in_range(next_act + 1, new_idx + 1 if new_idx < len(self._debug_state["lines"]) else new_idx):
+            if self._has_breakpoint_in_range(
+                next_act + 1, new_idx + 1 if new_idx < len(self._debug_state["lines"]) else new_idx
+            ):
                 self._debug_state["idx"] = new_idx
                 if new_idx < len(self._debug_state["lines"]):
                     self._debug_update_position()
@@ -1091,6 +1290,7 @@ class ScpiEditor(QWidget):
                 self._debug_schedule_continue()
 
         from ..app import _BgSignal
+
         sig = _BgSignal(self)
         sig.finished.connect(lambda _: _done())
         t = threading.Thread(target=lambda: (_run(), sig.finished.emit("")), daemon=True)

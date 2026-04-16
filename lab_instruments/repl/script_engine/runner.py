@@ -5,6 +5,22 @@ from typing import Any
 from lab_instruments.src.terminal import ColorPrinter
 
 
+class _BreakSignal(Exception):
+    """Raised by ``break`` to exit the innermost while/for loop."""
+
+
+class _ContinueSignal(Exception):
+    """Raised by ``continue`` to skip to the next loop iteration."""
+
+
+class _AssertFailure(Exception):
+    """Raised by ``assert`` when the condition is False — stops the script."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+        self.message = message
+
+
 def run_expanded(expanded: list[tuple[str, str]], shell: Any, ctx: Any, debug: bool = False) -> bool:
     """Execute a pre-expanded command list, optionally with an interactive debugger.
 
@@ -188,6 +204,9 @@ def run_expanded(expanded: list[tuple[str, str]], shell: Any, ctx: Any, debug: b
                     return True
                 idx += 1
 
+    except _AssertFailure as exc:
+        ColorPrinter.error(f"Script aborted: {exc.message}")
+        ctx.command_had_error = True
     except KeyboardInterrupt:
         ColorPrinter.warning("Script interrupted")
     finally:

@@ -1,3 +1,4 @@
+# v1.0.2
 # live_freq_sweep.scpi
 # Sweeps AWG frequencies while a live plot tracks scope measurements.
 # Run with --mock.

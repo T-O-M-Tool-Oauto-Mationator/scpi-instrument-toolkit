@@ -23,17 +23,34 @@ Call the toolkit's Python instrument drivers from LabVIEW using the built-in **P
 
 ## Step 1: Find the Bridge Module Path
 
+There are two ways to get the path, depending on how you installed the toolkit.
+
+### Option A: pip install (installed from PyPI or git)
+
 Open a terminal and run:
 
 ```bash
 python -c "from lab_instruments.src import labview_bridge; print(labview_bridge.__file__)"
 ```
 
-Copy the full path that prints out. You will use this path in every Python Node. Example:
+Copy the full path. Example:
 
 ```
 C:\Users\you\AppData\Local\Programs\Python\Python312\Lib\site-packages\lab_instruments\src\labview_bridge.py
 ```
+
+### Option B: git clone (repo on disk)
+
+Use the top-level shim at the repository root instead:
+
+```
+C:\path\to\scpi-instrument-toolkit\labview_bridge.py
+```
+
+This file re-exports every function from the real bridge and is the recommended target for git-clone setups.
+
+!!! note "Either path works"
+    Both files expose identical function names. The only difference is the path you paste into the Python Node's module path terminal.
 
 ---
 
@@ -382,6 +399,20 @@ Wire the **error in/out** clusters through all your Python Nodes in series. If a
 ---
 
 ## Troubleshooting
+
+**ImportError: attempted relative import with no known parent package**
+
+This error means LabVIEW loaded `labview_bridge.py` as a standalone script instead of as part of the `lab_instruments` package, causing all `from .xyz import` statements to fail.
+
+Fix: make sure the version of the toolkit installed is **1.0.5 or later** (the file was patched to handle standalone loads). Upgrade with:
+
+```powershell
+pip install --upgrade git+https://github.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit.git
+```
+
+If you are using a git clone and cannot upgrade, switch the Python Node's module path to the top-level shim at the repository root (`labview_bridge.py`) instead of the buried path in `lab_instruments/src/`.
+
+---
 
 **Python Node shows "Python not found" or fails silently**
 

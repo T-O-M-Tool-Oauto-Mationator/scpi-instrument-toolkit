@@ -54,6 +54,8 @@ class Ev2300Command(BaseCommand):
                 self._handle_scan(args, dev)
             elif cmd_name == "probe":
                 self._handle_probe(args, dev)
+            elif cmd_name == "wait_for_bq":
+                self._handle_wait_for_bq(args, dev)
             elif cmd_name == "fix":
                 self._handle_fix()
             elif cmd_name == "state":
@@ -94,6 +96,9 @@ class Ev2300Command(BaseCommand):
                 "ev2300 probe <cmd_code> [i2c_addr] [register]",
                 "  - send arbitrary command code for reverse engineering",
                 "ev2300 state on|off|safe|reset",
+                "ev2300 wait_for_bq [timeout_s]",
+                "  - wait until BQ76920 IC is live (default timeout: 30s)",
+                "  - use after connect if the EVM was powered on after the bridge",
                 "ev2300 fix",
                 "  - step-by-step recovery for communication errors",
             ]
@@ -275,6 +280,17 @@ class Ev2300Command(BaseCommand):
         else:
             ColorPrinter.cyan(f"0x{cmd_code:02X}: resp=0x{resp_cmd:02X}  [{hex_str}]")
 
+    def _handle_wait_for_bq(self, args: list, dev: Any) -> None:
+        timeout_s = 30.0
+        if len(args) >= 2:
+            try:
+                timeout_s = float(args[1])
+            except ValueError:
+                ColorPrinter.warning(f"Invalid timeout {args[1]!r} -- using default 30s")
+        ColorPrinter.info(f"Waiting for BQ76920 (timeout {timeout_s:.0f}s)...")
+        dev.wait_for_bq(timeout_s=timeout_s)
+        ColorPrinter.success("BQ76920 is live -- ready for I2C commands")
+
     def _handle_fix(self) -> None:
         self.print_colored_usage(
             [
@@ -285,7 +301,12 @@ class Ev2300Command(BaseCommand):
                 "",
                 "  1. Make sure the BQ EVM board is powered (e.g. PSU set to 18V)",
                 "",
-                "  2. Press the BOOT button on the BQ EVM board",
+                "  1b. If the bridge was connected before the EVM was powered, run:",
+                "        ev2300 wait_for_bq",
+                "      This waits up to 30s for the BQ76920 to appear on the bus.",
+                "      No reconnect needed -- the firmware retries automatically.",
+                "",
+                "  2. If still failing, press the BOOT button on the BQ EVM board",
                 "     (this resets the EV2300 and the fuel gauge IC)",
                 "",
                 "  3. In the REPL, disconnect the EV2300:",

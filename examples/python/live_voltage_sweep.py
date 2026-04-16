@@ -1,3 +1,4 @@
+# v1.0.2
 """Live voltage sweep -- Python API version.
 
 Sweeps the PSU through voltages and records DMM measurements.

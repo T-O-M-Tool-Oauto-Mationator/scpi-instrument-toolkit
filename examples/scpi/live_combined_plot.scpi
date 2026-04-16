@@ -1,3 +1,4 @@
+# v1.0.2
 # live_combined_plot.scpi
 # Plots voltage AND current as two series on a SINGLE chart.
 # Multiple glob patterns on one liveplot = multiple series, one chart.

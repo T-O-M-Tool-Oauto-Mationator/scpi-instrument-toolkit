@@ -10,29 +10,14 @@ import pytest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 
-def make_repl():
-    """Create a bare InstrumentRepl with no real devices."""
-    from lab_instruments.src import discovery as _disc
-
-    _disc.InstrumentDiscovery.__init__ = lambda self: None
-    _disc.InstrumentDiscovery.scan = lambda self, verbose=True: {}
-    from lab_instruments.repl import InstrumentRepl
-
-    repl = InstrumentRepl()
-    repl._scan_thread.join(timeout=5.0)
-    repl._scan_done.wait(timeout=5.0)
-    repl.devices = {}
-    return repl
-
-
 def _store(repl, label, value, unit="V", source="test"):
     """Directly inject a measurement entry, bypassing instrument calls."""
     repl.measurements.append({"label": label, "value": value, "unit": unit, "source": source})
 
 
 @pytest.fixture
-def repl():
-    return make_repl()
+def repl(make_repl):
+    return make_repl({})
 
 
 # ---------------------------------------------------------------------------

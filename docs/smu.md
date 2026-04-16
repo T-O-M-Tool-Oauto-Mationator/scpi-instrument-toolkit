@@ -11,6 +11,9 @@ Controls source measure units (SMUs) that can both source a precise voltage and 
 === "NI PXIe-4139"
     ±60 V / 3 A four-quadrant SMU (20 W source, 12 W sink). Uses the **nidcpower** Python package (not VISA/SCPI). Install with: `pip install nidcpower`. Output range: −60 V to +60 V, −3 A to +3 A DC (10 A pulse).
 
+!!! warning "PXIe boot order"
+    The PXIe chassis must be powered on **before** the host PC boots. PXIe devices are enumerated during BIOS/POST — if the chassis powers on after the PC, the instrument will not appear in `scan` or `list`. Power cycle the PC with the chassis already on to fix this. See [Troubleshooting](troubleshooting.md#ni-pxie-4139-not-detected) for details.
+
 ---
 
 ## smu on / smu off
@@ -123,7 +126,7 @@ Safety limits (`upper_limit` / `lower_limit`) are enforced before the mode switc
     ```bash
     smu_vout = smu meas v unit=V
     smu_iout = smu meas i unit=A
-    calc power m["smu_vout"] * m["smu_iout"] unit=W
+    calc power smu_vout * smu_iout unit=W
     ```
 
     See [Log & Calc](logging.md) for full details.
@@ -243,7 +246,7 @@ sleep 0.5
 
 vout = smu1 meas v unit=V
 iout = smu1 meas i unit=A
-calc power m["vout"] * m["iout"] unit=W
+calc power vout * iout unit=W
 
 log print
 smu1 off

@@ -4,10 +4,11 @@
 # VISA instrument control
 pyserial>=3.5
 pyserial-asyncio>=0.6
-pyvisa>=1.13.0
+PyVISA>=1.14.0
 pyvisa-py>=0.7.0
 psutil>=5.9.0
 zeroconf>=0.131.0
+pymupdf>=1.24.0
 
 # Data analysis
 pandas>=2.0.0
@@ -16,7 +17,12 @@ scipy>=1.10.0
 matplotlib>=3.7.0
 openpyxl>=3.1.0
 
+# GUI
+PySide6>=6.6.0
+pyqtgraph>=0.13.0
+
 # Utilities
+fpdf2>=2.7.0
 pyfunctional>=1.4.0
 requests>=2.31.0
 pyreadline3>=3.4.0; sys_platform == "win32"

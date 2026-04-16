@@ -1,3 +1,4 @@
+# v1.0.2
 """Combined live plot -- Python API version.
 
 Plots PSU voltage AND current as two series overlaid on a single chart.

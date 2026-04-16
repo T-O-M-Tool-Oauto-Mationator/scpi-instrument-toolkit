@@ -571,6 +571,33 @@ class MockDHO804(MockScope):
 class MockDSOX1204G(MockScope):
     """Mock Keysight DSOX1204G oscilloscope."""
 
+    def digitize(self, channel=None):
+        pass
+
+    def measure_counter(self, channel=None):
+        return round(random.uniform(999.5, 1000.5), 3)
+
+    def measure_rise_time(self, ch):
+        return round(random.uniform(0.9e-6, 1.1e-6), 9)
+
+    def measure_fall_time(self, ch):
+        return round(random.uniform(0.9e-6, 1.1e-6), 9)
+
+    def measure_duty_cycle(self, ch):
+        return round(random.uniform(49.5, 50.5), 2)
+
+    def measure_pos_width(self, ch):
+        return round(random.uniform(0.49e-3, 0.51e-3), 6)
+
+    def measure_neg_width(self, ch):
+        return round(random.uniform(0.49e-3, 0.51e-3), 6)
+
+    def measure_overshoot(self, ch):
+        return round(random.uniform(3.0, 7.0), 2)
+
+    def measure_preshoot(self, ch):
+        return round(random.uniform(1.0, 3.0), 2)
+
     def get_screenshot(self):
         """Return dummy PNG bytes."""
         import base64
@@ -709,6 +736,108 @@ class MockDSOX1204G(MockScope):
 
     def set_dvm_source(self, ch):
         pass
+
+    def set_cursor_mode(self, mode):
+        pass
+
+    def set_cursor_source(self, channel):
+        pass
+
+    def set_manual_cursor_type(self, cursor_type):
+        pass
+
+    def set_manual_cursor_source(self, source):
+        pass
+
+    def set_manual_cursor_positions(self, x1=None, y1=None, x2=None, y2=None):
+        pass
+
+    def get_manual_cursor_values(self):
+        return {"x1": 0.0, "y1": 0.0, "x2": 1.0, "y2": 1.0, "dx": 1.0, "dy": 1.0}
+
+    def set_timebase_mode(self, mode):
+        pass
+
+    def get_timebase_mode(self):
+        return "MAIN"
+
+    def set_timebase_reference(self, ref):
+        pass
+
+    def get_timebase_reference(self):
+        return "LEFT"
+
+    def set_trigger_holdoff(self, holdoff):
+        pass
+
+    def get_trigger_holdoff(self):
+        return 100e-9
+
+    def set_trigger_noise_reject(self, enable):
+        pass
+
+    def set_trigger_hf_reject(self, enable):
+        pass
+
+    def set_trigger_coupling(self, coupling):
+        pass
+
+    def set_measurement_statistics(self, enable):
+        pass
+
+    def reset_measurement_statistics(self):
+        pass
+
+    def get_measurement_results(self):
+        return ""
+
+    def awg_set_pulse_width(self, width):
+        pass
+
+    def set_acquisition_mode(self, mode):
+        pass
+
+    def set_segment_count(self, count):
+        pass
+
+    def get_segment_count(self):
+        return 100
+
+    def set_segment_index(self, index):
+        pass
+
+    def get_segment_index(self):
+        return 1
+
+    def save_setup(self, slot):
+        pass
+
+    def recall_setup(self, slot):
+        pass
+
+    def self_test(self):
+        return 0
+
+    def set_system_lock(self, enable):
+        pass
+
+    def set_system_message(self, message):
+        pass
+
+    def set_display_vectors(self, enable):
+        pass
+
+    def set_display_annotation(self, text):
+        pass
+
+    def clear_display_annotation(self):
+        pass
+
+    def set_channel_units(self, channel, units):
+        pass
+
+    def get_channel_units(self, channel):
+        return "VOLT"
 
 
 class MockMSO2024(MockScope):

@@ -38,9 +38,9 @@ A **label** is the name you give a stored measurement — the row key in the tab
 
 - No spaces — use underscores: `output_v`, `ch1_pk2pk`, `r_load`
 - Must be unique per session — storing twice with the same label **overwrites** the earlier value
-- You reference it in `calc` as `m["label"]`
+- You reference it in `calc` by bare name (e.g. `output_v`)
 
-**Why labels matter:** without a name, you can't retrieve the value later. `psu meas v` just prints to the screen and is gone. `output_v = psu meas v` saves it so you can compute `calc error m["output_v"] - 5.0` afterwards.
+**Why labels matter:** without a name, you can't retrieve the value later. `psu meas v` just prints to the screen and is gone. `output_v = psu meas v` saves it so you can compute `calc error output_v - 5.0` afterwards.
 
 ```
 # meas = print only (nothing saved):
@@ -48,7 +48,7 @@ psu meas v          # prints 4.9987, then forgotten
 
 # assignment syntax = save with a name:
 output_v = psu meas v unit=V    # saves 4.9987 as "output_v"
-calc error m["output_v"] - 5.0      # retrieves it: 4.9987 - 5.0 = -0.0013
+calc error output_v - 5.0           # retrieves it: 4.9987 - 5.0 = -0.0013
 log print                            # shows the full table
 ```
 
@@ -115,26 +115,39 @@ log save my_test_results.csv
 
 ## calc
 
-Compute a derived value from stored measurements and add it to the log.
+Compute a derived value and add it to the log. There are two equivalent forms:
 
 ```
-calc <label> <expression> [unit=<str>]
+# Preferred — plain assignment with optional unit=
+<label> = <expression> [unit=<str>]
+
+# Alternative — explicit calc keyword
+calc <label> = <expression> [unit=<str>]
 ```
 
 | Parameter | Required | Values | Description |
 |-----------|----------|--------|-------------|
-| `label` | required | string, no spaces | Name for the computed result. Appears in `log print` and can be referenced in later `calc` expressions. |
-| `expression` | required | Python arithmetic | Math expression. Access stored measurements by label using `m["label"]`. Use `last` for the most recently stored value. |
+| `label` | required | string, no spaces | Name for the computed result. Stored in both the measurement log and as a script variable. |
+| `expression` | required | Python arithmetic | Math expression using bare variable/label names. |
 | `unit=` | optional | string | Unit label shown in `log print`. Display-only. |
+
+Both forms are functionally identical. The plain assignment form is preferred because it reads naturally:
 
 ### Accessing stored measurements
 
-Use `m["label"]` to reference any value previously stored in the log:
+Reference any previously stored value by its bare label name:
 
 ```
 psu_v = psu1 meas v unit=V
 psu_i = psu1 meas i unit=A
-calc power m["psu_v"] * m["psu_i"] unit=W
+calc power psu_v * psu_i unit=W
+```
+
+Script variables assigned with `=` are also available by name:
+
+```
+offset = 0.05
+calc corrected psu_v - offset unit=V
 ```
 
 Use `last` to reference the most recently stored value:
@@ -149,20 +162,29 @@ calc doubled last * 2 unit=V
 
 | Name | Description |
 |------|-------------|
-| `m["label"]` | Access a stored measurement by label |
+| `<label>` | Bare label name — accesses any script variable or stored measurement |
 | `last` | The most recently stored value |
 | `abs(x)` | Absolute value |
 | `min(a, b)` | Minimum of two values |
 | `max(a, b)` | Maximum of two values |
 | `round(x, n)` | Round to n decimal places |
 | `pi` | π (3.14159...) |
+| `e` | Euler's number (2.71828...) |
 | `sqrt(x)` | Square root |
 | `log(x)` | Natural logarithm |
+| `log2(x)` | Base-2 logarithm |
 | `log10(x)` | Base-10 logarithm |
+| `exp(x)` | e^x |
+| `floor(x)` | Floor |
+| `ceil(x)` | Ceiling |
+| `sin(x)` / `cos(x)` / `tan(x)` | Trigonometry (radians) |
+| `is_nan(x)` / `is_inf(x)` / `is_finite(x)` | NaN/infinity checks |
+| `int(x)` / `float(x)` / `str(x)` | Type conversions |
+| `hex(x)` / `bin(x)` / `oct(x)` | Base conversions |
 
 ### Chained calculations
 
-The result of `calc` is stored in the log, so you can chain calculations:
+The result of `calc` is stored in both the log and script variables, so you can chain calculations:
 
 ```
 v_in = psu1 meas v unit=V
@@ -170,9 +192,9 @@ i_in = psu1 meas i unit=A
 dmm1 config vdc
 v_out = dmm1 meas unit=V
 
-calc power_in  m["v_in"] * m["i_in"] unit=W
-calc power_out m["v_out"] * m["i_in"] unit=W      # assume same current
-calc efficiency m["power_out"] / m["power_in"] * 100 unit=%
+calc power_in  v_in * i_in unit=W
+calc power_out v_out * i_in unit=W      # assume same current
+calc efficiency power_out / power_in * 100 unit=%
 ```
 
 ### Examples
@@ -182,7 +204,7 @@ calc efficiency m["power_out"] / m["power_in"] * 100 unit=%
 ```
 dmm1 config vdc
 measured = dmm1 meas unit=V
-calc error_pct (m["measured"] - 5.0) / 5.0 * 100 unit=%
+calc error_pct (measured - 5.0) / 5.0 * 100 unit=%
 ```
 
 **Voltage ratio (gain):**
@@ -190,8 +212,8 @@ calc error_pct (m["measured"] - 5.0) / 5.0 * 100 unit=%
 ```
 v_in = scope1 meas 1 PK2PK unit=V
 v_out = scope1 meas 2 PK2PK unit=V
-calc gain m["v_out"] / m["v_in"]
-calc gain_db 20 * log10(m["gain"]) unit=dB
+calc gain v_out / v_in
+calc gain_db 20 * log10(gain) unit=dB
 ```
 
 **Resistance from V and I:**
@@ -200,7 +222,7 @@ calc gain_db 20 * log10(m["gain"]) unit=dB
 v_supply = psu1 meas v unit=V
 dmm1 config idc
 i_load = dmm1 meas unit=A
-calc resistance m["v_supply"] / m["i_load"] unit=Ω
+calc resistance v_supply / i_load unit=Ω
 ```
 
 **Crest factor:**
@@ -208,7 +230,7 @@ calc resistance m["v_supply"] / m["i_load"] unit=Ω
 ```
 pk2pk = scope1 meas 1 PK2PK unit=V
 rms = scope1 meas 1 RMS unit=V
-calc crest_factor m["pk2pk"] / (2 * m["rms"])
+calc crest_factor pk2pk / (2 * rms)
 ```
 
 ---
@@ -344,9 +366,9 @@ dmm1 config vdc
 dmm_v = dmm1 meas unit=V       # save as "dmm_v"
 
 # 3. Derive values
-calc power       m["psu_v"] * m["psu_i"] unit=W
-calc v_error     m["dmm_v"] - m["psu_v"] unit=V
-calc v_error_pct m["v_error"] / m["psu_v"] * 100 unit=%
+calc power       psu_v * psu_i unit=W
+calc v_error     dmm_v - psu_v unit=V
+calc v_error_pct v_error / psu_v * 100 unit=%
 
 # 4. Review and export
 log print

@@ -14,8 +14,8 @@ import math
 import os
 from typing import TYPE_CHECKING, Any
 
-from PySide6.QtCore import QPointF, QRectF, QTimer, Qt
-from PySide6.QtGui import QBrush, QColor, QPen
+from PySide6.QtCore import QPointF, Qt, QTimer
+from PySide6.QtGui import QBrush, QColor
 from PySide6.QtWidgets import (
     QFileDialog,
     QFrame,
@@ -56,7 +56,7 @@ _CROSSHAIR_PEN = "#585b70"
 _TOOLTIP_BG = "#313244"
 _TOOLTIP_FG = "#cdd6f4"
 _TOOLTIP_BORDER = "#45475a"
-_SELECT_COLOR = QColor(255, 255, 255, 20)   # barely-visible white fill
+_SELECT_COLOR = QColor(255, 255, 255, 20)  # barely-visible white fill
 _SELECT_BORDER = QColor(255, 255, 255, 180)  # crisp white border
 
 _PALETTE = [
@@ -90,10 +90,7 @@ _BTN_ACCENT = """
 """
 
 _INFO_STYLE = "font-size: 10px; color: #6c7086;"
-_COORD_STYLE = (
-    "font-size: 11px; color: #a6adc8; font-family: 'JetBrains Mono', "
-    "'Cascadia Code', 'Consolas', monospace;"
-)
+_COORD_STYLE = "font-size: 11px; color: #a6adc8; font-family: 'JetBrains Mono', 'Cascadia Code', 'Consolas', monospace;"
 _TOOLTIP_STYLE = f"""
     background: {_TOOLTIP_BG}; color: {_TOOLTIP_FG};
     border: 1px solid {_TOOLTIP_BORDER}; border-radius: 4px;
@@ -115,9 +112,7 @@ _DETAIL_BG = "background: #1e1e2e;"
 # ---------------------------------------------------------------------------
 
 
-def _match_entries(
-    entries: list[dict[str, Any]], patterns: list[str]
-) -> dict[str, list[dict[str, Any]]]:
+def _match_entries(entries: list[dict[str, Any]], patterns: list[str]) -> dict[str, list[dict[str, Any]]]:
     """Return entries grouped by the pattern that matched them."""
     groups: dict[str, list[dict[str, Any]]] = {p: [] for p in patterns}
     for entry in entries:
@@ -161,8 +156,7 @@ def _fmt(v: float) -> str:
     return f"{v:.4f}".rstrip("0").rstrip(".")
 
 
-def _make_btn(text: str, width: int, slot=None, checkable: bool = False,
-              style: str = _BTN_STYLE) -> QPushButton:
+def _make_btn(text: str, width: int, slot=None, checkable: bool = False, style: str = _BTN_STYLE) -> QPushButton:
     btn = QPushButton(text)
     btn.setFixedWidth(width)
     btn.setStyleSheet(style)
@@ -290,29 +284,38 @@ class DetailPlotWindow(QMainWindow):
 
         # Crosshair
         self._vline = pg.InfiniteLine(
-            angle=90, movable=False,
+            angle=90,
+            movable=False,
             pen=pg.mkPen(_CROSSHAIR_PEN, width=1, style=Qt.PenStyle.DashLine),
         )
         self._hline = pg.InfiniteLine(
-            angle=0, movable=False,
+            angle=0,
+            movable=False,
             pen=pg.mkPen(_CROSSHAIR_PEN, width=1, style=Qt.PenStyle.DashLine),
         )
         self._pw.addItem(self._vline, ignoreBounds=True)
         self._pw.addItem(self._hline, ignoreBounds=True)
 
         self._proxy = pg.SignalProxy(
-            self._pw.scene().sigMouseMoved, rateLimit=60, slot=self._on_mouse_moved,
+            self._pw.scene().sigMouseMoved,
+            rateLimit=60,
+            slot=self._on_mouse_moved,
         )
         self._tooltip = _Tooltip(self._pw)
         self._pw.scene().sigMouseClicked.connect(self._on_click)
 
         # Plot the data
         total = 0
-        for i, (pat, (xs, ys, labels)) in enumerate(series.items()):
+        for i, (pat, (xs, ys, _labels)) in enumerate(series.items()):
             color = _PALETTE[i % len(_PALETTE)]
             self._pw.plot(
-                xs, ys, pen=pg.mkPen(color=color, width=2),
-                symbol="o", symbolSize=5, symbolBrush=color, name=pat,
+                xs,
+                ys,
+                pen=pg.mkPen(color=color, width=2),
+                symbol="o",
+                symbolSize=5,
+                symbolBrush=color,
+                name=pat,
             )
             total += len(xs)
 
@@ -411,7 +414,7 @@ class DetailPlotWindow(QMainWindow):
             return
         best_d, best_info, best_spos = float("inf"), None, None
         for pat, (xs, ys, labels) in self._series.items():
-            for x, y, lbl in zip(xs, ys, labels):
+            for x, y, lbl in zip(xs, ys, labels, strict=False):
                 d = math.hypot((x - mx) / xr, (y - my) / yr)
                 if d < best_d:
                     best_d = d
@@ -424,8 +427,10 @@ class DetailPlotWindow(QMainWindow):
 
     def _export_png(self) -> None:
         import pyqtgraph.exporters as exporters
+
         path, _ = QFileDialog.getSaveFileName(
-            self, "Export Plot",
+            self,
+            "Export Plot",
             f"{self._title_edit.text() or 'detail'}.png",
             "PNG Image (*.png);;All Files (*)",
         )
@@ -437,7 +442,8 @@ class DetailPlotWindow(QMainWindow):
 
     def _save_csv(self) -> None:
         path, _ = QFileDialog.getSaveFileName(
-            self, "Save CSV",
+            self,
+            "Save CSV",
             f"{self._title_edit.text() or 'detail'}.csv",
             "CSV Files (*.csv);;All Files (*)",
         )
@@ -447,7 +453,7 @@ class DetailPlotWindow(QMainWindow):
             w = csv.writer(f)
             w.writerow(["series", "label", "time", "value"])
             for pat, (xs, ys, labels) in self._series.items():
-                for x, y, lbl in zip(xs, ys, labels):
+                for x, y, lbl in zip(xs, ys, labels, strict=False):
                     w.writerow([pat, lbl, x, y])
 
     def closeEvent(self, event) -> None:  # noqa: N802
@@ -510,9 +516,7 @@ class LivePlotWidget(QWidget):
         layout.setSpacing(2)
 
         if not _HAS_PG:
-            layout.addWidget(
-                QLabel("pyqtgraph is required.  pip install pyqtgraph")
-            )
+            layout.addWidget(QLabel("pyqtgraph is required.  pip install pyqtgraph"))
             return
 
         # -- Plot area ------------------------------------------------------
@@ -543,11 +547,13 @@ class LivePlotWidget(QWidget):
         # -- Crosshair ------------------------------------------------------
         self._crosshair_on = True
         self._vline = pg.InfiniteLine(
-            angle=90, movable=False,
+            angle=90,
+            movable=False,
             pen=pg.mkPen(_CROSSHAIR_PEN, width=1, style=Qt.PenStyle.DashLine),
         )
         self._hline = pg.InfiniteLine(
-            angle=0, movable=False,
+            angle=0,
+            movable=False,
             pen=pg.mkPen(_CROSSHAIR_PEN, width=1, style=Qt.PenStyle.DashLine),
         )
         self._pw.addItem(self._vline, ignoreBounds=True)
@@ -561,7 +567,9 @@ class LivePlotWidget(QWidget):
 
         # -- Mouse tracking -------------------------------------------------
         self._proxy = pg.SignalProxy(
-            self._pw.scene().sigMouseMoved, rateLimit=60, slot=self._on_mouse_moved,
+            self._pw.scene().sigMouseMoved,
+            rateLimit=60,
+            slot=self._on_mouse_moved,
         )
         self._pw.scene().sigMouseClicked.connect(self._on_mouse_clicked)
         self._pw.plotItem.vb.sigRangeChanged.connect(self._on_range_changed)
@@ -572,8 +580,13 @@ class LivePlotWidget(QWidget):
             color = _PALETTE[i % len(_PALETTE)]
             pen = pg.mkPen(color=color, width=2)
             curve = self._pw.plot(
-                [], [], pen=pen, symbol="o", symbolSize=5,
-                symbolBrush=color, name=pat,
+                [],
+                [],
+                pen=pen,
+                symbol="o",
+                symbolSize=5,
+                symbolBrush=color,
+                name=pat,
             )
             self._curves[pat] = curve
 
@@ -705,7 +718,9 @@ class LivePlotWidget(QWidget):
         import pyqtgraph.exporters as exporters
 
         path, _ = QFileDialog.getSaveFileName(
-            self, "Export Plot", f"{self._title}.png",
+            self,
+            "Export Plot",
+            f"{self._title}.png",
             "PNG Image (*.png);;All Files (*)",
         )
         if not path:
@@ -772,7 +787,8 @@ class LivePlotWidget(QWidget):
         if preview:
             self._remove_preview()
             self._sel_preview_outline = self._pw.plot(
-                rect_xs, rect_ys,
+                rect_xs,
+                rect_ys,
                 pen=pg.mkPen(color="#ffffff", width=1, style=Qt.PenStyle.DashLine),
             )
         else:
@@ -780,14 +796,17 @@ class LivePlotWidget(QWidget):
             self._remove_preview()
             self._sel_bounds = (x1, y1, x2, y2)
             self._sel_outline = self._pw.plot(
-                rect_xs, rect_ys,
+                rect_xs,
+                rect_ys,
                 pen=pg.mkPen(color="#ffffff", width=1.5),
             )
             # Fill between top and bottom edges
             top = pg.PlotCurveItem([x1, x2], [y2, y2])
             bot = pg.PlotCurveItem([x1, x2], [y1, y1])
             self._sel_fill = pg.FillBetweenItem(
-                top, bot, brush=QBrush(_SELECT_COLOR),
+                top,
+                bot,
+                brush=QBrush(_SELECT_COLOR),
             )
             self._pw.addItem(self._sel_fill)
 
@@ -802,7 +821,7 @@ class LivePlotWidget(QWidget):
             if not self._series_visible.get(pat, True):
                 continue
             sel_x, sel_y, sel_l = [], [], []
-            for x, y, lbl in zip(xs, ys, labels):
+            for x, y, lbl in zip(xs, ys, labels, strict=False):
                 if x1 <= x <= x2 and y1 <= y <= y2:
                     sel_x.append(x)
                     sel_y.append(y)
@@ -906,7 +925,7 @@ class LivePlotWidget(QWidget):
             if not self._series_visible.get(pat, True):
                 continue
             xs, ys, labels = data
-            for x, y, lbl in zip(xs, ys, labels):
+            for x, y, lbl in zip(xs, ys, labels, strict=False):
                 dx = (x - mx) / x_range
                 dy = (y - my) / y_range
                 d = math.hypot(dx, dy)
@@ -944,7 +963,7 @@ class LivePlotWidget(QWidget):
         self._seen = len(entries)
 
         # Only show entries recorded after the last clear
-        visible_entries = entries[self._clear_offset:]
+        visible_entries = entries[self._clear_offset :]
         groups = _match_entries(visible_entries, self._patterns)
         total_points = 0
         detected_unit = ""
@@ -965,9 +984,7 @@ class LivePlotWidget(QWidget):
         if detected_unit and not self._ylabel:
             self._pw.setLabel("left", detected_unit, color=_AXIS_TEXT)
 
-        self._info.setText(
-            f"{total_points} pts | {', '.join(self._patterns)}"
-        )
+        self._info.setText(f"{total_points} pts | {', '.join(self._patterns)}")
 
     # -----------------------------------------------------------------
     # Lifecycle

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "scpi-instrument-toolkit"
-version = "1.0.1"
+version = "1.0.7"
 description = "Python drivers and interactive REPL for SCPI test and measurement instruments"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -69,6 +69,8 @@ ignore = ["E501"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["E501"]
+"lab_instruments/repl/shell.py" = ["E402"]
+"lab_instruments/gui/widgets/file_viewers.py" = ["E402", "SIM102"]
 
 [tool.coverage.run]
 source = ["lab_instruments"]

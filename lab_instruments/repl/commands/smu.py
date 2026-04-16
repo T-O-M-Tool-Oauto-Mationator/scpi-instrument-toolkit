@@ -108,6 +108,10 @@ class SmuCommand(BaseCommand):
                 "smu temp  (read instrument temperature)",
                 "smu get  (show setpoints)",
                 "smu state on|off|safe|reset",
+                "",
+                "# PXIe boot order",
+                "  - PXIe chassis must be powered on BEFORE the host PC boots.",
+                "  - If not detected, power cycle the PC with the chassis already on.",
             ]
         )
 

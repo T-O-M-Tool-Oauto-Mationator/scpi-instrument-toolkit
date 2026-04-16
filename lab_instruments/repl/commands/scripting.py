@@ -237,6 +237,9 @@ class ScriptingCommands(BaseCommand):
                     "  - devices: dictionary of connected instruments",
                     "  - measurements: list of recorded measurements",
                     "  - ColorPrinter: for colored output",
+                    "  - vars: dict of all REPL script variables (string values)",
+                    "  - All REPL variables are auto-injected as native Python types",
+                    "    (int -> float -> str). E.g. voltage=5.0 becomes float 5.0",
                 ]
             )
             return
@@ -251,7 +254,7 @@ class ScriptingCommands(BaseCommand):
             ColorPrinter.error(f"Failed to read file: {exc}")
             return
         exec_globals = {
-            "__name__": "__main__",
+            "__name__": os.path.splitext(os.path.basename(filename))[0],
             "__file__": os.path.abspath(filename),
             "repl": self.shell,
             "devices": self.registry.devices,
@@ -262,9 +265,29 @@ class ScriptingCommands(BaseCommand):
             "json": json,
             "time": time,
         }
+
+        # Auto-inject all current REPL script variables as native Python types.
+        # Conversion order: int → float → str.
+        def _to_python(v):
+            try:
+                return int(v)
+            except (ValueError, TypeError):
+                pass
+            try:
+                return float(v)
+            except (ValueError, TypeError):
+                pass
+            return v
+
+        script_vars = self.shell.ctx.script_vars
+        exec_globals["vars"] = dict(script_vars)
+        for _k, _v in script_vars.items():
+            exec_globals[_k] = _to_python(_v)
+
         # Pre-import lab_instruments so scripts can use it without boilerplate
         try:
             import lab_instruments
+
             exec_globals["lab_instruments"] = lab_instruments
         except ImportError:
             pass
@@ -281,12 +304,11 @@ class ScriptingCommands(BaseCommand):
         except Exception as exc:
             ColorPrinter.error(f"Script execution failed: {exc}")
             traceback.print_exc()
+            self.ctx.command_had_error = True
         finally:
             if path_added:
-                try:
+                with contextlib.suppress(ValueError):
                     sys.path.remove(script_dir)
-                except ValueError:
-                    pass
 
     def do_upper_limit(self, arg: str) -> None:
         if not arg:

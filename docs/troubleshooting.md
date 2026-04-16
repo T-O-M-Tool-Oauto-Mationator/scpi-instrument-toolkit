@@ -77,6 +77,14 @@ groups   # should include uucp or dialout
 
 ---
 
+## NI PXIe-4139 not detected
+
+The PXIe chassis must be powered on **before** the host PC boots. PXIe devices are enumerated during BIOS/POST — if the chassis powers on after the PC, the instrument will not appear in `scan` or `list`. Power cycle the PC with the chassis already on to fix this.
+
+This is standard PXIe bus behavior: the host enumerates PCIe devices at startup and does not hot-scan later. It is a common gotcha for students and new users who expect plug-and-play behavior.
+
+---
+
 ## NI-VISA not found
 
 The toolkit needs [NI-VISA](https://www.ni.com/en/support/downloads/drivers/download.ni-visa.html) to communicate with instruments over USB or GPIB. If you see an error about VISA not being found, download and install NI-VISA from the link above, then restart your terminal and try again.
@@ -155,6 +163,36 @@ If you cannot run scripts, use this one-liner in PowerShell:
 ```powershell
 $g=(Get-ChildItem "$env:LOCALAPPDATA\GitHubDesktop\app-*\resources\app\git\cmd\git.exe" -EA 0|Sort-Object LastWriteTime -Desc|Select-Object -First 1); if(-not $g){$g=(Get-ChildItem "$env:LOCALAPPDATA\GitHubDesktop" -Filter git.exe -Recurse -EA 0|?{$_.DirectoryName -like "*\git\cmd"}|Sort-Object LastWriteTime -Desc|Select-Object -First 1)}; if(-not $g){Write-Host "GitHub Desktop Git not found" -FG Red}else{$p=$g.DirectoryName;$u=[Environment]::GetEnvironmentVariable('Path','User'); if(($u -split ';'|%{$_.TrimEnd('\\').ToLowerInvariant()}) -notcontains $p.TrimEnd('\\').ToLowerInvariant()){[Environment]::SetEnvironmentVariable('Path',($(if([string]::IsNullOrWhiteSpace($u)){$p}else{"$u;$p"})),'User')}; Write-Host "Done. Open a new terminal and run: git --version" -FG Green}
 ```
+
+---
+
+## LabVIEW: "attempted relative import with no known parent package"
+
+This error appears in LabVIEW's Python Node error cluster when the function name is `open_ev2300` (or any other bridge function) and the full class is `ImportError`.
+
+**Cause:** LabVIEW loads the `.py` file by its absolute path as a standalone script. That strips the package context (`__package__ = None`), so every `from .xyz import` statement inside `lab_instruments/src/labview_bridge.py` fails immediately.
+
+**Fix:** Upgrade to version 1.0.5 or later, which patches the file to handle standalone loads:
+
+```powershell
+pip install --upgrade git+https://github.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit.git
+```
+
+If you cannot upgrade (e.g. a managed machine with no internet access), use the top-level shim instead. Change the Python Node's module path from:
+
+```
+...\site-packages\lab_instruments\src\labview_bridge.py
+```
+
+to the `labview_bridge.py` at the repository root:
+
+```
+C:\path\to\scpi-instrument-toolkit\labview_bridge.py
+```
+
+The shim sets up the correct import context before delegating to the real bridge. All function names remain the same.
+
+See [LabVIEW Bridge - Troubleshooting](labview.md#troubleshooting) for more details.
 
 ---
 

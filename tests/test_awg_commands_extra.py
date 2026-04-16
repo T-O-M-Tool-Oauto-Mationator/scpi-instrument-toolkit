@@ -10,30 +10,14 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from lab_instruments.mock_instruments import MockEDU33212A, MockJDS6600
 
 
-def make_repl(devices):
-    from lab_instruments.src import discovery as _disc
-
-    _disc.InstrumentDiscovery.__init__ = lambda self: None
-    _disc.InstrumentDiscovery.scan = lambda self, verbose=True: devices
-    from lab_instruments.repl import InstrumentRepl
-
-    repl = InstrumentRepl()
-    repl._scan_thread.join(timeout=5.0)
-    repl._scan_done.wait(timeout=5.0)
-    repl.devices = devices
-    return repl
+@pytest.fixture
+def repl_jds(make_repl):
+    return make_repl({"awg1": MockJDS6600()})
 
 
 @pytest.fixture
-def repl_jds():
-    devices = {"awg1": MockJDS6600()}
-    return make_repl(devices)
-
-
-@pytest.fixture
-def repl_edu():
-    devices = {"awg1": MockEDU33212A()}
-    return make_repl(devices)
+def repl_edu(make_repl):
+    return make_repl({"awg1": MockEDU33212A()})
 
 
 # ---------------------------------------------------------------------------
@@ -138,28 +122,28 @@ class MockAwgNoSync(MockAwgNoDuty):
 
 
 class TestAwgUnsupportedIndependent:
-    def test_duty_not_supported(self, capsys):
+    def test_duty_not_supported(self, capsys, make_repl):
         """awg duty on device without set_duty_cycle prints warning."""
         repl = make_repl({"awg1": MockAwgNoDuty()})
         repl.onecmd("awg duty 1 50")
         out = capsys.readouterr().out
         assert "not supported" in out.lower() or "duty" in out.lower()
 
-    def test_phase_not_supported(self, capsys):
+    def test_phase_not_supported(self, capsys, make_repl):
         """awg phase on device without set_phase prints warning."""
         repl = make_repl({"awg1": MockAwgNoPhase()})
         repl.onecmd("awg phase 1 90")
         out = capsys.readouterr().out
         assert "not supported" in out.lower() or "phase" in out.lower()
 
-    def test_sync_not_available(self, capsys):
+    def test_sync_not_available(self, capsys, make_repl):
         """awg sync on device without set_sync_output prints warning."""
         repl = make_repl({"awg1": MockAwgNoSync()})
         repl.onecmd("awg sync on")
         out = capsys.readouterr().out
         assert "not available" in out.lower() or "sync" in out.lower()
 
-    def test_freq_not_supported(self, capsys):
+    def test_freq_not_supported(self, capsys, make_repl):
         """awg freq on device without set_frequency."""
 
         class MockAwgNoFreqCls:
@@ -201,7 +185,7 @@ class TestAwgUnsupportedIndependent:
         out = capsys.readouterr().out
         assert "not supported" in out.lower() or "freq" in out.lower()
 
-    def test_amp_not_supported(self, capsys):
+    def test_amp_not_supported(self, capsys, make_repl):
         """awg amp on device without set_amplitude."""
 
         class MockAwgNoAmpCls:
@@ -246,7 +230,7 @@ class TestAwgUnsupportedIndependent:
         out = capsys.readouterr().out
         assert "not supported" in out.lower() or "amp" in out.lower()
 
-    def test_offset_not_supported(self, capsys):
+    def test_offset_not_supported(self, capsys, make_repl):
         """awg offset on device without set_offset."""
 
         class MockAwgNoOffsetCls:

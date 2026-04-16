@@ -10,25 +10,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from lab_instruments.mock_instruments import MockHP_34401A
 
 
-def make_repl(devices):
-    """Create an InstrumentRepl with mock devices pre-loaded."""
-    from lab_instruments.src import discovery as _disc
-
-    _disc.InstrumentDiscovery.__init__ = lambda self: None
-    _disc.InstrumentDiscovery.scan = lambda self, verbose=True: devices
-    from lab_instruments.repl import InstrumentRepl
-
-    repl = InstrumentRepl()
-    repl._scan_thread.join(timeout=5.0)
-    repl._scan_done.wait(timeout=5.0)
-    repl.devices = devices
-    return repl
-
-
 @pytest.fixture
-def repl():
-    devices = {"dmm1": MockHP_34401A()}
-    return make_repl(devices)
+def repl(make_repl):
+    return make_repl({"dmm1": MockHP_34401A()})
 
 
 class TestDmmConfig:
