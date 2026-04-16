@@ -48,6 +48,8 @@ scan          # re-scan if you plugged something in after launch
 
 Instruments are assigned names automatically based on type: `psu1`, `psu2`, `dmm1`, `scope1`, `awg1`, etc.
 
+![Listing Connected Instruments](img/terminal/02_list.svg)
+
 ### 4. Control an instrument
 
 ```text

@@ -2,7 +2,9 @@
 
 ---
 
-## The measurement log — what it is and why you need it
+## The measurement log -- what it is and why you need it
+
+![Calc and Logging](img/terminal/06_calc_log.svg)
 
 Every time you use the assignment syntax (`label = instrument meas ...`), the REPL saves the result to a persistent **measurement log** — a table that accumulates all your readings for the current session.
 

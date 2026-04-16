@@ -2,6 +2,8 @@
 
 These bundled examples demonstrate common lab measurement workflows. Load any example into your session and run it, or use it as a starting point for your own scripts.
 
+![Multi-Instrument Workflow](img/terminal/11_multi_instrument.svg)
+
 ```text
 examples                        # list all bundled examples
 examples load <name>            # load a specific example

@@ -8,6 +8,8 @@ Controls arbitrary waveform generators and function generators.
 - Channels are numbered `1`, `2`, or use `all` to affect both simultaneously
 - Multiple AWGs are named `awg1`, `awg2`, etc.
 
+![AWG: Waveform Setup](img/terminal/13_awg.svg)
+
 === "Keysight EDU33212A"
     Dual-channel function/arbitrary waveform generator. Full SCPI support for all waveform types.
 

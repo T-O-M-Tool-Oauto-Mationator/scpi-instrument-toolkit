@@ -9,7 +9,9 @@ Controls power supply units over VISA.
 - **Multi-channel** PSUs (e.g. Matrix MPS-6010H): channels `1`, `2`, `3`, or `all`
 - Multiple PSUs are named `psu1`, `psu2`, etc.
 
-Address a specific PSU directly: `psu1 set 5.0` — or use `use psu1` then `psu set 5.0`.
+Address a specific PSU directly: `psu1 set 5.0` -- or use `use psu1` then `psu set 5.0`.
+
+![PSU: Set Voltage and Measure](img/terminal/03_psu_basic.svg)
 
 === "HP E3631A"
     Triple-output power supply. Channels: 1 (0–6 V), 2 (0–25 V), 3 (0– −25 V). Supports tracking mode for ±supply configurations.

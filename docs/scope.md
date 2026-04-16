@@ -5,8 +5,10 @@
 
 Controls oscilloscopes over VISA.
 
-- Channels are numbered `1`–`4`. Use `all` to affect every channel at once.
+- Channels are numbered `1`-`4`. Use `all` to affect every channel at once.
 - Multiple scopes are named `scope1`, `scope2`, etc.
+
+![Scope: Autoset and Measure](img/terminal/07_scope.svg)
 
 === "Rigol DHO804"
     4-channel oscilloscope with USB interface. Full feature set including counter, DVM, cursors, recording, mask test, and built-in AWG.

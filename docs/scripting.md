@@ -1,8 +1,12 @@
 # Scripts & Directives
 
-Scripts are named sequences of REPL commands stored in the session. They support variables, loops, sub-scripts, and operator interaction — letting you automate full test sequences.
+Scripts are named sequences of REPL commands stored in the session. They support variables, loops, sub-scripts, and operator interaction -- letting you automate full test sequences.
 
-Script directives (`set`, `array`, `linspace`, `print`, `pause`, `sleep`, `repeat`, `for`, `call`, `import`, `export`, `breakpoint`, `upper_limit`, `lower_limit`) are also valid as **interactive REPL commands** — you can test them at the prompt before putting them in a script. `input` and `linspace` use assignment syntax: `var = input [prompt]`, `var = linspace start stop [count]`.
+Script directives (`set`, `array`, `linspace`, `print`, `pause`, `sleep`, `repeat`, `for`, `call`, `import`, `export`, `breakpoint`, `upper_limit`, `lower_limit`) are also valid as **interactive REPL commands** -- you can test them at the prompt before putting them in a script. `input` and `linspace` use assignment syntax: `var = input [prompt]`, `var = linspace start stop [count]`.
+
+![Variables and Arithmetic](img/terminal/05_variables.svg)
+
+![For Loop: Voltage Sweep](img/terminal/08_for_loop.svg)
 
 ---
 

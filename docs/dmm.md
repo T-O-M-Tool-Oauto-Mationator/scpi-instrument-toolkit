@@ -6,8 +6,10 @@
 Controls digital multimeters.
 
 - Multiple DMMs are named `dmm1`, `dmm2`, etc.
-- **Typical workflow:** configure mode → take readings → store results
+- **Typical workflow:** configure mode -> take readings -> store results
 - Or use `dmm meas` for a one-shot measurement without a separate configure step
+
+![DMM: Configure and Read](img/terminal/04_dmm_read.svg)
 
 === "HP 34401A"
     6½-digit multimeter with GPIB interface. Supports NPLC control, display text, fetch, and high-accuracy measurements.
