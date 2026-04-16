@@ -170,6 +170,11 @@ def expand_script_lines(
             values: list[str] = []
             for _rv in tokens[2:]:
                 _subst = substitute_expand(_rv, variables)
+                # Bare-identifier fallback: `for v val` behaves like `for v {val}`
+                # when `val` is a known variable. Brace substitution still runs
+                # first, so `{val}` and literal numbers are unaffected.
+                if _subst == _rv and _rv in variables:
+                    _subst = str(variables[_rv])
                 try:
                     values.extend(shlex.split(_subst))
                 except ValueError:

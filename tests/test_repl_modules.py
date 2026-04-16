@@ -1547,6 +1547,66 @@ class TestExpander:
         commands = [cmd for cmd, _ in result if cmd != "__NOP__"]
         assert commands == ["print 1", "print 2", "print 3"]
 
+    def test_for_with_bare_variable(self):
+        from lab_instruments.repl.script_engine.expander import expand_script_lines
+
+        ctx = self._make_ctx()
+        variables: dict = {}
+        expand_script_lines(['set a "1 2 3"'], variables, ctx)
+        result = expand_script_lines(["for v a", "print {v}", "end"], variables, ctx)
+        commands = [cmd for cmd, _ in result if cmd != "__NOP__"]
+        assert commands == ["print 1", "print 2", "print 3"]
+
+    def test_for_bare_variable_linspace(self):
+        # Regression for issue #79: `for v val` where val = linspace ...
+        # used to iterate once over the literal string "val".
+        from lab_instruments.repl.script_engine.expander import expand_script_lines
+
+        ctx = self._make_ctx()
+        variables: dict = {}
+        expand_script_lines(["val = linspace 18 21.5 5"], variables, ctx)
+        result = expand_script_lines(["for v val", "print {v}", "end"], variables, ctx)
+        commands = [cmd for cmd, _ in result if cmd != "__NOP__"]
+        assert len(commands) == 5
+        assert commands[0] == "print 18"
+        assert commands[-1] == "print 21.5"
+
+    def test_for_bare_unknown_identifier_is_literal(self):
+        # Back-compat: a bare token that is NOT a known variable must still
+        # be treated as a literal value (single iteration). This guards
+        # against the fallback accidentally swallowing unknown identifiers.
+        from lab_instruments.repl.script_engine.expander import expand_script_lines
+
+        ctx = self._make_ctx()
+        result = expand_script_lines(["for v foo", "print {v}", "end"], {}, ctx)
+        commands = [cmd for cmd, _ in result if cmd != "__NOP__"]
+        assert commands == ["print foo"]
+
+    def test_for_mixed_brace_bare_and_literal(self):
+        # A single for line should accept any mix of {braced}, bare-variable,
+        # and plain numeric literals. shlex.split flattens multi-value vars.
+        from lab_instruments.repl.script_engine.expander import expand_script_lines
+
+        ctx = self._make_ctx()
+        variables: dict = {}
+        expand_script_lines(['set A "1 2"', 'set B "3 4"'], variables, ctx)
+        result = expand_script_lines(["for v {A} B 5.0", "print {v}", "end"], variables, ctx)
+        commands = [cmd for cmd, _ in result if cmd != "__NOP__"]
+        assert commands == ["print 1", "print 2", "print 3", "print 4", "print 5.0"]
+
+    def test_for_multikey_bare_variable(self):
+        # Multi-key `for VIN,VSCALE row` must also honor the bare-variable
+        # fallback because the resolved `values` list is shared with the
+        # single-key branch.
+        from lab_instruments.repl.script_engine.expander import expand_script_lines
+
+        ctx = self._make_ctx()
+        variables: dict = {}
+        expand_script_lines(['set ROWS "1,10 2,20 3,30"'], variables, ctx)
+        result = expand_script_lines(["for VIN,VSCALE ROWS", "print {VIN} {VSCALE}", "end"], variables, ctx)
+        commands = [cmd for cmd, _ in result if cmd != "__NOP__"]
+        assert commands == ["print 1 10", "print 2 20", "print 3 30"]
+
     def test_call(self):
         from lab_instruments.repl.script_engine.expander import expand_script_lines
 
