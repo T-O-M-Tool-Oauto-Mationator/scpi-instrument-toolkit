@@ -258,8 +258,14 @@ class VariableCommands(BaseCommand):
         # Substitute {name} variables in expr
         expr = substitute_vars(expr, self.ctx.script_vars, self.ctx.measurements)
 
-        # Build names dict with 'last' from measurement store
+        # Build names dict: script_vars (numeric) + 'last' from measurement store
         names = {}
+        for k, v in self.ctx.script_vars.items():
+            if isinstance(v, (int, float)):
+                names[k] = v
+            else:
+                with contextlib.suppress(TypeError, ValueError):
+                    names[k] = float(v)
         if self.ctx.measurements:
             last_entry = self.ctx.measurements.get_last()
             if last_entry:
