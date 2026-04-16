@@ -306,7 +306,7 @@ class VariableCommands(BaseCommand):
             try:
                 ls_start = float(ls_parts[1])
                 ls_stop = float(ls_parts[2])
-                ls_count = int(ls_parts[3]) if len(ls_parts) >= 4 else 11
+                ls_count = int(float(ls_parts[3])) if len(ls_parts) >= 4 else 11
                 if ls_count < 2:
                     raise ValueError("count must be >= 2")
                 ls_step = (ls_stop - ls_start) / (ls_count - 1)
