@@ -25,7 +25,7 @@ Controls oscilloscopes over VISA.
 
 Auto-configure the scope for the current input signal.
 
-```
+```text
 scope autoset
 ```
 
@@ -33,7 +33,7 @@ Automatically adjusts time/division, voltage/division, and trigger settings to d
 
 ### scope run / stop / single
 
-```
+```text
 scope run       # start continuous acquisition
 scope stop      # freeze the display
 scope single    # arm single-shot trigger
@@ -92,7 +92,7 @@ Use after `scope single` to ensure the trigger has fired before querying measure
 
 Enable or disable channel display.
 
-```
+```text
 scope chan <1-4|all> <on|off>
 ```
 
@@ -101,7 +101,7 @@ scope chan <1-4|all> <on|off>
 | `1-4\|all` | required | `1`, `2`, `3`, `4`, `all` | Channel number, or `all`. |
 | `on\|off` | required | `on`, `off` | Show or hide the channel. |
 
-```
+```text
 scope chan 1 on      # show channel 1
 scope chan 3 off     # hide channel 3
 scope chan all on    # show all channels
@@ -111,7 +111,7 @@ scope chan all on    # show all channels
 
 Set input coupling for one or more channels.
 
-```
+```text
 scope coupling <1-4|all> <DC|AC|GND>
 ```
 
@@ -120,7 +120,7 @@ scope coupling <1-4|all> <DC|AC|GND>
 | `1-4\|all` | required | `1`–`4`, `all` | Channel(s) to configure. |
 | `DC\|AC\|GND` | required | `DC`, `AC`, `GND` | Coupling mode. DC = pass all frequencies. AC = block DC component. GND = disconnect input (shows 0 V reference). |
 
-```
+```text
 scope coupling 1 AC       # AC-couple channel 1
 scope coupling all DC     # DC-couple all channels
 ```
@@ -129,7 +129,7 @@ scope coupling all DC     # DC-couple all channels
 
 Set probe attenuation so the scope displays correct voltages.
 
-```
+```text
 scope probe <1-4|all> <attenuation>
 ```
 
@@ -138,7 +138,7 @@ scope probe <1-4|all> <attenuation>
 | `1-4\|all` | required | `1`–`4`, `all` | Channel(s). |
 | `attenuation` | required | `1`, `10`, `100` | Probe attenuation ratio. `1` = direct connection, `10` = 10× probe, `100` = 100× high-voltage probe. |
 
-```
+```text
 scope probe 1 10    # channel 1 has a 10× probe
 scope probe all 1   # all channels: direct (1×) connection
 ```
@@ -151,7 +151,7 @@ scope probe all 1   # all channels: direct (1×) connection
 
 Set the time per division.
 
-```
+```text
 scope hscale <s/div>
 ```
 
@@ -159,7 +159,7 @@ scope hscale <s/div>
 |-----------|----------|--------|-------------|
 | `s/div` | required | float (s) | Seconds per division. E.g. `0.001` = 1 ms/div, `1e-6` = 1 µs/div. |
 
-```
+```text
 scope hscale 0.001      # 1 ms/div
 scope hscale 0.0001     # 100 µs/div
 ```
@@ -168,7 +168,7 @@ scope hscale 0.0001     # 100 µs/div
 
 Set or adjust the horizontal trigger position.
 
-```
+```text
 scope hpos <percentage>     # set absolute position
 scope hmove <delta>         # adjust relative to current position
 ```
@@ -178,7 +178,7 @@ scope hmove <delta>         # adjust relative to current position
 | `percentage` | required (hpos) | Trigger position as percent of screen width. |
 | `delta` | required (hmove) | Relative adjustment amount. |
 
-```
+```text
 scope hpos 50     # center trigger at 50%
 scope hmove 10    # shift right by 10%
 ```
@@ -191,7 +191,7 @@ scope hmove 10    # shift right by 10%
 
 Set voltage per division for one or more channels.
 
-```
+```text
 scope vscale <1-4|all> <V/div> [pos]
 ```
 
@@ -201,7 +201,7 @@ scope vscale <1-4|all> <V/div> [pos]
 | `V/div` | required | float (V) | Voltage per division. |
 | `pos` | optional | float (divisions) | Vertical position offset. Default: `0` (centered). |
 
-```
+```text
 scope vscale 1 0.5           # channel 1: 0.5 V/div
 scope vscale 1 0.5 -2        # 0.5 V/div, shifted down 2 divisions
 scope vscale all 1.0 0       # all channels: 1 V/div, centered
@@ -211,12 +211,12 @@ scope vscale all 1.0 0       # all channels: 1 V/div, centered
 
 Set or adjust vertical position.
 
-```
+```text
 scope vpos <1-4|all> <divisions>    # set absolute position
 scope vmove <1-4|all> <delta>       # adjust relative to current
 ```
 
-```
+```text
 scope vpos 1 0        # center channel 1
 scope vmove 1 -1      # move channel 1 down by 1 division
 ```
@@ -229,7 +229,7 @@ scope vmove 1 -1      # move channel 1 down by 1 division
 
 Configure the trigger.
 
-```
+```text
 scope trigger <channel> <level> [slope=<RISE|FALL>] [mode=<AUTO|NORM|SINGLE>]
 ```
 
@@ -240,7 +240,7 @@ scope trigger <channel> <level> [slope=<RISE|FALL>] [mode=<AUTO|NORM|SINGLE>]
 | `slope=` | optional | `RISE`, `FALL` | Edge to trigger on. Default: `RISE`. |
 | `mode=` | optional | `AUTO`, `NORM`, `SINGLE` | Trigger mode. `AUTO` = free-run if no trigger; `NORM` = wait for trigger; `SINGLE` = one-shot. Default: `AUTO`. |
 
-```
+```text
 scope trigger 1 0.0                           # ch1, 0 V threshold, rising edge
 scope trigger 1 1.5 slope=FALL                # ch1, 1.5 V, falling edge
 scope trigger 1 0.0 slope=RISE mode=NORM      # ch1, normal mode
@@ -254,7 +254,7 @@ scope trigger 1 0.0 slope=RISE mode=NORM      # ch1, normal mode
 
 Take and print a single measurement.
 
-```
+```text
 scope meas <1-4|all> <type>
 ```
 
@@ -331,7 +331,7 @@ scope meas <1-4|all> <type>
     | `POSEDGES` / `PEDGES` | Positive edge count |
     | `NEGEDGES` / `NEDGES` | Negative edge count |
 
-    ```
+    ```text
     scope meas 1 FREQUENCY    # print channel 1 frequency
     scope meas 1 PK2PK        # print channel 1 peak-to-peak
     scope meas 2 RISE         # print channel 2 rise time
@@ -372,7 +372,7 @@ scope meas <1-4|all> <type>
     | `POSOVERSHOOT` | Positive overshoot |
     | `NEGOVERSHOOT` | Negative overshoot |
 
-    ```
+    ```text
     scope meas 1 FREQUENCY    # print channel 1 frequency
     scope meas 1 PK2PK        # print channel 1 peak-to-peak
     scope meas 2 RISE         # print channel 2 rise time
@@ -385,7 +385,7 @@ scope meas <1-4|all> <type>
 
 Configure a measurement slot before capturing so the scope computes the value when the trigger fires.
 
-```
+```text
 scope meas_setup <1-4|all> <type>
 ```
 
@@ -396,7 +396,7 @@ scope meas_setup <1-4|all> <type>
 
 === "Rigol DHO804"
 
-    ```
+    ```text
     scope meas_setup 3 RISE     # configure CH3 rise time slot
     scope meas_setup 4 RISE     # configure CH4 rise time slot
     scope single
@@ -417,7 +417,7 @@ Force the scope's measurement DSP to compute all configured slots.
 
 === "Rigol DHO804"
 
-    ```
+    ```text
     scope meas_force
     ```
 
@@ -435,13 +435,13 @@ Remove all measurement items from the on-screen results panel.
 
 === "Rigol DHO804"
 
-    ```
+    ```text
     scope meas_clear
     ```
 
     Sends `:MEASure:CLEar` to hide the measurement sidebar. Use before `scope screenshot` to capture a clean image without the measurement overlay.
 
-    ```
+    ```text
     scope meas_force
     ch3_rise = scope meas 3 RISE unit=s
     scope meas_clear              # close the panel
@@ -483,7 +483,7 @@ scope meas_loop all PK2PK interval=2.0               # all channels, every 2s
 !!! tip "Recording measurements"
     Use assignment syntax to measure **and** store the result to the measurement log in one step:
 
-    ```
+    ```text
     <label> = scope meas <1-4|all> <type> [unit=<str>]
     ```
 
@@ -496,7 +496,7 @@ scope meas_loop all PK2PK interval=2.0               # all channels, every 2s
 
     === "Rigol DHO804"
 
-        ```
+        ```text
         meas_freq = scope meas 1 FREQUENCY unit=Hz
         meas_pk2pk = scope meas 1 PK2PK unit=V
         ch3_rise = scope meas 3 RISE unit=s
@@ -504,7 +504,7 @@ scope meas_loop all PK2PK interval=2.0               # all channels, every 2s
 
     === "Tektronix MSO2024"
 
-        ```
+        ```text
         meas_freq = scope meas 1 FREQUENCY unit=Hz
         meas_pk2pk = scope meas 1 PK2PK unit=V
         ch2_rise = scope meas 2 RISE unit=s
@@ -512,7 +512,7 @@ scope meas_loop all PK2PK interval=2.0               # all channels, every 2s
 
     Then use in calculations:
 
-    ```
+    ```text
     calc crest_factor meas_pk2pk / meas_rms   # compute crest factor
     log print
     ```
@@ -521,7 +521,7 @@ scope meas_loop all PK2PK interval=2.0               # all channels, every 2s
 
 Measure the time delay between two channels.
 
-```
+```text
 scope meas_delay <ch1> <ch2> [edge1=RISE] [edge2=RISE]
 ```
 
@@ -532,14 +532,14 @@ scope meas_delay <ch1> <ch2> [edge1=RISE] [edge2=RISE]
 
 === "Rigol DHO804"
 
-    ```
+    ```text
     scope meas_delay 1 2              # delay from ch1 rising to ch2 rising
     scope meas_delay 1 2 edge2=FALL  # delay from ch1 rising to ch2 falling
     ```
 
 === "Tektronix MSO2024"
 
-    ```
+    ```text
     scope meas_delay 1 2              # delay from ch1 rising to ch2 rising
     scope meas_delay 1 2 edge2=FALL  # delay from ch1 rising to ch2 falling
     ```
@@ -548,7 +548,7 @@ scope meas_delay <ch1> <ch2> [edge1=RISE] [edge2=RISE]
 
 Measure delay and record to the log.
 
-```
+```text
 scope meas_delay_store <ch1> <ch2> <label> [edge1=RISE] [edge2=RISE] [direction=FORWARDS] [unit=]
 ```
 
@@ -562,13 +562,13 @@ scope meas_delay_store <ch1> <ch2> <label> [edge1=RISE] [edge2=RISE] [direction=
 
 === "Rigol DHO804"
 
-    ```
+    ```text
     scope meas_delay_store 1 2 prop_delay unit=s
     ```
 
 === "Tektronix MSO2024"
 
-    ```
+    ```text
     scope meas_delay_store 1 2 prop_delay unit=s
     ```
 
@@ -580,7 +580,7 @@ scope meas_delay_store <ch1> <ch2> <label> [edge1=RISE] [edge2=RISE] [direction=
 
 Download waveform data and save to a CSV file.
 
-```
+```text
 scope save <channels> <file.csv> [record=<s>] [time=<s>] [points=<n>]
 ```
 
@@ -591,7 +591,7 @@ scope save <channels> <file.csv> [record=<s>] [time=<s>] [points=<n>]
 | `record=` / `time=` | optional | float (s) | Record for this many seconds before saving. |
 | `points=` | optional | int | Number of waveform points to request from scope. |
 
-```
+```text
 scope save 1 output.csv              # save channel 1 waveform
 scope save 1,2 both.csv             # save channels 1 and 2
 scope save 1 data.csv record=2.0    # record for 2 s then save
@@ -647,7 +647,7 @@ scope awg chan off
 
 Control the built-in frequency counter.
 
-```
+```text
 scope counter on          # enable counter
 scope counter off         # disable counter
 scope counter read        # read current frequency
@@ -659,7 +659,7 @@ scope counter mode freq   # set mode: freq, period, or totalize
 
 Control the built-in digital voltmeter.
 
-```
+```text
 scope dvm on           # enable DVM
 scope dvm off          # disable DVM
 scope dvm read         # read current DVM value
@@ -670,7 +670,7 @@ scope dvm source 1     # set DVM source to channel 1
 
 ## scope state
 
-```
+```text
 scope state <on|off|safe|reset>
 ```
 
@@ -692,7 +692,7 @@ The following commands are available on the Rigol DHO804 and Keysight DSOX1204G 
 Capture the scope display and save as PNG.
 
 === "Rigol DHO804"
-    ```
+    ```text
     scope screenshot                    # auto-named: screenshot_HHMMSS.png
     scope screenshot capture.png        # save as capture.png in data dir
     scope screenshot /path/to/file.png  # save to absolute path
@@ -701,7 +701,7 @@ Capture the scope display and save as PNG.
     Screenshots are saved to `~/Documents/scpi-instrument-toolkit/data/` by default.
 
 === "Keysight DSOX1204G"
-    ```
+    ```text
     scope screenshot                    # auto-named: screenshot_HHMMSS.png
     scope screenshot capture.png        # save as capture.png in data dir
     ```
@@ -714,7 +714,7 @@ Capture the scope display and save as PNG.
 ### scope label / invert / bwlimit
 
 === "Rigol DHO804"
-    ```
+    ```text
     scope label <1-4> <text>        # set channel label
     scope invert <1-4> <on|off>     # invert channel display
     scope bwlimit <1-4> <20M|OFF>   # set bandwidth limit
@@ -726,14 +726,14 @@ Capture the scope display and save as PNG.
     | `invert` | `<ch> on\|off` | Flip the waveform vertically |
     | `bwlimit` | `<ch> 20M\|OFF` | Enable 20 MHz bandwidth limit filter |
 
-    ```
+    ```text
     scope label 1 VCC
     scope invert 2 on
     scope bwlimit 1 20M
     ```
 
 === "Keysight DSOX1204G"
-    ```
+    ```text
     scope label <1-4> <text>        # set channel label (max 10 chars)
     scope invert <1-4> <on|off>     # invert channel display
     scope bwlimit <1-4> <20M|OFF>   # 25 MHz bandwidth limit (mapped to ON/OFF)
@@ -748,7 +748,7 @@ Capture the scope display and save as PNG.
 
 Force a trigger event immediately.
 
-```
+```text
 scope force
 ```
 
@@ -758,7 +758,7 @@ Useful when the trigger is armed but not triggering. Works on all scope models.
 
 Reset the scope to factory defaults.
 
-```
+```text
 scope reset
 ```
 
@@ -771,7 +771,7 @@ Sends `*RST` to restore factory defaults. Works on all scope models.
 === "Rigol DHO804"
     Control display settings.
 
-    ```
+    ```text
     scope display clear                  # clear waveform display
     scope display brightness <0-100>     # set waveform brightness
     scope display grid <FULL|HALF|NONE>  # set grid style
@@ -792,7 +792,7 @@ Sends `*RST` to restore factory defaults. Works on all scope models.
 === "Keysight DSOX1204G"
     Control display settings.
 
-    ```
+    ```text
     scope display clear                  # clear waveform display
     scope display brightness <1-100>     # set waveform brightness
     scope display persist <MIN|INF|OFF>  # set persistence time
@@ -811,7 +811,7 @@ Sends `*RST` to restore factory defaults. Works on all scope models.
 === "Rigol DHO804"
     Control acquisition settings.
 
-    ```
+    ```text
     scope acquire type <NORMAL|AVERAGE|PEAK|HRES>  # set acquisition type
     scope acquire averages <count>                  # set number of averages
     scope acquire depth <AUTO|1K|10K|100K|1M|...>   # set memory depth
@@ -828,7 +828,7 @@ Sends `*RST` to restore factory defaults. Works on all scope models.
 === "Keysight DSOX1204G"
     Control acquisition settings.
 
-    ```
+    ```text
     scope acquire type <NORMAL|AVERAGE|HRESOLUTION|PEAK>  # set acquisition type
     scope acquire averages <count>                        # set number of averages
     scope acquire rate                                    # show current sample rate
@@ -846,7 +846,7 @@ Sends `*RST` to restore factory defaults. Works on all scope models.
 === "Rigol DHO804"
     Control measurement cursors.
 
-    ```
+    ```text
     scope cursor off                        # disable cursors
     scope cursor manual <X|Y|XY> [source]   # enable manual cursors
     scope cursor set <ax> [ay] [bx] [by]    # set cursor positions
@@ -860,7 +860,7 @@ Sends `*RST` to restore factory defaults. Works on all scope models.
     | `set` | up to 4 float values | Set cursor positions |
     | `read` | — | Read and display cursor values |
 
-    ```
+    ```text
     scope cursor manual X CH1         # enable X cursors on channel 1
     scope cursor set 0.001 0.002      # set A and B cursor positions
     scope cursor read                 # read delta values
@@ -869,14 +869,14 @@ Sends `*RST` to restore factory defaults. Works on all scope models.
 === "Keysight DSOX1204G"
     Control measurement cursors. The Keysight uses `:MARKer:` SCPI commands internally but the REPL interface is identical.
 
-    ```
+    ```text
     scope cursor off                        # disable cursors
     scope cursor manual <X|Y|XY> [source]   # enable manual cursors
     scope cursor set <x1> [y1] [x2] [y2]    # set cursor positions
     scope cursor read                       # read cursor values and deltas
     ```
 
-    ```
+    ```text
     scope cursor manual X CH1         # enable X cursors on channel 1
     scope cursor set 0.001 0.002      # set X1 and X2 positions
     scope cursor read                 # read delta values
@@ -892,7 +892,7 @@ Sends `*RST` to restore factory defaults. Works on all scope models.
 === "Rigol DHO804"
     Control math channels (operations, FFT, filters).
 
-    ```
+    ```text
     scope math on|off [ch]                              # enable/disable math channel
     scope math op <ch> <ADD|SUB|MUL|DIV> <src1> [src2]  # arithmetic operation
     scope math func <ch> <ABS|SQRT|LG|LN|EXP> <src>    # math function
@@ -910,7 +910,7 @@ Sends `*RST` to restore factory defaults. Works on all scope models.
     | `filter` | Digital filter: low-pass, high-pass, band-pass, band-stop |
     | `scale` | Adjust math channel vertical scale |
 
-    ```
+    ```text
     scope math on 1                        # enable math channel 1
     scope math op 1 SUB CH1 CH2            # Math1 = CH1 - CH2
     scope math fft 1 CH1 window=HANN       # FFT of CH1 with Hanning window
@@ -920,7 +920,7 @@ Sends `*RST` to restore factory defaults. Works on all scope models.
 === "Keysight DSOX1204G"
     Control the single math channel via the `:FUNCtion` subsystem.
 
-    ```
+    ```text
     scope math on|off 1                                 # enable/disable math channel
     scope math op 1 <ADD|SUB|MUL> <src1> [src2]         # arithmetic operation
     scope math func 1 <INTG|DIFF|SQRT> <src>            # math function
@@ -930,7 +930,7 @@ Sends `*RST` to restore factory defaults. Works on all scope models.
 
     The Keysight 1000X has one math channel. Digital filter is not available.
 
-    ```
+    ```text
     scope math on 1                        # enable math channel
     scope math op 1 SUB CH1 CH2            # Math = CH1 - CH2
     scope math fft 1 CH1 window=HANN       # FFT of CH1 with Hanning window
@@ -946,7 +946,7 @@ Sends `*RST` to restore factory defaults. Works on all scope models.
 === "Rigol DHO804"
     Control waveform recording and playback.
 
-    ```
+    ```text
     scope record on|off           # enable/disable recording
     scope record frames <count>   # set number of frames to record
     scope record start            # start recording
@@ -964,7 +964,7 @@ Sends `*RST` to restore factory defaults. Works on all scope models.
     | `status` | — | Display current recording status |
     | `play` | — | Start playback of recorded frames |
 
-    ```
+    ```text
     scope record frames 500       # record 500 frames
     scope record start            # begin recording
     scope record status           # check status
@@ -984,7 +984,7 @@ Sends `*RST` to restore factory defaults. Works on all scope models.
 === "Rigol DHO804"
     Control pass/fail mask testing.
 
-    ```
+    ```text
     scope mask on|off                 # enable/disable mask testing
     scope mask source <1-4>           # set mask source channel
     scope mask tolerance <x> <y>      # set X and Y tolerance
@@ -1005,7 +1005,7 @@ Sends `*RST` to restore factory defaults. Works on all scope models.
     | `stats` | — | Display pass/fail/total statistics |
     | `reset` | — | Reset statistics counters |
 
-    ```
+    ```text
     scope mask source 1               # set mask source to CH1
     scope mask create                  # create mask from current waveform
     scope mask start                  # start testing
@@ -1015,7 +1015,7 @@ Sends `*RST` to restore factory defaults. Works on all scope models.
 === "Keysight DSOX1204G"
     Control pass/fail mask testing. Same syntax as Rigol.
 
-    ```
+    ```text
     scope mask on|off                 # enable/disable mask testing
     scope mask source <1-4>           # set mask source channel
     scope mask tolerance <x> <y>      # set X and Y tolerance (divisions)

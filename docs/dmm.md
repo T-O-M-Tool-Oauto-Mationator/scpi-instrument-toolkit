@@ -56,7 +56,7 @@ dmm mode <mode> [range] [resolution] [nplc=<n>]
 | `cap` | Capacitance (device-dependent) |
 | `temp` | Temperature (device-dependent) |
 
-```
+```text
 dmm config vdc                    # DC voltage, auto-range
 dmm config vdc 10                 # DC voltage, 10 V range
 dmm config vdc 10 DEF nplc=10    # high-accuracy DC voltage (slow)
@@ -74,13 +74,13 @@ dmm config freq                   # frequency measurement
 
 Take a reading using the currently configured mode.
 
-```
+```text
 dmm read
 ```
 
 Call `dmm config` first to set the mode. `dmm read` does not store the result — use the assignment syntax (`label = dmm meas unit=V`) to record it.
 
-```
+```text
 dmm config vdc
 dmm read       # take one DC voltage reading
 ```
@@ -91,7 +91,7 @@ dmm read       # take one DC voltage reading
 
 One-shot measurement — configure and read in a single command.
 
-```
+```text
 dmm meas <mode> [range] [resolution]
 ```
 
@@ -101,7 +101,7 @@ dmm meas <mode> [range] [resolution]
 | `range` | optional | float or `DEF` | Measurement range. Default: auto-range. |
 | `resolution` | optional | float or `DEF` | Resolution. Default: default. |
 
-```
+```text
 dmm meas vdc        # quick DC voltage reading
 dmm meas res        # quick resistance reading
 dmm meas freq       # quick frequency reading
@@ -113,7 +113,7 @@ dmm meas freq       # quick frequency reading
 !!! tip "Recording measurements"
     Use assignment syntax to measure **and** store the result to the measurement log in one step:
 
-    ```
+    ```text
     <label> = dmm meas [scale=<factor>] [unit=<str>]
     ```
 
@@ -126,7 +126,7 @@ dmm meas freq       # quick frequency reading
     !!! warning "Requires dmm config first"
         Call `dmm config <mode>` before using the assignment syntax. The DMM must be in the correct mode.
 
-    ```
+    ```text
     dmm config vdc
     vout = dmm meas unit=V                  # store as 'vout', use as bare name in calc
 
@@ -139,7 +139,7 @@ dmm meas freq       # quick frequency reading
 
     **Using stored values in calculations:**
 
-    ```
+    ```text
     dmm config vdc
     voltage = dmm meas unit=V
 
@@ -158,7 +158,7 @@ dmm meas freq       # quick frequency reading
 
 Fetch the last reading without triggering a new measurement.
 
-```
+```text
 dmm fetch
 ```
 
@@ -170,7 +170,7 @@ Returns the most recent measurement result without re-triggering. HP 34401A only
 
 Trigger an audible beep from the DMM.
 
-```
+```text
 dmm beep
 ```
 
@@ -182,7 +182,7 @@ Useful as audio confirmation during scripted tests — e.g. beep when a measurem
 
 Control the front panel display.
 
-```
+```text
 dmm display <on|off>
 ```
 
@@ -190,7 +190,7 @@ dmm display <on|off>
 |-----------|----------|--------|-------------|
 | `on\|off` | required | `on`, `off` | Turn the display on or off. |
 
-```
+```text
 dmm display off    # blank the display (speeds up measurements on HP 34401A)
 dmm display on     # restore display
 ```
@@ -201,7 +201,7 @@ dmm display on     # restore display
 
 Show custom text on the DMM display.
 
-```
+```text
 dmm text <message> [scroll=<auto|on|off>] [delay=<s>] [loops=<n>] [pad=<n>] [width=<n>]
 ```
 
@@ -212,7 +212,7 @@ dmm text <message> [scroll=<auto|on|off>] [delay=<s>] [loops=<n>] [pad=<n>] [wid
 | `delay=` | optional | float (s) | Delay between scroll steps in seconds. |
 | `loops=` | optional | int | Number of times to repeat the scroll animation. |
 
-```
+```text
 dmm text READY
 dmm text TESTING scroll=auto delay=0.2
 ```
@@ -281,7 +281,7 @@ Clears text set by either `dmm text` or `dmm text_loop`. If a scrolling loop is 
 
 Print the valid measurement ranges for the connected DMM model.
 
-```
+```text
 dmm ranges
 ```
 
@@ -292,7 +292,7 @@ dmm ranges
 
 ## dmm state
 
-```
+```text
 dmm state <safe|reset>
 ```
 

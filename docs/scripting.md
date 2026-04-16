@@ -12,13 +12,13 @@ Script directives (`set`, `array`, `linspace`, `print`, `pause`, `sleep`, `repea
 
 Create a new script and open it in your editor.
 
-```
+```text
 script new <name>
 ```
 
 Opens your system editor (`$EDITOR` / `$VISUAL`). Write one command per line. Save and close to finish.
 
-```
+```text
 script new my_psu_test
 ```
 
@@ -26,7 +26,7 @@ script new my_psu_test
 
 Execute a script with optional parameter overrides.
 
-```
+```text
 script run <name|path> [key=value ...]
 ```
 
@@ -37,7 +37,7 @@ script run <name|path> [key=value ...]
 
 Pass a file path — with `/`, `\`, a leading `.`, or a `.scpi` extension — to run a script directly from disk without copying it to the scripts library:
 
-```
+```text
 script run my_psu_test                     # named script in scripts dir
 script run my_psu_test voltage=3.3         # with parameter override
 script run ./lab3.scpi                     # run by relative path
@@ -50,13 +50,13 @@ script run C:/projects/lab3.scpi           # Windows absolute path
 
 Run a script in the **interactive debugger** — step through commands one at a time, set breakpoints, and inspect state at any point.
 
-```
+```text
 script debug <name|path> [key=value ...]
 ```
 
 Accepts the same name-or-path syntax as `script run`. See [Debugger](#debugger) for the full reference.
 
-```
+```text
 script debug lab3
 script debug ./lab3.scpi
 script debug my_test voltage=3.3
@@ -66,7 +66,7 @@ script debug my_test voltage=3.3
 
 Get or set the directory where named scripts are stored for this session.
 
-```
+```text
 script dir           # print current scripts directory
 script dir <path>    # switch to a different directory
 script dir reset     # go back to the default
@@ -82,14 +82,14 @@ script dir reset     # go back to the default
 
 !!! tip "Windows paths"
     Forward slashes work on all platforms. Backslashes and spaces in paths are also supported without quoting:
-    ```
+    ```text
     script dir C:\Users\lab\scripts
     script dir C:/My Documents/scripts
     ```
 
 Changing the scripts dir immediately reloads all named scripts from the new location. This is useful when your project keeps its `.scpi` files alongside its source code:
 
-```
+```text
 script dir .                # point at the project folder
 script list                 # see what's available
 script run lab3             # run lab3.scpi from the project folder
@@ -102,7 +102,7 @@ script run lab3             # run lab3.scpi from the project folder
 
 Open an existing script in your editor.
 
-```
+```text
 script edit <name>
 ```
 
@@ -110,7 +110,7 @@ script edit <name>
 
 Print a script's lines to the terminal with syntax highlighting.
 
-```
+```text
 script show <name>
 ```
 
@@ -118,7 +118,7 @@ script show <name>
 
 Show all saved scripts with their line counts.
 
-```
+```text
 script list
 ```
 
@@ -126,7 +126,7 @@ script list
 
 Delete a script.
 
-```
+```text
 script rm <name>
 ```
 
@@ -134,7 +134,7 @@ script rm <name>
 
 Load script lines from a plain-text file.
 
-```
+```text
 script import <name> <path>
 ```
 
@@ -197,7 +197,7 @@ script run my_psu_test       # run the recorded script
 
 Execute an external Python script file with full access to the REPL's live instruments, measurements, and variables.
 
-```
+```text
 python <file.py>
 ```
 
@@ -280,7 +280,7 @@ repl.ctx.script_vars['result'] = str(computed)   # must be a string
 
 A single SCPI script that collects data and calls Python for analysis:
 
-```
+```text
 # collect.scpi
 target = 5.0
 tolerance = 0.05
@@ -437,7 +437,7 @@ Variables let you parameterize scripts so the same script works for different te
 
 Use Python-style assignment — the same syntax you'd write in Python:
 
-```
+```text
 voltage = 5.0
 label = vtest
 doubled = voltage * 2     # arithmetic works — doubled = 10.0
@@ -448,7 +448,7 @@ offset = voltage - 0.5    # offset = 4.5
 
 You can read directly from an instrument into a variable:
 
-```
+```text
 dmm config vdc
 output_v = dmm read            # reads DMM, stores in variable AND measurement log
 supply_i = psu read unit=A     # optional unit= override
@@ -470,7 +470,7 @@ Supported functions: `abs()  min()  max()  round()`
 
 Shorthand for updating a variable in place:
 
-```
+```text
 voltage += 0.1     # voltage = voltage + 0.1
 count  -= 1
 gain   *= 2.0
@@ -481,7 +481,7 @@ All augmented operators are supported: `+=  -=  *=  /=  //=  **=  %=  |=  &=  ^=
 
 #### Increment / decrement
 
-```
+```text
 i++          # i = i + 1
 i--          # i = i - 1
 ++j          # prefix form — same result
@@ -504,7 +504,7 @@ Conditions in `if`, `while`, `assert`, and `check` support comparison and boolea
 
 `&&` and `||` are rewritten to `and`/`or` before evaluation — they are 100% identical. Use whichever you prefer.
 
-```
+```text
 ok = voltage > 4.9 and voltage < 5.1
 ok = voltage > 4.9 && voltage < 5.1    # same thing
 
@@ -527,7 +527,7 @@ All five operators work in `if`, `while`, `assert`, `check`, and `pyeval`.
 
 Use `{varname}` (f-string style) anywhere in a script line:
 
-```
+```text
 voltage = 5.0
 label = my_run
 
@@ -542,14 +542,14 @@ Use `{varname}` syntax for variable references.
 
 Control whether a script stops when a command fails (like bash's `set -e`).
 
-```
+```text
 set -e    # Enable exit-on-error: stop script on first command failure
 set +e    # Disable exit-on-error: continue despite errors
 ```
 
 **Example: stop on error**
 
-```
+```text
 set -e
 psu1 set 5.0           # if this fails, script stops here
 dmm1 config vdc        # this won't run if PSU command failed
@@ -558,7 +558,7 @@ print "Done             # this won't run either"
 
 **Example: continue on error**
 
-```
+```text
 set +e
 psu1 set 5.0           # if this fails, continue anyway
 dmm1 config vdc        # this runs regardless
@@ -572,7 +572,7 @@ Use `set -e` for critical test sequences where a single failure should abort the
 
 Script variables can be overridden when running the script from the command line:
 
-```
+```text
 # Script has:  voltage = 5.0
 script run my_test voltage=3.3    # runs with voltage=3.3 instead of 5.0
 script run my_test voltage=12.0 label=high_v
@@ -586,7 +586,7 @@ This is how you reuse the same script for different test conditions without edit
 
 Delete a previously defined variable so it can no longer be used or substituted:
 
-```
+```text
 unset <varname>
 ```
 
@@ -608,7 +608,7 @@ This is useful in interactive sessions when you want to re-run a script with a c
 
 The `set varname expr` syntax still works but is deprecated for variable assignment:
 
-```
+```text
 set voltage 5.0     # ⚠️  deprecated — use: voltage = 5.0
 set -e              # still valid — exit-on-error control (not deprecated)
 set +e              # still valid
@@ -626,7 +626,7 @@ Scripts use instrument read assignments and `calc` to take and process measureme
 
 Use `varname = <instrument> read` to take a measurement. The value is stored in **both** the script variable and the measurement log:
 
-```
+```text
 psu1 meas v
 output_v = psu1 read               # measure voltage, save as "output_v"
 dmm1 config vdc                     # set DMM to DC voltage mode
@@ -637,7 +637,7 @@ log print                           # show the full table
 
 After running this, `log print` shows:
 
-```
+```text
 Label       Value       Unit   Source
 output_v    4.9987      V      psu.read
 dmm_v       4.9992      V      dmm.read
@@ -646,7 +646,7 @@ error      -0.0005      V      calc
 
 The unit is auto-detected from the instrument's last configured mode (e.g., `vdc` → `V`, `idc` → `A`). Override with `unit=`:
 
-```
+```text
 resist = dmm read unit=kohms
 ```
 
@@ -656,7 +656,7 @@ See [Log & Calc](logging.md) for the full reference.
 
 Since `varname = <instrument> read` uses the variable name as the measurement label, you can make labels dynamic by using variables in loop contexts:
 
-```
+```text
 dmm1 config vdc
 for v 3.3 5.0 12.0
   psu1 set {v}
@@ -668,7 +668,7 @@ log print    # all three rows appear in the log
 
 ### A complete measurement script
 
-```
+```text
 # my_test — measure PSU accuracy at a target voltage
 voltage = 5.0
 test_name = vout_5v
@@ -694,7 +694,7 @@ print "=== Done ==="
 
 Run it with different voltages without editing the script:
 
-```
+```text
 script run my_test voltage=3.3 test_name=vout_3v3
 script run my_test voltage=12.0 test_name=vout_12v
 ```
@@ -705,13 +705,13 @@ script run my_test voltage=12.0 test_name=vout_12v
 
 ### print — display a message
 
-```
+```text
 print "message with {variables}"
 ```
 
 Prints a message to the terminal. Use `{varname}` to embed variable values (Python f-string style). Quotes are optional but recommended for clarity.
 
-```
+```text
 voltage = 5.0
 label = vtest
 
@@ -727,7 +727,7 @@ Use `print` to add section headers, progress updates, and operator instructions 
 
 ### pause — wait for operator
 
-```
+```text
 pause [message]
 ```
 
@@ -737,7 +737,7 @@ Stops script execution and waits for the operator to press **Enter**. Use for ma
 | --------- | -------- | --------------------------------------------------------------- |
 | `message` | optional | Prompt shown to operator. Default: "Press Enter to continue..." |
 
-```
+```text
 pause
 pause Connect probe to TP1 then press Enter
 pause Swap DUT before continuing
@@ -745,7 +745,7 @@ pause Swap DUT before continuing
 
 ### input — prompt for a value
 
-```
+```text
 <varname> = input [prompt text]
 ```
 
@@ -756,7 +756,7 @@ Prompts the operator to type a value at runtime. The entered text is stored as `
 | `varname`     | required | Variable name. The entered value will be available as `{varname}` in all lines after this directive.|
 | `prompt text` | optional | Text shown to operator. Default: the variable name.                                                 |
 
-```
+```text
 voltage = input Enter target voltage (V):
 dut_id = input DUT serial number:
 operator_name = input Operator name:
@@ -764,7 +764,7 @@ operator_name = input Operator name:
 
 After the prompt, you can use `{voltage}` anywhere:
 
-```
+```text
 voltage = input Enter target voltage (V):
 psu1 set {voltage}
 print "Voltage set to {voltage}V"
@@ -781,13 +781,13 @@ output_{voltage} = dmm1 meas unit=V
 
 ### sleep — pause inside a script
 
-```
+```text
 sleep <seconds>
 ```
 
 Pauses execution for the given duration. Variable substitution works:
 
-```
+```text
 sleep 0.5              # pause 500 ms
 sleep {delay}         # pause using a variable
 sleep 1.0              # wait 1 second for signal to settle
@@ -801,7 +801,7 @@ Use `sleep` after `psu set` or `awg wave` to let the output settle before measur
 
 ### repeat — fixed number of repetitions
 
-```
+```text
 repeat <N>
   <commands>
 end
@@ -813,14 +813,14 @@ Executes the enclosed commands exactly N times.
 | --------- | -------- | ----------------------------------- |
 | `N`       | required | Number of repetitions. Integer ≥ 1. |
 
-```
+```text
 repeat 5
   sample = psu1 meas v unit=V
   sleep 0.2
 end
 ```
 
-```
+```text
 repeat 3
   dmm1 meas vdc
   sleep 0.5
@@ -829,7 +829,7 @@ end
 
 ### for — loop over a list of values
 
-```
+```text
 for <var> <val1> <val2> ... <valN>
   <commands>
 end
@@ -844,7 +844,7 @@ Iterates over a whitespace-separated list of values. On each iteration, `{var}` 
 
 **Sweep PSU through voltages:**
 
-```
+```text
 dmm1 config vdc
 for v 1.0 2.0 3.3 5.0 9.0 12.0
   print Setting {v}V...
@@ -856,7 +856,7 @@ end
 
 **Enable each scope channel in turn:**
 
-```
+```text
 for ch 1 2 3 4
   scope1 chan {ch} on
 end
@@ -864,7 +864,7 @@ end
 
 **Frequency sweep:**
 
-```
+```text
 for f 100 500 1000 5000 10000 50000
   awg1 freq 1 {f}
   sleep 0.4
@@ -877,7 +877,7 @@ end
 
 Loop over multiple variables at once by separating them with commas. Values in the list are also comma-separated:
 
-```
+```text
 for VIN,VSCALE,LABEL 5.0,1.0,five 3.3,0.5,three 2.5,0.5,two
   print Testing {VIN}V with scale {VSCALE} ({LABEL})
   psu1 set {VIN}
@@ -889,7 +889,7 @@ end
 
 You can enter `for` and `repeat` blocks directly in the interactive REPL. The prompt will change to show indentation, and you type `end` when finished:
 
-```
+```text
 eset> for VIN 5.0 3.3 2.5
   > print Testing VIN={VIN}
   > psu1 set {VIN}
@@ -908,7 +908,7 @@ The loop variable is substituted in all lines inside the block — including lab
 
 **Variable references in the value list:**
 
-```
+```text
 v_start = 1.0
 v_mid = 5.0
 v_end = 12.0
@@ -923,14 +923,14 @@ Both `{var}` and bare variable names are accepted in the `for` value list. When 
 iterable is a single variable holding a list (e.g. from `array`, `linspace`, or a
 space-separated `set`), these two forms are equivalent:
 
-```
+```text
 for v {VSWEEP}
 for v VSWEEP
 ```
 
 ### array — multi-line value list
 
-```
+```text
 array <varname>
   <value1>
   <value2>
@@ -947,7 +947,7 @@ This is the preferred way to define a sweep table — it's easy to read and you 
 | `varname`  | required | Variable name.     |
 | each line  | —        | One element per line. Lines starting with `#` are skipped. |
 
-```
+```text
 array SWEEP
   5.0,0.001,1.0
   3.3,0.001,0.5
@@ -967,7 +967,7 @@ This is equivalent to writing all values inline on the `for` line — but much e
 
 ### linspace — generate evenly-spaced values
 
-```
+```text
 <varname> = linspace <start> <stop> [count]
 ```
 
@@ -981,7 +981,7 @@ Generates `count` evenly-spaced values from `start` to `stop` (inclusive) and st
 
 **Voltage sweep with linspace:**
 
-```
+```text
 VSWEEP = linspace 6 25 20
 for VIN {VSWEEP}
   psu set 2 {VIN} 0.5
@@ -995,7 +995,7 @@ stored list automatically.
 
 **Current sweep in mA:**
 
-```
+```text
 ISWEEP = linspace 0 0.050 11
 for I {ISWEEP}
   smu set_mode current {I} 3.0
@@ -1008,7 +1008,7 @@ end
 
 **Use variables for start/stop:**
 
-```
+```text
 v_start = 1.0
 v_end = 12.0
 RAMP = linspace {v_start} {v_end} 7
@@ -1026,7 +1026,7 @@ Works at the interactive REPL prompt too.
 
 ### while — condition-based loop
 
-```
+```text
 while <condition>
   <commands>
 end
@@ -1034,7 +1034,7 @@ end
 
 Repeats the body as long as `<condition>` evaluates to true. There is no fixed iteration cap, but a safety limit of 10,000 iterations prevents accidental infinite loops.
 
-```
+```text
 x = 0
 while x < 10
   x++
@@ -1044,7 +1044,7 @@ end
 
 #### Poll-until-stable pattern
 
-```
+```text
 delta = 999
 prev = dmm1 meas unit=V
 while delta > 0.001
@@ -1058,7 +1058,7 @@ print "Stable at {curr}V"
 
 ### if / elif / else — conditional branching
 
-```
+```text
 if <condition>
   <commands>
 elif <condition>
@@ -1070,7 +1070,7 @@ end
 
 Evaluates branches top-to-bottom. The first true condition's body runs; `else` is the fallback. `elif` and `else` are optional.
 
-```
+```text
 v = psu1 meas v unit=V
 if v > 5.1
   print "OVER SPEC"
@@ -1083,7 +1083,7 @@ end
 
 ### break — exit a loop early
 
-```
+```text
 while x < 100
   x++
   if x == 7
@@ -1097,7 +1097,7 @@ Exits the innermost `while` or `for` loop immediately.
 
 ### continue — skip to next iteration
 
-```
+```text
 for i 1 2 3 4 5
   if i == 3
     continue
@@ -1113,7 +1113,7 @@ Skips the rest of the current iteration and jumps to the next.
 
 `while`, `if`, `for`, and `repeat` all work at the interactive REPL prompt. Type the header, enter commands line by line, and type `end` to execute:
 
-```
+```text
 eset> while x < 3
   > x++
   > print $x
@@ -1128,13 +1128,13 @@ Two commands for validating conditions. Use `assert` for preconditions that **mu
 
 ### assert — hard assertion (stops on failure)
 
-```
+```text
 assert <condition> ["message"]
 ```
 
 If the condition is true, prints PASS. If false, prints FAIL and **immediately stops the script**. No further lines execute.
 
-```
+```text
 assert voltage > 0 "PSU must be on before measuring"
 assert dmm_v > 4.9 and dmm_v < 5.1 "5V rail in spec"
 ```
@@ -1147,13 +1147,13 @@ Use `assert` for invariants and preconditions — things that must be true for t
 
 #### Condition check
 
-```
+```text
 check <condition> ["message"]
 ```
 
 Logs PASS/FAIL, records the result in the test report, and **continues execution regardless**. Use this for test steps where you want all results, even after failures.
 
-```
+```text
 check voltage > 4.9 "voltage lower bound"
 check voltage < 5.1 "voltage upper bound"
 check current < 0.6 "current limit ok"
@@ -1162,7 +1162,7 @@ log report    # shows PASS/FAIL summary table
 
 #### Measurement check
 
-```
+```text
 check <label> <min> <max>          # pass if min ≤ value ≤ max
 check <label> <expected> tol=<N>   # pass if |value - expected| ≤ N
 check <label> <expected> tol=<N>%  # pass if |value - expected| ≤ N/100 * expected
@@ -1170,7 +1170,7 @@ check <label> <expected> tol=<N>%  # pass if |value - expected| ≤ N/100 * expe
 
 Checks a previously recorded measurement (from `log`, instrument reads, etc.) against bounds or tolerance.
 
-```
+```text
 vout = psu1 meas v unit=V
 check vout 4.9 5.1
 check vout 5.0 tol=0.1
@@ -1186,7 +1186,7 @@ check vout 5.0 tol=2%
 
 ## pyeval — Python expressions in variables
 
-```
+```text
 result = pyeval <python_expression>
 ```
 
@@ -1201,7 +1201,7 @@ Available in the expression:
 | `entries` | full measurement list |
 | `sqrt`, `log`, `sin`, `cos`, `abs`, `min`, `max`, `round`, `pi`, `e` | math functions and constants |
 
-```
+```text
 power = pyeval float(vars['voltage']) * float(vars['current'])
 rms   = pyeval sqrt(float(vars['v']) ** 2 + float(vars['i']) ** 2)
 avg   = pyeval sum(e['value'] for e in entries if e['label'].startswith('reading_')) / len(entries)
@@ -1215,13 +1215,13 @@ By default, each script runs in its own isolated variable scope. Variables defin
 
 ### import — pull a variable from the parent scope
 
-```
+```text
 import <varname> [varname2 ...]
 ```
 
 Copies a variable from the calling scope (REPL or parent script) into the current script's scope. If the variable does not exist in the parent scope, an error is raised.
 
-```
+```text
 import FREQ VREF    # bring FREQ and VREF in from the REPL
 psu set {VREF} 0.5
 awg freq 1 {FREQ}
@@ -1229,20 +1229,20 @@ awg freq 1 {FREQ}
 
 ### export — push a variable back to the parent scope
 
-```
+```text
 export <varname> [varname2 ...]
 ```
 
 When the script finishes, copies the named variable back to the calling scope (REPL or parent script). Only explicitly exported variables survive — everything else stays local.
 
-```
+```text
 result = 42.0
 export result    # {result} becomes available in the REPL after the script runs
 ```
 
 **Example: script that returns a computed value**
 
-```
+```text
 # measure_vout — measures PSU output, exports result
 VOUT = 0.0
 psu_reading = psu meas v unit=V
@@ -1258,7 +1258,7 @@ After `script run measure_vout`, `{VOUT}` is available in the REPL.
 
 ### call — run another script inline
 
-```
+```text
 call <name> [key=value ...]
 ```
 
@@ -1269,7 +1269,7 @@ Executes another script as a sub-routine. The called script runs in its own vari
 | `name`      | required | Name of the script to call.                                   |
 | `key=value` | optional | Parameters to pass. Supports variable substitution in values. |
 
-```
+```text
 call set_psu voltage=5.0
 call set_psu voltage={target_v}     # pass a variable from current script
 ```
@@ -1278,7 +1278,7 @@ call set_psu voltage={target_v}     # pass a variable from current script
 
 Create a script `set_psu`:
 
-```
+```text
 # set_psu — sets PSU to a voltage and verifies
 # Params: voltage, label
 voltage = 5.0
@@ -1292,7 +1292,7 @@ sleep 0.5
 
 Call it from another script:
 
-```
+```text
 # main test
 dmm1 config vdc
 for v 3.3 5.0 12.0
@@ -1311,7 +1311,7 @@ Parameters passed via `call` override `set` defaults in the called script — sa
 
 Safety limits guard your DUT against accidental over-voltage, over-current, or out-of-range signals. Set them at the top of a script and every subsequent instrument command is checked against them automatically.
 
-```
+```text
 upper_limit <device> [chan <N>] <param> <value>
 lower_limit <device> [chan <N>] <param> <value>
 ```
@@ -1350,7 +1350,7 @@ The direction (`upper`/`lower`) determines whether the alias maps to the peak or
 
 Multiple limits can coexist. When a command is issued to `psu1` channel 1, the engine checks all four scopes and applies the tightest (most restrictive) value per parameter:
 
-```
+```text
 1. ("psu1", 1)    — named device, specific channel  (most specific)
 2. ("psu1", None) — named device, any channel
 3. ("psu",  1)    — device type, specific channel
@@ -1361,7 +1361,7 @@ Multiple limits can coexist. When a command is issued to `psu1` channel 1, the e
 
 When you set a limit at the **interactive prompt**, the REPL immediately checks all known instrument states against the new guard and prints a `[WARNING]` for any existing violations. The instrument state is **not changed** — the warning is advisory only.
 
-```
+```text
 eset> upper_limit psu voltage 1
 [SUCCESS] Limit set: upper_limit psu voltage 1
 [WARNING] Retroactive: psu1 setpoint 5.0V already exceeds limit 1.0V — consider reducing output
@@ -1404,7 +1404,7 @@ lower_limit awg vtrough -0.3
 
 Lines beginning with `#` are ignored during execution.
 
-```
+```text
 # This is a comment
 voltage = 5.0     # inline comments work too
 ```
@@ -1419,11 +1419,11 @@ The script debugger lets you step through a script one command at a time, set br
 
 ### Starting the debugger
 
-```
+```text
 script debug <name> [key=value ...]
 ```
 
-```
+```text
 script debug lab3
 script debug my_sweep voltage=3.3
 ```
@@ -1432,7 +1432,7 @@ script debug my_sweep voltage=3.3
 
 Add `breakpoint` anywhere in a script file to automatically pause there, even when running with `script run`:
 
-```
+```text
 psu set {VIN} 0.5
 psu chan on
 breakpoint          ← execution pauses here; drops into debugger
@@ -1443,7 +1443,7 @@ scope single
 
 When paused, the debugger shows a context window around the current line. The current line is highlighted in cyan. Lines with breakpoints are marked with `●`:
 
-```
+```text
   ────────────────────────────────────────────────────────────
       12     psu chan off
       13     sleep 0.5
@@ -1483,7 +1483,7 @@ When paused, the debugger shows a context window around the current line. The cu
 
 A script combining all features:
 
-```
+```text
 # full_test.repl
 # Full voltage characterization test
 # Params: dut_name, v_min, v_max, steps
@@ -1530,6 +1530,6 @@ print "PSU off — done"
 
 Run it:
 
-```
+```text
 script run full_test dut_name=widget_rev2 delay=1.0
 ```

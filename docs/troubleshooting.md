@@ -16,7 +16,7 @@ python -m lab_instruments
 
 The toolkit automatically adds the Scripts folder to your user PATH via the Windows registry (no admin required) and prints:
 
-```
+```text
 [scpi] Added Python Scripts to your PATH (C:\...\Scripts).
 [scpi] Open a new terminal and 'scpi-repl' will work.
 ```
@@ -180,13 +180,13 @@ pip install --upgrade git+https://github.com/T-O-M-Tool-Oauto-Mationator/scpi-in
 
 If you cannot upgrade (e.g. a managed machine with no internet access), use the top-level shim instead. Change the Python Node's module path from:
 
-```
+```text
 ...\site-packages\lab_instruments\src\labview_bridge.py
 ```
 
 to the `labview_bridge.py` at the repository root:
 
-```
+```text
 C:\path\to\scpi-instrument-toolkit\labview_bridge.py
 ```
 

@@ -46,7 +46,7 @@ If Python can't find the DLL, add the IVI Bin directory to your system PATH.
 
 When `nidcpower` is installed and the card is present, the REPL assigns the SMU as `smu1` automatically on startup (or on `scan`).
 
-```
+```text
 eset> scan
 [scpi] Found: smu1  (NI PXIe-4139)
 ```
