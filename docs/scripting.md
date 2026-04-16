@@ -919,6 +919,15 @@ for v {v_start} {v_mid} {v_end}
 end
 ```
 
+Both `{var}` and bare variable names are accepted in the `for` value list. When the
+iterable is a single variable holding a list (e.g. from `array`, `linspace`, or a
+space-separated `set`), these two forms are equivalent:
+
+```
+for v {VSWEEP}
+for v VSWEEP
+```
+
 ### array — multi-line value list
 
 ```
@@ -980,6 +989,9 @@ for VIN {VSWEEP}
   linereg_{VIN}V = smu meas v unit=V
 end
 ```
+
+The bare form `for VIN VSWEEP` works the same way — the loop resolves `VSWEEP` to its
+stored list automatically.
 
 **Current sweep in mA:**
 
