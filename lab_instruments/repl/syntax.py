@@ -27,7 +27,7 @@ def validate_name(name: str) -> str | None:
 
 def substitute_vars(
     text: str,
-    script_vars: dict[str, str],
+    script_vars: dict[str, Any],
     measurements: MeasurementStore | None = None,
 ) -> str:
     """Replace {name} references in *text*.
@@ -58,7 +58,7 @@ def substitute_vars(
     return _SUBST_RE.sub(_replace, text)
 
 
-def substitute_expand(text: str, variables: dict[str, str]) -> str:
+def substitute_expand(text: str, variables: dict[str, Any]) -> str:
     """Replace {name} references from a variables dict during script expansion."""
 
     def _replace(match: re.Match) -> str:

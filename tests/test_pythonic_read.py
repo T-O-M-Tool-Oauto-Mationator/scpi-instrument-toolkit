@@ -156,7 +156,7 @@ class TestVariableResolution:
     def test_print_resolves_variable(self, repl_dmm, capsys):
         repl_dmm.onecmd("dmm config vdc")
         repl_dmm.onecmd("output_v = dmm read")
-        val = repl_dmm.ctx.script_vars["output_v"]
+        val = str(repl_dmm.ctx.script_vars["output_v"])
         repl_dmm.onecmd('print "Measured: {output_v}"')
         captured = capsys.readouterr()
         assert val in captured.out
@@ -257,10 +257,10 @@ class TestEdgeCases:
     def test_plain_assignment_still_works(self, repl_dmm):
         """Normal var = expr assignment still works."""
         repl_dmm.onecmd("voltage = 5.0")
-        assert repl_dmm.ctx.script_vars["voltage"] == "5.0"
+        assert repl_dmm.ctx.script_vars["voltage"] == 5.0
 
     def test_arithmetic_assignment_still_works(self, repl_dmm):
         """Normal var = arithmetic assignment still works."""
         repl_dmm.onecmd("x = 3.0")
         repl_dmm.onecmd("y = x * 2")
-        assert repl_dmm.ctx.script_vars["y"] == "6.0"
+        assert repl_dmm.ctx.script_vars["y"] == 6.0

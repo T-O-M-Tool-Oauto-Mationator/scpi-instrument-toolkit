@@ -267,8 +267,10 @@ class ScriptingCommands(BaseCommand):
         }
 
         # Auto-inject all current REPL script variables as native Python types.
-        # Conversion order: int → float → str.
+        # If already numeric, pass through; otherwise try int -> float -> str.
         def _to_python(v):
+            if isinstance(v, (int, float, bool)):
+                return v
             try:
                 return int(v)
             except (ValueError, TypeError):

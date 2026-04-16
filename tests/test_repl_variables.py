@@ -17,19 +17,22 @@ from lab_instruments.repl.syntax import substitute_vars
 
 class TestSubstituteVars:
     def test_fstring_style(self):
+        assert substitute_vars("v={voltage}", {"voltage": 5.0}) == "v=5.0"
+
+    def test_fstring_style_string(self):
         assert substitute_vars("v={voltage}", {"voltage": "5.0"}) == "v=5.0"
 
     def test_fstring_in_sentence(self):
         assert (
-            substitute_vars("Setting {voltage}V to {label}", {"voltage": "5.0", "label": "vtest"})
+            substitute_vars("Setting {voltage}V to {label}", {"voltage": 5.0, "label": "vtest"})
             == "Setting 5.0V to vtest"
         )
 
     def test_dollar_style_no_longer_resolves(self):
-        assert substitute_vars("v=$voltage", {"voltage": "3.3"}) == "v=$voltage"
+        assert substitute_vars("v=$voltage", {"voltage": 3.3}) == "v=$voltage"
 
     def test_only_brace_style(self):
-        result = substitute_vars("{a} and {b}", {"a": "1", "b": "2"})
+        result = substitute_vars("{a} and {b}", {"a": 1, "b": 2})
         assert result == "1 and 2"
 
     def test_unresolved_fstring_left_as_is(self):
@@ -69,14 +72,14 @@ class TestPrintCommand:
 
     def test_print_quoted_fstring(self, make_repl, capsys):
         repl = make_repl({})
-        repl.ctx.script_vars["v"] = "3.3"
+        repl.ctx.script_vars["v"] = 3.3
         repl.onecmd('print "Voltage is {v}V"')
         out = capsys.readouterr().out
         assert "Voltage is 3.3V" in out
 
     def test_print_unquoted_fstring(self, make_repl, capsys):
         repl = make_repl({})
-        repl.ctx.script_vars["label"] = "vtest"
+        repl.ctx.script_vars["label"] = "vtest"  # string value stays string
         repl.onecmd("print label={label}")
         out = capsys.readouterr().out
         assert "label=vtest" in out
@@ -98,7 +101,7 @@ class TestPrintCommand:
 
     def test_print_single_quoted_fstring(self, make_repl, capsys):
         repl = make_repl({})
-        repl.ctx.script_vars["x"] = "42"
+        repl.ctx.script_vars["x"] = 42
         repl.onecmd("print 'x={x}'")
         out = capsys.readouterr().out
         assert "x=42" in out
@@ -119,12 +122,12 @@ class TestAssignmentSyntax:
     def test_assign_simple_value(self, make_repl, capsys):
         repl = make_repl({})
         repl.onecmd("voltage = 5.0")
-        assert repl.ctx.script_vars["voltage"] == "5.0"
+        assert repl.ctx.script_vars["voltage"] == 5.0
 
     def test_assign_integer(self, make_repl, capsys):
         repl = make_repl({})
         repl.onecmd("count = 3")
-        assert repl.ctx.script_vars["count"] == "3"
+        assert repl.ctx.script_vars["count"] == 3
 
     def test_assign_string_value(self, make_repl, capsys):
         repl = make_repl({})
@@ -133,9 +136,9 @@ class TestAssignmentSyntax:
 
     def test_assign_expression(self, make_repl, capsys):
         repl = make_repl({})
-        repl.ctx.script_vars["voltage"] = "5.0"
+        repl.ctx.script_vars["voltage"] = 5.0
         repl.onecmd("doubled = voltage * 2")
-        assert repl.ctx.script_vars["doubled"] == "10.0"
+        assert repl.ctx.script_vars["doubled"] == 10.0
 
     def test_assign_prints_success(self, make_repl, capsys):
         repl = make_repl({})
@@ -211,7 +214,7 @@ class TestRegressions:
     def test_dollar_syntax_not_resolved(self, make_repl, capsys):
         """$var is no longer resolved — left as literal."""
         repl = make_repl({})
-        repl.ctx.script_vars["v"] = "1"
+        repl.ctx.script_vars["v"] = 1
         repl.onecmd("print $v")
         out = capsys.readouterr().out
         assert "$v" in out
@@ -256,7 +259,7 @@ class TestRegressions:
 class TestUnsetCommand:
     def test_unset_removes_variable(self, make_repl, capsys):
         repl = make_repl({})
-        repl.ctx.script_vars["voltage"] = "5.0"
+        repl.ctx.script_vars["voltage"] = 5.0
         repl.onecmd("unset voltage")
         assert "voltage" not in repl.ctx.script_vars
 
@@ -274,7 +277,7 @@ class TestUnsetCommand:
 
     def test_unset_stops_substitution(self, make_repl, capsys):
         repl = make_repl({})
-        repl.ctx.script_vars["x"] = "42"
+        repl.ctx.script_vars["x"] = 42
         repl.onecmd("unset x")
         capsys.readouterr()
         repl.onecmd('print "{x}"')
@@ -290,24 +293,24 @@ class TestUnsetCommand:
 
 class TestCalcAssignment:
     def test_calc_assign_simple_expression(self, make_repl, capsys):
-        """result = calc 2 * 3 should store '6' in script_vars."""
+        """result = calc 2 * 3 should store 6 in script_vars."""
         repl = make_repl({})
         repl.onecmd("result = calc 2 * 3")
-        assert repl.ctx.script_vars["result"] == "6"
+        assert repl.ctx.script_vars["result"] == 6
 
     def test_calc_assign_with_variables(self, make_repl, capsys):
         """result = calc {a} * {b} should substitute and compute."""
         repl = make_repl({})
-        repl.ctx.script_vars["a"] = "5"
-        repl.ctx.script_vars["b"] = "3"
+        repl.ctx.script_vars["a"] = 5
+        repl.ctx.script_vars["b"] = 3
         repl.onecmd("result = calc {a} * {b}")
-        assert repl.ctx.script_vars["result"] == "15"
+        assert repl.ctx.script_vars["result"] == 15
 
     def test_calc_assign_with_unit(self, make_repl, capsys):
         """result = calc 5 * 2 unit=W should store value and record unit."""
         repl = make_repl({})
         repl.onecmd("result = calc 5 * 2 unit=W")
-        assert repl.ctx.script_vars["result"] == "10"
+        assert repl.ctx.script_vars["result"] == 10
         entry = repl.ctx.measurements.get_by_label("result")
         assert entry is not None
         assert entry["value"] == 10
@@ -363,13 +366,13 @@ class TestCalcAssignment:
         assert entry is not None
         assert entry["value"] == 10
         # calc now also stores in script_vars so result is usable in subsequent expressions
-        assert repl.ctx.script_vars.get("power") == "10"
+        assert repl.ctx.script_vars.get("power") == 10
 
     def test_calc_assign_no_unit(self, make_repl, capsys):
         """Calc assignment without unit= should still work."""
         repl = make_repl({})
         repl.onecmd("val = calc 100 / 4")
-        assert repl.ctx.script_vars["val"] == "25.0"
+        assert repl.ctx.script_vars["val"] == 25.0
         entry = repl.ctx.measurements.get_by_label("val")
         assert entry is not None
         assert entry["unit"] == ""
@@ -402,7 +405,7 @@ class TestPyeval:
         """pyeval result should be stored in the _ variable."""
         repl = make_repl({})
         repl.onecmd("pyeval 42 + 8")
-        assert repl.ctx.script_vars["_"] == "50"
+        assert repl.ctx.script_vars["_"] == 50
 
     def test_pyeval_with_measurements(self, make_repl, capsys):
         """pyeval should access measurements via the m dict."""

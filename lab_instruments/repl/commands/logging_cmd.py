@@ -179,15 +179,18 @@ class LoggingCommands(BaseCommand):
         # Build names: last + script_vars (numeric) + measurement labels
         names: dict = {"last": last}
         for k, v in self.ctx.script_vars.items():
-            with contextlib.suppress(TypeError, ValueError):
-                names[k] = float(v)
+            if isinstance(v, (int, float)):
+                names[k] = v
+            else:
+                with contextlib.suppress(TypeError, ValueError):
+                    names[k] = float(v)
         for entry in self.ctx.measurements.entries:
             with contextlib.suppress(TypeError, ValueError):
                 names[entry["label"]] = float(entry["value"])
         try:
             value = safe_eval(expr, names)
             self.measurements.record(label, value, unit, "calc")
-            self.ctx.script_vars[label] = str(value)
+            self.ctx.script_vars[label] = value
             suffix = f" {unit}" if unit else ""
             C, G, Y, R = ColorPrinter.CYAN, ColorPrinter.GREEN, ColorPrinter.YELLOW, ColorPrinter.RESET
             print(f"{C}{label}{R} = {G}{value}{R}{Y}{suffix}{R}")

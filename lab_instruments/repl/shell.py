@@ -543,21 +543,21 @@ class InstrumentRepl(cmd.Cmd):
         inc_m = re.match(r"^([A-Za-z_][A-Za-z0-9_.]*)\s*\+\+$", stripped)
         if inc_m:
             varname = inc_m.group(1)
-            cur = self.ctx.script_vars.get(varname, "0")
+            cur = self.ctx.script_vars.get(varname, 0)
             try:
-                self.ctx.script_vars[varname] = str(float(cur) + 1)
-            except ValueError:
-                self.ctx.script_vars[varname] = str(float(0) + 1)
+                self.ctx.script_vars[varname] = float(cur) + 1
+            except (ValueError, TypeError):
+                self.ctx.script_vars[varname] = 1.0
             ColorPrinter.success(f"{varname} = {self.ctx.script_vars[varname]}")
             return
         dec_m = re.match(r"^([A-Za-z_][A-Za-z0-9_.]*)\s*--$", stripped)
         if dec_m:
             varname = dec_m.group(1)
-            cur = self.ctx.script_vars.get(varname, "0")
+            cur = self.ctx.script_vars.get(varname, 0)
             try:
-                self.ctx.script_vars[varname] = str(float(cur) - 1)
-            except ValueError:
-                self.ctx.script_vars[varname] = str(float(0) - 1)
+                self.ctx.script_vars[varname] = float(cur) - 1
+            except (ValueError, TypeError):
+                self.ctx.script_vars[varname] = -1.0
             ColorPrinter.success(f"{varname} = {self.ctx.script_vars[varname]}")
             return
 
@@ -568,18 +568,22 @@ class InstrumentRepl(cmd.Cmd):
             op = compound_m.group(2)
             rhs_raw = compound_m.group(3).strip()
             rhs_val = substitute_vars(rhs_raw, self.ctx.script_vars, self.ctx.measurements)
-            cur = self.ctx.script_vars.get(varname, "0")
+            cur = self.ctx.script_vars.get(varname, 0)
             try:
                 expr = f"{cur} {op} ({rhs_val})"
                 from .syntax import safe_eval
 
                 num_vars = {}
                 for k, v in self.ctx.script_vars.items():
-                    if k != varname:
+                    if k == varname:
+                        continue
+                    if isinstance(v, (int, float)):
+                        num_vars[k] = v
+                    else:
                         with contextlib.suppress(TypeError, ValueError):
                             num_vars[k] = float(v)
                 result = safe_eval(expr, num_vars)
-                self.ctx.script_vars[varname] = str(result)
+                self.ctx.script_vars[varname] = result
                 ColorPrinter.success(f"{varname} = {self.ctx.script_vars[varname]}")
             except Exception as exc:
                 ColorPrinter.error(f"Compound assignment failed: {exc}")
@@ -780,13 +784,16 @@ class InstrumentRepl(cmd.Cmd):
     _COND_CHECK_RE = re.compile(r"(?:>=|<=|!=|==|>|<|&&|\|\||(?<![a-zA-Z0-9_])(?:and|or|not)(?![a-zA-Z0-9_]))")
 
     def _build_names_dict(self) -> dict:
-        """Build a names dict from script_vars for safe_eval (float where possible)."""
+        """Build a names dict from script_vars for safe_eval (numeric where possible)."""
         names: dict = {}
         for k, v in self.ctx.script_vars.items():
-            with contextlib.suppress(TypeError, ValueError):
-                names[k] = float(v)
-                continue
-            names[k] = v
+            if isinstance(v, (int, float)):
+                names[k] = v
+            else:
+                with contextlib.suppress(TypeError, ValueError):
+                    names[k] = float(v)
+                    continue
+                names[k] = v
         return names
 
     def _eval_condition(self, condition_str: str) -> bool:

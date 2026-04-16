@@ -140,7 +140,7 @@ class VariableCommands(BaseCommand):
         unit = unit_override or auto_unit
 
         # Store in both script_vars AND measurement store
-        self.ctx.script_vars[varname] = str(value)
+        self.ctx.script_vars[varname] = value
         self.ctx.measurements.record(varname, value, unit, dev_name)
         suffix = f" {unit}" if unit else ""
         ColorPrinter.cyan(f"{varname} = {value}{suffix}")
@@ -273,7 +273,7 @@ class VariableCommands(BaseCommand):
             return True
 
         # Store in both script_vars AND measurement store
-        self.ctx.script_vars[varname] = str(value)
+        self.ctx.script_vars[varname] = value
         self.ctx.measurements.record(varname, value, unit, "calc")
         suffix = f" {unit}" if unit else ""
         ColorPrinter.cyan(f"{varname} = {value}{suffix}")
@@ -320,10 +320,13 @@ class VariableCommands(BaseCommand):
         try:
             num_vars = {}
             for k, v in self.ctx.script_vars.items():
-                with contextlib.suppress(TypeError, ValueError):
-                    num_vars[k] = float(v)
+                if isinstance(v, (int, float)):
+                    num_vars[k] = v
+                else:
+                    with contextlib.suppress(TypeError, ValueError):
+                        num_vars[k] = float(v)
             result = safe_eval(raw_val, num_vars)
-            self.ctx.script_vars[key] = str(result)
+            self.ctx.script_vars[key] = result
         except Exception:
             self.ctx.script_vars[key] = raw_val
         if unit:
@@ -476,16 +479,19 @@ class VariableCommands(BaseCommand):
         # Also inject vars directly so you can write `voltage` instead of `vars['voltage']`
         for k, v in self.ctx.script_vars.items():
             if k.isidentifier() and k not in ns:
-                try:
-                    ns[k] = float(v)
-                except (ValueError, TypeError):
+                if isinstance(v, (int, float)):
                     ns[k] = v
+                else:
+                    try:
+                        ns[k] = float(v)
+                    except (ValueError, TypeError):
+                        ns[k] = v
 
         try:
             result = eval(args_raw, {"__builtins__": {}}, ns)  # noqa: S307
             if result is not None:
                 builtins.print(result)
-            self.ctx.script_vars["_"] = str(result)
+            self.ctx.script_vars["_"] = result
         except Exception as exc:
             ColorPrinter.error(f"pyeval: {exc}")
 

@@ -312,11 +312,11 @@ class TestCompoundAssignmentTypeCoercion:
         repl.onecmd("x += 1")
         assert float(repl.ctx.script_vars["x"]) == pytest.approx(3.0)
 
-    def test_stored_value_is_always_string(self, make_repl, capsys):
+    def test_stored_value_is_native_type(self, make_repl, capsys):
         repl = make_repl({})
         repl.onecmd("x = 10")
         repl.onecmd("x += 5")
-        assert isinstance(repl.ctx.script_vars["x"], str)
+        assert repl.ctx.script_vars["x"] == 15
 
     def test_compound_prints_result(self, make_repl, capsys):
         repl = make_repl({})
@@ -395,7 +395,7 @@ class TestCompoundAssignmentWithNonNumericVars:
         repl.onecmd("x = 5")
         repl.onecmd("x += invalid_not_a_number")
         # x should still be 5 (not clobbered) because the error is caught
-        assert repl.ctx.script_vars["x"] == "5"
+        assert repl.ctx.script_vars["x"] == 5
 
     def test_compound_succeeds_when_nonnumeric_vars_exist(self, make_repl, capsys):
         """Compound assignment works correctly with non-numeric vars in scope."""
@@ -414,13 +414,13 @@ class TestCompoundAssignmentWithNonNumericVars:
 class TestIncrementDecrementTypes:
     """Type behavior of x++ and x-- operators."""
 
-    def test_increment_int_stores_float_string(self, make_repl, capsys):
-        """x = 5; x++ stores the result as a float string (str(float(5) + 1))."""
+    def test_increment_int_stores_native_float(self, make_repl, capsys):
+        """x = 5; x++ stores the result as a native float (float(5) + 1)."""
         repl = make_repl({})
         repl.onecmd("x = 5")
         repl.onecmd("x++")
-        assert float(repl.ctx.script_vars["x"]) == pytest.approx(6.0)
-        assert isinstance(repl.ctx.script_vars["x"], str)
+        assert repl.ctx.script_vars["x"] == pytest.approx(6.0)
+        assert isinstance(repl.ctx.script_vars["x"], float)
 
     def test_increment_float(self, make_repl, capsys):
         repl = make_repl({})
@@ -459,11 +459,11 @@ class TestIncrementDecrementTypes:
             repl.onecmd("x++")
         assert float(repl.ctx.script_vars["x"]) == pytest.approx(5.0)
 
-    def test_increment_result_stored_as_string(self, make_repl, capsys):
+    def test_increment_result_stored_as_native_float(self, make_repl, capsys):
         repl = make_repl({})
         repl.onecmd("x = 10")
         repl.onecmd("x++")
-        assert isinstance(repl.ctx.script_vars["x"], str)
+        assert isinstance(repl.ctx.script_vars["x"], float)
 
     def test_increment_zero(self, make_repl, capsys):
         repl = make_repl({})
@@ -502,15 +502,15 @@ class TestAssignmentTypeCoercion:
     """Type coercion behavior of regular var = expr assignment."""
 
     def test_assign_int_literal(self, make_repl, capsys):
-        """x = 5 stores '5' -- safe_eval returns int for int literal."""
+        """x = 5 stores 5 -- safe_eval returns int for int literal."""
         repl = make_repl({})
         repl.onecmd("x = 5")
-        assert repl.ctx.script_vars["x"] == "5"
+        assert repl.ctx.script_vars["x"] == 5
 
     def test_assign_float_literal(self, make_repl, capsys):
         repl = make_repl({})
         repl.onecmd("x = 5.0")
-        assert repl.ctx.script_vars["x"] == "5.0"
+        assert repl.ctx.script_vars["x"] == 5.0
 
     def test_assign_string_falls_through(self, make_repl, capsys):
         """x = hello stores 'hello' because safe_eval returns 'hello' (unknown name)."""
@@ -519,16 +519,16 @@ class TestAssignmentTypeCoercion:
         assert repl.ctx.script_vars["x"] == "hello"
 
     def test_assign_int_expression(self, make_repl, capsys):
-        """x = 3 + 2 stores '5' (int result from safe_eval)."""
+        """x = 3 + 2 stores 5 (int result from safe_eval)."""
         repl = make_repl({})
         repl.onecmd("x = 3 + 2")
-        assert repl.ctx.script_vars["x"] == "5"
+        assert repl.ctx.script_vars["x"] == 5
 
     def test_assign_mixed_expression(self, make_repl, capsys):
-        """x = 3.0 + 2 stores '5.0' (float result from int+float)."""
+        """x = 3.0 + 2 stores 5.0 (float result from int+float)."""
         repl = make_repl({})
         repl.onecmd("x = 3.0 + 2")
-        assert repl.ctx.script_vars["x"] == "5.0"
+        assert repl.ctx.script_vars["x"] == 5.0
 
     def test_assign_true_division_stores_float(self, make_repl, capsys):
         repl = make_repl({})
@@ -539,7 +539,7 @@ class TestAssignmentTypeCoercion:
     def test_assign_floor_division_stores_int(self, make_repl, capsys):
         repl = make_repl({})
         repl.onecmd("x = 10 // 3")
-        assert repl.ctx.script_vars["x"] == "3"
+        assert repl.ctx.script_vars["x"] == 3
 
     def test_assign_with_variable_ref(self, make_repl, capsys):
         """a = 5; b = {a} + 1.
@@ -555,17 +555,17 @@ class TestAssignmentTypeCoercion:
         repl.onecmd("a = 5")
         repl.onecmd("b = {a} + 1")
         # {a} is substituted to "5", so safe_eval sees "5 + 1" = 6 (int)
-        assert repl.ctx.script_vars["b"] == "6"
+        assert repl.ctx.script_vars["b"] == 6
 
     def test_assign_int_cast(self, make_repl, capsys):
         repl = make_repl({})
         repl.onecmd("x = int(3.7)")
-        assert repl.ctx.script_vars["x"] == "3"
+        assert repl.ctx.script_vars["x"] == 3
 
     def test_assign_float_cast(self, make_repl, capsys):
         repl = make_repl({})
         repl.onecmd("x = float(5)")
-        assert repl.ctx.script_vars["x"] == "5.0"
+        assert repl.ctx.script_vars["x"] == 5.0
 
     def test_assign_with_nonnumeric_var_in_scope(self, make_repl, capsys):
         """label = test; x = 5 + 3 should still work.
@@ -576,22 +576,22 @@ class TestAssignmentTypeCoercion:
         repl = make_repl({})
         repl.onecmd("label = test")
         repl.onecmd("x = 5 + 3")
-        assert repl.ctx.script_vars["x"] == "8"
+        assert repl.ctx.script_vars["x"] == 8
 
-    def test_assign_stored_as_string(self, make_repl, capsys):
+    def test_assign_stored_as_native_type(self, make_repl, capsys):
         repl = make_repl({})
         repl.onecmd("x = 42")
-        assert isinstance(repl.ctx.script_vars["x"], str)
+        assert isinstance(repl.ctx.script_vars["x"], int)
 
     def test_assign_negative_number(self, make_repl, capsys):
         repl = make_repl({})
         repl.onecmd("x = -7")
-        assert repl.ctx.script_vars["x"] == "-7"
+        assert repl.ctx.script_vars["x"] == -7
 
     def test_assign_negative_float(self, make_repl, capsys):
         repl = make_repl({})
         repl.onecmd("x = -3.5")
-        assert repl.ctx.script_vars["x"] == "-3.5"
+        assert repl.ctx.script_vars["x"] == -3.5
 
 
 # ---------------------------------------------------------------------------
