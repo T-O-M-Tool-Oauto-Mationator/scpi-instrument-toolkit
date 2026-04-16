@@ -138,6 +138,24 @@ Or if you have already cloned the repo:
 
 ---
 
+## DOCX/PPTX preview in the GUI says "LibreOffice is required"
+
+The GUI's Office document viewer shells out to LibreOffice's `soffice --headless --convert-to pdf` to render `.docx` and `.pptx` files. Every other feature works without it.
+
+`setup-tamu.ps1` installs LibreOffice via `msiexec /a` (administrative extract — no admin rights required) into `%LOCALAPPDATA%\Programs\LibreOffice` as its Step 9. Re-run the setup script to retry, or install manually:
+
+```powershell
+$url = "https://download.documentfoundation.org/libreoffice/stable/26.2.2/win/x86_64/LibreOffice_26.2.2_Win_x86-64.msi"
+$msi = "$env:TEMP\LibreOffice.msi"
+$dir = "$env:LOCALAPPDATA\Programs\LibreOffice"
+Invoke-WebRequest -Uri $url -OutFile $msi -UseBasicParsing
+msiexec.exe /a "$msi" /qn TARGETDIR="$dir"
+```
+
+After extraction, `soffice.exe` lands at `$dir\program\soffice.exe`. The GUI looks for it there automatically; the setup script also appends the directory to your user `PATH` so `soffice --headless --convert-to pdf` works from any new shell.
+
+---
+
 ## `git` is not recognized on managed Windows machines
 
 If you only need to fix git (Python and the toolkit are already installed), use the smaller helper script (no admin needed):
