@@ -9,34 +9,16 @@ import pytest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 
-def make_repl(devices=None):
-    from lab_instruments.src import discovery as _disc
-
-    _disc.InstrumentDiscovery.__init__ = lambda self: None
-    _disc.InstrumentDiscovery.scan = lambda self, verbose=True: devices or {}
-    from lab_instruments.repl import InstrumentRepl
-
-    repl = InstrumentRepl(auto_scan=True)
-    repl._scan_thread.join(timeout=5.0)
-    repl._scan_done.wait(timeout=5.0)
-    repl.devices = devices or {}
-    return repl
+@pytest.fixture
+def repl(make_repl):
+    return make_repl({})
 
 
-def make_mock_repl():
+@pytest.fixture
+def mock_repl(make_repl):
     from mock_instruments import get_mock_devices
 
     return make_repl(get_mock_devices(verbose=False))
-
-
-@pytest.fixture
-def repl():
-    return make_repl()
-
-
-@pytest.fixture
-def mock_repl():
-    return make_mock_repl()
 
 
 # ---------------------------------------------------------------------------

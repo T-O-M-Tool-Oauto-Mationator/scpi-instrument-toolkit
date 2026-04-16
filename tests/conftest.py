@@ -12,6 +12,66 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 # ---------------------------------------------------------------------------
+# SAFETY CAP: bound the pytest process at 4 GB virtual memory.
+#
+# If a memory leak re-appears (historically the test suite grew to 26+ GB
+# via atexit pinning of InstrumentRepl instances), this cap causes pytest to
+# die with a clean MemoryError instead of OOM'ing the developer's machine.
+# Steady-state usage for the full suite is well under 1 GB; 4 GB gives ~4x
+# headroom while still killing runaway leaks fast. Best-effort: silently
+# skipped on Windows or when the hard limit is already below our cap.
+# ---------------------------------------------------------------------------
+try:
+    import resource as _resource
+
+    _SAFETY_CAP_BYTES = 4 * 1024 * 1024 * 1024  # 4 GB
+    _soft, _hard = _resource.getrlimit(_resource.RLIMIT_AS)
+    _new_hard = _SAFETY_CAP_BYTES if _hard == _resource.RLIM_INFINITY else min(_hard, _SAFETY_CAP_BYTES)
+    _new_soft = _SAFETY_CAP_BYTES if _soft == _resource.RLIM_INFINITY else min(_soft, _new_hard)
+    _resource.setrlimit(_resource.RLIMIT_AS, (_new_soft, _new_hard))
+except (ImportError, OSError, ValueError):
+    pass
+
+# ---------------------------------------------------------------------------
+# Layer 0 — force all InstrumentRepl instances created during a test to skip
+# process-level lifecycle registration (atexit, signal, readline, termios)
+# and be closed at test teardown. This catches REPLs created through any
+# path, including the 18 test files with file-local make_repl helpers that
+# don't pass register_lifecycle=False directly. Without this safety net, a
+# single InstrumentRepl() left in atexit pins its full object graph for the
+# pytest process lifetime and causes the suite to OOM at ~2000 tests.
+#
+# Weakrefs avoid pinning the REPLs ourselves — a test that explicitly closes
+# and drops its REPL can still be GC'd, so the regression tests in
+# test_repl_lifecycle.py continue to work.
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(autouse=True)
+def _cap_repl_lifecycle(monkeypatch):
+    import contextlib as _cl
+    import weakref as _weakref
+
+    from lab_instruments.repl.shell import InstrumentRepl
+
+    tracked: list = []
+    orig_init = InstrumentRepl.__init__
+
+    def _traced_init(self, *args, **kwargs):
+        kwargs.setdefault("register_lifecycle", False)
+        orig_init(self, *args, **kwargs)
+        tracked.append(_weakref.ref(self))
+
+    monkeypatch.setattr(InstrumentRepl, "__init__", _traced_init)
+    yield
+    for wref in tracked:
+        repl = wref()
+        if repl is not None:
+            with _cl.suppress(Exception):
+                repl.close()
+
+
+# ---------------------------------------------------------------------------
 # Layer 1 — ensure pyvisa is importable even when not installed
 # ---------------------------------------------------------------------------
 
@@ -231,7 +291,17 @@ def ni_pxie_4139(ensure_nidcpower_mocked):
 
 @pytest.fixture
 def make_repl(monkeypatch):
-    """Return a factory that builds an InstrumentRepl wired to a given devices dict."""
+    """Return a factory that builds an InstrumentRepl wired to a given devices dict.
+
+    Every REPL created through this factory is tracked and closed during fixture
+    teardown. `register_lifecycle=False` skips atexit/signal/readline/termios
+    registration so REPLs do not accumulate in process-level registries across
+    tests. Together these two measures prevent the pytest OOM caused by
+    atexit pinning of REPL instances.
+    """
+    import contextlib as _contextlib
+
+    created = []
 
     def _make(devices):
         from lab_instruments.src import discovery as _disc
@@ -240,7 +310,7 @@ def make_repl(monkeypatch):
         monkeypatch.setattr(_disc.InstrumentDiscovery, "scan", lambda self, verbose=True: devices)
         from lab_instruments.repl import InstrumentRepl
 
-        repl = InstrumentRepl()
+        repl = InstrumentRepl(register_lifecycle=False)
         # Wait for the background scan (including its safe_all() call) to finish
         # before the test manipulates device state — prevents a race where
         # safe_all() resets state set by a test command.
@@ -250,9 +320,14 @@ def make_repl(monkeypatch):
             # subsequent _scan_done.wait() calls don't block indefinitely.
             repl._scan_done.wait(timeout=5.0)
         repl.devices = devices
+        created.append(repl)
         return repl
 
-    return _make
+    yield _make
+
+    for repl in created:
+        with _contextlib.suppress(Exception):
+            repl.close()
 
 
 @pytest.fixture

@@ -74,7 +74,7 @@ class InstrumentRepl(cmd.Cmd):
     intro = f"ESET Instrument REPL v{_REPL_VERSION}. Type 'help' for commands."
     prompt = "eset> "
 
-    def __init__(self, *, auto_scan: bool = True):
+    def __init__(self, *, auto_scan: bool = True, register_lifecycle: bool = True):
         super().__init__()
 
         # Shared state
@@ -115,34 +115,44 @@ class InstrumentRepl(cmd.Cmd):
         # Flags
         self._cleanup_done = False
         self._should_exit = False
+        self._closed = False
 
         # Terminal state preservation
         self._term_fd = None
         self._term_settings = None
-        try:
-            import termios
 
-            fd = sys.stdin.fileno()
-            self._term_fd = fd
-            self._term_settings = termios.tcgetattr(fd)
-        except Exception:
-            pass
+        # Saved prior signal handlers so close() can restore them.
+        self._prev_sigint = None
+        self._prev_sigterm = None
 
-        # Load command history from disk so arrow keys recall previous commands
-        if readline is not None:
-            readline.set_history_length(_HISTORY_LENGTH)
+        # Process-level lifecycle registration. Tests pass register_lifecycle=False
+        # to prevent atexit accumulation that would pin every REPL instance for the
+        # pytest process lifetime and exhaust memory.
+        if register_lifecycle:
             try:
-                readline.read_history_file(_HISTORY_FILE)
-            except FileNotFoundError:
-                pass
+                import termios
+
+                fd = sys.stdin.fileno()
+                self._term_fd = fd
+                self._term_settings = termios.tcgetattr(fd)
             except Exception:
                 pass
 
-        # Register cleanup
-        atexit.register(self._cleanup_on_exit)
-        signal.signal(signal.SIGINT, self._cleanup_on_interrupt)
-        if hasattr(signal, "SIGTERM"):
-            signal.signal(signal.SIGTERM, self._cleanup_on_interrupt)
+            if readline is not None:
+                readline.set_history_length(_HISTORY_LENGTH)
+                try:
+                    readline.read_history_file(_HISTORY_FILE)
+                except FileNotFoundError:
+                    pass
+                except Exception:
+                    pass
+
+            self._prev_sigint = signal.getsignal(signal.SIGINT)
+            atexit.register(self._cleanup_on_exit)
+            signal.signal(signal.SIGINT, self._cleanup_on_interrupt)
+            if hasattr(signal, "SIGTERM"):
+                self._prev_sigterm = signal.getsignal(signal.SIGTERM)
+                signal.signal(signal.SIGTERM, self._cleanup_on_interrupt)
 
         # Background scan
         self._scan_done = threading.Event()
@@ -374,6 +384,65 @@ class InstrumentRepl(cmd.Cmd):
         if self.ctx.in_script:
             raise KeyboardInterrupt
         self._should_exit = True
+
+    def close(self) -> None:
+        """Release all process-level resources so this REPL can be GC'd.
+
+        Idempotent and safe to call when register_lifecycle was False.
+        Tests MUST call this via the conftest make_repl fixture teardown.
+        Interactive users normally don't need to call it because the REPL
+        lives for the entire process.
+        """
+        if self._closed:
+            return
+        self._closed = True
+
+        # Unpin from process-level registries.
+        with contextlib.suppress(Exception):
+            atexit.unregister(self._cleanup_on_exit)
+        if self._prev_sigint is not None:
+            with contextlib.suppress(Exception):
+                signal.signal(signal.SIGINT, self._prev_sigint)
+            self._prev_sigint = None
+        if self._prev_sigterm is not None:
+            with contextlib.suppress(Exception):
+                signal.signal(signal.SIGTERM, self._prev_sigterm)
+            self._prev_sigterm = None
+
+        # Shut down any lazily-started docs HTTP server.
+        general = getattr(self, "_general", None)
+        if general is not None:
+            docs_server = getattr(general, "_docs_server", None)
+            if docs_server is not None:
+                with contextlib.suppress(Exception):
+                    docs_server.shutdown()
+                general._docs_server = None
+
+        # Wait for scan thread, then drop the reference so it cannot pin self.
+        scan_thread = getattr(self, "_scan_thread", None)
+        if scan_thread is not None:
+            if scan_thread.is_alive():
+                scan_thread.join(timeout=1.0)
+            self._scan_thread = None
+
+        # Break REPL<->handler closure cycles. Removing the instance attribute
+        # causes attribute lookup to fall back to the class-level default method.
+        for attr in ("_psu_cmd", "_awg_cmd", "_dmm_cmd", "_scope_cmd", "_smu_cmd", "_ev2300_cmd"):
+            handler = getattr(self, attr, None)
+            if handler is not None and "_state_callback" in handler.__dict__:
+                del handler._state_callback
+
+        # Break the ScriptingCommands -> REPL strong backreference.
+        script_cmd = getattr(self, "_script_cmd", None)
+        if script_cmd is not None:
+            script_cmd.shell = None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        self.close()
+        return False
 
     # ------------------------------------------------------------------
     # cmd.Cmd overrides
