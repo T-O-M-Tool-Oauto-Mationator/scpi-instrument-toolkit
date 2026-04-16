@@ -36,7 +36,7 @@ from .commands.scripting import ScriptingCommands
 from .commands.smu import SmuCommand
 from .commands.variables import VariableCommands
 from .context import ReplContext
-from .syntax import safe_eval, substitute_vars
+from .syntax import safe_eval, strip_inline_comment, substitute_vars
 
 
 def get_version():
@@ -539,7 +539,7 @@ class InstrumentRepl(cmd.Cmd):
                 return
 
         # Increment / decrement: x++  x--
-        stripped = line.strip()
+        stripped = strip_inline_comment(line.strip())
         inc_m = re.match(r"^([A-Za-z_][A-Za-z0-9_.]*)\s*\+\+$", stripped)
         if inc_m:
             varname = inc_m.group(1)

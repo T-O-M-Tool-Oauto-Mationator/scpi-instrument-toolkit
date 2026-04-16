@@ -494,6 +494,51 @@ class TestIncrementDecrementTypes:
 
 
 # ---------------------------------------------------------------------------
+# TestInlineCommentStripping
+# ---------------------------------------------------------------------------
+
+
+class TestInlineCommentStripping:
+    """Inline # comments must be stripped from ++, --, and compound assignments."""
+
+    def test_increment_with_inline_comment(self, make_repl, capsys):
+        repl = make_repl({})
+        repl.onecmd("x = 5")
+        repl.onecmd("x++                # bump")
+        assert repl.ctx.script_vars["x"] == pytest.approx(6.0)
+
+    def test_decrement_with_inline_comment(self, make_repl, capsys):
+        repl = make_repl({})
+        repl.onecmd("x = 5")
+        repl.onecmd("x--                # drop")
+        assert repl.ctx.script_vars["x"] == pytest.approx(4.0)
+
+    def test_compound_add_with_inline_comment(self, make_repl, capsys):
+        repl = make_repl({})
+        repl.onecmd("x = 10")
+        repl.onecmd("x += 1             # count = 11")
+        assert repl.ctx.script_vars["x"] == pytest.approx(11.0)
+
+    def test_compound_sub_with_inline_comment(self, make_repl, capsys):
+        repl = make_repl({})
+        repl.onecmd("x = 10")
+        repl.onecmd("x -= 3             # count = 7")
+        assert repl.ctx.script_vars["x"] == pytest.approx(7.0)
+
+    def test_compound_mul_with_inline_comment(self, make_repl, capsys):
+        repl = make_repl({})
+        repl.onecmd("x = 5")
+        repl.onecmd("x *= 2             # double it")
+        assert repl.ctx.script_vars["x"] == pytest.approx(10.0)
+
+    def test_assignment_with_hash_in_string_preserved(self, make_repl, capsys):
+        """Hash inside quotes must NOT be treated as a comment."""
+        repl = make_repl({})
+        repl.onecmd('name = "test # value"')
+        assert repl.ctx.script_vars["name"] == "test # value"
+
+
+# ---------------------------------------------------------------------------
 # TestAssignmentTypeCoercion
 # ---------------------------------------------------------------------------
 

@@ -25,6 +25,7 @@ from lab_instruments.repl.device_registry import DeviceRegistry
 from lab_instruments.repl.measurement_store import MeasurementStore
 from lab_instruments.repl.syntax import (
     safe_eval,
+    strip_inline_comment,
     substitute_expand,
     substitute_vars,
     validate_name,
@@ -137,6 +138,26 @@ class TestSubstituteExpand:
     def test_dollar_sign_is_literal(self):
         result = substitute_expand("set ${volt}", {"volt": "5.0"})
         assert result == "set $5.0"  # $ is literal text, {volt} resolves normally
+
+
+class TestStripInlineComment:
+    def test_strips_trailing_comment(self):
+        assert strip_inline_comment("x += 1  # bump") == "x += 1"
+
+    def test_preserves_hash_in_double_quotes(self):
+        assert strip_inline_comment('name = "a # b"') == 'name = "a # b"'
+
+    def test_preserves_hash_in_single_quotes(self):
+        assert strip_inline_comment("name = 'a # b'") == "name = 'a # b'"
+
+    def test_no_comment_returns_unchanged(self):
+        assert strip_inline_comment("count++") == "count++"
+
+    def test_bare_hash_at_start(self):
+        assert strip_inline_comment("# full line comment") == ""
+
+    def test_strips_after_quoted_string(self):
+        assert strip_inline_comment('x = "hello"  # assign') == 'x = "hello"'
 
 
 class TestSafeEval:
