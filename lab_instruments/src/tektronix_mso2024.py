@@ -482,11 +482,14 @@ class Tektronix_MSO2024(DeviceManager):
         Saves the waveform of the specified channel to a CSV file.
 
         Args:
-            channel (int): Channel to capture.
+            channel (int or list): Channel to capture, or a list of channels.
             filename (str): Output filename (e.g., 'data.csv').
             max_points (int, optional): Maximum number of points to save. If None, saves all.
             time_window (float, optional): Time window in seconds to save. If None, saves all.
         """
+        if isinstance(channel, (list, tuple)):
+            return self.save_waveforms_csv(channel, filename, max_points=max_points, time_window=time_window)
+
         import csv
 
         times, volts = self.get_waveform_scaled(channel)
