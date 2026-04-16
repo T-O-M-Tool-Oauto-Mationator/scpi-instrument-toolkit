@@ -56,6 +56,24 @@ pip install --upgrade "git+https://github.com/T-O-M-Tool-Oauto-Mationator/scpi-i
 
 ---
 
+## Nightly / Dev Builds
+
+Want the latest in-progress features? Install from the `dev/nightly` branch:
+
+```
+pip install "git+https://github.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit.git@dev/nightly"
+```
+
+To update an existing nightly install, add `--upgrade --force-reinstall` (forces pip to re-pull even if the version string hasn't changed):
+
+```
+pip install --upgrade --force-reinstall "git+https://github.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit.git@dev/nightly"
+```
+
+> Nightly builds track active development — expect rough edges. For stable use, stick with the default install above.
+
+---
+
 ## Supported Instruments
 
 | Instrument | Type |
