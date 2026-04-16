@@ -428,7 +428,7 @@ class ScriptingCommands(BaseCommand):
                 tmp_path = handle.name
                 handle.write(f"# Script: {name}\n")
                 handle.write(
-                    "# Syntax: set <var> <val>  |  $var  |  repeat <n> ... end  |  for <var> v1 v2 ... end  |  call <name>\n"
+                    "# Syntax: var = val  |  {var}  |  repeat <n> ... end  |  for <var> v1 v2 ... end  |  call <name>\n"
                 )
                 handle.write("#\n")
                 for line in current_lines:

@@ -172,7 +172,7 @@ class LoggingCommands(BaseCommand):
         if not expr:
             ColorPrinter.warning("calc expects an expression.")
             return
-        # Substitute {name} and $name variables in expr
+        # Substitute {name} variables in expr
         expr = substitute_vars(expr, self.ctx.script_vars, self.ctx.measurements)
         last_entry = self.measurements.get_last()
         last = last_entry["value"] if last_entry else 0

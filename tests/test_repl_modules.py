@@ -134,9 +134,9 @@ class TestSubstituteExpand:
         result = substitute_expand("{a} and {b}", {"a": "X", "b": "Y"})
         assert result == "X and Y"
 
-    def test_dollar_prefix_passes_through(self):
+    def test_dollar_sign_is_literal(self):
         result = substitute_expand("set ${volt}", {"volt": "5.0"})
-        assert result == "set $5.0"  # $ is literal, {volt} still resolves
+        assert result == "set $5.0"  # $ is literal text, {volt} resolves normally
 
 
 class TestSafeEval:

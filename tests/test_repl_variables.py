@@ -5,7 +5,7 @@ Covers:
   - var = expr Python-style assignment
   - Deprecation warning on 'set var expr'
   - substitute_vars unit tests
-  - Regression: existing $var, ${var}, set, print behavior unchanged
+  - Regression: existing set, print behavior unchanged
 """
 
 from lab_instruments.repl.syntax import substitute_vars

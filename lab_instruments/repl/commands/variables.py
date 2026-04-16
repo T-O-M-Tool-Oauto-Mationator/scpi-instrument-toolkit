@@ -41,7 +41,7 @@ class VariableCommands(BaseCommand):
     """Handles set, print, pause, input, sleep commands."""
 
     def do_print(self, arg: str) -> None:
-        """print <message> — display text; supports {var} and $var interpolation.
+        """print <message> — display text; supports {var} interpolation.
 
         Quotes are optional but recommended for clarity:
             print "Voltage is {v}V"
@@ -51,7 +51,7 @@ class VariableCommands(BaseCommand):
         # Strip optional outer quotes: print "hello {v}" or print 'hello {v}'
         if len(msg) >= 2 and msg[0] in ('"', "'") and msg[-1] == msg[0]:
             msg = msg[1:-1]
-        # Apply variable substitution (handles both {var} and $var)
+        # Apply variable substitution ({var} syntax)
         msg = substitute_vars(msg, self.ctx.script_vars, self.ctx.measurements)
         builtins.print(msg)
 
@@ -255,7 +255,7 @@ class VariableCommands(BaseCommand):
             ColorPrinter.warning("calc expects an expression.")
             return True
 
-        # Substitute {name} and $name variables in expr
+        # Substitute {name} variables in expr
         expr = substitute_vars(expr, self.ctx.script_vars, self.ctx.measurements)
 
         # Build names dict with 'last' from measurement store
