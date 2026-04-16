@@ -139,3 +139,108 @@ class TestContextManagerExitFiresOnException:
         for ch_name in ("CH1", "CH2", "CH3", "CH4"):
             assert f"SELect:{ch_name} OFF" in sent
         assert "SELect:MATH OFF" in sent
+
+
+# ===========================================================================
+# 7. TestCacheUpdates
+# ===========================================================================
+
+
+class TestCacheUpdates:
+    def test_set_coupling_updates_cache(self, tektronix_mso2024):
+        scope, _mi = tektronix_mso2024
+        scope.set_coupling(1, "DC")
+        assert scope._cache["ch1_coupling"] == "DC"
+
+    def test_set_horizontal_scale_updates_cache(self, tektronix_mso2024):
+        scope, _mi = tektronix_mso2024
+        scope.set_horizontal_scale(0.001)
+        assert scope._cache["horizontal_scale"] == 0.001
+
+    def test_set_vertical_scale_updates_cache(self, tektronix_mso2024):
+        scope, _mi = tektronix_mso2024
+        scope.set_vertical_scale(1, 2.0, 1.5)
+        assert scope._cache["ch1_scale"] == 2.0
+        assert scope._cache["ch1_position"] == 1.5
+
+    def test_configure_trigger_updates_cache(self, tektronix_mso2024):
+        scope, _mi = tektronix_mso2024
+        scope.configure_trigger(1, 1.5, slope="RISE", mode="AUTO")
+        assert scope._cache["trigger_source"] == 1
+        assert scope._cache["trigger_level"] == 1.5
+        assert scope._cache["trigger_slope"] == "RISE"
+        assert scope._cache["trigger_mode"] == "AUTO"
+
+
+# ===========================================================================
+# 8. TestAllowlistValidation
+# ===========================================================================
+
+
+class TestAllowlistValidation:
+    def test_set_coupling_invalid_raises(self, tektronix_mso2024):
+        scope, _mi = tektronix_mso2024
+        with pytest.raises(ValueError, match="Coupling"):
+            scope.set_coupling(1, "INVALID")
+
+    def test_set_acquisition_mode_invalid_raises(self, tektronix_mso2024):
+        scope, _mi = tektronix_mso2024
+        with pytest.raises(ValueError, match="Mode"):
+            scope.set_acquisition_mode("INVALID")
+
+    def test_set_acquisition_stop_after_invalid_raises(self, tektronix_mso2024):
+        scope, _mi = tektronix_mso2024
+        with pytest.raises(ValueError, match="Mode"):
+            scope.set_acquisition_stop_after("INVALID")
+
+    def test_configure_trigger_invalid_slope_raises(self, tektronix_mso2024):
+        scope, _mi = tektronix_mso2024
+        with pytest.raises(ValueError, match="Slope"):
+            scope.configure_trigger(1, 1.0, slope="INVALID")
+
+    def test_configure_trigger_invalid_mode_raises(self, tektronix_mso2024):
+        scope, _mi = tektronix_mso2024
+        with pytest.raises(ValueError, match="Mode"):
+            scope.configure_trigger(1, 1.0, mode="INVALID")
+
+    def test_measure_delay_invalid_edge_raises(self, tektronix_mso2024):
+        scope, _mi = tektronix_mso2024
+        with pytest.raises(ValueError, match="edge1"):
+            scope.measure_delay(1, 2, edge1="INVALID")
+
+    def test_measure_delay_invalid_direction_raises(self, tektronix_mso2024):
+        scope, _mi = tektronix_mso2024
+        with pytest.raises(ValueError, match="direction"):
+            scope.measure_delay(1, 2, direction="INVALID")
+
+
+# ===========================================================================
+# 9. TestNumericValidation
+# ===========================================================================
+
+
+class TestNumericValidation:
+    def test_set_horizontal_scale_zero_raises(self, tektronix_mso2024):
+        scope, _mi = tektronix_mso2024
+        with pytest.raises(ValueError, match="positive"):
+            scope.set_horizontal_scale(0)
+
+    def test_set_horizontal_scale_negative_raises(self, tektronix_mso2024):
+        scope, _mi = tektronix_mso2024
+        with pytest.raises(ValueError, match="positive"):
+            scope.set_horizontal_scale(-1.0)
+
+    def test_set_horizontal_position_below_zero_raises(self, tektronix_mso2024):
+        scope, _mi = tektronix_mso2024
+        with pytest.raises(ValueError, match="between 0 and 100"):
+            scope.set_horizontal_position(-1.0)
+
+    def test_set_horizontal_position_above_100_raises(self, tektronix_mso2024):
+        scope, _mi = tektronix_mso2024
+        with pytest.raises(ValueError, match="between 0 and 100"):
+            scope.set_horizontal_position(101.0)
+
+    def test_set_vertical_scale_zero_raises(self, tektronix_mso2024):
+        scope, _mi = tektronix_mso2024
+        with pytest.raises(ValueError, match="positive"):
+            scope.set_vertical_scale(1, 0)

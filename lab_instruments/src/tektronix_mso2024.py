@@ -46,9 +46,25 @@ class Tektronix_MSO2024(DeviceManager):
         4: "CH4",
     }
 
+    # Enum ALLOWLISTs (Rule 6)
+    _COUPLING_ALLOWLIST = ("DC", "AC", "GND")
+    _ACQ_MODE_ALLOWLIST = ("SAMPLE", "AVERAGE", "PEAKDETECT", "HIRES", "ENVELOPE")
+    _ACQ_STOP_ALLOWLIST = ("RUNSTOP", "SEQUENCE")
+    _TRIGGER_SLOPE_ALLOWLIST = ("RISE", "FALL")
+    _TRIGGER_MODE_ALLOWLIST = ("AUTO", "NORMAL")
+    _DELAY_EDGE_ALLOWLIST = ("RISE", "FALL")
+    _DELAY_DIRECTION_ALLOWLIST = ("FORWARDS", "BACKWARDS")
+
     def __init__(self, resource_name):
         """Initialize the Tektronix Oscilloscope."""
         super().__init__(resource_name)
+        self._cache = {}
+
+    def _write(self, cmd: str, **cache_updates) -> None:
+        """Send a SCPI command and atomically update the cache."""
+        self.send_command(cmd)
+        if cache_updates:
+            self._cache.update(cache_updates)
 
     def __enter__(self):
         """Context manager entry: clear status and reset channels."""
@@ -71,7 +87,7 @@ class Tektronix_MSO2024(DeviceManager):
             self.change_channel_status(channel, False)
 
         # 2. Math Channel
-        self.send_command("SELect:MATH OFF")
+        self._write("SELect:MATH OFF", math_display=False)
 
     def enable_all_channels(self):
         """Enable all analog channels."""
@@ -85,7 +101,7 @@ class Tektronix_MSO2024(DeviceManager):
 
         scpi_name = self.CHANNEL_MAP[channel]
         state = "ON" if status else "OFF"
-        self.send_command(f"SELect:{scpi_name} {state}")
+        self._write(f"SELect:{scpi_name} {state}", **{f"ch{channel}_display": status})
 
     def enable_channel(self, channel):
         self.change_channel_status(channel, True)
@@ -99,7 +115,7 @@ class Tektronix_MSO2024(DeviceManager):
             raise ValueError(f"Invalid channel. Must be one of: {list(self.CHANNEL_MAP.keys())}")
 
         scpi_name = self.CHANNEL_MAP[channel]
-        self.send_command(f'{scpi_name}:LABel:NAMe "{label}"')
+        self._write(f'{scpi_name}:LABel:NAMe "{label}"', **{f"ch{channel}_label": label})
 
     def set_probe_attenuation(self, channel, attenuation: float):
         """Sets the probe attenuation (Legacy MSO2000 uses PRObe:GAIN)."""
@@ -112,7 +128,7 @@ class Tektronix_MSO2024(DeviceManager):
         scpi_name = self.CHANNEL_MAP[channel]
         # Gain = 1 / Attenuation (e.g., 10x probe -> 0.1 gain)
         gain = 1.0 / attenuation
-        self.send_command(f"{scpi_name}:PRObe:GAIN {gain}")
+        self._write(f"{scpi_name}:PRObe:GAIN {gain}", **{f"ch{channel}_attenuation": attenuation})
 
     def set_coupling(self, channel, coupling: str):
         """
@@ -126,11 +142,11 @@ class Tektronix_MSO2024(DeviceManager):
             raise ValueError(f"Invalid channel. Must be one of: {list(self.CHANNEL_MAP.keys())}")
 
         coupling = coupling.upper()
-        if coupling not in ("DC", "AC", "GND"):
-            raise ValueError("Coupling must be 'DC', 'AC', or 'GND'")
+        if coupling not in self._COUPLING_ALLOWLIST:
+            raise ValueError(f"Coupling must be one of {self._COUPLING_ALLOWLIST}, got '{coupling}'")
 
         scpi_name = self.CHANNEL_MAP[channel]
-        self.send_command(f"{scpi_name}:COUPling {coupling}")
+        self._write(f"{scpi_name}:COUPling {coupling}", **{f"ch{channel}_coupling": coupling})
         print(f"{scpi_name} coupling: {coupling}")
 
     # ==========================================
@@ -139,7 +155,9 @@ class Tektronix_MSO2024(DeviceManager):
 
     def set_horizontal_scale(self, scale):
         """Set the horizontal scale (seconds per division)."""
-        self.send_command(f"HORizontal:SCAle {scale}")
+        if scale <= 0:
+            raise ValueError(f"Scale must be positive, got {scale}")
+        self._write(f"HORizontal:SCAle {scale}", horizontal_scale=scale)
 
     def set_horizontal_offset(self, offset: float) -> None:
         """Set horizontal offset (time position) in seconds.
@@ -148,8 +166,8 @@ class Tektronix_MSO2024(DeviceManager):
         is shifted by the given offset. Negative = earlier time visible;
         positive = later time visible; zero = trigger at center.
         """
-        self.send_command("HORizontal:DELay:MODe ON")
-        self.send_command(f"HORizontal:DELay:TIMe {offset}")
+        self._write("HORizontal:DELay:MODe ON", horizontal_delay_mode=True)
+        self._write(f"HORizontal:DELay:TIMe {offset}", horizontal_offset=offset)
 
     def get_horizontal_offset(self) -> float:
         """Return the current horizontal delay time in seconds."""
@@ -162,7 +180,9 @@ class Tektronix_MSO2024(DeviceManager):
         Args:
             position (float): Position as percentage (0-100)
         """
-        self.send_command(f"HORizontal:POSition {position}")
+        if position < 0 or position > 100:
+            raise ValueError(f"Position must be between 0 and 100, got {position}")
+        self._write(f"HORizontal:POSition {position}", horizontal_position=position)
 
     def get_horizontal_position(self):
         """
@@ -193,23 +213,22 @@ class Tektronix_MSO2024(DeviceManager):
         Legacy MSO2000 Supports: SAMPLE, AVERAGE, PEAKDETECT.
         (HIRES/ENVELOPE might be restricted on some older firmwares, but usually present).
         """
-        valid_modes = {"SAMPLE", "AVERAGE", "PEAKDETECT", "HIRES", "ENVELOPE"}
-        if mode.upper() not in valid_modes:
-            raise ValueError(f"Invalid mode. Must be one of: {valid_modes}")
+        if mode.upper() not in self._ACQ_MODE_ALLOWLIST:
+            raise ValueError(f"Mode must be one of {self._ACQ_MODE_ALLOWLIST}, got '{mode}'")
 
-        self.send_command(f"ACQuire:MODe {mode.upper()}")
+        self._write(f"ACQuire:MODe {mode.upper()}", acquisition_mode=mode.upper())
 
         if mode.upper() == "AVERAGE":
-            self.send_command(f"ACQuire:NUMAVg {num_averages}")
+            self._write(f"ACQuire:NUMAVg {num_averages}", acquisition_num_averages=num_averages)
 
     def run(self):
         """Start/resume acquisition (run the oscilloscope)."""
-        self.send_command("ACQuire:STATE RUN")
+        self._write("ACQuire:STATE RUN", acquisition_state="RUN")
         print("Oscilloscope: Running")
 
     def stop(self):
         """Stop/pause acquisition (stop the oscilloscope)."""
-        self.send_command("ACQuire:STATE STOP")
+        self._write("ACQuire:STATE STOP", acquisition_state="STOP")
         print("Oscilloscope: Stopped")
 
     def single(self):
@@ -218,8 +237,8 @@ class Tektronix_MSO2024(DeviceManager):
         The scope will wait for a trigger event, capture one acquisition, then stop.
         Perfect for capturing specific events.
         """
-        self.send_command("ACQuire:STOPAfter SEQuence")
-        self.send_command("ACQuire:STATE RUN")
+        self._write("ACQuire:STOPAfter SEQuence", acquisition_stop_after="SEQUENCE")
+        self._write("ACQuire:STATE RUN", acquisition_state="RUN")
         print("Oscilloscope: Armed for single-shot (waiting for trigger)")
 
     def get_acquisition_state(self):
@@ -248,9 +267,9 @@ class Tektronix_MSO2024(DeviceManager):
             mode (str): 'RUNSTop' for continuous or 'SEQuence' for single-shot
         """
         mode = mode.upper()
-        if mode not in ("RUNSTOP", "SEQUENCE"):
-            raise ValueError("Mode must be 'RUNSTop' or 'SEQuence'")
-        self.send_command(f"ACQuire:STOPAfter {mode}")
+        if mode not in self._ACQ_STOP_ALLOWLIST:
+            raise ValueError(f"Mode must be one of {self._ACQ_STOP_ALLOWLIST}, got '{mode}'")
+        self._write(f"ACQuire:STOPAfter {mode}", acquisition_stop_after=mode)
 
     # ==========================================
     # VERTICAL
@@ -260,10 +279,12 @@ class Tektronix_MSO2024(DeviceManager):
         """Set the vertical scale (Volts/div) and position (divs)."""
         if channel not in self.CHANNEL_MAP:
             raise ValueError(f"Invalid channel. Must be one of: {list(self.CHANNEL_MAP.keys())}")
+        if scale <= 0:
+            raise ValueError(f"Scale must be positive, got {scale}")
 
         scpi_name = self.CHANNEL_MAP[channel]
-        self.send_command(f"{scpi_name}:SCAle {scale}")
-        self.send_command(f"{scpi_name}:POSition {position}")
+        self._write(f"{scpi_name}:SCAle {scale}", **{f"ch{channel}_scale": scale})
+        self._write(f"{scpi_name}:POSition {position}", **{f"ch{channel}_position": position})
 
     def set_vertical_position(self, channel, position: float):
         """
@@ -277,7 +298,7 @@ class Tektronix_MSO2024(DeviceManager):
             raise ValueError(f"Invalid channel. Must be one of: {list(self.CHANNEL_MAP.keys())}")
 
         scpi_name = self.CHANNEL_MAP[channel]
-        self.send_command(f"{scpi_name}:POSition {position}")
+        self._write(f"{scpi_name}:POSition {position}", **{f"ch{channel}_position": position})
 
     def get_vertical_position(self, channel):
         """
@@ -316,14 +337,20 @@ class Tektronix_MSO2024(DeviceManager):
         """Configure the Edge Trigger parameters."""
         if source_channel not in self.CHANNEL_MAP:
             raise ValueError(f"Invalid channel. Must be one of: {list(self.CHANNEL_MAP.keys())}")
+        slope = slope.upper()
+        if slope not in self._TRIGGER_SLOPE_ALLOWLIST:
+            raise ValueError(f"Slope must be one of {self._TRIGGER_SLOPE_ALLOWLIST}, got '{slope}'")
+        mode = mode.upper()
+        if mode not in self._TRIGGER_MODE_ALLOWLIST:
+            raise ValueError(f"Mode must be one of {self._TRIGGER_MODE_ALLOWLIST}, got '{mode}'")
 
         scpi_source = self.CHANNEL_MAP[source_channel]
 
-        self.send_command("TRIGger:A:TYPe EDGE")
-        self.send_command(f"TRIGger:A:EDGE:SOUrce {scpi_source}")
-        self.send_command(f"TRIGger:A:EDGE:SLOpe {slope}")
-        self.send_command(f"TRIGger:A:LEVel:{scpi_source} {level}")
-        self.send_command(f"TRIGger:A:MODe {mode}")
+        self._write("TRIGger:A:TYPe EDGE", trigger_type="EDGE")
+        self._write(f"TRIGger:A:EDGE:SOUrce {scpi_source}", trigger_source=source_channel)
+        self._write(f"TRIGger:A:EDGE:SLOpe {slope}", trigger_slope=slope)
+        self._write(f"TRIGger:A:LEVel:{scpi_source} {level}", trigger_level=level)
+        self._write(f"TRIGger:A:MODe {mode}", trigger_mode=mode)
 
     # ==========================================
     # MATH SUBSYSTEM
@@ -331,16 +358,20 @@ class Tektronix_MSO2024(DeviceManager):
 
     def configure_math(self, expression: str, scale: float = None, position: float = None):
         """Configures the Math waveform."""
+        cache: dict = {"math_expression": expression}
+
         # Legacy MSO2000 uses MATH:DEFine
         self.send_command(f'MATH:DEFine "{expression}"')
 
         if scale is not None:
             self.send_command(f"MATH:VERTical:SCAle {scale}")
+            cache["math_scale"] = scale
 
         if position is not None:
             self.send_command(f"MATH:VERTical:POSition {position}")
+            cache["math_position"] = position
 
-        self.send_command("SELect:MATH ON")
+        self._write("SELect:MATH ON", **cache)
 
     def measure_math_bnf(self, measure_type):
         """
@@ -381,8 +412,8 @@ class Tektronix_MSO2024(DeviceManager):
             raise ValueError(f"Invalid BNF Type: {m_type}. Valid: {self.VALID_BNF_MEASURE_TYPES}")
 
         scpi_source = self.CHANNEL_MAP[channel]
-        self.send_command(f"MEASUrement:IMMed:SOUrce1 {scpi_source}")
-        self.send_command(f"MEASUrement:IMMed:TYPe {m_type}")
+        self._write(f"MEASUrement:IMMed:SOUrce1 {scpi_source}", meas_source=channel)
+        self._write(f"MEASUrement:IMMed:TYPe {m_type}", meas_type=m_type)
 
     def measure_bnf(self, channel, measure_type):
         """
@@ -613,7 +644,7 @@ class Tektronix_MSO2024(DeviceManager):
         """Helper: Measure Period."""
         return self.measure_bnf(channel, "PERIOD")
 
-    def measure_delay(self, source1_channel, source2_channel, edge1="RISE", edge2="RISE", direction="FORWards"):
+    def measure_delay(self, source1_channel, source2_channel, edge1="RISE", edge2="RISE", direction="FORWARDS"):
         """
         Measure the time delay between two channels.
 
@@ -622,25 +653,34 @@ class Tektronix_MSO2024(DeviceManager):
             source2_channel (int): The ending channel.
             edge1 (str): 'RISE' or 'FALL' for the first source.
             edge2 (str): 'RISE' or 'FALL' for the second source.
-            direction (str): 'FORWards' or 'BACKwards' (default: FORWards)
+            direction (str): 'FORWARDS' or 'BACKWARDS' (default: FORWARDS)
         """
         if source1_channel not in self.CHANNEL_MAP or source2_channel not in self.CHANNEL_MAP:
             raise ValueError(f"Invalid channel. Must be one of: {list(self.CHANNEL_MAP.keys())}")
+        edge1 = edge1.upper()
+        if edge1 not in self._DELAY_EDGE_ALLOWLIST:
+            raise ValueError(f"edge1 must be one of {self._DELAY_EDGE_ALLOWLIST}, got '{edge1}'")
+        edge2 = edge2.upper()
+        if edge2 not in self._DELAY_EDGE_ALLOWLIST:
+            raise ValueError(f"edge2 must be one of {self._DELAY_EDGE_ALLOWLIST}, got '{edge2}'")
+        direction = direction.upper()
+        if direction not in self._DELAY_DIRECTION_ALLOWLIST:
+            raise ValueError(f"direction must be one of {self._DELAY_DIRECTION_ALLOWLIST}, got '{direction}'")
 
         scpi_source1 = self.CHANNEL_MAP[source1_channel]
         scpi_source2 = self.CHANNEL_MAP[source2_channel]
 
         # 1. Set Type to DELAY
-        self.send_command("MEASUrement:IMMed:TYPe DELAY")
+        self._write("MEASUrement:IMMed:TYPe DELAY", meas_type="DELAY")
 
         # 2. Set Sources
-        self.send_command(f"MEASUrement:IMMed:SOUrce1 {scpi_source1}")
-        self.send_command(f"MEASUrement:IMMed:SOUrce2 {scpi_source2}")
+        self._write(f"MEASUrement:IMMed:SOUrce1 {scpi_source1}", delay_source1=source1_channel)
+        self._write(f"MEASUrement:IMMed:SOUrce2 {scpi_source2}", delay_source2=source2_channel)
 
         # 3. Configure Edges and Direction
-        self.send_command(f"MEASUrement:IMMed:DELay:EDGE1 {edge1}")
-        self.send_command(f"MEASUrement:IMMed:DELay:EDGE2 {edge2}")
-        self.send_command(f"MEASUrement:IMMed:DELay:DIRection {direction}")
+        self._write(f"MEASUrement:IMMed:DELay:EDGE1 {edge1}", delay_edge1=edge1)
+        self._write(f"MEASUrement:IMMed:DELay:EDGE2 {edge2}", delay_edge2=edge2)
+        self._write(f"MEASUrement:IMMed:DELay:DIRection {direction}", delay_direction=direction)
 
         # 4. Query Value
         try:
@@ -658,4 +698,4 @@ class Tektronix_MSO2024(DeviceManager):
 
     def autoset(self):
         """Perform an autoset on the oscilloscope."""
-        self.send_command("AUToset EXECute")
+        self._write("AUToset EXECute", autoset=True)
