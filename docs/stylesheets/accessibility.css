@@ -1,0 +1,41 @@
+/* WCAG 2.1 AA accessibility enhancements for MkDocs Material theme */
+
+/* 1. Visible focus indicators on all interactive elements (WCAG 2.4.7) */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+label:focus-visible,
+[tabindex]:focus-visible {
+  outline: 3px solid #1565c0;
+  outline-offset: 2px;
+}
+
+/* 2. Skip-to-content link: visible on focus (WCAG 2.4.1) */
+.md-skip:focus {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 999;
+  padding: 0.75rem 1.5rem;
+  background: #fff;
+  color: #000;
+  font-size: 1rem;
+  font-weight: bold;
+  border: 3px solid #1565c0;
+  clip: auto;
+  width: auto;
+  height: auto;
+}
+
+/* 3. Ensure minimum touch target size for icon buttons (WCAG 2.5.8) */
+.md-header__button,
+.md-search__icon,
+.md-nav__link label {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* 4. Improve code block readability and contrast */
+code {
+  font-size: 0.85em;
+}
