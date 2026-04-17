@@ -453,12 +453,13 @@ class TestArithmeticPrecision:
         repl.onecmd("calc r = 1 / 3 * 3")
         assert repl.ctx.script_vars["r"] == pytest.approx(1.0, rel=1e-10)
 
-    def test_division_by_zero_gives_nan(self, repl, capsys):
+    def test_division_by_zero_reports_error(self, repl, capsys):
         repl.onecmd("calc r = 1 / 0")
-        capsys.readouterr()
-        val = repl.ctx.script_vars.get("r")
-        # safe_eval returns float('nan') on ZeroDivisionError
-        assert val is not None and math.isnan(float(val))
+        out = capsys.readouterr().out
+        # safe_eval now raises ZeroDivisionError which ctx.report_error surfaces;
+        # r is not created.
+        assert "ZeroDivisionError" in out
+        assert "r" not in repl.ctx.script_vars
 
     def test_sqrt_of_two_precision(self, repl):
         repl.onecmd("calc r = sqrt(2)")

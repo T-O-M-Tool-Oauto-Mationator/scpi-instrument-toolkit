@@ -470,6 +470,7 @@ scope meas_loop <1-4|all> <type> [interval=1.0] [count=0] [label=<name>] [unit=<
 | `label=` | optional | string, no spaces | If provided, each reading is also stored to the measurement log (same as the assignment syntax). |
 | `unit=` | optional | string | Unit shown in log (requires `label=`). |
 
+<!-- doc-test: skip reason="meas_loop runs forever by default -- needs count= for CI" -->
 ```bash
 scope meas_loop 1 FREQUENCY                         # print CH1 frequency every 1s, run forever
 scope meas_loop 1 FREQUENCY interval=0.5            # measure every 500 ms
@@ -514,6 +515,7 @@ scope meas_loop all PK2PK interval=2.0               # all channels, every 2s
 
     Then use in calculations:
 
+    <!-- doc-test: skip reason="depends on meas_pk2pk / meas_rms from the previous block" -->
     ```text
     calc crest_factor meas_pk2pk / meas_rms   # compute crest factor
     log print

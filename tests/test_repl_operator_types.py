@@ -124,23 +124,24 @@ class TestSafeEvalTypes:
         with pytest.raises(TypeError):
             safe_eval('"hello" + 1', {})
 
-    def test_division_by_zero_returns_nan(self):
-        result = safe_eval("1 / 0", {})
-        assert math.isnan(result)
+    def test_division_by_zero_raises(self):
+        with pytest.raises(ZeroDivisionError):
+            safe_eval("1 / 0", {})
 
-    def test_floor_division_by_zero_returns_nan(self):
-        result = safe_eval("1 // 0", {})
-        assert math.isnan(result)
+    def test_floor_division_by_zero_raises(self):
+        with pytest.raises(ZeroDivisionError):
+            safe_eval("1 // 0", {})
 
-    def test_modulo_by_zero_returns_nan(self):
-        result = safe_eval("1 % 0", {})
-        assert math.isnan(result)
+    def test_modulo_by_zero_raises(self):
+        with pytest.raises(ZeroDivisionError):
+            safe_eval("1 % 0", {})
 
-    def test_unknown_name_treated_as_string(self):
-        """Unknown names are returned as string identifiers."""
-        result = safe_eval("hello", {})
-        assert result == "hello"
-        assert isinstance(result, str)
+    def test_unknown_name_raises_nameerror(self):
+        """Unknown identifiers raise NameError in strict (default) mode."""
+        with pytest.raises(NameError, match="'hello' is not defined"):
+            safe_eval("hello", {})
+        # Legacy lenient mode still returns the identifier string.
+        assert safe_eval("hello", {}, strict=False) == "hello"
 
     def test_int_conversion(self):
         result = safe_eval("int(3.7)", {})
@@ -438,19 +439,23 @@ class TestIncrementDecrementTypes:
         repl.onecmd("x--")
         assert float(repl.ctx.script_vars["x"]) == pytest.approx(-1.0)
 
-    def test_increment_nonnumeric_string_falls_back(self, make_repl, capsys):
-        """x = hello; x++ falls back to 0+1 = 1.0 since float('hello') fails."""
+    def test_increment_nonnumeric_string_raises_typeerror(self, make_repl, capsys):
+        """x = hello; x++ surfaces TypeError and leaves x unchanged."""
         repl = make_repl({})
         repl.ctx.script_vars["x"] = "hello"
         repl.onecmd("x++")
-        assert float(repl.ctx.script_vars["x"]) == pytest.approx(1.0)
+        out = capsys.readouterr().out
+        assert "TypeError" in out
+        assert repl.ctx.script_vars["x"] == "hello"
 
-    def test_decrement_nonnumeric_string_falls_back(self, make_repl, capsys):
-        """x = hello; x-- falls back to 0-1 = -1.0."""
+    def test_decrement_nonnumeric_string_raises_typeerror(self, make_repl, capsys):
+        """x = hello; x-- surfaces TypeError and leaves x unchanged."""
         repl = make_repl({})
         repl.ctx.script_vars["x"] = "hello"
         repl.onecmd("x--")
-        assert float(repl.ctx.script_vars["x"]) == pytest.approx(-1.0)
+        out = capsys.readouterr().out
+        assert "TypeError" in out
+        assert repl.ctx.script_vars["x"] == "hello"
 
     def test_multiple_increments_accumulate(self, make_repl, capsys):
         repl = make_repl({})
@@ -675,11 +680,11 @@ class TestComparisonOperatorTypes:
         assert safe_eval("3 < 2 < 1", {}) is False
 
     def test_string_equality_unknown_names(self):
-        """Two unknown names compared -- both resolve to their string identifiers."""
-        assert safe_eval("hello == hello", {}) is True
+        """Two unknown names compared -- lenient mode treats them as strings."""
+        assert safe_eval("hello == hello", {}, strict=False) is True
 
     def test_string_inequality_unknown_names(self):
-        assert safe_eval("hello == world", {}) is False
+        assert safe_eval("hello == world", {}, strict=False) is False
 
     def test_variable_comparison_float(self):
         assert safe_eval("x == 5", {"x": 5.0}) is True
@@ -800,26 +805,27 @@ class TestEdgeCaseTypes:
         repl.onecmd("x *= 2")
         assert float(repl.ctx.script_vars["x"]) == pytest.approx(0.0000002)
 
-    def test_division_by_zero_safe_eval(self):
-        result = safe_eval("1 / 0", {})
-        assert math.isnan(result)
+    def test_division_by_zero_safe_eval_raises(self):
+        with pytest.raises(ZeroDivisionError):
+            safe_eval("1 / 0", {})
 
-    def test_floor_division_by_zero_safe_eval(self):
-        result = safe_eval("1 // 0", {})
-        assert math.isnan(result)
+    def test_floor_division_by_zero_safe_eval_raises(self):
+        with pytest.raises(ZeroDivisionError):
+            safe_eval("1 // 0", {})
 
-    def test_modulo_by_zero_safe_eval(self):
-        result = safe_eval("1 % 0", {})
-        assert math.isnan(result)
+    def test_modulo_by_zero_safe_eval_raises(self):
+        with pytest.raises(ZeroDivisionError):
+            safe_eval("1 % 0", {})
 
     def test_zero_division_compound_assignment(self, make_repl, capsys):
-        """x = 5; x /= 0 should handle gracefully (NaN from safe_eval)."""
+        """x = 5; x /= 0 reports ZeroDivisionError and leaves x unchanged."""
         repl = make_repl({})
         repl.onecmd("x = 5")
+        capsys.readouterr()
         repl.onecmd("x /= 0")
-        # safe_eval returns nan for division by zero
-        val = float(repl.ctx.script_vars["x"])
-        assert math.isnan(val)
+        out = capsys.readouterr().out
+        assert "ZeroDivisionError" in out
+        assert repl.ctx.script_vars["x"] == 5
 
     def test_negative_exponent(self):
         result = safe_eval("2 ** -1", {})

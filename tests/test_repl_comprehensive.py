@@ -678,19 +678,19 @@ class TestPlotCommand:
 
 
 class TestDivisionByZero:
-    """Division by zero in safe_eval returns NaN instead of raising."""
+    """Division by zero in safe_eval raises ZeroDivisionError (Python-style)."""
 
-    def test_division_by_zero_returns_nan(self):
-        result = safe_eval("1 / 0", {})
-        assert math.isnan(result)
+    def test_division_by_zero_raises(self):
+        with pytest.raises(ZeroDivisionError):
+            safe_eval("1 / 0", {})
 
-    def test_floor_division_by_zero_returns_nan(self):
-        result = safe_eval("1 // 0", {})
-        assert math.isnan(result)
+    def test_floor_division_by_zero_raises(self):
+        with pytest.raises(ZeroDivisionError):
+            safe_eval("1 // 0", {})
 
-    def test_modulo_by_zero_returns_nan(self):
-        result = safe_eval("1 % 0", {})
-        assert math.isnan(result)
+    def test_modulo_by_zero_raises(self):
+        with pytest.raises(ZeroDivisionError):
+            safe_eval("1 % 0", {})
 
 
 class TestUndefinedVariables:
@@ -715,12 +715,13 @@ class TestInvalidFunctionName:
     """Test calling a function that is not in the allowlist."""
 
     def test_disallowed_function_raises(self):
-        with pytest.raises(ValueError, match="Function not allowed"):
+        # __import__ is a NameError in strict mode (not in allowed_funcs).
+        with pytest.raises(NameError):
             safe_eval("__import__('os')", {})
 
-    def test_unknown_function_name_treated_as_string(self):
-        """Unknown names become strings in safe_eval, calling them raises."""
-        with pytest.raises((ValueError, TypeError)):
+    def test_unknown_function_name_raises_nameerror(self):
+        """Unknown function names raise NameError in strict mode."""
+        with pytest.raises(NameError, match="foobar"):
             safe_eval("foobar(1, 2)", {})
 
 
@@ -791,9 +792,12 @@ class TestReplErrorHandling:
         assert "x" in repl.ctx.script_vars
 
     def test_division_by_zero_in_repl(self, make_repl, capsys):
-        """Division by zero in assignment should produce NaN."""
+        """Division by zero in assignment surfaces ZeroDivisionError and
+        leaves the target variable unset (failed expressions do not create
+        destination vars)."""
         repl = make_repl({})
+        capsys.readouterr()
         repl.onecmd("x = 1 / 0")
-        import math
-
-        assert math.isnan(repl.ctx.script_vars["x"])
+        out = capsys.readouterr().out
+        assert "ZeroDivisionError" in out
+        assert "x" not in repl.ctx.script_vars

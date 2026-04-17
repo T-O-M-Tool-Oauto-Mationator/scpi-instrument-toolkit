@@ -147,6 +147,7 @@ calc power psu_v * psu_i unit=W
 
 Script variables assigned with `=` are also available by name:
 
+<!-- doc-test: skip reason="references psu_v measurement recorded in the previous block" -->
 ```text
 offset = 0.05
 calc corrected psu_v - offset unit=V

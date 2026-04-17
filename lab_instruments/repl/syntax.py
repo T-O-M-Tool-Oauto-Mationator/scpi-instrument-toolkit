@@ -90,7 +90,7 @@ def substitute_expand(text: str, variables: dict[str, Any]) -> str:
     return _SUBST_RE.sub(_replace, text)
 
 
-def safe_eval(expr: str, names: dict[str, Any]) -> Any:
+def safe_eval(expr: str, names: dict[str, Any], *, strict: bool = True) -> Any:
     """Evaluate an expression safely using AST walking (no exec/eval).
 
     Operators: ``+ - * / // ** % ^ | & << >>``
@@ -104,6 +104,21 @@ def safe_eval(expr: str, names: dict[str, Any]) -> Any:
                ``int float str bool hex bin oct ord chr``
                ``sqrt log log2 log10 exp ceil floor hypot``
                ``sin cos tan asin acos atan atan2 degrees radians``
+
+    Errors (Python-style):
+      * ``NameError`` -- unknown identifier (strict mode).
+      * ``ZeroDivisionError`` -- ``/ // %`` by zero.
+      * ``TypeError`` -- incompatible operand types or unsupported literal
+        (e.g. attempting arithmetic on a string).
+      * ``IndexError`` / ``KeyError`` -- bad subscript.
+      * ``ValueError`` -- disallowed AST construct or function rejected
+        during expression validation (e.g. ``open(...)``, attribute access).
+      * ``SyntaxError`` -- raised by the underlying ``ast.parse`` when the
+        expression is not a valid Python expression at all.
+
+    When ``strict=False`` (legacy), unknown identifiers fall back to their
+    bare name as a string so that expressions like ``status == passed``
+    work without the labels being declared. Default is ``strict=True``.
     """
     import math
 
@@ -171,13 +186,14 @@ def safe_eval(expr: str, names: dict[str, Any]) -> Any:
         if isinstance(node, ast.Constant):
             if isinstance(node.value, (int, float, str, bool)):
                 return node.value
-            raise ValueError(f"Constant type not allowed: {type(node.value).__name__}")
+            raise TypeError(f"constant type not allowed: {type(node.value).__name__}")
         if isinstance(node, ast.Name):
             if node.id in names:
                 return names[node.id]
             if node.id in allowed_funcs:
                 return allowed_funcs[node.id]
-            # Treat unknown names as string literals for comparisons like: status == passed
+            if strict:
+                raise NameError(f"name '{node.id}' is not defined")
             return node.id
         if isinstance(node, ast.BinOp):
             left = _eval(node.left)
@@ -198,11 +214,8 @@ def safe_eval(expr: str, names: dict[str, Any]) -> Any:
             }
             op_func = ops.get(type(node.op))
             if op_func is None:
-                raise ValueError("Operator not allowed.")
-            try:
-                return op_func(left, right)
-            except ZeroDivisionError:
-                return float("nan")
+                raise TypeError(f"operator not allowed: {type(node.op).__name__}")
+            return op_func(left, right)
         if isinstance(node, ast.UnaryOp):
             operand = _eval(node.operand)
             if isinstance(node.op, ast.UAdd):

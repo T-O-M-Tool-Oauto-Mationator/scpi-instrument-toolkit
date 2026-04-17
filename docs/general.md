@@ -95,6 +95,7 @@ psu set 12.0      # now acts on psu2
 
 !!! tip "Direct addressing"
     You can skip `use` entirely by prefixing the instrument name to any command:
+    <!-- doc-test: skip reason="reference snippet -- docs mock has only psu1" -->
     ```text
     psu1 set 5.0
     psu2 set 12.0
@@ -117,6 +118,7 @@ idn [name]
 
 The response is the instrument's manufacturer, model, serial number, and firmware version.
 
+<!-- doc-test: skip reason="bare 'idn' needs a prior 'use' -- this block shows usage patterns" -->
 ```text
 idn           # query active instrument
 idn scope1    # query scope1 specifically

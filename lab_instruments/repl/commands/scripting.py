@@ -62,14 +62,14 @@ class ScriptingCommands(BaseCommand):
             if lines is None:
                 return
             expanded = expand_script_lines(lines, {}, self.ctx)
-            run_expanded(expanded, self.shell, self.ctx, debug=False)
+            run_expanded(expanded, self.shell, self.ctx, debug=False, source=self._script_source_label(name))
         elif sub == "debug" and len(args) >= 2:
             name = args[1]
             lines = self._reload_script(name)
             if lines is None:
                 return
             expanded = expand_script_lines(lines, {}, self.ctx)
-            run_expanded(expanded, self.shell, self.ctx, debug=True)
+            run_expanded(expanded, self.shell, self.ctx, debug=True, source=self._script_source_label(name))
         elif sub == "edit" and len(args) >= 2:
             name = args[1]
             current = self.ctx.scripts.get(name, [])
@@ -375,6 +375,20 @@ class ScriptingCommands(BaseCommand):
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
+    def _script_source_label(self, name: str) -> str:
+        """Return the source label passed to ``run_expanded`` for *name*.
+
+        Uses the on-disk script path when it exists so error messages show a
+        real file. Falls back to ``<memory:{name}>`` for scripts that live
+        only in the in-memory ``self.ctx.scripts`` cache (e.g. just-created
+        scripts that haven't been saved yet) so we never cite a non-existent
+        path in an error suffix.
+        """
+        path = self.ctx.script_file(name)
+        if os.path.isfile(path):
+            return path
+        return f"<memory:{name}>"
+
     def _reload_script(self, name: str) -> list[str] | None:
         """Reload a script from disk, updating the cache. Returns lines or None."""
         path = self.ctx.script_file(name)

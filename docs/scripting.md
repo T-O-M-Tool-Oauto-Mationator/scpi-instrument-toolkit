@@ -485,6 +485,7 @@ All augmented operators are supported: `+=  -=  *=  /=  //=  **=  %=  |=  &=  ^=
 
 #### Increment / decrement
 
+<!-- doc-test: skip reason="++j prefix form is shown for clarity -- only postfix ++/-- executes" -->
 ```text
 i++          # i = i + 1
 i--          # i = i - 1
@@ -508,6 +509,7 @@ Conditions in `if`, `while`, `assert`, and `check` support comparison and boolea
 
 `&&` and `||` are rewritten to `and`/`or` before evaluation — they are 100% identical. Use whichever you prefer.
 
+<!-- doc-test: skip reason="reference snippet -- voltage / fault_detected / running / count are illustrative" -->
 ```text
 ok = voltage > 4.9 and voltage < 5.1
 ok = voltage > 4.9 && voltage < 5.1    # same thing
@@ -571,6 +573,49 @@ print "Done             # always executes"
 
 !!! tip
 Use `set -e` for critical test sequences where a single failure should abort the entire test. Use `set +e` when you want to collect partial results even if some commands fail.
+
+### Python-style errors
+
+Expression errors come back with their Python class name so students coming
+from Python recognize them instantly:
+
+| Mistake                                   | Error class        |
+|-------------------------------------------|--------------------|
+| `calc x = undefined + 1`                  | `NameError`        |
+| `foo = "hello"; calc x = foo + 1`         | `TypeError`        |
+| `calc z = 1 / 0`                          | `ZeroDivisionError`|
+| `calc v = xs[99]` (index out of range)    | `IndexError`       |
+| `check` with a non-numeric expected value | `ValueError`       |
+
+**When an expression fails, the variable is NOT created.** A failed
+`calc result = foo + 1` leaves `result` untouched in `script_vars`. The
+error sets the same flag as any other failure, so `set -e` aborts the
+script on the offending line and `set +e` keeps it running.
+
+<!-- doc-test: skip reason="intentional TypeError demo -- executing this block ends in the error we're documenting" -->
+```text
+foo = "hello"
+calc x = foo + 1
+# [error] TypeError: can only concatenate str (not "int") to str
+#          at line 2 in my_test.scpi
+print "x is {x}"   # prints: x is {x}  (x was never created)
+```
+
+Error messages include the script path and line number when the failing
+command runs as part of a script -- interactive commands just show the
+class and message.
+
+!!! note "`print` stays lenient"
+    The two contexts differ on purpose: `print "hello {undef}"` leaves the
+    placeholder in the output with no error, because print is for human
+    messages. Numeric expressions (`calc`, `assert`, `check`, `if` / `while`
+    conditions, compound assignment) are strict and raise `NameError` when
+    an identifier is not defined.
+
+!!! warning "Migration: division by zero"
+    Previously, `3 / 0` silently returned `NaN`. It now raises
+    `ZeroDivisionError` like Python. Guard a potentially-zero denominator
+    with `if denom != 0` or wrap the section in `set +e` to keep going.
 
 ### Overriding variables at run time
 
@@ -741,6 +786,7 @@ Stops script execution and waits for the operator to press **Enter**. Use for ma
 | --------- | -------- | --------------------------------------------------------------- |
 | `message` | optional | Prompt shown to operator. Default: "Press Enter to continue..." |
 
+<!-- doc-test: skip reason="pause blocks for operator input -- interactive" -->
 ```text
 pause
 pause Connect probe to TP1 then press Enter
@@ -760,6 +806,7 @@ Prompts the operator to type a value at runtime. The entered text is stored as `
 | `varname`     | required | Variable name. The entered value will be available as `{varname}` in all lines after this directive.|
 | `prompt text` | optional | Text shown to operator. Default: the variable name.                                                 |
 
+<!-- doc-test: skip reason="input prompts the operator -- interactive" -->
 ```text
 voltage = input Enter target voltage (V):
 dut_id = input DUT serial number:
@@ -768,6 +815,7 @@ operator_name = input Operator name:
 
 After the prompt, you can use `{voltage}` anywhere:
 
+<!-- doc-test: skip reason="input prompts the operator -- interactive" -->
 ```text
 voltage = input Enter target voltage (V):
 psu1 set {voltage}
@@ -951,6 +999,7 @@ This is the preferred way to define a sweep table — it's easy to read and you 
 | `varname`  | required | Variable name.     |
 | each line  | —        | One element per line. Lines starting with `#` are skipped. |
 
+<!-- doc-test: skip reason="array block is handled by the script expander, not onecmd" -->
 ```text
 array SWEEP
   5.0,0.001,1.0
@@ -985,6 +1034,7 @@ Generates `count` evenly-spaced values from `start` to `stop` (inclusive) and st
 
 **Voltage sweep with linspace:**
 
+<!-- doc-test: skip reason="sweep example uses smu measurement that isn't available in doc-test mock" -->
 ```text
 VSWEEP = linspace 6 25 20
 for VIN {VSWEEP}
@@ -999,6 +1049,7 @@ stored list automatically.
 
 **Current sweep in mA:**
 
+<!-- doc-test: skip reason="uses smu set_mode which the doc-test mock doesn't implement" -->
 ```text
 ISWEEP = linspace 0 0.050 11
 for I {ISWEEP}
@@ -1048,6 +1099,7 @@ end
 
 #### Poll-until-stable pattern
 
+<!-- doc-test: skip reason="poll loop keeps reading mock DMM without stabilising -- hits while-iter cap" -->
 ```text
 delta = 999
 prev = dmm1 meas unit=V
@@ -1087,6 +1139,7 @@ end
 
 ### break — exit a loop early
 
+<!-- doc-test: skip reason="snippet references x defined earlier in text" -->
 ```text
 while x < 100
   x++
@@ -1138,6 +1191,7 @@ assert <condition> ["message"]
 
 If the condition is true, prints PASS. If false, prints FAIL and **immediately stops the script**. No further lines execute.
 
+<!-- doc-test: skip reason="reference snippet -- voltage / dmm_v are illustrative" -->
 ```text
 assert voltage > 0 "PSU must be on before measuring"
 assert dmm_v > 4.9 and dmm_v < 5.1 "5V rail in spec"
@@ -1157,6 +1211,7 @@ check <condition> ["message"]
 
 Logs PASS/FAIL, records the result in the test report, and **continues execution regardless**. Use this for test steps where you want all results, even after failures.
 
+<!-- doc-test: skip reason="reference snippet -- voltage / current are illustrative" -->
 ```text
 check voltage > 4.9 "voltage lower bound"
 check voltage < 5.1 "voltage upper bound"
@@ -1225,6 +1280,7 @@ import <varname> [varname2 ...]
 
 Copies a variable from the calling scope (REPL or parent script) into the current script's scope. If the variable does not exist in the parent scope, an error is raised.
 
+<!-- doc-test: skip reason="import keyword is only valid inside a script, not at the onecmd prompt" -->
 ```text
 import FREQ VREF    # bring FREQ and VREF in from the REPL
 psu set {VREF} 0.5
@@ -1239,6 +1295,7 @@ export <varname> [varname2 ...]
 
 When the script finishes, copies the named variable back to the calling scope (REPL or parent script). Only explicitly exported variables survive — everything else stays local.
 
+<!-- doc-test: skip reason="export keyword is only valid inside a script, not at the onecmd prompt" -->
 ```text
 result = 42.0
 export result    # {result} becomes available in the REPL after the script runs
@@ -1246,6 +1303,7 @@ export result    # {result} becomes available in the REPL after the script runs
 
 **Example: script that returns a computed value**
 
+<!-- doc-test: skip reason="export keyword only valid inside a script" -->
 ```text
 # measure_vout — measures PSU output, exports result
 VOUT = 0.0
@@ -1273,6 +1331,7 @@ Executes another script as a sub-routine. The called script runs in its own vari
 | `name`      | required | Name of the script to call.                                   |
 | `key=value` | optional | Parameters to pass. Supports variable substitution in values. |
 
+<!-- doc-test: skip reason="call requires a saved sub-script named set_psu" -->
 ```text
 call set_psu voltage=5.0
 call set_psu voltage={target_v}     # pass a variable from current script
@@ -1436,6 +1495,7 @@ script debug my_sweep voltage=3.3
 
 Add `breakpoint` anywhere in a script file to automatically pause there, even when running with `script run`:
 
+<!-- doc-test: skip reason="breakpoint directive only fires inside script run, not from the onecmd prompt" -->
 ```text
 psu set {VIN} 0.5
 psu chan on
@@ -1487,6 +1547,7 @@ When paused, the debugger shows a context window around the current line. The cu
 
 A script combining all features:
 
+<!-- doc-test: skip reason="full example script uses pause/input -- requires interactive operator" -->
 ```text
 # full_test.repl
 # Full voltage characterization test

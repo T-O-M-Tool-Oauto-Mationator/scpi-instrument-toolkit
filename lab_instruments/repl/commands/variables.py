@@ -7,6 +7,7 @@ import time
 
 from lab_instruments.src.terminal import ColorPrinter
 
+from ..errors import EXPR_ERRORS as _EXPR_ERRORS
 from ..syntax import safe_eval, substitute_vars
 from .base import BaseCommand
 
@@ -273,12 +274,11 @@ class VariableCommands(BaseCommand):
 
         try:
             value = safe_eval(expr, names)
-        except Exception as exc:
-            ColorPrinter.error(f"calc failed: {exc}")
-            self.ctx.command_had_error = True
+        except _EXPR_ERRORS as exc:
+            self.ctx.report_error(exc)
             return True
 
-        # Store in both script_vars AND measurement store
+        # Store in both script_vars AND measurement store (success-only path).
         self.ctx.script_vars[varname] = value
         self.ctx.measurements.record(varname, value, unit, "calc")
         suffix = f" {unit}" if unit else ""
@@ -323,18 +323,37 @@ class VariableCommands(BaseCommand):
             except (ValueError, ZeroDivisionError) as exc:
                 ColorPrinter.error(f"linspace: {exc}")
                 return
+        num_vars = {}
+        for k, v in self.ctx.script_vars.items():
+            if isinstance(v, (int, float)):
+                num_vars[k] = v
+            else:
+                with contextlib.suppress(TypeError, ValueError):
+                    num_vars[k] = float(v)
+        # Non-strict so bare identifiers fall back to raw_val below
+        # (keeps `label = hello` style string-tag assignments working).
+        # Math / type / zero-division errors are Pythonic failures that must
+        # leave ``key`` untouched; only ``SyntaxError`` (the RHS isn't a
+        # valid Python expression) or an ``AttributeError``-style rejection
+        # falls through to the raw-string fallback.
         try:
-            num_vars = {}
-            for k, v in self.ctx.script_vars.items():
-                if isinstance(v, (int, float)):
-                    num_vars[k] = v
-                else:
-                    with contextlib.suppress(TypeError, ValueError):
-                        num_vars[k] = float(v)
-            result = safe_eval(raw_val, num_vars)
-            self.ctx.script_vars[key] = result
-        except Exception:
+            result = safe_eval(raw_val, num_vars, strict=False)
+        except (
+            TypeError,
+            ZeroDivisionError,
+            ValueError,
+            IndexError,
+            KeyError,
+            ArithmeticError,
+        ) as exc:
+            self.ctx.report_error(exc)
+            return
+        except SyntaxError:
+            # Not a valid Python expression: treat as raw string (``label = hello
+            # world``, tag-style assignments). Preserves existing REPL ergonomics.
             self.ctx.script_vars[key] = raw_val
+        else:
+            self.ctx.script_vars[key] = result
         if unit:
             with contextlib.suppress(TypeError, ValueError):
                 self.ctx.measurements.record(key, float(self.ctx.script_vars[key]), unit, "assignment")

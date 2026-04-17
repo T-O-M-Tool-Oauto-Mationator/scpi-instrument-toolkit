@@ -1,13 +1,32 @@
 """Logging commands: log, calc, check, report, data."""
 
-import contextlib
 import os
 import re
 
 from lab_instruments.src.terminal import ColorPrinter
 
+from ..errors import EXPR_ERRORS as _EXPR_ERRORS
 from ..syntax import safe_eval, substitute_vars
 from .base import BaseCommand
+
+
+def _as_number(value):
+    """Coerce a numeric-looking string to float; leave genuine strings alone.
+
+    ``set foo 5.0`` stores ``"5.0"`` -- that's a numeric literal stored as a
+    string by the assignment helper. We coerce it so ``calc x = foo * 2`` works.
+    ``set foo "hello"`` stores ``"hello"`` -- that's not a number, so we keep
+    it as a string and let ``safe_eval`` raise ``TypeError`` if a student uses
+    it in arithmetic.
+    """
+    if isinstance(value, (int, float, bool)):
+        return value
+    if isinstance(value, str):
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return value
+    return value
 
 
 class LoggingCommands(BaseCommand):
@@ -176,26 +195,26 @@ class LoggingCommands(BaseCommand):
         expr = substitute_vars(expr, self.ctx.script_vars, self.ctx.measurements)
         last_entry = self.measurements.get_last()
         last = last_entry["value"] if last_entry else 0
-        # Build names: last + script_vars (numeric) + measurement labels
+        # Build names: last + script_vars (numeric-coerced when possible) +
+        # measurement labels. Genuinely non-numeric strings stay as strings so
+        # safe_eval surfaces a TypeError rather than coercing them silently.
         names: dict = {"last": last}
         for k, v in self.ctx.script_vars.items():
-            if isinstance(v, (int, float)):
-                names[k] = v
-            else:
-                with contextlib.suppress(TypeError, ValueError):
-                    names[k] = float(v)
+            names[k] = _as_number(v)
         for entry in self.ctx.measurements.entries:
-            with contextlib.suppress(TypeError, ValueError):
-                names[entry["label"]] = float(entry["value"])
+            names[entry["label"]] = _as_number(entry["value"])
         try:
             value = safe_eval(expr, names)
-            self.measurements.record(label, value, unit, "calc")
-            self.ctx.script_vars[label] = value
-            suffix = f" {unit}" if unit else ""
-            C, G, Y, R = ColorPrinter.CYAN, ColorPrinter.GREEN, ColorPrinter.YELLOW, ColorPrinter.RESET
-            print(f"{C}{label}{R} = {G}{value}{R}{Y}{suffix}{R}")
-        except Exception as exc:
-            ColorPrinter.error(f"calc failed: {exc}")
+        except _EXPR_ERRORS as exc:
+            self.ctx.report_error(exc)
+            return
+        # On success only: record measurement + store var (native type so
+        # downstream consumers -- including calc/check -- can use it as-is).
+        self.measurements.record(label, value, unit, "calc")
+        self.ctx.script_vars[label] = value
+        suffix = f" {unit}" if unit else ""
+        C, G, Y, R = ColorPrinter.CYAN, ColorPrinter.GREEN, ColorPrinter.YELLOW, ColorPrinter.RESET
+        print(f"{C}{label}{R} = {G}{value}{R}{Y}{suffix}{R}")
 
     def do_check(self, arg: str) -> None:
         args = self.parse_args(arg)
@@ -214,10 +233,13 @@ class LoggingCommands(BaseCommand):
         label = args[0]
         entry = self.measurements.get_by_label(label)
         if entry is None:
-            ColorPrinter.error(f"check: no measurement found with label '{label}'")
-            self.ctx.command_had_error = True
+            self.ctx.report_error(NameError(f"no measurement found with label '{label}'"))
             return
-        value = float(entry["value"])
+        try:
+            value = float(entry["value"])
+        except (TypeError, ValueError) as exc:
+            self.ctx.report_error(TypeError(f"measurement '{label}' is not numeric: {exc}"))
+            return
         unit = entry.get("unit", "")
         tol_arg = None
         for a in args[2:]:
@@ -227,30 +249,27 @@ class LoggingCommands(BaseCommand):
         if tol_arg is not None:
             try:
                 expected = float(args[1])
-            except ValueError:
-                ColorPrinter.error(f"check: invalid expected value '{args[1]}'")
-                self.ctx.command_had_error = True
+                if tol_arg.endswith("%"):
+                    pct = float(tol_arg[:-1])
+                    tol = abs(pct / 100.0 * expected)
+                    limits_str = f"{expected} ±{pct}%"
+                else:
+                    tol = float(tol_arg)
+                    limits_str = f"{expected} ±{tol}"
+            except ValueError as exc:
+                self.ctx.report_error(ValueError(f"check: invalid numeric argument: {exc}"))
                 return
-            if tol_arg.endswith("%"):
-                pct = float(tol_arg[:-1])
-                tol = abs(pct / 100.0 * expected)
-                limits_str = f"{expected} ±{pct}%"
-            else:
-                tol = float(tol_arg)
-                limits_str = f"{expected} ±{tol}"
             min_val = expected - tol
             max_val = expected + tol
         else:
             if len(args) < 3:
-                ColorPrinter.error("check: expected <label> <min> <max>")
-                self.ctx.command_had_error = True
+                self.ctx.report_error(ValueError("check: expected <label> <min> <max>"))
                 return
             try:
                 min_val = float(args[1])
                 max_val = float(args[2])
-            except ValueError:
-                ColorPrinter.error(f"check: invalid range values '{args[1]}' '{args[2]}'")
-                self.ctx.command_had_error = True
+            except ValueError as exc:
+                self.ctx.report_error(ValueError(f"check: invalid range '{args[1]}'..'{args[2]}': {exc}"))
                 return
             limits_str = f"[{min_val}, {max_val}]"
         passed = min_val <= value <= max_val

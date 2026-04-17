@@ -78,6 +78,7 @@ vtest      4.9992     V      dmm.read
 
 Compute the error between PSU setpoint and DMM reading:
 
+<!-- doc-test: skip reason="depends on vtest measurement from the previous script block" -->
 ```text
 calc error {vtest} - 5.0 unit=V
 calc error_pct ({vtest} - 5.0) / 5.0 * 100 unit=%
@@ -135,6 +136,7 @@ log save voltage_sweep.csv
 
 After running, each voltage step is recorded as `v_1.0`, `v_2.0`, `v_3.3`, etc. You can compute differences:
 
+<!-- doc-test: skip reason="depends on v_5.0 / v_3.3 measurements recorded by the previous script block" -->
 ```text
 calc delta_3v3_5v {v_5.0} - {v_3.3} unit=V
 ```
@@ -196,6 +198,7 @@ log print
 
 **Check accuracy:**
 
+<!-- doc-test: skip reason="depends on meas_freq measurement from the previous script block" -->
 ```text
 calc freq_error ({meas_freq} - 1000) / 1000 * 100 unit=%
 ```
@@ -338,6 +341,7 @@ The live plot shows DMM readings appearing point-by-point as the sweep progresse
 
 **Script source:**
 
+<!-- doc-test: skip reason="liveplot requires the GUI; sweep-of-50-points also too long for CI" -->
 ```text
 # live_voltage_sweep
 # Sweeps PSU through voltages while a live plot shows DMM measurements
@@ -381,6 +385,7 @@ script run live_multi_plot
 
 **Script source:**
 
+<!-- doc-test: skip reason="liveplot requires the GUI" -->
 ```text
 # live_multi_plot
 # Opens two independent live plots -- one for voltage, one for current.
@@ -424,6 +429,7 @@ script run live_combined_plot
 
 **Script source:**
 
+<!-- doc-test: skip reason="liveplot requires the GUI" -->
 ```text
 # live_combined_plot
 # Plots voltage AND current as two series on a single chart.
@@ -478,6 +484,7 @@ script run live_freq_sweep
 
 **Script source:**
 
+<!-- doc-test: skip reason="liveplot requires the GUI" -->
 ```text
 # live_freq_sweep
 # Sweeps AWG frequencies while a live plot tracks scope measurements.
@@ -871,6 +878,7 @@ print "=== SCPI phase complete ==="
 
 Use these examples as templates. The general pattern for any measurement script is:
 
+<!-- doc-test: skip reason="uses pause -- needs interactive operator input" -->
 ```text
 # 1. Set defaults (overridable at run time)
 voltage = 5.0

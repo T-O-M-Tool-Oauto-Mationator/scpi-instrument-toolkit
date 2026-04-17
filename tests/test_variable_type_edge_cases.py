@@ -268,11 +268,13 @@ class TestIncrementDecrementEdgeCases:
         repl.onecmd("x++")
         assert repl.ctx.script_vars["x"] == pytest.approx(6.0)
 
-    def test_increment_non_numeric_string_resets(self, repl):
-        """Non-numeric string falls back to 1.0."""
+    def test_increment_non_numeric_string_raises(self, repl, capsys):
+        """Non-numeric string surfaces TypeError and leaves x unchanged."""
         repl.ctx.script_vars["x"] = "hello"
         repl.onecmd("x++")
-        assert repl.ctx.script_vars["x"] == pytest.approx(1.0)
+        out = capsys.readouterr().out
+        assert "TypeError" in out
+        assert repl.ctx.script_vars["x"] == "hello"
 
     def test_increment_undefined(self, repl):
         """Undefined var starts at 0, increments to 1.0."""
