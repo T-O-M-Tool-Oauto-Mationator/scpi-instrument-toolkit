@@ -138,6 +138,21 @@ _SKIP_DIRECTIVE_RE = re.compile(r"<!--\s*doc-test:\s*(skip|setup)(?:\s+reason=\"
 RunResult = Literal["pass", "fail", "skip"]
 
 
+def _docs_relative_path(source: Path) -> str:
+    """Return ``docs/<rest>`` for a DocBlock source path.
+
+    If a ``docs`` segment exists in the path, keep everything from that
+    segment onward so nested subdirectories are preserved. Otherwise fall
+    back to the basename (tests that construct DocBlocks with made-up
+    paths still get a sensible string).
+    """
+    parts = source.parts
+    for idx in range(len(parts) - 1, -1, -1):
+        if parts[idx] == "docs":
+            return "/".join(parts[idx:])
+    return f"docs/{source.name}"
+
+
 @dataclass(frozen=True)
 class DocBlock:
     """A single fenced code block extracted from a markdown file."""
@@ -172,8 +187,14 @@ class DocBlock:
 
     @property
     def short_id(self) -> str:
-        rel = self.source.name
-        return f"docs/{rel}:L{self.start_line}-L{self.end_line}"
+        """Stable pytest node ID / error location tag for this block.
+
+        Uses the path starting at the last ``docs`` segment so nested
+        subdirectories (``docs/api/foo.md`` vs ``docs/foo.md``) keep distinct
+        IDs -- otherwise two basename-equal files collide under the same
+        pytest parametrize ID and their error messages become ambiguous.
+        """
+        return f"{_docs_relative_path(self.source)}:L{self.start_line}-L{self.end_line}"
 
 
 def iter_doc_files(docs_dir: Path) -> Iterator[Path]:
@@ -216,8 +237,11 @@ def extract_blocks(md_path: Path) -> list[DocBlock]:
         j = i - 1
         while j >= 0 and lines[j].strip() == "":
             j -= 1
-        # Up to 3 contiguous comment lines before the fence.
-        while j >= 0 and lines[j].lstrip().startswith("<!--"):
+        # At most three contiguous comment lines are scanned so a long
+        # prose block of HTML comments above an unrelated fence can't
+        # silently feed directives into it.
+        comments_seen = 0
+        while j >= 0 and lines[j].lstrip().startswith("<!--") and comments_seen < 3:
             m = _SKIP_DIRECTIVE_RE.search(lines[j])
             if m:
                 directive = m.group(1)
@@ -227,6 +251,7 @@ def extract_blocks(md_path: Path) -> list[DocBlock]:
                 elif directive == "setup":
                     is_setup = True
             j -= 1
+            comments_seen += 1
 
         # Collect body until matching closing fence at same indent.
         body: list[str] = []
@@ -409,8 +434,10 @@ def run_block(block: DocBlock, repl=None) -> tuple[RunResult, str]:
         ctx = repl.ctx
         ctx.command_had_error = False
         # Prior test state may have stamped a source/line; clear it so the
-        # doc block gets a clean location.
-        ctx.current_script_source = f"docs/{block.source.name}"
+        # doc block gets a clean location. Preserve subdirectory info so
+        # nested docs (``docs/api/foo.md``) don't collide with top-level
+        # files of the same basename.
+        ctx.current_script_source = _docs_relative_path(block.source)
 
         for line_no, raw in block.runnable_lines:
             ctx.current_script_line = line_no

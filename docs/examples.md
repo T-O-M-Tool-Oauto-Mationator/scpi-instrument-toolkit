@@ -484,6 +484,7 @@ script run live_freq_sweep
 
 **Script source:**
 
+<!-- doc-test: skip reason="liveplot requires the GUI" -->
 ```text
 # live_freq_sweep
 # Sweeps AWG frequencies while a live plot tracks scope measurements.

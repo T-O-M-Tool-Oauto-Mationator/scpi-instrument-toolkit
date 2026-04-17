@@ -593,7 +593,7 @@ error sets the same flag as any other failure, so `set -e` aborts the
 script on the offending line and `set +e` keeps it running.
 
 <!-- doc-test: skip reason="intentional TypeError demo -- executing this block ends in the error we're documenting" -->
-```
+```text
 foo = "hello"
 calc x = foo + 1
 # [error] TypeError: can only concatenate str (not "int") to str

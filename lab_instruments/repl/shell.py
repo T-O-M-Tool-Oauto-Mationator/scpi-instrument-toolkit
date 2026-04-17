@@ -578,8 +578,6 @@ class InstrumentRepl(cmd.Cmd):
             op = compound_m.group(2)
             rhs_raw = compound_m.group(3).strip()
             rhs_val = substitute_vars(rhs_raw, self.ctx.script_vars, self.ctx.measurements)
-            from .syntax import safe_eval
-
             names = self._build_names_dict()
             # Seed undefined LHS with 0 so counters like `total += i` bootstrap.
             if varname not in names:
@@ -1126,14 +1124,14 @@ class InstrumentRepl(cmd.Cmd):
             _loop_ctx=_loop_ctx,
         )
 
-    def _run_expanded(self, expanded, debug=False):
+    def _run_expanded(self, expanded, debug=False, source=None):
         from .script_engine.runner import run_expanded
 
-        return run_expanded(expanded, self, self.ctx, debug=debug)
+        return run_expanded(expanded, self, self.ctx, debug=debug, source=source)
 
-    def _run_script_lines(self, lines):
+    def _run_script_lines(self, lines, source=None):
         expanded = self._expand_script_lines(lines, {})
-        return self._run_expanded(expanded)
+        return self._run_expanded(expanded, source=source)
 
     def _record_measurement(self, label, value, unit="", source=""):
         self.ctx.measurements.record(label, value, unit, source)

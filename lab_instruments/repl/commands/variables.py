@@ -323,20 +323,37 @@ class VariableCommands(BaseCommand):
             except (ValueError, ZeroDivisionError) as exc:
                 ColorPrinter.error(f"linspace: {exc}")
                 return
+        num_vars = {}
+        for k, v in self.ctx.script_vars.items():
+            if isinstance(v, (int, float)):
+                num_vars[k] = v
+            else:
+                with contextlib.suppress(TypeError, ValueError):
+                    num_vars[k] = float(v)
+        # Non-strict so bare identifiers fall back to raw_val below
+        # (keeps `label = hello` style string-tag assignments working).
+        # Math / type / zero-division errors are Pythonic failures that must
+        # leave ``key`` untouched; only ``SyntaxError`` (the RHS isn't a
+        # valid Python expression) or an ``AttributeError``-style rejection
+        # falls through to the raw-string fallback.
         try:
-            num_vars = {}
-            for k, v in self.ctx.script_vars.items():
-                if isinstance(v, (int, float)):
-                    num_vars[k] = v
-                else:
-                    with contextlib.suppress(TypeError, ValueError):
-                        num_vars[k] = float(v)
-            # Non-strict so bare identifiers fall back to raw_val below
-            # (keeps `label = "hello"` style assignments working).
             result = safe_eval(raw_val, num_vars, strict=False)
-            self.ctx.script_vars[key] = result
-        except Exception:
+        except (
+            TypeError,
+            ZeroDivisionError,
+            ValueError,
+            IndexError,
+            KeyError,
+            ArithmeticError,
+        ) as exc:
+            self.ctx.report_error(exc)
+            return
+        except SyntaxError:
+            # Not a valid Python expression: treat as raw string (``label = hello
+            # world``, tag-style assignments). Preserves existing REPL ergonomics.
             self.ctx.script_vars[key] = raw_val
+        else:
+            self.ctx.script_vars[key] = result
         if unit:
             with contextlib.suppress(TypeError, ValueError):
                 self.ctx.measurements.record(key, float(self.ctx.script_vars[key]), unit, "assignment")

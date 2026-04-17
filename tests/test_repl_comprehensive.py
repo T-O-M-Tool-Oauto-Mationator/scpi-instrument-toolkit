@@ -792,9 +792,12 @@ class TestReplErrorHandling:
         assert "x" in repl.ctx.script_vars
 
     def test_division_by_zero_in_repl(self, make_repl, capsys):
-        """Division by zero in assignment reports ZeroDivisionError; x falls
-        back to the raw expression string per the _assign_var failure path."""
+        """Division by zero in assignment surfaces ZeroDivisionError and
+        leaves the target variable unset (failed expressions do not create
+        destination vars)."""
         repl = make_repl({})
+        capsys.readouterr()
         repl.onecmd("x = 1 / 0")
-        # x is set to the raw RHS text since safe_eval raised.
-        assert repl.ctx.script_vars["x"] == "1 / 0"
+        out = capsys.readouterr().out
+        assert "ZeroDivisionError" in out
+        assert "x" not in repl.ctx.script_vars

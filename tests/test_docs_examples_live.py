@@ -87,6 +87,7 @@ def _file_repls():
             repl.close()
 
 
+_UNSET = object()  # sentinel for "group not yet seen" in the cache
 _SETUP_FAILED = object()  # sentinel stored in the cache when setup fails
 
 
@@ -99,10 +100,10 @@ def _get_shared_repl(group: _FileGroup, file_repls):
     :func:`run_block` will build a fresh isolated REPL per block.
     """
     cache = file_repls
-    cached = cache.get(group.source, "__unset__")
+    cached = cache.get(group.source, _UNSET)
     if cached is _SETUP_FAILED:
         return None, True
-    if cached != "__unset__":
+    if cached is not _UNSET:
         return cached, False
     has_setup = any(classify_block(b) == "setup" for b in group.blocks)
     if not has_setup:

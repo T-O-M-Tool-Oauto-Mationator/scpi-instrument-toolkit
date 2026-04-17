@@ -81,6 +81,7 @@ def main() -> int:
         blocks = extract_blocks(md)
         # Per-file shared REPL for setup+run chaining.
         shared_repl = None
+        setup_failed = False
         for block in blocks:
             kind = classify_block(block)
             if kind == "not-repl":
@@ -89,6 +90,14 @@ def main() -> int:
                     reason = not_repl_reason(block) or "unknown"
                     print(f"  {_fmt('skip')}  {block.short_id}  (not-repl: {reason})")
                 continue
+            if setup_failed:
+                # A prior setup block in this file failed -- skip remaining
+                # blocks rather than running them against a broken REPL. This
+                # matches the pytest harness's ``_SETUP_FAILED`` semantics.
+                totals["skip"] += 1
+                if args.show_skipped:
+                    print(f"  {_fmt('skip')}  {block.short_id}  (setup failed earlier in file)")
+                continue
             if kind == "setup":
                 shared_repl = _build_mock_repl() if shared_repl is None else shared_repl
                 status, message = run_block(block, repl=shared_repl)
@@ -96,6 +105,7 @@ def main() -> int:
                 totals[status] += 1
                 if status == "fail":
                     any_failure = True
+                    setup_failed = True
                     if args.first_failure:
                         _close_shared(shared_repl)
                         _summary(totals)

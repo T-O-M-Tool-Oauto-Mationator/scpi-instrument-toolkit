@@ -1,5 +1,6 @@
 """REPL package — modular replacement for the monolithic repl.py."""
 
+import os
 import sys
 
 from lab_instruments.src.terminal import ColorPrinter
@@ -127,7 +128,12 @@ def main():
         if script_name not in repl.scripts:
             ColorPrinter.error(f"Script '{script_name}' not found.")
             sys.exit(1)
-        repl._run_script_lines(repl.scripts[script_name])
+        # Forward the script source so report_error points at the real file
+        # instead of "<interactive>" when the script aborts.
+        source = repl.ctx.script_file(script_name)
+        if not os.path.isfile(source):
+            source = f"<memory:{script_name}>"
+        repl._run_script_lines(repl.scripts[script_name], source=source)
         return
 
     repl.cmdloop()
