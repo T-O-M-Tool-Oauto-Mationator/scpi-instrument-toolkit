@@ -64,14 +64,21 @@ def main():
         print(f"scpi-instrument-toolkit v{_REPL_VERSION}")
         sys.exit(0)
 
+    if "--no-color" in args:
+        from lab_instruments.src.terminal import disable_color
+
+        disable_color()
+        args = [a for a in args if a != "--no-color"]
+
     if "--help" in args or "-h" in args:
         print(
             f"scpi-instrument-toolkit v{_REPL_VERSION}\n"
             "\n"
-            "Usage: scpi-repl [--mock] [--update] [--ignore-update] [--version] [--help] [script]\n"
+            "Usage: scpi-repl [--mock] [--no-color] [--update] [--ignore-update] [--version] [--help] [script]\n"
             "\n"
             "Options:\n"
             "  --mock           Run with simulated instruments (no hardware required)\n"
+            "  --no-color       Disable colored output (also respects NO_COLOR env var)\n"
             "  --update         Check for updates and display the install command\n"
             "  --ignore-update  Skip the update check and run even if a newer version exists\n"
             "  --version        Print version and exit\n"
@@ -83,6 +90,7 @@ def main():
             "Examples:\n"
             "  scpi-repl                  Start the interactive REPL\n"
             "  scpi-repl --mock           Start with mock instruments\n"
+            "  scpi-repl --no-color       Start without colored output\n"
             "  scpi-repl --update         Check for updates\n"
             "  scpi-repl --ignore-update  Run without checking for updates\n"
             "  scpi-repl my_script        Run 'my_script' and exit\n"

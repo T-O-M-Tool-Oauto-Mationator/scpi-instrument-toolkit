@@ -246,10 +246,10 @@ class TestSafeEvalOperators:
 
     def test_int_and_float_functions(self, repl):
         repl.onecmd("x = int(3.7)")
-        assert repl.ctx.script_vars["x"] == "3"
+        assert repl.ctx.script_vars["x"] == 3
 
         repl.onecmd("y = float(42)")
-        assert float(repl.ctx.script_vars["y"]) == 42.0
+        assert repl.ctx.script_vars["y"] == 42.0
 
 
 # ---------------------------------------------------------------------------
@@ -284,7 +284,7 @@ class TestStringFunctions:
 
     def test_ord_conversion(self, repl):
         repl.onecmd("x = ord('A')")
-        assert repl.ctx.script_vars["x"] == "65"
+        assert repl.ctx.script_vars["x"] == 65
 
     def test_chr_conversion(self, repl):
         repl.onecmd("x = chr(65)")
@@ -292,11 +292,11 @@ class TestStringFunctions:
 
     def test_bool_true(self, repl):
         repl.onecmd("x = bool(1)")
-        assert repl.ctx.script_vars["x"] == "True"
+        assert repl.ctx.script_vars["x"] is True
 
     def test_bool_false(self, repl):
         repl.onecmd("x = bool(0)")
-        assert repl.ctx.script_vars["x"] == "False"
+        assert repl.ctx.script_vars["x"] is False
 
 
 # ---------------------------------------------------------------------------
@@ -417,49 +417,49 @@ class TestMathFunctions:
 class TestComparisons:
     def test_equal_true(self, repl):
         repl.onecmd("x = 5 == 5")
-        assert repl.ctx.script_vars["x"] == "True"
+        assert repl.ctx.script_vars["x"] is True
 
     def test_equal_false(self, repl):
         repl.onecmd("x = 5 == 6")
-        assert repl.ctx.script_vars["x"] == "False"
+        assert repl.ctx.script_vars["x"] is False
 
     def test_not_equal_true(self, repl):
         repl.onecmd("x = 5 != 6")
-        assert repl.ctx.script_vars["x"] == "True"
+        assert repl.ctx.script_vars["x"] is True
 
     def test_not_equal_false(self, repl):
         repl.onecmd("x = 5 != 5")
-        assert repl.ctx.script_vars["x"] == "False"
+        assert repl.ctx.script_vars["x"] is False
 
     def test_less_than_true(self, repl):
         repl.onecmd("x = 3 < 5")
-        assert repl.ctx.script_vars["x"] == "True"
+        assert repl.ctx.script_vars["x"] is True
 
     def test_less_than_false(self, repl):
         repl.onecmd("x = 5 < 3")
-        assert repl.ctx.script_vars["x"] == "False"
+        assert repl.ctx.script_vars["x"] is False
 
     def test_less_equal_true(self, repl):
         repl.onecmd("x = 5 <= 5")
-        assert repl.ctx.script_vars["x"] == "True"
+        assert repl.ctx.script_vars["x"] is True
 
     def test_greater_than_true(self, repl):
         repl.onecmd("x = 7 > 3")
-        assert repl.ctx.script_vars["x"] == "True"
+        assert repl.ctx.script_vars["x"] is True
 
     def test_greater_equal_true(self, repl):
         repl.onecmd("x = 7 >= 7")
-        assert repl.ctx.script_vars["x"] == "True"
+        assert repl.ctx.script_vars["x"] is True
 
     def test_chained_comparison(self, repl):
         repl.onecmd("x = 1 < 2 < 3")
-        assert repl.ctx.script_vars["x"] == "True"
+        assert repl.ctx.script_vars["x"] is True
 
     def test_comparison_with_vars(self, repl):
         repl.onecmd("a = 10")
         repl.onecmd("b = 20")
         repl.onecmd("x = a < b")
-        assert repl.ctx.script_vars["x"] == "True"
+        assert repl.ctx.script_vars["x"] is True
 
 
 # ---------------------------------------------------------------------------
@@ -470,37 +470,37 @@ class TestComparisons:
 class TestBooleanOps:
     def test_and_true(self, repl):
         repl.onecmd("x = True and True")
-        assert repl.ctx.script_vars["x"] == "True"
+        assert repl.ctx.script_vars["x"] is True
 
     def test_and_false(self, repl):
         repl.onecmd("x = True and False")
-        assert repl.ctx.script_vars["x"] == "False"
+        assert repl.ctx.script_vars["x"] is False
 
     def test_or_true(self, repl):
         repl.onecmd("x = False or True")
-        assert repl.ctx.script_vars["x"] == "True"
+        assert repl.ctx.script_vars["x"] is True
 
     def test_or_false(self, repl):
         repl.onecmd("x = False or False")
-        assert repl.ctx.script_vars["x"] == "False"
+        assert repl.ctx.script_vars["x"] is False
 
     def test_not_true(self, repl):
         repl.onecmd("x = not False")
-        assert repl.ctx.script_vars["x"] == "True"
+        assert repl.ctx.script_vars["x"] is True
 
     def test_not_false(self, repl):
         repl.onecmd("x = not True")
-        assert repl.ctx.script_vars["x"] == "False"
+        assert repl.ctx.script_vars["x"] is False
 
     def test_combined_boolean(self, repl):
         repl.onecmd("x = (True and False) or True")
-        assert repl.ctx.script_vars["x"] == "True"
+        assert repl.ctx.script_vars["x"] is True
 
     def test_boolean_with_comparisons(self, repl):
         repl.onecmd("a = 5")
         repl.onecmd("b = 10")
         repl.onecmd("x = a < b and b > 0")
-        assert repl.ctx.script_vars["x"] == "True"
+        assert repl.ctx.script_vars["x"] is True
 
 
 # ---------------------------------------------------------------------------
@@ -541,31 +541,31 @@ class TestTernary:
 class TestContainers:
     def test_list_literal(self, repl):
         repl.onecmd("x = [1, 2, 3]")
-        assert repl.ctx.script_vars["x"] == "[1, 2, 3]"
+        assert repl.ctx.script_vars["x"] == [1, 2, 3]
 
     def test_tuple_literal(self, repl):
         repl.onecmd("x = (1, 2)")
-        assert repl.ctx.script_vars["x"] == "(1, 2)"
+        assert repl.ctx.script_vars["x"] == (1, 2)
 
     def test_len_of_list(self, repl):
         repl.onecmd("x = len([10, 20, 30, 40])")
-        assert repl.ctx.script_vars["x"] == "4"
+        assert repl.ctx.script_vars["x"] == 4
 
     def test_sum_of_list(self, repl):
         repl.onecmd("x = sum([1, 2, 3, 4, 5])")
-        assert repl.ctx.script_vars["x"] == "15"
+        assert repl.ctx.script_vars["x"] == 15
 
     def test_min_of_list(self, repl):
         repl.onecmd("x = min([5, 3, 8, 1])")
-        assert repl.ctx.script_vars["x"] == "1"
+        assert repl.ctx.script_vars["x"] == 1
 
     def test_max_of_list(self, repl):
         repl.onecmd("x = max([5, 3, 8, 1])")
-        assert repl.ctx.script_vars["x"] == "8"
+        assert repl.ctx.script_vars["x"] == 8
 
     def test_subscript_list(self, repl):
         repl.onecmd("x = [10, 20, 30][1]")
-        assert repl.ctx.script_vars["x"] == "20"
+        assert repl.ctx.script_vars["x"] == 20
 
     def test_keyword_arg_round(self, repl):
         repl.onecmd("x = round(3.14159, ndigits=2)")

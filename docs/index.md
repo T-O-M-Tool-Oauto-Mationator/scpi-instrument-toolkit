@@ -41,16 +41,18 @@ scpi-repl --mock    # simulate instruments (no hardware needed)
 
 ### 3. Find your instruments
 
-```
+```text
 list          # show all connected instruments and their names
 scan          # re-scan if you plugged something in after launch
 ```
 
 Instruments are assigned names automatically based on type: `psu1`, `psu2`, `dmm1`, `scope1`, `awg1`, etc.
 
+![Listing Connected Instruments](img/terminal/02_list.svg)
+
 ### 4. Control an instrument
 
-```
+```text
 use psu1          # set psu1 as the active power supply
 psu chan 1 on     # enable output
 psu set 5.0 0.5   # set 5 V, 0.5 A current limit
@@ -61,7 +63,7 @@ psu meas v        # measure output voltage
 
 The assignment syntax (`label = instrument meas ...`) saves a reading to the log with a **label** (name you choose). `calc` retrieves it by that label. `log print` shows the table. `log save` exports it.
 
-```
+```text
 output = psu meas v unit=V         # save voltage — label is "output"
 dmm config vdc                     # set DMM to DC voltage mode
 dmm_v = dmm meas unit=V            # save DMM reading — label is "dmm_v"
@@ -78,7 +80,7 @@ See [Log & Calc](logging.md) for the full explanation of labels, `calc`, and exp
 
 When you have more than one instrument of the same type, they are numbered:
 
-```
+```text
 list
 # → psu1: HP E3631A
 # → psu2: Matrix MPS-6010H
@@ -87,14 +89,14 @@ list
 
 You can address them directly by prefixing any command:
 
-```
+```text
 psu1 set 5.0      # set psu1 without changing the active selection
 psu2 set 12.0     # set psu2 at the same time
 ```
 
 Or switch the active instrument with `use`:
 
-```
+```text
 use psu2
 psu set 12.0      # now acts on psu2
 ```
@@ -103,7 +105,7 @@ psu set 12.0      # now acts on psu2
 
 ## Getting help
 
-```
+```text
 help              # list all commands
 help psu          # inline help for a specific command
 docs              # open this documentation in your browser

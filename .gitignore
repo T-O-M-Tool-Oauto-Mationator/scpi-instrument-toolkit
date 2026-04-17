@@ -37,9 +37,16 @@ devices.py
 *.png
 *.xlsx
 
-# MkDocs generated site — now lives inside lab_instruments/site/ and is tracked
-# Ignore only a stale top-level site/ if it exists
+# MkDocs generated site — built by mkdocs build, deployed by mkdocs gh-deploy.
+# These are build artifacts; the canonical site lives on the gh-pages branch.
 /site/
+lab_instruments/site/
+lab_instruments/site-library/
+
+# pytest / coverage artifacts
+.coverage
+htmlcov/
+.pytest_cache/
 
 # Testing lab shit
 .testing-labs/

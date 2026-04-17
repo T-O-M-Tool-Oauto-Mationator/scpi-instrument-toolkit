@@ -202,7 +202,7 @@ class LoggingCommands(BaseCommand):
         if not expr:
             ColorPrinter.warning("calc expects an expression.")
             return
-        # Substitute {name} and $name variables in expr
+        # Substitute {name} variables in expr
         expr = substitute_vars(expr, self.ctx.script_vars, self.ctx.measurements)
         last_entry = self.measurements.get_last()
         last = last_entry["value"] if last_entry else 0
@@ -219,10 +219,10 @@ class LoggingCommands(BaseCommand):
         except _EXPR_ERRORS as exc:
             self.ctx.report_error(exc)
             return
-        # On success only: record measurement + store var (stringified for
-        # consistency with `var = expr` storage; callers can float() to use).
+        # On success only: record measurement + store var (native type so
+        # downstream consumers -- including calc/check -- can use it as-is).
         self.measurements.record(label, value, unit, "calc")
-        self.ctx.script_vars[label] = str(value)
+        self.ctx.script_vars[label] = value
         suffix = f" {unit}" if unit else ""
         C, G, Y, R = ColorPrinter.CYAN, ColorPrinter.GREEN, ColorPrinter.YELLOW, ColorPrinter.RESET
         print(f"{C}{label}{R} = {G}{value}{R}{Y}{suffix}{R}")

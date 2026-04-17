@@ -36,7 +36,7 @@ from .commands.scripting import ScriptingCommands
 from .commands.smu import SmuCommand
 from .commands.variables import VariableCommands
 from .context import ReplContext
-from .syntax import safe_eval, substitute_vars
+from .syntax import safe_eval, strip_inline_comment, substitute_vars
 
 
 def get_version():
@@ -81,28 +81,6 @@ def _split_on_semicolons(line):
             current.append(ch)
     chunks.append("".join(current))
     return chunks
-
-
-def _strip_inline_comment(line: str) -> str:
-    """Strip a trailing ``#`` comment, ignoring ``#`` inside quotes.
-
-    Preserves the whitespace-before-# intact except at the very end so that
-    ``print "hi" # trailing note`` becomes ``print "hi"``.
-    """
-    in_quote = None
-    out = []
-    for ch in line:
-        if ch in ('"', "'"):
-            if in_quote is None:
-                in_quote = ch
-            elif in_quote == ch:
-                in_quote = None
-            out.append(ch)
-        elif ch == "#" and in_quote is None:
-            break
-        else:
-            out.append(ch)
-    return "".join(out).rstrip()
 
 
 class InstrumentRepl(cmd.Cmd):
@@ -577,7 +555,7 @@ class InstrumentRepl(cmd.Cmd):
         # Counter idiom: undefined vars default to 0 so `count++` just works.
         # If the var exists but isn't numeric, surface TypeError -- no silent
         # reset to 1.0.
-        stripped = line.strip()
+        stripped = strip_inline_comment(line.strip())
         inc_m = re.match(r"^([A-Za-z_][A-Za-z0-9_.]*)\s*\+\+$", stripped)
         if inc_m:
             varname = inc_m.group(1)
@@ -663,7 +641,7 @@ class InstrumentRepl(cmd.Cmd):
     def _onecmd_single_impl(self, line):
         # Strip trailing "# comment" before variable substitution so inline
         # notes in student scripts don't get interpreted as args.
-        line = _strip_inline_comment(line)
+        line = strip_inline_comment(line)
         if not line.strip():
             return False
         line = substitute_vars(line, self.ctx.script_vars, self.ctx.measurements)
@@ -836,26 +814,21 @@ class InstrumentRepl(cmd.Cmd):
     _COND_CHECK_RE = re.compile(r"(?:>=|<=|!=|==|>|<|&&|\|\||(?<![a-zA-Z0-9_])(?:and|or|not)(?![a-zA-Z0-9_]))")
 
     def _build_names_dict(self) -> dict:
-        """Build a names dict from script_vars for safe_eval.
+        """Build a names dict from script_vars for safe_eval (numeric where possible).
 
-        Values are passed through raw (no silent float coercion). If a
-        variable is a numeric string and the expression needs it as a
-        number, safe_eval will raise TypeError -- that's the intended
-        pythonic surface.
+        Native int/float pass through unchanged. Numeric strings are coerced
+        to float so expressions can use them. Genuinely non-numeric strings
+        stay as strings so ``safe_eval`` can raise ``TypeError`` if the
+        student tries arithmetic on them.
         """
         names: dict = {}
         for k, v in self.ctx.script_vars.items():
-            if isinstance(v, str):
-                # Script vars set via `set foo 5.0` arrive as strings; coerce
-                # numeric-looking ones so expression use is ergonomic, but
-                # leave non-numeric strings alone so TypeError can surface.
-                try:
-                    names[k] = (
-                        float(v) if "." in v or "e" in v.lower() or "nan" in v.lower() or "inf" in v.lower() else int(v)
-                    )
-                except (TypeError, ValueError):
-                    names[k] = v
+            if isinstance(v, (int, float)):
+                names[k] = v
             else:
+                with contextlib.suppress(TypeError, ValueError):
+                    names[k] = float(v)
+                    continue
                 names[k] = v
         return names
 

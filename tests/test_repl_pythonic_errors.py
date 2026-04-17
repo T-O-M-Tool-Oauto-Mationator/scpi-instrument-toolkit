@@ -62,7 +62,7 @@ class TestCalcTypeError:
         capsys.readouterr()
         repl.onecmd("calc x = foo + 1")
         # Pre-existing x is preserved, not clobbered.
-        assert repl.ctx.script_vars["x"] == "42"
+        assert repl.ctx.script_vars["x"] == 42
 
 
 # ---------------------------------------------------------------------------
@@ -113,7 +113,7 @@ class TestZeroDivisionPropagation:
         assert "ZeroDivisionError" in out
         # REPL still usable afterwards:
         repl.onecmd("x = 7")
-        assert repl.ctx.script_vars["x"] == "7"
+        assert repl.ctx.script_vars["x"] == 7
 
     def test_if_condition_zero_division_reports(self, repl, capsys):
         repl.onecmd("if 1 / 0 > 0")
@@ -251,17 +251,17 @@ class TestReplDoesNotCrash:
         repl.onecmd("calc bad = oops + 1")
         capsys.readouterr()
         repl.onecmd("good = 42")
-        assert repl.ctx.script_vars["good"] == "42"
+        assert repl.ctx.script_vars["good"] == 42
 
     def test_repl_still_usable_after_typeerror(self, repl, capsys):
         repl.onecmd('s = "x"')
         repl.onecmd("calc bad = s + 1")
         capsys.readouterr()
         repl.onecmd("good = 7")
-        assert repl.ctx.script_vars["good"] == "7"
+        assert repl.ctx.script_vars["good"] == 7
 
     def test_repl_still_usable_after_zerodiv(self, repl, capsys):
         repl.onecmd("calc bad = 1 / 0")
         capsys.readouterr()
         repl.onecmd("good = 9")
-        assert repl.ctx.script_vars["good"] == "9"
+        assert repl.ctx.script_vars["good"] == 9

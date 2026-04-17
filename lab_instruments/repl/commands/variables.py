@@ -41,7 +41,7 @@ class VariableCommands(BaseCommand):
     """Handles set, print, pause, input, sleep commands."""
 
     def do_print(self, arg: str) -> None:
-        """print <message> — display text; supports {var} and $var interpolation.
+        """print <message> — display text; supports {var} interpolation.
 
         Quotes are optional but recommended for clarity:
             print "Voltage is {v}V"
@@ -51,7 +51,7 @@ class VariableCommands(BaseCommand):
         # Strip optional outer quotes: print "hello {v}" or print 'hello {v}'
         if len(msg) >= 2 and msg[0] in ('"', "'") and msg[-1] == msg[0]:
             msg = msg[1:-1]
-        # Apply variable substitution (handles both {var} and $var)
+        # Apply variable substitution ({var} syntax)
         msg = substitute_vars(msg, self.ctx.script_vars, self.ctx.measurements)
         builtins.print(msg)
 
@@ -140,7 +140,7 @@ class VariableCommands(BaseCommand):
         unit = unit_override or auto_unit
 
         # Store in both script_vars AND measurement store
-        self.ctx.script_vars[varname] = str(value)
+        self.ctx.script_vars[varname] = value
         self.ctx.measurements.record(varname, value, unit, dev_name)
         suffix = f" {unit}" if unit else ""
         ColorPrinter.cyan(f"{varname} = {value}{suffix}")
@@ -255,11 +255,17 @@ class VariableCommands(BaseCommand):
             ColorPrinter.warning("calc expects an expression.")
             return True
 
-        # Substitute {name} and $name variables in expr
+        # Substitute {name} variables in expr
         expr = substitute_vars(expr, self.ctx.script_vars, self.ctx.measurements)
 
-        # Build names dict with 'last' from measurement store
+        # Build names dict: script_vars (numeric) + 'last' from measurement store
         names = {}
+        for k, v in self.ctx.script_vars.items():
+            if isinstance(v, (int, float)):
+                names[k] = v
+            else:
+                with contextlib.suppress(TypeError, ValueError):
+                    names[k] = float(v)
         if self.ctx.measurements:
             last_entry = self.ctx.measurements.get_last()
             if last_entry:
@@ -281,7 +287,7 @@ class VariableCommands(BaseCommand):
             return True
 
         # Store in both script_vars AND measurement store (success-only path).
-        self.ctx.script_vars[varname] = str(value)
+        self.ctx.script_vars[varname] = value
         self.ctx.measurements.record(varname, value, unit, "calc")
         suffix = f" {unit}" if unit else ""
         ColorPrinter.cyan(f"{varname} = {value}{suffix}")
@@ -314,7 +320,7 @@ class VariableCommands(BaseCommand):
             try:
                 ls_start = float(ls_parts[1])
                 ls_stop = float(ls_parts[2])
-                ls_count = int(ls_parts[3]) if len(ls_parts) >= 4 else 11
+                ls_count = int(float(ls_parts[3])) if len(ls_parts) >= 4 else 11
                 if ls_count < 2:
                     raise ValueError("count must be >= 2")
                 ls_step = (ls_stop - ls_start) / (ls_count - 1)
@@ -328,11 +334,15 @@ class VariableCommands(BaseCommand):
         try:
             num_vars = {}
             for k, v in self.ctx.script_vars.items():
-                with contextlib.suppress(TypeError, ValueError):
-                    num_vars[k] = float(v)
-            # Non-strict so bare identifiers fall back to raw_val below.
+                if isinstance(v, (int, float)):
+                    num_vars[k] = v
+                else:
+                    with contextlib.suppress(TypeError, ValueError):
+                        num_vars[k] = float(v)
+            # Non-strict so bare identifiers fall back to raw_val below
+            # (keeps `label = "hello"` style assignments working).
             result = safe_eval(raw_val, num_vars, strict=False)
-            self.ctx.script_vars[key] = str(result)
+            self.ctx.script_vars[key] = result
         except Exception:
             self.ctx.script_vars[key] = raw_val
         if unit:
@@ -485,16 +495,19 @@ class VariableCommands(BaseCommand):
         # Also inject vars directly so you can write `voltage` instead of `vars['voltage']`
         for k, v in self.ctx.script_vars.items():
             if k.isidentifier() and k not in ns:
-                try:
-                    ns[k] = float(v)
-                except (ValueError, TypeError):
+                if isinstance(v, (int, float)):
                     ns[k] = v
+                else:
+                    try:
+                        ns[k] = float(v)
+                    except (ValueError, TypeError):
+                        ns[k] = v
 
         try:
             result = eval(args_raw, {"__builtins__": {}}, ns)  # noqa: S307
             if result is not None:
                 builtins.print(result)
-            self.ctx.script_vars["_"] = str(result)
+            self.ctx.script_vars["_"] = result
         except Exception as exc:
             ColorPrinter.error(f"pyeval: {exc}")
 

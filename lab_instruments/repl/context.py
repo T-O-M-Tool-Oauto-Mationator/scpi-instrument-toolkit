@@ -16,8 +16,8 @@ class ReplContext:
         self.registry = DeviceRegistry()
         self.measurements = MeasurementStore()
 
-        # Script variables
-        self.script_vars: dict[str, str] = {}
+        # Script variables (values may be str, int, float, bool, or list)
+        self.script_vars: dict[str, Any] = {}
 
         # Error handling
         self.command_had_error: bool = False

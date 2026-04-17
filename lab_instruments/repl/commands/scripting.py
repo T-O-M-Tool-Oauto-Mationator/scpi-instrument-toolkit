@@ -267,8 +267,10 @@ class ScriptingCommands(BaseCommand):
         }
 
         # Auto-inject all current REPL script variables as native Python types.
-        # Conversion order: int → float → str.
+        # If already numeric, pass through; otherwise try int -> float -> str.
         def _to_python(v):
+            if isinstance(v, (int, float, bool)):
+                return v
             try:
                 return int(v)
             except (ValueError, TypeError):
@@ -428,7 +430,7 @@ class ScriptingCommands(BaseCommand):
                 tmp_path = handle.name
                 handle.write(f"# Script: {name}\n")
                 handle.write(
-                    "# Syntax: set <var> <val>  |  $var  |  repeat <n> ... end  |  for <var> v1 v2 ... end  |  call <name>\n"
+                    "# Syntax: var = val  |  {var}  |  repeat <n> ... end  |  for <var> v1 v2 ... end  |  call <name>\n"
                 )
                 handle.write("#\n")
                 for line in current_lines:

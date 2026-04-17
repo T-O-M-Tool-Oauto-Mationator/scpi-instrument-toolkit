@@ -32,7 +32,7 @@ class TestIfInteractive:
         repl.onecmd("if x > 5")
         repl.onecmd("result = 1")
         repl.onecmd("end")
-        assert repl.ctx.script_vars["result"] == "1"
+        assert repl.ctx.script_vars["result"] == 1
 
     def test_if_false_branch_skipped(self, repl):
         repl.onecmd("x = 3")
@@ -40,7 +40,7 @@ class TestIfInteractive:
         repl.onecmd("if x > 5")
         repl.onecmd("result = 1")
         repl.onecmd("end")
-        assert repl.ctx.script_vars["result"] == "0"
+        assert repl.ctx.script_vars["result"] == 0
 
     def test_elif_branch(self, repl):
         repl.onecmd("v = 4.5")
@@ -70,7 +70,7 @@ class TestIfInteractive:
         repl.onecmd("if x > 10")
         repl.onecmd("result = 1")
         repl.onecmd("end")
-        assert repl.ctx.script_vars["result"] == "0"
+        assert repl.ctx.script_vars["result"] == 0
 
 
 # ---------------------------------------------------------------------------
@@ -190,7 +190,7 @@ class TestScriptControlFlow:
                 "end",
             ]
         )
-        assert repl.ctx.script_vars["result"] == "1"
+        assert repl.ctx.script_vars["result"] == 1
 
     def test_while_in_script(self, repl):
         repl._run_script_lines(

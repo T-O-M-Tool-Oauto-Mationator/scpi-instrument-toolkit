@@ -8,7 +8,7 @@ These commands work regardless of which instrument is active.
 
 Re-scan for connected VISA instruments and connect any new ones found.
 
-```
+```text
 scan
 ```
 
@@ -25,7 +25,7 @@ Already-connected instruments keep their current state — a re-scan will **not*
 
 Disconnect all instruments, re-scan from scratch, and reset every output to safe defaults (0 V, off).
 
-```
+```text
 force_scan
 ```
 
@@ -40,7 +40,7 @@ Use this when you want a clean slate — for example, at the start of a new test
 
 Remove a connected instrument from the current session without rescanning.
 
-```
+```text
 disconnect <name>
 ```
 
@@ -50,7 +50,7 @@ disconnect <name>
 
 The device is removed from the REPL's device list. If it was the active selection, the selection is cleared. Use `scan` to rediscover it.
 
-```
+```text
 disconnect psu1    # remove psu1 from the session
 ```
 
@@ -63,7 +63,7 @@ disconnect psu1    # remove psu1 from the session
 
 Show all currently connected instruments.
 
-```
+```text
 list
 ```
 
@@ -75,7 +75,7 @@ Displays each instrument's assigned name, model, and whether it is currently act
 
 Set the active instrument for subsequent generic commands.
 
-```
+```text
 use <name>
 ```
 
@@ -85,7 +85,7 @@ use <name>
 
 When only one instrument of a type is connected it is selected automatically. With multiple of the same type you must `use` the desired one before using generic commands like `psu set`.
 
-```
+```text
 use psu1          # make psu1 active
 psu set 5.0       # acts on psu1
 
@@ -96,7 +96,7 @@ psu set 12.0      # now acts on psu2
 !!! tip "Direct addressing"
     You can skip `use` entirely by prefixing the instrument name to any command:
     <!-- doc-test: skip reason="reference snippet -- docs mock has only psu1" -->
-    ```
+    ```text
     psu1 set 5.0
     psu2 set 12.0
     ```
@@ -108,7 +108,7 @@ psu set 12.0      # now acts on psu2
 
 Query a instrument's identification string (`*IDN?`).
 
-```
+```text
 idn [name]
 ```
 
@@ -119,7 +119,7 @@ idn [name]
 The response is the instrument's manufacturer, model, serial number, and firmware version.
 
 <!-- doc-test: skip reason="bare 'idn' needs a prior 'use' -- this block shows usage patterns" -->
-```
+```text
 idn           # query active instrument
 idn scope1    # query scope1 specifically
 ```
@@ -130,7 +130,7 @@ idn scope1    # query scope1 specifically
 
 Send a raw SCPI command or query directly.
 
-```
+```text
 raw <command>
 ```
 
@@ -138,7 +138,7 @@ raw <command>
 |-----------|----------|-------------|
 | `command` | required | Any SCPI string. If it ends with `?` the response is printed. |
 
-```
+```text
 raw *RST              # reset the instrument
 raw OUTP:STAT ON      # send a command
 raw MEAS:VOLT:DC?     # query — prints the response
@@ -153,7 +153,7 @@ raw MEAS:VOLT:DC?     # query — prints the response
 
 Set the active instrument to a named state.
 
-```
+```text
 state <on|off|safe|reset>
 ```
 
@@ -164,7 +164,7 @@ state <on|off|safe|reset>
 | `safe` | Outputs off, returns to safe defaults |
 | `reset` | Sends `*RST` — restores factory defaults |
 
-```
+```text
 state safe     # safe state on active instrument
 state reset    # factory reset active instrument
 ```
@@ -175,13 +175,13 @@ state reset    # factory reset active instrument
 
 Apply a state to **every** connected instrument simultaneously.
 
-```
+```text
 all <on|off|safe|reset>
 ```
 
 Same values as `state`. Useful as a quick emergency stop or to reset everything before a new test.
 
-```
+```text
 all safe      # put everything in safe state
 all off       # turn off all outputs
 ```
@@ -192,7 +192,7 @@ all off       # turn off all outputs
 
 Pause for a specified duration.
 
-```
+```text
 sleep <duration>[unit]
 ```
 
@@ -208,7 +208,7 @@ sleep <duration>[unit]
 | `us` | microseconds | `sleep 100us` |
 | `m` | minutes | `sleep 2m` |
 
-```
+```text
 sleep 1.0       # wait 1 second
 sleep 0.5       # wait 500 ms
 sleep 500ms     # same — 500 ms
@@ -265,7 +265,7 @@ Serves the bundled MkDocs site via a local HTTP server on a random port. If the 
 
 Clear the terminal screen.
 
-```
+```text
 clear
 ```
 
@@ -275,7 +275,7 @@ clear
 
 Restart the REPL process, disconnecting all instruments.
 
-```
+```text
 reload
 ```
 
@@ -285,7 +285,7 @@ reload
 
 Print the installed version of the toolkit.
 
-```
+```text
 version
 ```
 
@@ -295,6 +295,6 @@ version
 
 Close the REPL and disconnect all instruments safely.
 
-```
+```text
 exit
 ```

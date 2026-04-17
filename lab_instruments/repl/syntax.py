@@ -16,6 +16,26 @@ _SUBST_RE = re.compile(r"\{([A-Za-z_][A-Za-z0-9_.]*)\}")
 _RESERVED = frozenset({"last"})
 
 
+def strip_inline_comment(text: str) -> str:
+    """Remove a trailing ``# comment`` from *text*, respecting quoted strings.
+
+    Examples::
+
+        strip_inline_comment('x += 1  # bump')      -> 'x += 1'
+        strip_inline_comment('name = "a # b"')       -> 'name = "a # b"'
+        strip_inline_comment('count++')               -> 'count++'
+    """
+    in_sq = in_dq = False
+    for i, ch in enumerate(text):
+        if ch == '"' and not in_sq:
+            in_dq = not in_dq
+        elif ch == "'" and not in_dq:
+            in_sq = not in_sq
+        elif ch == "#" and not in_sq and not in_dq:
+            return text[:i].rstrip()
+    return text
+
+
 def validate_name(name: str) -> str | None:
     """Return an error message if *name* is not a valid variable/label identifier, else None."""
     if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name):
@@ -27,7 +47,7 @@ def validate_name(name: str) -> str | None:
 
 def substitute_vars(
     text: str,
-    script_vars: dict[str, str],
+    script_vars: dict[str, Any],
     measurements: MeasurementStore | None = None,
 ) -> str:
     """Replace {name} references in *text*.
@@ -58,7 +78,7 @@ def substitute_vars(
     return _SUBST_RE.sub(_replace, text)
 
 
-def substitute_expand(text: str, variables: dict[str, str]) -> str:
+def substitute_expand(text: str, variables: dict[str, Any]) -> str:
     """Replace {name} references from a variables dict during script expansion."""
 
     def _replace(match: re.Match) -> str:

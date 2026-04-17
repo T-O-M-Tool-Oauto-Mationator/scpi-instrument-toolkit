@@ -25,6 +25,7 @@ from lab_instruments.repl.device_registry import DeviceRegistry
 from lab_instruments.repl.measurement_store import MeasurementStore
 from lab_instruments.repl.syntax import (
     safe_eval,
+    strip_inline_comment,
     substitute_expand,
     substitute_vars,
     validate_name,
@@ -134,9 +135,29 @@ class TestSubstituteExpand:
         result = substitute_expand("{a} and {b}", {"a": "X", "b": "Y"})
         assert result == "X and Y"
 
-    def test_dollar_prefix_passes_through(self):
+    def test_dollar_sign_is_literal(self):
         result = substitute_expand("set ${volt}", {"volt": "5.0"})
-        assert result == "set $5.0"  # $ is literal, {volt} still resolves
+        assert result == "set $5.0"  # $ is literal text, {volt} resolves normally
+
+
+class TestStripInlineComment:
+    def test_strips_trailing_comment(self):
+        assert strip_inline_comment("x += 1  # bump") == "x += 1"
+
+    def test_preserves_hash_in_double_quotes(self):
+        assert strip_inline_comment('name = "a # b"') == 'name = "a # b"'
+
+    def test_preserves_hash_in_single_quotes(self):
+        assert strip_inline_comment("name = 'a # b'") == "name = 'a # b'"
+
+    def test_no_comment_returns_unchanged(self):
+        assert strip_inline_comment("count++") == "count++"
+
+    def test_bare_hash_at_start(self):
+        assert strip_inline_comment("# full line comment") == ""
+
+    def test_strips_after_quoted_string(self):
+        assert strip_inline_comment('x = "hello"  # assign') == 'x = "hello"'
 
 
 class TestSafeEval:
@@ -845,6 +866,25 @@ class TestVariableCommands:
         monkeypatch.setattr("builtins.input", lambda prompt: "")
         vc.do_pause("")
 
+    def test_linspace_runtime_float_count(self, capsys):
+        """Regression for issue #77: runtime linspace with float-string count."""
+        vc, ctx = self._make()
+        vc._assign_var("V", "linspace 0 10 5.0")
+        vals = ctx.script_vars["V"].split()
+        assert len(vals) == 5
+        assert vals[0] == "0"
+        assert vals[-1] == "10"
+
+    def test_linspace_runtime_count_from_variable(self, capsys):
+        """Regression for issue #77: runtime linspace with count from variable."""
+        vc, ctx = self._make()
+        ctx.script_vars["n"] = "5.0"
+        vc._assign_var("V", "linspace 0 10 {n}")
+        vals = ctx.script_vars["V"].split()
+        assert len(vals) == 5
+        assert vals[0] == "0"
+        assert vals[-1] == "10"
+
 
 # ═══════════════════════════════════════════════════════════════════
 # 7. commands/general.py
@@ -1545,6 +1585,42 @@ class TestExpander:
         assert vals[0] == "0"
         assert vals[-1] == "1"
         assert vals[2] == "0.5"
+
+    def test_linspace_float_string_count(self):
+        """Regression for issue #77: linspace count given as float string (e.g. '5.0')."""
+        from lab_instruments.repl.script_engine.expander import expand_script_lines
+
+        ctx = self._make_ctx()
+        variables: dict = {}
+        expand_script_lines(["V = linspace 0 10 5.0"], variables, ctx)
+        vals = variables["V"].split()
+        assert len(vals) == 5
+        assert vals[0] == "0"
+        assert vals[-1] == "10"
+
+    def test_linspace_count_from_variable(self):
+        """Regression for issue #77: linspace count from variable resolving to float string."""
+        from lab_instruments.repl.script_engine.expander import expand_script_lines
+
+        ctx = self._make_ctx()
+        variables: dict = {"n": "5.0"}
+        expand_script_lines(["V = linspace 0 10 {n}"], variables, ctx)
+        vals = variables["V"].split()
+        assert len(vals) == 5
+        assert vals[0] == "0"
+        assert vals[-1] == "10"
+
+    def test_linspace_all_args_from_variables(self):
+        """Regression for issue #77: all linspace args from variables."""
+        from lab_instruments.repl.script_engine.expander import expand_script_lines
+
+        ctx = self._make_ctx()
+        variables: dict = {"lo": "0", "hi": "10.0", "n": "5"}
+        expand_script_lines(["V = linspace {lo} {hi} {n}"], variables, ctx)
+        vals = variables["V"].split()
+        assert len(vals) == 5
+        assert vals[0] == "0"
+        assert vals[-1] == "10"
 
     def test_linspace_with_for(self):
         from lab_instruments.repl.script_engine.expander import expand_script_lines
