@@ -16,8 +16,10 @@ carries into the subsequent runnable blocks from the same file.
 
 from __future__ import annotations
 
+import contextlib
 import io
 import re
+import sys
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -28,6 +30,7 @@ __all__ = [
     "iter_doc_files",
     "extract_blocks",
     "classify_block",
+    "not_repl_reason",
     "parametrize_ids",
     "run_block",
     "RunResult",
@@ -116,10 +119,18 @@ _ASSIGN_RE = re.compile(r"^[A-Za-z_][A-Za-z_0-9]*\s*(?:\+\+|--|[+\-*/%]?=)")
 _SHELL_PREFIX_RE = re.compile(r"^(?:\$|pip|python|git|cd|export|mkdocs|pytest|mv|cp|rm|ls|cat|echo|curl)\b")
 _OUTPUT_RE = re.compile(r"^(?:└|├|│|─|=>|\[PASS\]|\[FAIL\]|Output:|>>>|\.{3})")
 # Placeholder syntax that marks a block as a SYNTAX reference, not runnable
-# commands: <value>, [optional], <v|i>, {placeholder}. These blocks show the
-# shape of a command; the accompanying ``Examples:`` block below is what
-# students actually run.
-_PLACEHOLDER_RE = re.compile(r"<[A-Za-z_][A-Za-z0-9_| ]*>|\[[A-Za-z_][A-Za-z0-9_| ]*\]")
+# commands: <value>, [optional], <v|i>. These blocks show the shape of a
+# command; the accompanying Examples block below is what students actually run.
+#
+# The pattern requires a placeholder-ish signal inside the brackets -- either
+# whitespace (``<on|off>`` has none, ``<seconds>`` has none, but ``[name here]``
+# does) or a ``|`` alternation (``<v|i>``). It also forbids the opening bracket
+# from following an identifier character, so bare subscripts like ``xs[i]`` or
+# ``d[key]`` inside real REPL code are NOT treated as placeholders.
+_PLACEHOLDER_RE = re.compile(
+    r"(?<![A-Za-z0-9_])<[A-Za-z_][A-Za-z0-9_]*(?:[| ][A-Za-z0-9_| ]*)?>"
+    r"|(?<![A-Za-z0-9_\]])\[[A-Za-z_][A-Za-z0-9_]*(?:[| ][A-Za-z0-9_| ]*)?\]"
+)
 _FENCE_OPEN_RE = re.compile(r"^(\s*)```([A-Za-z0-9_-]*)\s*$")
 _FENCE_CLOSE_RE = re.compile(r"^(\s*)```\s*$")
 _SKIP_DIRECTIVE_RE = re.compile(r"<!--\s*doc-test:\s*(skip|setup)(?:\s+reason=\"([^\"]+)\")?\s*-->")
@@ -166,8 +177,13 @@ class DocBlock:
 
 
 def iter_doc_files(docs_dir: Path) -> Iterator[Path]:
-    """Yield every ``docs/*.md`` file that might contain REPL blocks."""
-    for path in sorted(docs_dir.glob("*.md")):
+    """Yield every ``docs/**/*.md`` file that might contain REPL blocks.
+
+    Scans recursively so nested subdirectories (e.g. ``docs/api/*.md``) are
+    included. Files whose *basename* is in :data:`EXCLUDED_FILES` are skipped
+    regardless of their depth.
+    """
+    for path in sorted(docs_dir.rglob("*.md")):
         if path.name in EXCLUDED_FILES:
             continue
         yield path
@@ -239,54 +255,55 @@ def extract_blocks(md_path: Path) -> list[DocBlock]:
     return blocks
 
 
-def _looks_like_repl(block: DocBlock) -> bool:
-    """Heuristic: does this fence look like REPL script content?
+def not_repl_reason(block: DocBlock) -> str | None:
+    """Return the first reason ``block`` fails the REPL-content heuristic.
 
-    Returns True iff:
-      1. Lang is empty / ``text`` / ``bash`` / ``scpi-repl`` (mkdocs-material
-         friendly tags).
-      2. >=1 non-blank, non-comment body line starts with a REPL keyword
-         or an assignment pattern.
-      3. First non-comment line is NOT a shell prompt (``$``, ``pip``, ``git``,
-         etc.) -- shell recipes are common in install.md but can appear
-         anywhere.
-      4. Fewer than 30% of non-blank body lines look like sample output.
+    ``None`` means the block looks like REPL content. A non-None string is a
+    short label used for observability (``--show-skipped`` in the CLI, debug
+    listings) so doc coverage regressions are noticeable.
     """
     if block.lang not in ("", "text", "bash", "scpi-repl"):
-        return False
+        return f"fence lang {block.lang!r} not allowed"
 
     non_blank = [raw.strip() for raw in block.lines if raw.strip()]
     if not non_blank:
-        return False
+        return "empty block"
 
     non_comment = [s for s in non_blank if not s.startswith("#")]
     if not non_comment:
-        return False
+        return "all lines are comments"
 
     first = non_comment[0]
     if _SHELL_PREFIX_RE.match(first):
-        return False
+        return f"shell prefix: {first[:40]!r}"
 
     output_hits = sum(1 for s in non_blank if _OUTPUT_RE.match(s))
     if output_hits / max(len(non_blank), 1) >= 0.3:
-        return False
+        return "looks like sample output (>=30% output-like lines)"
 
     # Reject syntax-reference blocks containing <placeholder> or [optional]
     # tokens: those demonstrate the shape of a command rather than being
     # literal commands.
-    if any(_PLACEHOLDER_RE.search(s) for s in non_comment):
-        return False
+    for s in non_comment:
+        m = _PLACEHOLDER_RE.search(s)
+        if m:
+            return f"placeholder syntax: {m.group(0)!r}"
 
     for stripped in non_comment:
         token = stripped.split(None, 1)[0].lower()
         if token in _REPL_KEYWORDS:
-            return True
+            return None
         if _DEVICE_RE.match(token):
-            return True
+            return None
         if _ASSIGN_RE.match(stripped):
-            return True
+            return None
 
-    return False
+    return f"no REPL keyword / device / assignment found (first line: {first[:40]!r})"
+
+
+def _looks_like_repl(block: DocBlock) -> bool:
+    """Back-compat boolean wrapper around :func:`not_repl_reason`."""
+    return not_repl_reason(block) is None
 
 
 def classify_block(block: DocBlock) -> Literal["run", "skip", "not-repl", "setup"]:
@@ -335,18 +352,25 @@ def _build_mock_repl():
     from lab_instruments.repl.shell import InstrumentRepl
     from lab_instruments.src import discovery as _disc
 
+    # Consistent numbered aliases for every device type. Bare forms
+    # (``psu``, ``smu``, ``ev2300``) still resolve via the registry's
+    # base-type fallback, so both ``smu set ...`` and ``smu1 set ...`` work.
     devices = {
         "psu1": MockHP_E3631A(),
         "dmm1": MockHP_34401A(),
         "scope1": MockDSOX1204G(),
         "awg1": MockEDU33212A(),
-        "smu": MockNI_PXIe_4139(),
-        "ev2300": MockEV2300(),
+        "smu1": MockNI_PXIe_4139(),
+        "ev23001": MockEV2300(),
     }
 
     _orig_init = _disc.InstrumentDiscovery.__init__
     _orig_scan = _disc.InstrumentDiscovery.scan
 
+    # NOTE: class-level monkeypatch is process-wide. This is safe for
+    # pytest-xdist (separate processes) but NOT for concurrent in-process
+    # REPL construction. The validator and the pytest harness both run
+    # single-threaded, so this is fine in practice.
     _disc.InstrumentDiscovery.__init__ = lambda self: None
     _disc.InstrumentDiscovery.scan = lambda self, verbose=True: devices
     try:
@@ -395,15 +419,15 @@ def run_block(block: DocBlock, repl=None) -> tuple[RunResult, str]:
             # the terminal buffer post-call. We rely on command_had_error as
             # the primary signal; the message is printed by ColorPrinter.
             buf = io.StringIO()
-            import contextlib
-            import sys as _sys
-
             with contextlib.redirect_stdout(buf):
                 try:
                     repl.onecmd(raw)
                 except (KeyboardInterrupt, SystemExit):
                     raise
                 except Exception as exc:  # pragma: no cover -- last-line safety net
+                    # Forward any output captured before the crash so pytest /
+                    # the CLI see everything that printed prior to the fault.
+                    sys.stdout.write(buf.getvalue())
                     return (
                         "fail",
                         f"{block.short_id}:L{line_no}: uncaught {type(exc).__name__}: {exc}",
@@ -419,13 +443,11 @@ def run_block(block: DocBlock, repl=None) -> tuple[RunResult, str]:
                     f"{block.short_id}:L{line_no}: {captured}",
                 )
             # Forward stdout captured this iteration (print output, etc.)
-            _sys.stdout.write(buf.getvalue())
+            sys.stdout.write(buf.getvalue())
         return "pass", ""
     finally:
         if owns_repl:
-            import contextlib as _contextlib
-
-            with _contextlib.suppress(Exception):
+            with contextlib.suppress(Exception):
                 repl.close()
 
 

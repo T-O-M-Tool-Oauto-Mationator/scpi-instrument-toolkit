@@ -20,6 +20,7 @@ from lab_instruments._docs_extract import (  # noqa: E402
     classify_block,
     extract_blocks,
     iter_doc_files,
+    not_repl_reason,
     run_block,
 )
 
@@ -69,6 +70,11 @@ def main() -> int:
     totals = {"pass": 0, "fail": 0, "skip": 0}
     any_failure = False
 
+    def _close_shared(repl):
+        if repl is not None:
+            with contextlib.suppress(Exception):
+                repl.close()
+
     for md in files:
         rel = md.relative_to(PROJECT_ROOT)
         print(f"\n{ANSI_CYAN}=== {rel} ==={ANSI_RESET}")
@@ -79,6 +85,9 @@ def main() -> int:
             kind = classify_block(block)
             if kind == "not-repl":
                 totals["skip"] += 1
+                if args.show_skipped:
+                    reason = not_repl_reason(block) or "unknown"
+                    print(f"  {_fmt('skip')}  {block.short_id}  (not-repl: {reason})")
                 continue
             if kind == "setup":
                 shared_repl = _build_mock_repl() if shared_repl is None else shared_repl
@@ -88,8 +97,7 @@ def main() -> int:
                 if status == "fail":
                     any_failure = True
                     if args.first_failure:
-                        if shared_repl is not None:
-                            shared_repl.close()
+                        _close_shared(shared_repl)
                         _summary(totals)
                         return 1
                 continue
@@ -102,8 +110,7 @@ def main() -> int:
                 any_failure = True
                 print(f"  {label}\n      {message}")
                 if args.first_failure:
-                    if shared_repl is not None:
-                        shared_repl.close()
+                    _close_shared(shared_repl)
                     _summary(totals)
                     return 1
             elif status == "skip":
@@ -112,9 +119,7 @@ def main() -> int:
             else:
                 print(f"  {label}")
 
-        if shared_repl is not None:
-            with contextlib.suppress(Exception):
-                shared_repl.close()
+        _close_shared(shared_repl)
 
     _summary(totals)
     return 1 if any_failure else 0

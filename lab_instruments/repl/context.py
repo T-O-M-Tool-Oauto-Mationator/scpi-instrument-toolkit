@@ -78,9 +78,23 @@ class ReplContext:
     ) -> None:
         """Report a Python-style error and set the error flag.
 
-        Format: ``[error] ClassName: message`` plus an optional
-        ``at line N in SOURCE`` second line when both arguments are provided.
+        The first line passed to :meth:`ColorPrinter.error` is
+        ``{exception_class_name}: {str(exc)}`` (``ColorPrinter`` prepends
+        its own ``[ERROR]`` tag when rendering). When location context is
+        available, a second line follows, indented with nine spaces:
+
+            ``<header>\\n         at line {line_no} in {source}``
+
+        If ``line_no`` or ``source`` is omitted, this helper falls back to
+        :attr:`current_script_line` / :attr:`current_script_source`. If only
+        one of the two is available, a partial suffix (``at line N`` or
+        ``in SOURCE`` alone) is emitted rather than silently dropping both --
+        useful when early failures fire before the runner has populated the
+        source path.
+
         Always sets ``command_had_error`` so ``set -e`` honors the failure.
+        Does NOT raise; callers decide whether to re-raise the original
+        exception.
         """
         from lab_instruments.src.terminal import ColorPrinter
 
@@ -90,7 +104,14 @@ class ReplContext:
             line_no = self.current_script_line
         if source is None:
             source = self.current_script_source
-        message = f"{header}\n         at line {line_no} in {source}" if line_no is not None and source else header
+        if line_no is not None and source:
+            message = f"{header}\n         at line {line_no} in {source}"
+        elif line_no is not None:
+            message = f"{header}\n         at line {line_no}"
+        elif source:
+            message = f"{header}\n         in {source}"
+        else:
+            message = header
         ColorPrinter.error(message)
 
     # ------------------------------------------------------------------

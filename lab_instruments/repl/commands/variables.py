@@ -7,6 +7,7 @@ import time
 
 from lab_instruments.src.terminal import ColorPrinter
 
+from ..errors import EXPR_ERRORS as _EXPR_ERRORS
 from ..syntax import safe_eval, substitute_vars
 from .base import BaseCommand
 
@@ -273,16 +274,7 @@ class VariableCommands(BaseCommand):
 
         try:
             value = safe_eval(expr, names)
-        except (
-            TypeError,
-            NameError,
-            ZeroDivisionError,
-            ValueError,
-            IndexError,
-            KeyError,
-            ArithmeticError,
-            SyntaxError,
-        ) as exc:
+        except _EXPR_ERRORS as exc:
             self.ctx.report_error(exc)
             return True
 

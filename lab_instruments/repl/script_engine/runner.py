@@ -93,6 +93,8 @@ def run_expanded(
                                 "Command interrupted — staying at line (retry with Enter or skip with goto)"
                             )
                             break
+                        finally:
+                            ctx.current_script_line = None
                         if ctx.exit_on_error and ctx.command_had_error:
                             ColorPrinter.error("Script stopped (set -e)")
                             return True
@@ -118,6 +120,8 @@ def run_expanded(
                             debug_active = True
                             ctx.in_debugger = True
                             break
+                        finally:
+                            ctx.current_script_line = None
                         if ctx.exit_on_error and ctx.command_had_error:
                             ColorPrinter.error("Script stopped (set -e)")
                             return True
@@ -194,7 +198,14 @@ def run_expanded(
                         return True
 
                     elif cmd:
-                        shell.onecmd(cmd)
+                        # Ad-hoc debugger command: clear the script line so any
+                        # error it triggers isn't blamed on the paused script line.
+                        prev_line = ctx.current_script_line
+                        ctx.current_script_line = None
+                        try:
+                            shell.onecmd(cmd)
+                        finally:
+                            ctx.current_script_line = prev_line
             else:
                 if line == "__NOP__":
                     idx += 1
@@ -210,6 +221,8 @@ def run_expanded(
                     debug_active = True
                     ctx.in_debugger = True
                     continue
+                finally:
+                    ctx.current_script_line = None
                 if ctx.exit_on_error and ctx.command_had_error:
                     ColorPrinter.error("Script stopped (set -e)")
                     return True

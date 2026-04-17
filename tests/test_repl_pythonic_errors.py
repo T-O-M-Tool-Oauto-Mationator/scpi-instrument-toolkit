@@ -11,12 +11,9 @@ and route them through ``ctx.report_error``. Key invariants:
 """
 
 import contextlib
-import os
-import sys
+import re
 
 import pytest
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from lab_instruments.repl.shell import InstrumentRepl
 
@@ -237,7 +234,8 @@ class TestErrorLocationFormat:
         run_expanded(expanded, repl, repl.ctx, debug=False, source=src_name)
         out = capsys.readouterr().out
         assert "NameError" in out
-        assert "at line 3" in out
+        # Word boundary: prevent "at line 3456" from matching "at line 3".
+        assert re.search(r"\bat line 3\b", out)
         assert src_name in out
 
 

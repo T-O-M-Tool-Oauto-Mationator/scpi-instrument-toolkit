@@ -48,18 +48,7 @@ def get_version():
 
 _REPL_VERSION = get_version()
 
-# Python-style error classes that the REPL surfaces through ctx.report_error
-# rather than letting them crash the interactive loop.
-_EXPR_ERRORS = (
-    TypeError,
-    NameError,
-    ZeroDivisionError,
-    ValueError,
-    IndexError,
-    KeyError,
-    ArithmeticError,
-    SyntaxError,
-)
+from .errors import EXPR_ERRORS as _EXPR_ERRORS  # noqa: E402 -- keep adjacent to REPL version
 
 
 def _split_on_semicolons(line):
@@ -814,22 +803,34 @@ class InstrumentRepl(cmd.Cmd):
     _COND_CHECK_RE = re.compile(r"(?:>=|<=|!=|==|>|<|&&|\|\||(?<![a-zA-Z0-9_])(?:and|or|not)(?![a-zA-Z0-9_]))")
 
     def _build_names_dict(self) -> dict:
-        """Build a names dict from script_vars for safe_eval (numeric where possible).
+        """Build a names dict from script_vars for safe_eval.
 
-        Native int/float pass through unchanged. Numeric strings are coerced
-        to float so expressions can use them. Genuinely non-numeric strings
-        stay as strings so ``safe_eval`` can raise ``TypeError`` if the
-        student tries arithmetic on them.
+        Coercion policy:
+
+        * Native ``int`` / ``float`` / ``bool`` pass through unchanged.
+        * Strings try ``int`` first (preserves counter exactness, so
+          ``calc y = count + 1`` on ``count="5"`` gives ``6`` not ``6.0``),
+          then ``float``, then fall back to the raw string so
+          ``safe_eval`` surfaces a ``TypeError`` if a student uses a
+          non-numeric in arithmetic.
         """
         names: dict = {}
         for k, v in self.ctx.script_vars.items():
             if isinstance(v, (int, float)):
                 names[k] = v
-            else:
-                with contextlib.suppress(TypeError, ValueError):
+                continue
+            if isinstance(v, str):
+                try:
+                    names[k] = int(v)
+                    continue
+                except (TypeError, ValueError):
+                    pass
+                try:
                     names[k] = float(v)
                     continue
-                names[k] = v
+                except (TypeError, ValueError):
+                    pass
+            names[k] = v
         return names
 
     def _eval_condition(self, condition_str: str, *, strict: bool = True) -> bool:

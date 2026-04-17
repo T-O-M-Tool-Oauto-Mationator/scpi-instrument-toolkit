@@ -5,20 +5,9 @@ import re
 
 from lab_instruments.src.terminal import ColorPrinter
 
+from ..errors import EXPR_ERRORS as _EXPR_ERRORS
 from ..syntax import safe_eval, substitute_vars
 from .base import BaseCommand
-
-# Python-style error classes that calc/check route through ctx.report_error.
-_EXPR_ERRORS = (
-    TypeError,
-    NameError,
-    ZeroDivisionError,
-    ValueError,
-    IndexError,
-    KeyError,
-    ArithmeticError,
-    SyntaxError,
-)
 
 
 def _as_number(value):

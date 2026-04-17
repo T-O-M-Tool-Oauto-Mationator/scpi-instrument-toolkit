@@ -108,8 +108,13 @@ def safe_eval(expr: str, names: dict[str, Any], *, strict: bool = True) -> Any:
     Errors (Python-style):
       * ``NameError`` -- unknown identifier (strict mode).
       * ``ZeroDivisionError`` -- ``/ // %`` by zero.
-      * ``TypeError`` -- incompatible operand types or unsupported literal.
+      * ``TypeError`` -- incompatible operand types or unsupported literal
+        (e.g. attempting arithmetic on a string).
       * ``IndexError`` / ``KeyError`` -- bad subscript.
+      * ``ValueError`` -- disallowed AST construct or function rejected
+        during expression validation (e.g. ``open(...)``, attribute access).
+      * ``SyntaxError`` -- raised by the underlying ``ast.parse`` when the
+        expression is not a valid Python expression at all.
 
     When ``strict=False`` (legacy), unknown identifiers fall back to their
     bare name as a string so that expressions like ``status == passed``
