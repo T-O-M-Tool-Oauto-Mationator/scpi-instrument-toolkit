@@ -62,14 +62,14 @@ class ScriptingCommands(BaseCommand):
             if lines is None:
                 return
             expanded = expand_script_lines(lines, {}, self.ctx)
-            run_expanded(expanded, self.shell, self.ctx, debug=False)
+            run_expanded(expanded, self.shell, self.ctx, debug=False, source=self.ctx.script_file(name))
         elif sub == "debug" and len(args) >= 2:
             name = args[1]
             lines = self._reload_script(name)
             if lines is None:
                 return
             expanded = expand_script_lines(lines, {}, self.ctx)
-            run_expanded(expanded, self.shell, self.ctx, debug=True)
+            run_expanded(expanded, self.shell, self.ctx, debug=True, source=self.ctx.script_file(name))
         elif sub == "edit" and len(args) >= 2:
             name = args[1]
             current = self.ctx.scripts.get(name, [])

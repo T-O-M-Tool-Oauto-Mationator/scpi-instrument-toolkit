@@ -267,12 +267,20 @@ class VariableCommands(BaseCommand):
 
         try:
             value = safe_eval(expr, names)
-        except Exception as exc:
-            ColorPrinter.error(f"calc failed: {exc}")
-            self.ctx.command_had_error = True
+        except (
+            TypeError,
+            NameError,
+            ZeroDivisionError,
+            ValueError,
+            IndexError,
+            KeyError,
+            ArithmeticError,
+            SyntaxError,
+        ) as exc:
+            self.ctx.report_error(exc)
             return True
 
-        # Store in both script_vars AND measurement store
+        # Store in both script_vars AND measurement store (success-only path).
         self.ctx.script_vars[varname] = str(value)
         self.ctx.measurements.record(varname, value, unit, "calc")
         suffix = f" {unit}" if unit else ""
@@ -322,7 +330,8 @@ class VariableCommands(BaseCommand):
             for k, v in self.ctx.script_vars.items():
                 with contextlib.suppress(TypeError, ValueError):
                     num_vars[k] = float(v)
-            result = safe_eval(raw_val, num_vars)
+            # Non-strict so bare identifiers fall back to raw_val below.
+            result = safe_eval(raw_val, num_vars, strict=False)
             self.ctx.script_vars[key] = str(result)
         except Exception:
             self.ctx.script_vars[key] = raw_val

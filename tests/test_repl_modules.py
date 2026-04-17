@@ -194,15 +194,21 @@ class TestSafeEval:
         d = {"key": 42}
         assert safe_eval("m['key']", {"m": d}) == 42
 
-    def test_unknown_name_returns_string(self):
-        # Unknown bare names fall back to their identifier string so that
-        # comparisons like `status == passed` work in REPL scripts.
-        assert safe_eval("z", {}) == "z"
+    def test_unknown_name_raises_nameerror_strict(self):
+        # Strict (default) raises Python-style NameError on unknown identifiers.
+        with pytest.raises(NameError, match="'z' is not defined"):
+            safe_eval("z", {})
 
-    def test_unknown_name_arithmetic_type_error(self):
-        # Unknown name becomes a string, so adding an int raises TypeError
+    def test_unknown_name_returns_string_when_nonstrict(self):
+        # Legacy lenient mode still falls back to the identifier string so
+        # `check status == passed` works when both sides are unset labels.
+        assert safe_eval("z", {}, strict=False) == "z"
+
+    def test_unknown_name_arithmetic_type_error_nonstrict(self):
+        # Under strict=False the bare name becomes a string; adding an int
+        # then raises TypeError at the arithmetic layer.
         with pytest.raises(TypeError):
-            safe_eval("z + 1", {})
+            safe_eval("z + 1", {}, strict=False)
 
     def test_string_constant_allowed(self):
         assert safe_eval("'hello'", {}) == "hello"
@@ -1340,7 +1346,9 @@ class TestLoggingCommands:
         ctx.measurements.record("a", 1)
         lc.do_calc("x = bad_func()")
         out = capsys.readouterr().out
-        assert "calc failed" in out
+        # Calc now reports Python-style errors (NameError for unknown fn)
+        assert "NameError" in out
+        assert "bad_func" in out
 
     def test_do_calc_empty_expr(self, capsys):
         lc, ctx = self._make()
@@ -1397,14 +1405,14 @@ class TestLoggingCommands:
         ctx.measurements.record("v", 5.0, "V")
         lc.do_check("v abc def")
         out = capsys.readouterr().out
-        assert "invalid range" in out
+        assert "ValueError" in out and "invalid range" in out
 
     def test_do_check_invalid_expected(self, capsys):
         lc, ctx = self._make()
         ctx.measurements.record("v", 5.0, "V")
         lc.do_check("v abc tol=0.5")
         out = capsys.readouterr().out
-        assert "invalid expected" in out
+        assert "ValueError" in out and "invalid numeric argument" in out
 
 
 # ═══════════════════════════════════════════════════════════════════

@@ -26,6 +26,10 @@ class ReplContext:
         self.in_debugger: bool = False
         self.interrupt_requested: bool = False
 
+        # Source location for error reporting
+        self.current_script_source: str | None = None
+        self.current_script_line: int | None = None
+
         # Safety limits: (device_str, channel_or_none) -> {param_direction: value}
         self.safety_limits: dict[tuple[str, int | None], dict[str, float]] = {}
         # AWG channel state cache: (dev_name, channel) -> {vpp, offset}
@@ -64,6 +68,29 @@ class ReplContext:
         from lab_instruments.src.terminal import ColorPrinter
 
         self.command_had_error = True
+        ColorPrinter.error(message)
+
+    def report_error(
+        self,
+        exc: BaseException,
+        line_no: int | None = None,
+        source: str | None = None,
+    ) -> None:
+        """Report a Python-style error and set the error flag.
+
+        Format: ``[error] ClassName: message`` plus an optional
+        ``at line N in SOURCE`` second line when both arguments are provided.
+        Always sets ``command_had_error`` so ``set -e`` honors the failure.
+        """
+        from lab_instruments.src.terminal import ColorPrinter
+
+        self.command_had_error = True
+        header = f"{type(exc).__name__}: {exc}"
+        if line_no is None:
+            line_no = self.current_script_line
+        if source is None:
+            source = self.current_script_source
+        message = f"{header}\n         at line {line_no} in {source}" if line_no is not None and source else header
         ColorPrinter.error(message)
 
     # ------------------------------------------------------------------

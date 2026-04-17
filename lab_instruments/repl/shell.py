@@ -48,6 +48,19 @@ def get_version():
 
 _REPL_VERSION = get_version()
 
+# Python-style error classes that the REPL surfaces through ctx.report_error
+# rather than letting them crash the interactive loop.
+_EXPR_ERRORS = (
+    TypeError,
+    NameError,
+    ZeroDivisionError,
+    ValueError,
+    IndexError,
+    KeyError,
+    ArithmeticError,
+    SyntaxError,
+)
+
 
 def _split_on_semicolons(line):
     """Split *line* on semicolons that are not inside single or double quotes."""
@@ -68,6 +81,28 @@ def _split_on_semicolons(line):
             current.append(ch)
     chunks.append("".join(current))
     return chunks
+
+
+def _strip_inline_comment(line: str) -> str:
+    """Strip a trailing ``#`` comment, ignoring ``#`` inside quotes.
+
+    Preserves the whitespace-before-# intact except at the very end so that
+    ``print "hi" # trailing note`` becomes ``print "hi"``.
+    """
+    in_quote = None
+    out = []
+    for ch in line:
+        if ch in ('"', "'"):
+            if in_quote is None:
+                in_quote = ch
+            elif in_quote == ch:
+                in_quote = None
+            out.append(ch)
+        elif ch == "#" and in_quote is None:
+            break
+        else:
+            out.append(ch)
+    return "".join(out).rstrip()
 
 
 class InstrumentRepl(cmd.Cmd):
@@ -539,45 +574,57 @@ class InstrumentRepl(cmd.Cmd):
                 return
 
         # Increment / decrement: x++  x--
+        # Counter idiom: undefined vars default to 0 so `count++` just works.
+        # If the var exists but isn't numeric, surface TypeError -- no silent
+        # reset to 1.0.
         stripped = line.strip()
         inc_m = re.match(r"^([A-Za-z_][A-Za-z0-9_.]*)\s*\+\+$", stripped)
         if inc_m:
             varname = inc_m.group(1)
-            cur = self.ctx.script_vars.get(varname, "0")
+            cur = self.ctx.script_vars.get(varname, 0)
             try:
-                self.ctx.script_vars[varname] = str(float(cur) + 1)
-            except ValueError:
-                self.ctx.script_vars[varname] = str(float(0) + 1)
-            ColorPrinter.success(f"{varname} = {self.ctx.script_vars[varname]}")
+                new_val = float(cur) + 1
+            except (TypeError, ValueError):
+                self.ctx.report_error(TypeError(f"cannot increment '{varname}': value {cur!r} is not numeric"))
+                return
+            self.ctx.script_vars[varname] = new_val
+            ColorPrinter.success(f"{varname} = {new_val}")
             return
         dec_m = re.match(r"^([A-Za-z_][A-Za-z0-9_.]*)\s*--$", stripped)
         if dec_m:
             varname = dec_m.group(1)
-            cur = self.ctx.script_vars.get(varname, "0")
+            cur = self.ctx.script_vars.get(varname, 0)
             try:
-                self.ctx.script_vars[varname] = str(float(cur) - 1)
-            except ValueError:
-                self.ctx.script_vars[varname] = str(float(0) - 1)
-            ColorPrinter.success(f"{varname} = {self.ctx.script_vars[varname]}")
+                new_val = float(cur) - 1
+            except (TypeError, ValueError):
+                self.ctx.report_error(TypeError(f"cannot decrement '{varname}': value {cur!r} is not numeric"))
+                return
+            self.ctx.script_vars[varname] = new_val
+            ColorPrinter.success(f"{varname} = {new_val}")
             return
 
         # Compound assignment: x += 5  x -= 2  x *= 3  x /= 4  x //= 2  x **= 3  x %= 2
+        # Same counter idiom as ++/-- -- undefined LHS defaults to 0.
         compound_m = re.match(r"^([A-Za-z_][A-Za-z0-9_.]*)\s*(\+|-|\*\*|\*|//|/|%)=\s*(.+)$", stripped)
         if compound_m:
             varname = compound_m.group(1)
             op = compound_m.group(2)
             rhs_raw = compound_m.group(3).strip()
             rhs_val = substitute_vars(rhs_raw, self.ctx.script_vars, self.ctx.measurements)
-            cur = self.ctx.script_vars.get(varname, "0")
-            try:
-                expr = f"{cur} {op} ({rhs_val})"
-                from .syntax import safe_eval
+            from .syntax import safe_eval
 
-                result = safe_eval(expr, {k: float(v) for k, v in self.ctx.script_vars.items() if k != varname})
-                self.ctx.script_vars[varname] = str(result)
-                ColorPrinter.success(f"{varname} = {self.ctx.script_vars[varname]}")
-            except Exception as exc:
-                ColorPrinter.error(f"Compound assignment failed: {exc}")
+            names = self._build_names_dict()
+            # Seed undefined LHS with 0 so counters like `total += i` bootstrap.
+            if varname not in names:
+                names[varname] = 0
+            expr = f"{varname} {op} ({rhs_val})"
+            try:
+                result = safe_eval(expr, names)
+            except _EXPR_ERRORS as exc:
+                self.ctx.report_error(exc)
+                return
+            self.ctx.script_vars[varname] = result
+            ColorPrinter.success(f"{varname} = {result}")
             return
 
         # Python-style assignment: voltage = 5.0  /  label = "mytest"
@@ -605,6 +652,20 @@ class InstrumentRepl(cmd.Cmd):
     # onecmd — semicolons, repeat, for/repeat block collection
     # ------------------------------------------------------------------
     def _onecmd_single(self, line):
+        try:
+            return self._onecmd_single_impl(line)
+        except (KeyboardInterrupt, SystemExit, self._AssertFailure, self._BreakSignal, self._ContinueSignal):
+            raise
+        except _EXPR_ERRORS as exc:
+            self.ctx.report_error(exc)
+            return False
+
+    def _onecmd_single_impl(self, line):
+        # Strip trailing "# comment" before variable substitution so inline
+        # notes in student scripts don't get interpreted as args.
+        line = _strip_inline_comment(line)
+        if not line.strip():
+            return False
         line = substitute_vars(line, self.ctx.script_vars, self.ctx.measurements)
         try:
             tokens = shlex.split(line)
@@ -753,7 +814,7 @@ class InstrumentRepl(cmd.Cmd):
             for item in expanded:
                 cmd_item, _ = item if isinstance(item, tuple) else (item, item)
                 line = cmd_item.strip()
-                if not line or line.startswith("#"):
+                if not line or line.startswith("#") or line in ("__NOP__", "__BREAKPOINT__"):
                     continue
                 if self.onecmd(line):
                     return
@@ -775,20 +836,34 @@ class InstrumentRepl(cmd.Cmd):
     _COND_CHECK_RE = re.compile(r"(?:>=|<=|!=|==|>|<|&&|\|\||(?<![a-zA-Z0-9_])(?:and|or|not)(?![a-zA-Z0-9_]))")
 
     def _build_names_dict(self) -> dict:
-        """Build a names dict from script_vars for safe_eval (float where possible)."""
+        """Build a names dict from script_vars for safe_eval.
+
+        Values are passed through raw (no silent float coercion). If a
+        variable is a numeric string and the expression needs it as a
+        number, safe_eval will raise TypeError -- that's the intended
+        pythonic surface.
+        """
         names: dict = {}
         for k, v in self.ctx.script_vars.items():
-            with contextlib.suppress(TypeError, ValueError):
-                names[k] = float(v)
-                continue
-            names[k] = v
+            if isinstance(v, str):
+                # Script vars set via `set foo 5.0` arrive as strings; coerce
+                # numeric-looking ones so expression use is ergonomic, but
+                # leave non-numeric strings alone so TypeError can surface.
+                try:
+                    names[k] = (
+                        float(v) if "." in v or "e" in v.lower() or "nan" in v.lower() or "inf" in v.lower() else int(v)
+                    )
+                except (TypeError, ValueError):
+                    names[k] = v
+            else:
+                names[k] = v
         return names
 
-    def _eval_condition(self, condition_str: str) -> bool:
+    def _eval_condition(self, condition_str: str, *, strict: bool = True) -> bool:
         """Evaluate a condition string using safe_eval with script variables."""
         cond = substitute_vars(condition_str, self.ctx.script_vars, self.ctx.measurements)
         names = self._build_names_dict()
-        return bool(safe_eval(cond, names))
+        return bool(safe_eval(cond, names, strict=strict))
 
     def _collect_block_from_lines(self, lines: list[str], start: int) -> tuple[list[str], int]:
         """Collect lines from *start* until a matching 'end', tracking nesting depth.
@@ -899,8 +974,8 @@ class InstrumentRepl(cmd.Cmd):
                 return
             try:
                 result = self._eval_condition(condition)
-            except Exception as exc:
-                ColorPrinter.error(f"while condition error: {exc}")
+            except _EXPR_ERRORS as exc:
+                self.ctx.report_error(exc)
                 return
             if not result:
                 break
@@ -975,8 +1050,8 @@ class InstrumentRepl(cmd.Cmd):
                 return
             try:
                 result = self._eval_condition(condition)
-            except Exception as exc:
-                ColorPrinter.error(f"if/elif condition error: {exc}")
+            except _EXPR_ERRORS as exc:
+                self.ctx.report_error(exc)
                 return
             if result:
                 self._execute_block_lines(body)
@@ -1011,10 +1086,10 @@ class InstrumentRepl(cmd.Cmd):
 
         try:
             result = self._eval_condition(condition)
-        except Exception as exc:
-            ColorPrinter.error(f"assert evaluation error: {exc}")
+        except _EXPR_ERRORS as exc:
+            self.ctx.report_error(exc)
             label = message or condition
-            raise self._AssertFailure(f"assert failed: {label} ({exc})") from exc
+            raise self._AssertFailure(f"assert failed: {label} ({type(exc).__name__}: {exc})") from exc
 
         label = message or condition
         if result:
@@ -1041,12 +1116,14 @@ class InstrumentRepl(cmd.Cmd):
             return False
 
         try:
-            result = self._eval_condition(condition)
-        except Exception as exc:
-            ColorPrinter.error(f"check evaluation error: {exc}")
-            self.ctx.command_had_error = True
+            # check is intentionally lenient for identifier-vs-identifier
+            # comparisons like `check status == passed` -- unknown names
+            # compare as their literal identifier string.
+            result = self._eval_condition(condition, strict=False)
+        except _EXPR_ERRORS as exc:
+            self.ctx.report_error(exc)
             label = message or condition
-            self.ctx.test_results.append({"test": label, "passed": False, "detail": str(exc)})
+            self.ctx.test_results.append({"test": label, "passed": False, "detail": f"{type(exc).__name__}: {exc}"})
             return False
 
         label = message or condition

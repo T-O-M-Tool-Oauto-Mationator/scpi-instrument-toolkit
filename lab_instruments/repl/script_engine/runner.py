@@ -21,10 +21,17 @@ class _AssertFailure(Exception):
         self.message = message
 
 
-def run_expanded(expanded: list[tuple[str, str]], shell: Any, ctx: Any, debug: bool = False) -> bool:
+def run_expanded(
+    expanded: list[tuple[str, str]],
+    shell: Any,
+    ctx: Any,
+    debug: bool = False,
+    source: str | None = None,
+) -> bool:
     """Execute a pre-expanded command list, optionally with an interactive debugger.
 
-    Returns True if the script requests REPL exit.
+    ``source`` is the path or label shown in error messages (defaults to
+    ``"<interactive>"``). Returns True if the script requests REPL exit.
     """
     lines = []
     source_lines = []
@@ -48,6 +55,7 @@ def run_expanded(expanded: list[tuple[str, str]], shell: Any, ctx: Any, debug: b
     ctx.in_script = True
     ctx.in_debugger = debug
     ctx.interrupt_requested = False
+    ctx.current_script_source = source or "<interactive>"
 
     try:
         while idx < len(lines):
@@ -75,6 +83,7 @@ def run_expanded(expanded: list[tuple[str, str]], shell: Any, ctx: Any, debug: b
                             idx += 1
                             break
                         ctx.command_had_error = False
+                        ctx.current_script_line = idx + 1
                         try:
                             if shell.onecmd(line):
                                 return True
@@ -99,6 +108,7 @@ def run_expanded(expanded: list[tuple[str, str]], shell: Any, ctx: Any, debug: b
                         debug_active = False
                         ctx.in_debugger = False
                         ctx.command_had_error = False
+                        ctx.current_script_line = idx + 1
                         try:
                             if shell.onecmd(line):
                                 return True
@@ -190,6 +200,7 @@ def run_expanded(expanded: list[tuple[str, str]], shell: Any, ctx: Any, debug: b
                     idx += 1
                     continue
                 ctx.command_had_error = False
+                ctx.current_script_line = idx + 1
                 try:
                     if shell.onecmd(line):
                         return True
@@ -213,6 +224,8 @@ def run_expanded(expanded: list[tuple[str, str]], shell: Any, ctx: Any, debug: b
         ctx.in_script = False
         ctx.in_debugger = False
         ctx.interrupt_requested = False
+        ctx.current_script_source = None
+        ctx.current_script_line = None
 
     return False
 
