@@ -137,6 +137,8 @@ Conditional branching:
 
 Assert stops the script immediately if the condition is false:
 
+<!-- doc-test: skip reason="reference example -- voltage not set in this block" -->
+
     assert voltage > 0 "voltage must be positive"
     assert voltage < 6.0 "voltage below safety limit"
 
@@ -145,6 +147,8 @@ Use assert for safety-critical checks that must pass before continuing.
 ## Check (Soft Test)
 
 Check records a PASS or FAIL result but does NOT stop the script:
+
+<!-- doc-test: skip reason="reference example -- voltage not set in this block" -->
 
     check voltage > 4.9 "above lower bound"
     check voltage < 5.1 "below upper bound"
@@ -156,6 +160,8 @@ View results with:
 Check is useful for validation testing where you want to run all tests and report results at the end.
 
 ## Sleep and Pause
+
+<!-- doc-test: skip reason="pause prompts operator for interactive Enter" -->
 
     sleep 0.5              # wait 500ms (for instrument settling)
     sleep 2                # wait 2 seconds
@@ -172,6 +178,8 @@ Repeat a block a fixed number of times:
     end
 
 ## Calling Sub-Scripts
+
+<!-- doc-test: skip reason="requires a saved sub-script named other_script on disk" -->
 
     call other_script
 
@@ -196,6 +204,8 @@ Debugger commands:
 ### Breakpoints
 
 Add a breakpoint in your script:
+
+<!-- doc-test: skip reason="breakpoint only fires under `script debug`, not at the onecmd prompt" -->
 
     psu1 set 1 5.0
     breakpoint                # debugger stops here

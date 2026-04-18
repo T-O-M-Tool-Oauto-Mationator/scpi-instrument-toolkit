@@ -92,6 +92,8 @@ This is the simplest example. Here is what each line does:
 
 After running, you can compute the error between PSU setpoint and DMM reading:
 
+<!-- doc-test: skip reason="depends on the vtest label recorded by the preceding script" -->
+
     calc error = {vtest} - 5.0 unit=V
     calc error_pct = ({vtest} - 5.0) / 5.0 * 100 unit=%
 

@@ -70,6 +70,8 @@ Fix: `ruff format lab_instruments/ tests/`
 
 **AssertionError with actual vs expected:**
 
+<!-- doc-test: skip reason="pytest output sample, not runnable code" -->
+
     assert repl.ctx.script_vars["x"] == "5"
     AssertionError: assert 5 == "5"
 

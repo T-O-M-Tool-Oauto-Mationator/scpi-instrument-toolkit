@@ -59,6 +59,8 @@ Each entry in "lines" is one REPL command:
 
 Every EXAMPLES entry should have a matching section in `docs/examples.md`:
 
+<!-- doc-test: skip reason="markdown-inside-markdown template with nested fences and placeholder text" -->
+
     ## my_new_test
 
     **Description here.**

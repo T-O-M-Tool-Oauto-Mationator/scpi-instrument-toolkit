@@ -62,6 +62,8 @@ Mocks must track state, not return constants:
 
 **Wrong (constant mock):**
 
+<!-- doc-test: skip reason="pytest/MagicMock snippet -- illustrates the anti-pattern we forbid" -->
+
     mock_psu = MagicMock()
     mock_psu.measure_voltage.return_value = 5.0    # always returns 5.0!
 
@@ -110,6 +112,8 @@ Each test should verify one specific behavior:
 
 Always skip sleep in tests:
 
+<!-- doc-test: skip reason="pseudocode with placeholder module `my_driver`, not a concrete import target" -->
+
     def test_something(self, monkeypatch):
         import lab_instruments.src.my_driver as mod
         monkeypatch.setattr(mod.time, "sleep", lambda _: None)
@@ -155,6 +159,8 @@ The `--cov-report=term-missing` flag shows exactly which lines are not covered.
 ## The @driver-test-writer Subagent
 
 Use this Claude Code subagent to auto-generate tests for new driver methods:
+
+<!-- doc-test: skip reason="Claude Code subagent @-handle, not Python syntax" -->
 
     @driver-test-writer
 

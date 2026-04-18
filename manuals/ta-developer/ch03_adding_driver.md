@@ -158,6 +158,8 @@ Key rules for mocks:
 
 Add the mock to `get_mock_devices()`:
 
+<!-- doc-test: skip reason="pseudocode sketch with `...` placeholder, not a complete Python snippet" -->
+
     def get_mock_devices(verbose=True):
         devices = {
             ...
@@ -193,6 +195,8 @@ If your instrument fits an existing type (PSU, DMM, scope, AWG), the existing co
             ...
 
 Register in shell.py:
+
+<!-- doc-test: skip reason="pseudocode -- method body is a comment placeholder" -->
 
     # In __init__:
     self._mytype_cmd = MyTypeCommand(self.ctx)

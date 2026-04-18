@@ -24,11 +24,15 @@ Always annotate code blocks with a language identifier:
 
 **Wrong:**
 
+<!-- doc-test: skip reason="nested fence markers -- this block shows markdown syntax about markdown" -->
+
     ```
     psu set 1 5.0
     ```
 
 **Right:**
+
+<!-- doc-test: skip reason="nested fence markers -- this block shows markdown syntax about markdown" -->
 
     ```text
     psu set 1 5.0
@@ -99,6 +103,8 @@ Run this after changing any REPL output format or adding new screenshot scenario
 ## The @docs-sync Subagent
 
 Use this Claude Code subagent after any change to docs:
+
+<!-- doc-test: skip reason="Claude Code subagent @-handle, not Python syntax" -->
 
     @docs-sync
 

@@ -131,6 +131,8 @@ Every driver in the toolkit must follow these 8 rules. They exist because real b
 
 Run the `@scpi-contract-reviewer` subagent before any PR that touches driver code:
 
+<!-- doc-test: skip reason="Claude Code subagent @-handle, not Python syntax" -->
+
     @scpi-contract-reviewer
 
 This read-only reviewer checks all 8 rules and reports violations without modifying files.

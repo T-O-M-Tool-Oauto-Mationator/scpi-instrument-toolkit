@@ -93,6 +93,8 @@ In the `do_help` method or the help text dictionary, add your new command with a
 
 Some commands only work on certain models. The capabilities system (`lab_instruments/repl/capabilities.py`) defines feature flags:
 
+<!-- doc-test: skip reason="config-dict excerpt, not a standalone Python snippet" -->
+
     DRIVER_CAPABILITIES = {
         "Rigol_DHO804": {"counter", "dvm", "cursors", "recording", "mask_test", "awg"},
         "Keysight_DSOX1204G": {"counter", "dvm", "cursors", "mask_test", "awg", "screenshot"},
@@ -100,6 +102,8 @@ Some commands only work on certain models. The capabilities system (`lab_instrum
     }
 
 In command handlers, check capabilities before executing:
+
+<!-- doc-test: skip reason="pseudocode fragment showing capabilities-check pattern" -->
 
     caps = get_capabilities(dev)
     if "counter" not in caps:

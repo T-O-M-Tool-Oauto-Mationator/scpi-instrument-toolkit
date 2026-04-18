@@ -50,6 +50,8 @@ For a sweep, use a for loop:
 
 Use calc to compute quantities from your measurements:
 
+<!-- doc-test: skip reason="depends on v_dmm and i_set recorded by preceding measurement steps" -->
+
     calc power = v_dmm * i_set unit=W
     calc error = v_dmm - 5.0 unit=V
     calc error_pct = (v_dmm - 5.0) / 5.0 * 100 unit=%
@@ -103,6 +105,8 @@ This generates `voltage_accuracy.png` -- a publication-ready figure for your rep
 ## Step 7: Include in Your Report
 
 Insert the PNG figure into your DOCX lab report. Add a caption referencing the test conditions:
+
+<!-- doc-test: skip reason="prose caption example, not REPL input" -->
 
     "Figure 1: PSU voltage accuracy measured with HP 34401A DMM.
      Set voltage vs. measured voltage across 1.0-5.0 V range."

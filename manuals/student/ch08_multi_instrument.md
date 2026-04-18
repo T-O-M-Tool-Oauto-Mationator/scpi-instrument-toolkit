@@ -15,6 +15,8 @@ When you have multiple instruments of the same type, they are numbered:
 
 Address any instrument directly by prefixing its name:
 
+<!-- doc-test: skip reason="reference example -- requires a multi-PSU / multi-DMM lab setup (psu2, dmm2)" -->
+
     psu1 set 1 5.0
     psu2 set 1 12.0
     dmm1 config vdc
@@ -139,6 +141,8 @@ Measure both voltage and current to compute power dissipation.
 
 Set up positive and negative rails for an op-amp circuit.
 
+<!-- doc-test: skip reason="requires dual-PSU lab setup; psu1 track + psu2 not present in single-PSU mock" -->
+
     # Positive rail
     psu1 chan 1 on
     psu1 set 1 12.0
@@ -161,6 +165,8 @@ Set up positive and negative rails for an op-amp circuit.
 ## Pattern 7: Full V&V Test Sequence
 
 A complete validation test that uses multiple instruments:
+
+<!-- doc-test: skip reason="requires 2x DMM lab setup and a real DUT at 3.3 V (check fails against unconfigured mock)" -->
 
     set -e
     log clear
@@ -209,6 +215,8 @@ Always shut down instruments at the end of a test:
     all off          # disables all outputs on all instruments
 
 Or shut down individually:
+
+<!-- doc-test: skip reason="references psu2 which isn't in the single-PSU mock" -->
 
     psu1 chan 1 off
     awg1 off

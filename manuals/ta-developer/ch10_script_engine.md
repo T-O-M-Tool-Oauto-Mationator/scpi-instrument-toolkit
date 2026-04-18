@@ -14,6 +14,8 @@ File: `lab_instruments/repl/script_engine/expander.py`
 
 ### Main entry point
 
+<!-- doc-test: skip reason="function signature without body -- illustrative, not runnable" -->
+
     def expand_script_lines(
         lines: list[str],
         variables: dict[str, str],
@@ -66,11 +68,15 @@ Expands to 3 copies of `dmm read`, each annotated with the iteration number.
 
 ### Call directive
 
+<!-- doc-test: skip reason="requires a saved sub-script named other_script on disk" -->
+
     call other_script
 
 Loads `other_script` from the scripts library and recursively expands it. Variables are shared between caller and callee (same dict). Depth is incremented to prevent infinite recursion.
 
 ### Import/Export
+
+<!-- doc-test: skip reason="REPL script-scope directives only valid inside a script, not at onecmd" -->
 
     import var_name           # make a variable available from parent scope
     export var_name           # pass a variable back to parent scope
@@ -85,6 +91,8 @@ The runner executes the expanded command list. It handles:
 
 ### While loops (runtime)
 
+<!-- doc-test: skip reason="reference example -- i isn't initialized in this block" -->
+
     while i < 5
       i++
     end
@@ -96,6 +104,8 @@ While loops cannot be expanded at compile time because the condition depends on 
 3. Repeats until the condition is false or `break` is encountered
 
 ### If/elif/else (runtime)
+
+<!-- doc-test: skip reason="reference example -- voltage not set in this block" -->
 
     if voltage > 5.1
       verdict = "OVER"
@@ -109,11 +119,15 @@ The runner evaluates each condition in order and executes the first matching bra
 
 ### Assert (runtime)
 
+<!-- doc-test: skip reason="reference example -- voltage not set in this block" -->
+
     assert voltage > 0 "voltage must be positive"
 
 Evaluates the condition. If false, stops the script with an error message.
 
 ### Break/Continue
+
+<!-- doc-test: skip reason="break/continue only valid inside a while/for body" -->
 
     break        # exit the innermost while loop
     continue     # skip to the next iteration
@@ -126,11 +140,15 @@ Two functions handle variable substitution:
 
 File: `lab_instruments/repl/syntax.py`
 
+<!-- doc-test: skip reason="function signature only, not a complete Python snippet" -->
+
     def substitute_expand(text: str, variables: dict[str, Any]) -> str:
 
 Used during script expansion. Only replaces `{varname}` from the expansion-time variable dict.
 
 ### substitute_vars (runtime)
+
+<!-- doc-test: skip reason="function signature only, not a complete Python snippet" -->
 
     def substitute_vars(text: str, script_vars: dict[str, Any],
                         measurements: MeasurementStore | None = None) -> str:
@@ -143,6 +161,8 @@ Used during command execution. Replaces `{varname}` from:
 ## safe_eval
 
 File: `lab_instruments/repl/syntax.py`
+
+<!-- doc-test: skip reason="function signature only, not a complete Python snippet" -->
 
     def safe_eval(expr: str, names: dict[str, Any]) -> Any:
 
@@ -163,6 +183,8 @@ No exec() or eval() -- everything is walked via AST nodes.
 To add a new directive (e.g., `timeout 5`):
 
 1. Add handling in `expander.py` in the main loop:
+
+<!-- doc-test: skip reason="code fragment inside a markdown numbered-list step -- not standalone" -->
 
        if head == "timeout" and len(tokens) >= 2:
            timeout_val = float(tokens[1])

@@ -24,6 +24,8 @@ Use `{varname}` to insert a variable's value into a command or print statement:
 
 You can do math directly in assignments:
 
+<!-- doc-test: skip reason="reference example -- voltage/current aren't set in this block" -->
+
     power = voltage * current
     doubled = voltage * 2
     half = voltage / 2

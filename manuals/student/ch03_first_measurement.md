@@ -18,6 +18,8 @@ The REPL starts, scans for instruments, and shows the prompt:
 
 This prints all discovered instruments with their names and models:
 
+<!-- doc-test: skip reason="sample `list` output, not runnable REPL input" -->
+
     Name     Type               Model
     psu1     Power Supply       HP E3631A
     dmm1     Multimeter         HP 34401A
