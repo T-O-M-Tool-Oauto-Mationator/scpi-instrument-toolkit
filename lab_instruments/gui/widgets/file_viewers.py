@@ -934,12 +934,17 @@ def _find_soffice() -> str | None:
         p = shutil.which(name)
         if p:
             return p
+    # TAMU managed-machine path: setup-tamu.ps1 uses `msiexec /a` to extract the
+    # MSI under %LOCALAPPDATA%\Programs\LibreOffice, which produces a nested
+    # LibreOffice\program\soffice.exe tree. Check both the nested and flat forms.
     for fixed in (
         "/Applications/LibreOffice.app/Contents/MacOS/soffice",
         "/usr/bin/soffice",
         "/usr/local/bin/soffice",
         r"C:\Program Files\LibreOffice\program\soffice.exe",
         r"C:\Program Files (x86)\LibreOffice\program\soffice.exe",
+        os.path.expandvars(r"%LOCALAPPDATA%\Programs\LibreOffice\LibreOffice\program\soffice.exe"),
+        os.path.expandvars(r"%LOCALAPPDATA%\Programs\LibreOffice\program\soffice.exe"),
     ):
         if os.path.isfile(fixed):
             return fixed

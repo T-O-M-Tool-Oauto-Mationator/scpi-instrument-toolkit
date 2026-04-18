@@ -32,6 +32,12 @@ theme:
     - content.code.copy
     - toc.follow
 
+extra_css:
+  - stylesheets/accessibility.css
+
+extra_javascript:
+  - js/accessibility.js
+
 plugins:
   - search
   - gen-files:
@@ -98,6 +104,7 @@ nav:
   - Reference:
     - Instruments & Capabilities: generated/instruments.md
     - REPL Command Reference: generated/repl-ref.md
+    - Expression Functions: generated/evaluator-ref.md
   - LabVIEW Bridge: labview.md
   - Architecture: architecture.md
   - Troubleshooting: troubleshooting.md

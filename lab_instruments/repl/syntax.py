@@ -16,6 +16,26 @@ _SUBST_RE = re.compile(r"\{([A-Za-z_][A-Za-z0-9_.]*)\}")
 _RESERVED = frozenset({"last"})
 
 
+def strip_inline_comment(text: str) -> str:
+    """Remove a trailing ``# comment`` from *text*, respecting quoted strings.
+
+    Examples::
+
+        strip_inline_comment('x += 1  # bump')      -> 'x += 1'
+        strip_inline_comment('name = "a # b"')       -> 'name = "a # b"'
+        strip_inline_comment('count++')               -> 'count++'
+    """
+    in_sq = in_dq = False
+    for i, ch in enumerate(text):
+        if ch == '"' and not in_sq:
+            in_dq = not in_dq
+        elif ch == "'" and not in_dq:
+            in_sq = not in_sq
+        elif ch == "#" and not in_sq and not in_dq:
+            return text[:i].rstrip()
+    return text
+
+
 def validate_name(name: str) -> str | None:
     """Return an error message if *name* is not a valid variable/label identifier, else None."""
     if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name):
@@ -27,7 +47,7 @@ def validate_name(name: str) -> str | None:
 
 def substitute_vars(
     text: str,
-    script_vars: dict[str, str],
+    script_vars: dict[str, Any],
     measurements: MeasurementStore | None = None,
 ) -> str:
     """Replace {name} references in *text*.
@@ -58,7 +78,7 @@ def substitute_vars(
     return _SUBST_RE.sub(_replace, text)
 
 
-def substitute_expand(text: str, variables: dict[str, str]) -> str:
+def substitute_expand(text: str, variables: dict[str, Any]) -> str:
     """Replace {name} references from a variables dict during script expansion."""
 
     def _replace(match: re.Match) -> str:
@@ -70,7 +90,7 @@ def substitute_expand(text: str, variables: dict[str, str]) -> str:
     return _SUBST_RE.sub(_replace, text)
 
 
-def safe_eval(expr: str, names: dict[str, Any]) -> Any:
+def safe_eval(expr: str, names: dict[str, Any], *, strict: bool = True) -> Any:
     """Evaluate an expression safely using AST walking (no exec/eval).
 
     Operators: ``+ - * / // ** % ^ | & << >>``
@@ -84,6 +104,21 @@ def safe_eval(expr: str, names: dict[str, Any]) -> Any:
                ``int float str bool hex bin oct ord chr``
                ``sqrt log log2 log10 exp ceil floor hypot``
                ``sin cos tan asin acos atan atan2 degrees radians``
+
+    Errors (Python-style):
+      * ``NameError`` -- unknown identifier (strict mode).
+      * ``ZeroDivisionError`` -- ``/ // %`` by zero.
+      * ``TypeError`` -- incompatible operand types or unsupported literal
+        (e.g. attempting arithmetic on a string).
+      * ``IndexError`` / ``KeyError`` -- bad subscript.
+      * ``ValueError`` -- disallowed AST construct or function rejected
+        during expression validation (e.g. ``open(...)``, attribute access).
+      * ``SyntaxError`` -- raised by the underlying ``ast.parse`` when the
+        expression is not a valid Python expression at all.
+
+    When ``strict=False`` (legacy), unknown identifiers fall back to their
+    bare name as a string so that expressions like ``status == passed``
+    work without the labels being declared. Default is ``strict=True``.
     """
     import math
 
@@ -151,13 +186,14 @@ def safe_eval(expr: str, names: dict[str, Any]) -> Any:
         if isinstance(node, ast.Constant):
             if isinstance(node.value, (int, float, str, bool)):
                 return node.value
-            raise ValueError(f"Constant type not allowed: {type(node.value).__name__}")
+            raise TypeError(f"constant type not allowed: {type(node.value).__name__}")
         if isinstance(node, ast.Name):
             if node.id in names:
                 return names[node.id]
             if node.id in allowed_funcs:
                 return allowed_funcs[node.id]
-            # Treat unknown names as string literals for comparisons like: status == passed
+            if strict:
+                raise NameError(f"name '{node.id}' is not defined")
             return node.id
         if isinstance(node, ast.BinOp):
             left = _eval(node.left)
@@ -178,11 +214,8 @@ def safe_eval(expr: str, names: dict[str, Any]) -> Any:
             }
             op_func = ops.get(type(node.op))
             if op_func is None:
-                raise ValueError("Operator not allowed.")
-            try:
-                return op_func(left, right)
-            except ZeroDivisionError:
-                return float("nan")
+                raise TypeError(f"operator not allowed: {type(node.op).__name__}")
+            return op_func(left, right)
         if isinstance(node, ast.UnaryOp):
             operand = _eval(node.operand)
             if isinstance(node.op, ast.UAdd):

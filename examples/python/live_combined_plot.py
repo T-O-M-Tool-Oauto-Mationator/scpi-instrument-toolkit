@@ -6,6 +6,18 @@ The key: pass multiple glob patterns to ONE liveplot command.
 Works with --mock.
 """
 import time
+from typing import TYPE_CHECKING
+
+# Type hints for names injected by the SCPI REPL's `python` command at exec()
+# time. The `if TYPE_CHECKING:` block is never executed at runtime -- it only
+# teaches Pylance / pyright what these names are. See do_python() in
+# lab_instruments/repl/commands/scripting.py.
+if TYPE_CHECKING:
+    from lab_instruments.repl.shell import InstrumentRepl
+    from lab_instruments.src.terminal import ColorPrinter
+
+    repl: InstrumentRepl
+    devices: dict
 
 V_START = 0.5
 V_END = 12.0

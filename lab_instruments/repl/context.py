@@ -16,8 +16,8 @@ class ReplContext:
         self.registry = DeviceRegistry()
         self.measurements = MeasurementStore()
 
-        # Script variables
-        self.script_vars: dict[str, str] = {}
+        # Script variables (values may be str, int, float, bool, or list)
+        self.script_vars: dict[str, Any] = {}
 
         # Error handling
         self.command_had_error: bool = False
@@ -25,6 +25,10 @@ class ReplContext:
         self.in_script: bool = False
         self.in_debugger: bool = False
         self.interrupt_requested: bool = False
+
+        # Source location for error reporting
+        self.current_script_source: str | None = None
+        self.current_script_line: int | None = None
 
         # Safety limits: (device_str, channel_or_none) -> {param_direction: value}
         self.safety_limits: dict[tuple[str, int | None], dict[str, float]] = {}
@@ -64,6 +68,50 @@ class ReplContext:
         from lab_instruments.src.terminal import ColorPrinter
 
         self.command_had_error = True
+        ColorPrinter.error(message)
+
+    def report_error(
+        self,
+        exc: BaseException,
+        line_no: int | None = None,
+        source: str | None = None,
+    ) -> None:
+        """Report a Python-style error and set the error flag.
+
+        The first line passed to :meth:`ColorPrinter.error` is
+        ``{exception_class_name}: {str(exc)}`` (``ColorPrinter`` prepends
+        its own ``[ERROR]`` tag when rendering). When location context is
+        available, a second line follows, indented with nine spaces:
+
+            ``<header>\\n         at line {line_no} in {source}``
+
+        If ``line_no`` or ``source`` is omitted, this helper falls back to
+        :attr:`current_script_line` / :attr:`current_script_source`. If only
+        one of the two is available, a partial suffix (``at line N`` or
+        ``in SOURCE`` alone) is emitted rather than silently dropping both --
+        useful when early failures fire before the runner has populated the
+        source path.
+
+        Always sets ``command_had_error`` so ``set -e`` honors the failure.
+        Does NOT raise; callers decide whether to re-raise the original
+        exception.
+        """
+        from lab_instruments.src.terminal import ColorPrinter
+
+        self.command_had_error = True
+        header = f"{type(exc).__name__}: {exc}"
+        if line_no is None:
+            line_no = self.current_script_line
+        if source is None:
+            source = self.current_script_source
+        if line_no is not None and source:
+            message = f"{header}\n         at line {line_no} in {source}"
+        elif line_no is not None:
+            message = f"{header}\n         at line {line_no}"
+        elif source:
+            message = f"{header}\n         in {source}"
+        else:
+            message = header
         ColorPrinter.error(message)
 
     # ------------------------------------------------------------------
