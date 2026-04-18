@@ -12,6 +12,19 @@ Also called in a loop for PATTERN 2.
 Works with --mock mode.
 """
 
+# Type hints for names injected by the SCPI REPL's `python` command at exec()
+# time. The `if TYPE_CHECKING:` block is never executed at runtime -- it only
+# teaches Pylance / pyright what these names are. See do_python() in
+# lab_instruments/repl/commands/scripting.py.
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from lab_instruments.repl.shell import InstrumentRepl
+    from lab_instruments.src.terminal import ColorPrinter
+
+    repl: InstrumentRepl
+    vars: dict[str, str]
+
 # ── PATTERN 6: read an SCPI variable inside a python file ────────────
 # The SCPI script set  scpi_to_py_file = 42  before calling us.
 # All script_vars are auto-injected as native Python types.

@@ -28,6 +28,21 @@ Demonstrates:
   - Glob pattern demos via repl.onecmd for plot/liveplot
 """
 
+# Type hints for names injected by the SCPI REPL's `python` command at exec()
+# time. The `if TYPE_CHECKING:` block is never executed at runtime -- it only
+# teaches Pylance / pyright what these names are. See do_python() in
+# lab_instruments/repl/commands/scripting.py.
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import os
+    import time
+
+    from lab_instruments.repl.shell import InstrumentRepl
+    from lab_instruments.src.terminal import ColorPrinter
+
+    repl: InstrumentRepl
+
 # ============================================================================
 # SECTION 1: SETUP & DATA RETRIEVAL
 # ============================================================================
