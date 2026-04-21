@@ -80,8 +80,31 @@ def add_table(doc, headers, rows):
     doc.add_paragraph()  # spacing after table
 
 
-def parse_markdown(doc, md_text):
-    """Parse markdown text and add to the DOCX document."""
+def add_image(doc, path, alt=""):
+    """Add an image, centered, at ~4.5 inches wide. Falls back to italic alt text if the file is missing."""
+    if not path.exists():
+        p = doc.add_paragraph()
+        run = p.add_run(f"[missing image: {path.name}]" + (f" - {alt}" if alt else ""))
+        run.italic = True
+        return
+    p = doc.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    run = p.add_run()
+    run.add_picture(str(path), width=Inches(4.5))
+    if alt:
+        cap = doc.add_paragraph()
+        cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        r = cap.add_run(alt)
+        r.italic = True
+        r.font.size = Pt(9)
+
+
+def parse_markdown(doc, md_text, base_dir=None):
+    """Parse markdown text and add to the DOCX document.
+
+    ``base_dir`` is the directory the markdown file lives in; used to resolve
+    relative image paths for ``![alt](path)`` syntax.
+    """
     lines = md_text.split("\n")
     i = 0
     in_code = False
@@ -92,6 +115,17 @@ def parse_markdown(doc, md_text):
 
     while i < len(lines):
         line = lines[i]
+
+        # Image lines: ![alt](path)
+        img_match = re.match(r"^!\[([^\]]*)\]\(([^)]+)\)\s*$", line.strip())
+        if img_match and not in_code:
+            alt, raw_path = img_match.group(1), img_match.group(2)
+            path = Path(raw_path)
+            if not path.is_absolute() and base_dir is not None:
+                path = (base_dir / raw_path).resolve()
+            add_image(doc, path, alt)
+            i += 1
+            continue
 
         # Code blocks
         if line.strip().startswith("```"):
@@ -285,7 +319,7 @@ def build():
             continue
         print(f"  Adding {ch_file}...")
         md = path.read_text()
-        parse_markdown(doc, md)
+        parse_markdown(doc, md, base_dir=path.parent)
         doc.add_page_break()
 
     # ── Save ──

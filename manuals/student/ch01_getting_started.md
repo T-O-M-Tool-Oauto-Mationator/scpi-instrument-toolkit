@@ -112,6 +112,23 @@ If you use a screen reader or prefer plain text output without colors, use the `
 
 You can also set the `NO_COLOR` environment variable to disable colors globally.
 
+## Connecting the STM32 Adapter (VOAL Lab Only)
+
+The VOAL lab uses a small USB-to-I2C adapter to talk to the BQ76920 battery monitor board. TAMU-owned benches use a TI EV2300A; newer benches use an in-house STM32F405 replacement that plugs in the same way. Your REPL sees both as `ev2300` and the commands are identical - you do not need to know which bridge is on your bench.
+
+![Assembled STM32 adapter (Feather + protoboard) with the JST cable that plugs into the BQ EVM](../../docs/img/stm32/IMG_0265_assembled.jpg)
+
+Plug-in order matters. Do this every time:
+
+1. Set the bench PSU to 18 V and turn it on so the BQ EVM has power.
+2. Plug the USB cable from the STM32 adapter (or EV2300) into your computer.
+3. Press the **BOOT** button on the BQ EVM. This clears any stuck state on the I2C bus from the last student.
+4. Launch `scpi-repl` and type `scan`. You should see `ev2300` in the device list.
+
+If `scan` does not find the adapter or reads return garbage, see Chapter 11 (Troubleshooting) - the fix is almost always "repeat the plug-in order above" or unplug-replug the USB cable.
+
+You will never need to solder or disassemble the adapter. If a unit is physically broken, hand it to a TA - Chapter 12 of the TA Developer Guide covers the rebuild.
+
 ## Try It
 
 Open a terminal and run:
