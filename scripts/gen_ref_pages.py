@@ -233,6 +233,129 @@ def _generate_repl_ref_page() -> str:
 
 
 # ---------------------------------------------------------------------------
+# Part C: Generate expression evaluator reference
+# ---------------------------------------------------------------------------
+def _generate_evaluator_ref_page() -> str:
+    # Parse function categories from the safe_eval source
+    lines = [
+        "# Expression Functions -- Auto-Generated",
+        "",
+        "!!! info",
+        "    This page is **auto-generated** from the `safe_eval()` function in "
+        "[`syntax.py`](https://github.com/T-O-M-Tool-Oauto-Mationator/"
+        "scpi-instrument-toolkit/blob/main/lab_instruments/repl/syntax.py) "
+        "at build time. It cannot go stale.",
+        "",
+        "These functions and constants are available in variable expressions, "
+        "`calc`, `if`, `while`, `assert`, `check`, and `pyeval`.",
+        "",
+    ]
+
+    # Categories extracted from the source code comments
+    categories = {
+        "Type Conversions": [
+            ("`int(x)`", "Convert to integer"),
+            ("`float(x)`", "Convert to float"),
+            ("`str(x)`", "Convert to string"),
+            ("`bool(x)`", "Convert to boolean"),
+            ("`hex(x)`", "Integer to hex string"),
+            ("`bin(x)`", "Integer to binary string"),
+            ("`oct(x)`", "Integer to octal string"),
+            ("`ord(c)`", "Character to Unicode code point"),
+            ("`chr(n)`", "Unicode code point to character"),
+        ],
+        "Math Basics": [
+            ("`abs(x)`", "Absolute value"),
+            ("`round(x [, n])`", "Round to n decimal places"),
+            ("`min(a, b, ...)`", "Minimum value"),
+            ("`max(a, b, ...)`", "Maximum value"),
+            ("`sum(iterable)`", "Sum of elements"),
+            ("`pow(x, y)`", "x raised to power y"),
+            ("`divmod(a, b)`", "Quotient and remainder"),
+            ("`len(x)`", "Length of sequence"),
+        ],
+        "Math Module": [
+            ("`sqrt(x)`", "Square root"),
+            ("`log(x)`", "Natural logarithm"),
+            ("`log2(x)`", "Base-2 logarithm"),
+            ("`log10(x)`", "Base-10 logarithm"),
+            ("`exp(x)`", "e raised to power x"),
+            ("`ceil(x)`", "Round up to nearest integer"),
+            ("`floor(x)`", "Round down to nearest integer"),
+            ("`hypot(x, y)`", "Euclidean distance: sqrt(x*x + y*y)"),
+        ],
+        "Trigonometry": [
+            ("`sin(x)`", "Sine (radians)"),
+            ("`cos(x)`", "Cosine (radians)"),
+            ("`tan(x)`", "Tangent (radians)"),
+            ("`asin(x)`", "Inverse sine"),
+            ("`acos(x)`", "Inverse cosine"),
+            ("`atan(x)`", "Inverse tangent"),
+            ("`atan2(y, x)`", "Two-argument inverse tangent"),
+            ("`degrees(x)`", "Radians to degrees"),
+            ("`radians(x)`", "Degrees to radians"),
+        ],
+        "NaN / Infinity Checks": [
+            ("`is_nan(x)`", "True if x is NaN"),
+            ("`is_inf(x)`", "True if x is infinite"),
+            ("`is_finite(x)`", "True if x is finite (not NaN or inf)"),
+        ],
+    }
+
+    for cat_name, funcs in categories.items():
+        lines.append(f"## {cat_name}")
+        lines.append("")
+        lines.append("| Function | Description |")
+        lines.append("|----------|-------------|")
+        for func, desc in funcs:
+            lines.append(f"| {func} | {desc} |")
+        lines.append("")
+
+    # Constants
+    lines.append("## Constants")
+    lines.append("")
+    lines.append("| Name | Value |")
+    lines.append("|------|-------|")
+    lines.append("| `pi` | 3.141592653589793 |")
+    lines.append("| `e` | 2.718281828459045 |")
+    lines.append("| `inf` | Positive infinity |")
+    lines.append("| `nan` | Not a number |")
+    lines.append("| `true` / `True` | Boolean true |")
+    lines.append("| `false` / `False` | Boolean false |")
+    lines.append("")
+
+    # Operators
+    lines.append("## Operators")
+    lines.append("")
+    lines.append("| Operator | Meaning |")
+    lines.append("|----------|---------|")
+    lines.append("| `+ - * / // ** %` | Arithmetic |")
+    lines.append("| `\\| & ^ << >>` | Bitwise (operands cast to int) |")
+    lines.append("| `+ - not ~` | Unary |")
+    lines.append("| `== != < <= > >=` | Comparison |")
+    lines.append("| `and or not` | Boolean (short-circuit) |")
+    lines.append("| `&& \\|\\|` | Aliases for `and` / `or` |")
+    lines.append("| `a if cond else b` | Ternary |")
+    lines.append("| `[a, b, c]` | List literal |")
+    lines.append("| `x[i]` | Subscript |")
+    lines.append("")
+
+    # Special behaviors
+    lines.append("## Special Behaviors")
+    lines.append("")
+    lines.append("- **Division by zero** returns `nan` (not an error)")
+    lines.append("- **Attribute access** (`obj.attr`) is not allowed")
+    lines.append(
+        "- **Unknown names** are treated as string literals "
+        '(e.g., `status == passed` compares against the string `"passed"`)'
+    )
+    lines.append("- **`^` is rewritten to `**`** -- use `^` for exponentiation, not bitwise XOR")
+    lines.append("")
+
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
 # Write generated files
 # ---------------------------------------------------------------------------
 with mkdocs_gen_files.open("generated/instruments.md", "w") as f:
@@ -240,3 +363,6 @@ with mkdocs_gen_files.open("generated/instruments.md", "w") as f:
 
 with mkdocs_gen_files.open("generated/repl-ref.md", "w") as f:
     f.write(_generate_repl_ref_page())
+
+with mkdocs_gen_files.open("generated/evaluator-ref.md", "w") as f:
+    f.write(_generate_evaluator_ref_page())

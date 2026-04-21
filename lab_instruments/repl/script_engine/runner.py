@@ -21,10 +21,17 @@ class _AssertFailure(Exception):
         self.message = message
 
 
-def run_expanded(expanded: list[tuple[str, str]], shell: Any, ctx: Any, debug: bool = False) -> bool:
+def run_expanded(
+    expanded: list[tuple[str, str]],
+    shell: Any,
+    ctx: Any,
+    debug: bool = False,
+    source: str | None = None,
+) -> bool:
     """Execute a pre-expanded command list, optionally with an interactive debugger.
 
-    Returns True if the script requests REPL exit.
+    ``source`` is the path or label shown in error messages (defaults to
+    ``"<interactive>"``). Returns True if the script requests REPL exit.
     """
     lines = []
     source_lines = []
@@ -48,6 +55,7 @@ def run_expanded(expanded: list[tuple[str, str]], shell: Any, ctx: Any, debug: b
     ctx.in_script = True
     ctx.in_debugger = debug
     ctx.interrupt_requested = False
+    ctx.current_script_source = source or "<interactive>"
 
     try:
         while idx < len(lines):
@@ -75,6 +83,7 @@ def run_expanded(expanded: list[tuple[str, str]], shell: Any, ctx: Any, debug: b
                             idx += 1
                             break
                         ctx.command_had_error = False
+                        ctx.current_script_line = idx + 1
                         try:
                             if shell.onecmd(line):
                                 return True
@@ -84,6 +93,8 @@ def run_expanded(expanded: list[tuple[str, str]], shell: Any, ctx: Any, debug: b
                                 "Command interrupted — staying at line (retry with Enter or skip with goto)"
                             )
                             break
+                        finally:
+                            ctx.current_script_line = None
                         if ctx.exit_on_error and ctx.command_had_error:
                             ColorPrinter.error("Script stopped (set -e)")
                             return True
@@ -99,6 +110,7 @@ def run_expanded(expanded: list[tuple[str, str]], shell: Any, ctx: Any, debug: b
                         debug_active = False
                         ctx.in_debugger = False
                         ctx.command_had_error = False
+                        ctx.current_script_line = idx + 1
                         try:
                             if shell.onecmd(line):
                                 return True
@@ -108,6 +120,8 @@ def run_expanded(expanded: list[tuple[str, str]], shell: Any, ctx: Any, debug: b
                             debug_active = True
                             ctx.in_debugger = True
                             break
+                        finally:
+                            ctx.current_script_line = None
                         if ctx.exit_on_error and ctx.command_had_error:
                             ColorPrinter.error("Script stopped (set -e)")
                             return True
@@ -184,12 +198,20 @@ def run_expanded(expanded: list[tuple[str, str]], shell: Any, ctx: Any, debug: b
                         return True
 
                     elif cmd:
-                        shell.onecmd(cmd)
+                        # Ad-hoc debugger command: clear the script line so any
+                        # error it triggers isn't blamed on the paused script line.
+                        prev_line = ctx.current_script_line
+                        ctx.current_script_line = None
+                        try:
+                            shell.onecmd(cmd)
+                        finally:
+                            ctx.current_script_line = prev_line
             else:
                 if line == "__NOP__":
                     idx += 1
                     continue
                 ctx.command_had_error = False
+                ctx.current_script_line = idx + 1
                 try:
                     if shell.onecmd(line):
                         return True
@@ -199,6 +221,8 @@ def run_expanded(expanded: list[tuple[str, str]], shell: Any, ctx: Any, debug: b
                     debug_active = True
                     ctx.in_debugger = True
                     continue
+                finally:
+                    ctx.current_script_line = None
                 if ctx.exit_on_error and ctx.command_had_error:
                     ColorPrinter.error("Script stopped (set -e)")
                     return True
@@ -213,6 +237,8 @@ def run_expanded(expanded: list[tuple[str, str]], shell: Any, ctx: Any, debug: b
         ctx.in_script = False
         ctx.in_debugger = False
         ctx.interrupt_requested = False
+        ctx.current_script_source = None
+        ctx.current_script_line = None
 
     return False
 

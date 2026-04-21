@@ -4,7 +4,7 @@ This page shows how the toolkit is layered, from hardware at the center out to t
 
 ---
 
-![Architecture diagram](img/architecture.png)
+![System architecture showing 5 layers: Layer 0 hardware interfaces (NI-VISA, HID, NI-DCPower), Layer 1 transport libraries (pyvisa, ctypes, nidcpower), Layer 2 SCPI driver classes, Layer 3 REPL layer with ReplContext and ScriptEngine, and Layer 4 frontends including CLI, Python API, and LabVIEW bridge](img/architecture.png)
 
 ## Layer-by-layer breakdown
 

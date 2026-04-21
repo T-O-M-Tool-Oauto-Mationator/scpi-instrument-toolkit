@@ -16,6 +16,8 @@ class FakeCtx:
         self.interrupt_requested = False
         self.command_had_error = False
         self.exit_on_error = False
+        self.current_script_source: str | None = None
+        self.current_script_line: int | None = None
 
 
 class FakeShell:

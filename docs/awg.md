@@ -8,6 +8,8 @@ Controls arbitrary waveform generators and function generators.
 - Channels are numbered `1`, `2`, or use `all` to affect both simultaneously
 - Multiple AWGs are named `awg1`, `awg2`, etc.
 
+![AWG: Waveform Setup](img/terminal/13_awg.svg)
+
 === "Keysight EDU33212A"
     Dual-channel function/arbitrary waveform generator. Full SCPI support for all waveform types.
 
@@ -23,7 +25,7 @@ Controls arbitrary waveform generators and function generators.
 
 Enable or disable an output channel.
 
-```
+```text
 awg chan <1|2|all> <on|off>
 ```
 
@@ -32,7 +34,7 @@ awg chan <1|2|all> <on|off>
 | `1\|2\|all` | required | `1`, `2`, `all` | Channel to control. `all` affects both channels. |
 | `on\|off` | required | `on`, `off` | Enable or disable the output. |
 
-```
+```text
 awg chan 1 on       # enable channel 1
 awg chan 2 off      # disable channel 2
 awg chan all off    # disable both channels
@@ -44,7 +46,7 @@ awg chan all off    # disable both channels
 
 Configure waveform type and parameters in one command.
 
-```
+```text
 awg wave <1|2|all> <type> [freq=<Hz>] [amp=<Vpp>] [offset=<V>] [duty=<%>] [phase=<deg>]
 ```
 
@@ -91,7 +93,7 @@ awg wave 1 prbs freq=1000000 amp=3.3           # 1 Mbps PRBS for BER testing (ED
 
 Set output frequency without changing other parameters.
 
-```
+```text
 awg freq <1|2|all> <Hz>
 ```
 
@@ -100,7 +102,7 @@ awg freq <1|2|all> <Hz>
 | `1\|2\|all` | required | `1`, `2`, `all` | Channel to configure. |
 | `Hz` | required | float > 0 | Frequency in hertz. |
 
-```
+```text
 awg freq 1 1000      # set channel 1 to 1 kHz
 awg freq all 50000   # set both channels to 50 kHz
 ```
@@ -111,7 +113,7 @@ awg freq all 50000   # set both channels to 50 kHz
 
 Set peak-to-peak amplitude without changing other parameters.
 
-```
+```text
 awg amp <1|2|all> <Vpp>
 ```
 
@@ -120,7 +122,7 @@ awg amp <1|2|all> <Vpp>
 | `1\|2\|all` | required | `1`, `2`, `all` | Channel to configure. |
 | `Vpp` | required | float (V) | Peak-to-peak amplitude in volts. |
 
-```
+```text
 awg amp 1 3.3    # set channel 1 to 3.3 Vpp
 awg amp 2 1.0    # set channel 2 to 1 Vpp
 ```
@@ -131,7 +133,7 @@ awg amp 2 1.0    # set channel 2 to 1 Vpp
 
 Set DC offset without changing other parameters.
 
-```
+```text
 awg offset <1|2|all> <V>
 ```
 
@@ -140,7 +142,7 @@ awg offset <1|2|all> <V>
 | `1\|2\|all` | required | `1`, `2`, `all` | Channel to configure. |
 | `V` | required | float (V) | DC offset in volts. Negative values shift the signal below ground. |
 
-```
+```text
 awg offset 1 1.65    # shift channel 1 waveform up by 1.65 V
 awg offset 2 -0.5    # shift channel 2 down by 0.5 V
 ```
@@ -151,7 +153,7 @@ awg offset 2 -0.5    # shift channel 2 down by 0.5 V
 
 Set square wave duty cycle without changing other parameters.
 
-```
+```text
 awg duty <1|2|all> <%>
 ```
 
@@ -160,7 +162,7 @@ awg duty <1|2|all> <%>
 | `1\|2\|all` | required | `1`, `2`, `all` | Channel to configure. |
 | `%` | required | 0.0–100.0 | Duty cycle as a percentage. |
 
-```
+```text
 awg duty 1 25    # set channel 1 to 25% duty cycle
 awg duty 1 50    # 50% duty cycle (symmetric square wave)
 ```
@@ -171,7 +173,7 @@ awg duty 1 50    # 50% duty cycle (symmetric square wave)
 
 Set phase offset without changing other parameters.
 
-```
+```text
 awg phase <1|2|all> <degrees>
 ```
 
@@ -180,7 +182,7 @@ awg phase <1|2|all> <degrees>
 | `1\|2\|all` | required | `1`, `2`, `all` | Channel to configure. |
 | `degrees` | required | 0.0–360.0 | Phase offset in degrees. |
 
-```
+```text
 awg phase 2 180    # invert channel 2 (180° phase offset)
 awg phase 2 90     # 90° phase offset between channels
 ```
@@ -191,7 +193,7 @@ awg phase 2 90     # 90° phase offset between channels
 
 Enable or disable the sync/trigger output signal.
 
-```
+```text
 awg sync <on|off>
 ```
 
@@ -199,7 +201,7 @@ awg sync <on|off>
 |-----------|----------|--------|-------------|
 | `on\|off` | required | `on`, `off` | Enable or disable the sync output. |
 
-```
+```text
 awg sync on     # enable sync output
 awg sync off    # disable sync output
 ```
@@ -224,7 +226,7 @@ Shorthand for toggling both channels simultaneously. Equivalent to `awg chan all
 
 ## awg state
 
-```
+```text
 awg state <on|off|safe|reset>
 ```
 

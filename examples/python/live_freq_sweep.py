@@ -5,6 +5,18 @@ Sweeps AWG through frequencies while a live plot tracks scope measurements.
 Works with --mock.
 """
 import time
+from typing import TYPE_CHECKING
+
+# Type hints for names injected by the SCPI REPL's `python` command at exec()
+# time. The `if TYPE_CHECKING:` block is never executed at runtime -- it only
+# teaches Pylance / pyright what these names are. See do_python() in
+# lab_instruments/repl/commands/scripting.py.
+if TYPE_CHECKING:
+    from lab_instruments.repl.shell import InstrumentRepl
+    from lab_instruments.src.terminal import ColorPrinter
+
+    repl: InstrumentRepl
+    devices: dict
 
 # --- Configuration ---
 FREQUENCIES = [100, 200, 500, 750, 1000, 2000, 3000, 5000, 7500,

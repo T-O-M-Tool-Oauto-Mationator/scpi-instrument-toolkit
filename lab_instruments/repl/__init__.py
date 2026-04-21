@@ -1,5 +1,6 @@
 """REPL package — modular replacement for the monolithic repl.py."""
 
+import os
 import sys
 
 from lab_instruments.src.terminal import ColorPrinter
@@ -64,14 +65,21 @@ def main():
         print(f"scpi-instrument-toolkit v{_REPL_VERSION}")
         sys.exit(0)
 
+    if "--no-color" in args:
+        from lab_instruments.src.terminal import disable_color
+
+        disable_color()
+        args = [a for a in args if a != "--no-color"]
+
     if "--help" in args or "-h" in args:
         print(
             f"scpi-instrument-toolkit v{_REPL_VERSION}\n"
             "\n"
-            "Usage: scpi-repl [--mock] [--update] [--ignore-update] [--version] [--help] [script]\n"
+            "Usage: scpi-repl [--mock] [--no-color] [--update] [--ignore-update] [--version] [--help] [script]\n"
             "\n"
             "Options:\n"
             "  --mock           Run with simulated instruments (no hardware required)\n"
+            "  --no-color       Disable colored output (also respects NO_COLOR env var)\n"
             "  --update         Check for updates and display the install command\n"
             "  --ignore-update  Skip the update check and run even if a newer version exists\n"
             "  --version        Print version and exit\n"
@@ -83,6 +91,7 @@ def main():
             "Examples:\n"
             "  scpi-repl                  Start the interactive REPL\n"
             "  scpi-repl --mock           Start with mock instruments\n"
+            "  scpi-repl --no-color       Start without colored output\n"
             "  scpi-repl --update         Check for updates\n"
             "  scpi-repl --ignore-update  Run without checking for updates\n"
             "  scpi-repl my_script        Run 'my_script' and exit\n"
@@ -119,7 +128,12 @@ def main():
         if script_name not in repl.scripts:
             ColorPrinter.error(f"Script '{script_name}' not found.")
             sys.exit(1)
-        repl._run_script_lines(repl.scripts[script_name])
+        # Forward the script source so report_error points at the real file
+        # instead of "<interactive>" when the script aborts.
+        source = repl.ctx.script_file(script_name)
+        if not os.path.isfile(source):
+            source = f"<memory:{script_name}>"
+        repl._run_script_lines(repl.scripts[script_name], source=source)
         return
 
     repl.cmdloop()

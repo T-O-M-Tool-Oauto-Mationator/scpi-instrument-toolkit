@@ -2,11 +2,13 @@
 
 ---
 
-## The measurement log — what it is and why you need it
+## The measurement log -- what it is and why you need it
+
+![Calc and Logging](img/terminal/06_calc_log.svg)
 
 Every time you use the assignment syntax (`label = instrument meas ...`), the REPL saves the result to a persistent **measurement log** — a table that accumulates all your readings for the current session.
 
-```
+```text
 ┌─────────────────────────────────────────────────────────┐
 │  output_v = psu meas v unit=V                           │
 │       │               │                                 │
@@ -19,7 +21,7 @@ Every time you use the assignment syntax (`label = instrument meas ...`), the RE
 
 After recording a few measurements, the log looks like:
 
-```
+```text
 Label       Value       Unit   Source
 output_v    4.9987      V      psu.meas
 dmm_v       4.9992      V      dmm.read
@@ -42,7 +44,7 @@ A **label** is the name you give a stored measurement — the row key in the tab
 
 **Why labels matter:** without a name, you can't retrieve the value later. `psu meas v` just prints to the screen and is gone. `output_v = psu meas v` saves it so you can compute `calc error output_v - 5.0` afterwards.
 
-```
+```text
 # meas = print only (nothing saved):
 psu meas v          # prints 4.9987, then forgotten
 
@@ -58,7 +60,7 @@ log print                            # shows the full table
 
 Display all recorded measurements in the terminal.
 
-```
+```text
 log print
 ```
 
@@ -72,7 +74,7 @@ Run this at the end of a test sequence to review all results.
 
 Export the measurement log to a file.
 
-```
+```text
 log save <filename> [csv|txt]
 ```
 
@@ -81,7 +83,7 @@ log save <filename> [csv|txt]
 | `filename` | required | file path | Output file path. |
 | `csv\|txt` | optional | `csv`, `txt` | Format. Defaults to `csv` if the filename ends in `.csv`, otherwise `txt`. |
 
-```
+```text
 log save results.csv              # CSV format (opens in Excel)
 log save results.txt              # formatted text table
 log save ../results/data.csv      # relative path from script dir
@@ -98,13 +100,13 @@ CSV files can be opened directly in Excel, LibreOffice Calc, or imported into Py
 
 Remove all measurements from the log.
 
-```
+```text
 log clear
 ```
 
 Use this before starting a new test sequence to ensure only the new results are saved.
 
-```
+```text
 log clear
 script run my_test
 log print
@@ -117,7 +119,7 @@ log save my_test_results.csv
 
 Compute a derived value and add it to the log. There are two equivalent forms:
 
-```
+```text
 # Preferred — plain assignment with optional unit=
 <label> = <expression> [unit=<str>]
 
@@ -137,7 +139,7 @@ Both forms are functionally identical. The plain assignment form is preferred be
 
 Reference any previously stored value by its bare label name:
 
-```
+```text
 psu_v = psu1 meas v unit=V
 psu_i = psu1 meas i unit=A
 calc power psu_v * psu_i unit=W
@@ -145,14 +147,15 @@ calc power psu_v * psu_i unit=W
 
 Script variables assigned with `=` are also available by name:
 
-```
+<!-- doc-test: skip reason="references psu_v measurement recorded in the previous block" -->
+```text
 offset = 0.05
 calc corrected psu_v - offset unit=V
 ```
 
 Use `last` to reference the most recently stored value:
 
-```
+```text
 dmm1 config vdc
 my_reading = dmm1 meas unit=V
 calc doubled last * 2 unit=V
@@ -186,7 +189,7 @@ calc doubled last * 2 unit=V
 
 The result of `calc` is stored in both the log and script variables, so you can chain calculations:
 
-```
+```text
 v_in = psu1 meas v unit=V
 i_in = psu1 meas i unit=A
 dmm1 config vdc
@@ -201,7 +204,7 @@ calc efficiency power_out / power_in * 100 unit=%
 
 **Compute percentage error:**
 
-```
+```text
 dmm1 config vdc
 measured = dmm1 meas unit=V
 calc error_pct (measured - 5.0) / 5.0 * 100 unit=%
@@ -209,7 +212,7 @@ calc error_pct (measured - 5.0) / 5.0 * 100 unit=%
 
 **Voltage ratio (gain):**
 
-```
+```text
 v_in = scope1 meas 1 PK2PK unit=V
 v_out = scope1 meas 2 PK2PK unit=V
 calc gain v_out / v_in
@@ -218,7 +221,7 @@ calc gain_db 20 * log10(gain) unit=dB
 
 **Resistance from V and I:**
 
-```
+```text
 v_supply = psu1 meas v unit=V
 dmm1 config idc
 i_load = dmm1 meas unit=A
@@ -227,7 +230,7 @@ calc resistance v_supply / i_load unit=Ω
 
 **Crest factor:**
 
-```
+```text
 pk2pk = scope1 meas 1 PK2PK unit=V
 rms = scope1 meas 1 RMS unit=V
 calc crest_factor pk2pk / (2 * rms)
@@ -306,7 +309,7 @@ report save results.pdf   # export PDF
 
 By default, screenshots, waveform CSVs, and `log save` files all land in `~/Documents/scpi-instrument-toolkit/data/`. Use `data dir` to point them anywhere you want for the current session.
 
-```
+```text
 data dir <path>    # set output directory (absolute or relative to cwd)
 data dir           # print the current output directory
 data dir reset     # go back to the default
@@ -322,7 +325,7 @@ data dir reset     # go back to the default
 
 !!! tip "Windows paths"
     Forward slashes work on all platforms. Backslashes and spaces in paths are also supported without quoting:
-    ```
+    ```text
     data dir C:\Users\lab\output
     data dir C:/My Documents/lab
     ```
@@ -331,7 +334,7 @@ The setting applies to every save command in the session — `scope screenshot`,
 
 You can also use it inside a `.scpi` script so the output location is part of the test setup:
 
-```
+```text
 # lab3.scpi
 data dir .     # save everything relative to where I launched the REPL
 
@@ -351,7 +354,7 @@ log save results.csv
 
 ## Typical workflow
 
-```
+```text
 # 1. Clear previous results
 log clear
 

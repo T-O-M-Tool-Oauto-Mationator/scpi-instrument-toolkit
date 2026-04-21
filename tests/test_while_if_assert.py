@@ -175,7 +175,7 @@ class TestIfElifElse:
         repl.onecmd("if x > 5")
         repl.onecmd("result = 1")
         repl.onecmd("end")
-        assert repl.ctx.script_vars["result"] == "1"
+        assert repl.ctx.script_vars["result"] == 1
 
     def test_if_false(self, repl):
         """If condition is false, skip body."""
@@ -184,7 +184,7 @@ class TestIfElifElse:
         repl.onecmd("if x > 5")
         repl.onecmd("result = 1")
         repl.onecmd("end")
-        assert repl.ctx.script_vars["result"] == "0"
+        assert repl.ctx.script_vars["result"] == 0
 
     def test_if_else_true_branch(self, repl):
         """If/else where if branch is taken."""
@@ -194,7 +194,7 @@ class TestIfElifElse:
         repl.onecmd("else")
         repl.onecmd("result = 2")
         repl.onecmd("end")
-        assert repl.ctx.script_vars["result"] == "1"
+        assert repl.ctx.script_vars["result"] == 1
 
     def test_if_else_false_branch(self, repl):
         """If/else where else branch is taken."""
@@ -204,7 +204,7 @@ class TestIfElifElse:
         repl.onecmd("else")
         repl.onecmd("result = 2")
         repl.onecmd("end")
-        assert repl.ctx.script_vars["result"] == "2"
+        assert repl.ctx.script_vars["result"] == 2
 
     def test_if_elif_else_first_branch(self, repl):
         """If/elif/else where first branch matches."""
@@ -254,7 +254,7 @@ class TestIfElifElse:
         repl.onecmd("else")
         repl.onecmd("result = 0")
         repl.onecmd("end")
-        assert repl.ctx.script_vars["result"] == "3"
+        assert repl.ctx.script_vars["result"] == 3
 
     def test_if_with_instrument_values(self, mock_repl):
         """If block with values from instrument reads."""
@@ -265,7 +265,7 @@ class TestIfElifElse:
         mock_repl.onecmd("else")
         mock_repl.onecmd("result = 0")
         mock_repl.onecmd("end")
-        assert mock_repl.ctx.script_vars["result"] == "1"
+        assert mock_repl.ctx.script_vars["result"] == 1
 
     def test_nested_if_inside_while(self, repl):
         """Nested if inside a while loop."""
@@ -293,7 +293,7 @@ class TestIfElifElse:
         repl.onecmd("elif x > 20")
         repl.onecmd("result = 2")
         repl.onecmd("end")
-        assert repl.ctx.script_vars["result"] == "0"
+        assert repl.ctx.script_vars["result"] == 0
 
 
 # ---------------------------------------------------------------------------
@@ -422,7 +422,7 @@ class TestScriptExecution:
             "end",
         ]
         repl._run_script_lines(lines)
-        assert repl.ctx.script_vars["result"] == "1"
+        assert repl.ctx.script_vars["result"] == 1
 
     def test_assert_in_script(self, repl, capsys):
         """Assert executed via script runner (hard stop, no test_results)."""

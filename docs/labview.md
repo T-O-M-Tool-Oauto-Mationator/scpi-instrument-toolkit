@@ -35,7 +35,7 @@ python -c "from lab_instruments.src import labview_bridge; print(labview_bridge.
 
 Copy the full path. Example:
 
-```
+```text
 C:\Users\you\AppData\Local\Programs\Python\Python312\Lib\site-packages\lab_instruments\src\labview_bridge.py
 ```
 
@@ -43,7 +43,7 @@ C:\Users\you\AppData\Local\Programs\Python\Python312\Lib\site-packages\lab_instr
 
 Use the top-level shim at the repository root instead:
 
-```
+```text
 C:\path\to\scpi-instrument-toolkit\labview_bridge.py
 ```
 
@@ -58,7 +58,7 @@ This file re-exports every function from the real bridge and is the recommended 
 
 LabVIEW's Python integration uses a **"railroad track" pattern** with three palette items found under **Connectivity > Python** in the Functions palette:
 
-```
+```text
 ┌──────────────┐     ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
 │ Open Python  │────>│ Python Node  │────>│ Python Node  │────>│ Close Python │
 │   Session    │     │ (open_psu)   │     │ (set_voltage) │     │   Session    │
@@ -180,7 +180,7 @@ Open LabVIEW and create a new blank VI (**File > New VI**). Switch to the **Bloc
 
 Every Python Node has **error in** (bottom-left) and **error out** (bottom-right) terminals. Wire them in series through all your nodes:
 
-```
+```text
 Open Session → Node 1 → Node 2 → ... → Close Session
   error out ──> error in ──> error in ──> error in
 ```
@@ -195,7 +195,7 @@ This ensures that if any node fails (e.g. instrument not found), subsequent node
 
 ### Complete Block Diagram Layout
 
-```
+```text
 ┌─────────┐   ┌───────────┐   ┌──────────────┐   ┌──────────────┐   ┌───────────┐   ┌──────────────┐   ┌─────────┐   ┌─────────┐   ┌─────────┐
 │  Open   │──>│ open_psu  │──>│psu_set_voltage│──>│psu_enable_   │──>│ open_dmm  │──>│dmm_measure_  │──>│ close   │──>│ close   │──>│ Close   │
 │ Python  │   │           │   │              │   │  output      │   │           │   │ dc_voltage   │   │ PSU     │   │ DMM     │   │ Python  │

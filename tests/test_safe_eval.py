@@ -5,6 +5,8 @@ import math
 import os
 import sys
 
+import pytest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from lab_instruments.repl.syntax import safe_eval
@@ -296,42 +298,47 @@ class TestNanInfChecks:
 
 
 # ---------------------------------------------------------------------------
-# Division by zero → nan (no exception)
+# Division by zero -> Python-style ZeroDivisionError
 # ---------------------------------------------------------------------------
 
 
 class TestDivisionByZero:
-    def test_div_zero_returns_nan(self):
-        result = safe_eval("3 / 0", {})
-        assert math.isnan(result)
+    def test_div_zero_raises(self):
+        with pytest.raises(ZeroDivisionError):
+            safe_eval("3 / 0", {})
 
-    def test_floor_div_zero_returns_nan(self):
-        result = safe_eval("3 // 0", {})
-        assert math.isnan(result)
+    def test_floor_div_zero_raises(self):
+        with pytest.raises(ZeroDivisionError):
+            safe_eval("3 // 0", {})
 
-    def test_modulo_zero_returns_nan(self):
-        result = safe_eval("5 % 0", {})
-        assert math.isnan(result)
+    def test_modulo_zero_raises(self):
+        with pytest.raises(ZeroDivisionError):
+            safe_eval("5 % 0", {})
 
 
 # ---------------------------------------------------------------------------
-# String comparison with unknown names treated as string literals
+# String comparison with unknown names: strict (default) raises NameError,
+# legacy `strict=False` keeps the bare-identifier-as-string fallback used by
+# `check status == passed` style assertions.
 # ---------------------------------------------------------------------------
 
 
 class TestStringComparison:
-    def test_status_equals_string_literal(self):
-        # unknown name "passed" is treated as the string "passed"
-        result = safe_eval("status == passed", {"status": "passed"})
+    def test_status_equals_string_literal_nonstrict(self):
+        result = safe_eval("status == passed", {"status": "passed"}, strict=False)
         assert result is True
 
-    def test_status_not_equals(self):
-        result = safe_eval("status == failed", {"status": "passed"})
+    def test_status_not_equals_nonstrict(self):
+        result = safe_eval("status == failed", {"status": "passed"}, strict=False)
         assert result is False
 
-    def test_unknown_name_returns_itself(self):
-        result = safe_eval("myvar", {})
+    def test_unknown_name_returns_itself_nonstrict(self):
+        result = safe_eval("myvar", {}, strict=False)
         assert result == "myvar"
+
+    def test_unknown_name_raises_in_strict_mode(self):
+        with pytest.raises(NameError, match="myvar"):
+            safe_eval("myvar", {})
 
 
 # ---------------------------------------------------------------------------

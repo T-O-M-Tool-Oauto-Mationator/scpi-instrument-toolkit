@@ -369,6 +369,99 @@ if ($claudeDir) {
 }
 
 # ---------------------------------------------------------------------------
+# Step 9: Install LibreOffice (portable, no admin) for headless Office rendering
+# ---------------------------------------------------------------------------
+Write-Step 9 "Installing LibreOffice (portable, no-admin)..."
+
+$loVersion    = "26.2.2"
+$loExtractDir = Join-Path $env:LOCALAPPDATA "Programs\LibreOffice"
+$sofficePath  = $null
+
+# Detect existing install: our extract dir, PATH, system locations
+$existingCandidates = @(
+    (Join-Path $loExtractDir "program\soffice.exe"),
+    (Join-Path $loExtractDir "LibreOffice\program\soffice.exe"),
+    (Join-Path $env:ProgramFiles "LibreOffice\program\soffice.exe")
+)
+foreach ($c in $existingCandidates) {
+    if ($c -and (Test-Path $c)) { $sofficePath = $c; break }
+}
+if (-not $sofficePath) {
+    $cmd = Get-Command soffice -ErrorAction SilentlyContinue
+    if ($cmd) { $sofficePath = $cmd.Source }
+}
+
+if ($sofficePath) {
+    Write-Host "LibreOffice already available at: $sofficePath" -ForegroundColor Yellow
+} else {
+    $msiUrl  = "https://download.documentfoundation.org/libreoffice/stable/$loVersion/win/x86_64/LibreOffice_${loVersion}_Win_x86-64.msi"
+    $msiPath = Join-Path $env:TEMP "LibreOffice_install.msi"
+
+    try {
+        Write-Host "Downloading LibreOffice MSI (~355 MB) -- this will take a few minutes..." -ForegroundColor Yellow
+        Import-Module BitsTransfer -ErrorAction SilentlyContinue
+        if (Get-Command Start-BitsTransfer -ErrorAction SilentlyContinue) {
+            Start-BitsTransfer -Source $msiUrl -Destination $msiPath -DisplayName "LibreOffice MSI"
+        } else {
+            $ProgressPreference = 'SilentlyContinue'
+            Invoke-WebRequest -Uri $msiUrl -OutFile $msiPath -UseBasicParsing
+        }
+
+        Write-Host "Extracting LibreOffice to user profile (msiexec /a, no admin required)..." -ForegroundColor Cyan
+        New-Item -ItemType Directory -Force -Path $loExtractDir | Out-Null
+
+        $proc = Start-Process -FilePath "msiexec.exe" `
+            -ArgumentList "/a", "`"$msiPath`"", "/qn", "TARGETDIR=`"$loExtractDir`"" `
+            -Wait -NoNewWindow -PassThru
+
+        Remove-Item $msiPath -Force -ErrorAction SilentlyContinue
+
+        if ($proc.ExitCode -eq 0) {
+            # msiexec /a produces the flat layout: $loExtractDir\program\soffice.exe
+            $candidates = @(
+                (Join-Path $loExtractDir "program\soffice.exe"),
+                (Join-Path $loExtractDir "LibreOffice\program\soffice.exe")
+            )
+            foreach ($c in $candidates) {
+                if (Test-Path $c) { $sofficePath = $c; break }
+            }
+            if (-not $sofficePath) {
+                $found = Get-ChildItem -Path $loExtractDir -Filter "soffice.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+                if ($found) { $sofficePath = $found.FullName }
+            }
+            if ($sofficePath) {
+                Write-Host "LibreOffice installed (portable) at $sofficePath" -ForegroundColor Green
+            } else {
+                Write-Host "Extraction finished but soffice.exe not found under $loExtractDir" -ForegroundColor Yellow
+            }
+        } else {
+            Write-Host "msiexec /a exited $($proc.ExitCode). Headless Office rendering unavailable." -ForegroundColor Yellow
+            Write-Host "You can retry manually or install LibreOffice from https://www.libreoffice.org" -ForegroundColor Yellow
+        }
+    } catch {
+        Write-Host "LibreOffice install failed: $_" -ForegroundColor Yellow
+        Write-Host "The GUI DOCX/PPTX viewer will show a helpful message instead of crashing." -ForegroundColor Yellow
+    }
+}
+
+# Add soffice directory to user PATH so `soffice` works in new terminals
+if ($sofficePath) {
+    $sofficeDir = Split-Path $sofficePath -Parent
+    $curPath    = [Environment]::GetEnvironmentVariable("Path", "User")
+    $parts      = @()
+    if ($curPath) { $parts = $curPath -split ";" | ForEach-Object { $_.Trim() } | Where-Object { $_ } }
+    $already    = $parts | Where-Object { $_.TrimEnd("\").ToLowerInvariant() -eq $sofficeDir.TrimEnd("\").ToLowerInvariant() }
+    if (-not $already) {
+        $newPath = if ([string]::IsNullOrWhiteSpace($curPath)) { $sofficeDir } else { "$curPath;$sofficeDir" }
+        [Environment]::SetEnvironmentVariable("Path", $newPath, "User")
+        $env:Path = "$env:Path;$sofficeDir"
+        Write-Host "Added LibreOffice to user PATH: $sofficeDir" -ForegroundColor Green
+    } else {
+        Write-Host "LibreOffice already on PATH." -ForegroundColor Yellow
+    }
+}
+
+# ---------------------------------------------------------------------------
 # Done
 # ---------------------------------------------------------------------------
 Write-Host ""
@@ -379,6 +472,7 @@ Write-Host ""
 Write-Host "Open a NEW terminal and verify:" -ForegroundColor Cyan
 Write-Host "  git --version"
 Write-Host "  python --version"
+Write-Host "  soffice --headless --version   (via soffice.com for console output)"
 Write-Host "  scpi-repl --mock"
 Write-Host ""
 Write-Host "NOTE: For real instruments you also need NI-VISA and NI-DCPower system drivers (require admin)." -ForegroundColor Yellow
