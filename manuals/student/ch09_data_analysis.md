@@ -161,14 +161,27 @@ Always use these settings for professional-looking figures:
     # Load data
     df = pd.read_csv("lab_data.csv")
 
-    # Extract sweep data
-    sweep = df[df["Label"].str.startswith("v_")]
-    set_v = [float(label.split("_")[1]) for label in sweep["Label"]]
-    meas_v = sweep["Value"].values
+    # Extract sweep data -- skip labels we cannot parse as "v_<float>"
+    sweep = df[df["Label"].str.startswith("v_")].copy()
 
-    # Compute errors
+    def _parse_setpoint(label):
+        parts = label.split("_", 1)
+        if len(parts) < 2:
+            return np.nan
+        try:
+            return float(parts[1])
+        except ValueError:
+            return np.nan
+
+    sweep["set_v"] = sweep["Label"].map(_parse_setpoint)
+    sweep = sweep.dropna(subset=["set_v"])
+    set_v = sweep["set_v"].to_numpy()
+    meas_v = sweep["Value"].to_numpy()
+
+    # Compute errors. Guard against divide-by-zero when a setpoint is 0 V.
     abs_err = np.abs(meas_v - set_v)
-    pct_err = np.abs((meas_v - set_v) / set_v) * 100
+    with np.errstate(divide="ignore", invalid="ignore"):
+        pct_err = np.where(set_v != 0, np.abs((meas_v - set_v) / set_v) * 100, np.nan)
 
     # Print summary
     print("=== Voltage Accuracy Summary ===")

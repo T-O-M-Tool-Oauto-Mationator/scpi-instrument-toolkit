@@ -80,17 +80,35 @@ def add_table(doc, headers, rows):
     doc.add_paragraph()  # spacing after table
 
 
+def _missing_image_placeholder(doc, path, alt, reason):
+    p = doc.add_paragraph()
+    msg = f"[missing image: {path.name} ({reason})]"
+    if alt:
+        msg += f" - {alt}"
+    run = p.add_run(msg)
+    run.italic = True
+
+
 def add_image(doc, path, alt=""):
-    """Add an image, centered, at ~4.5 inches wide. Falls back to italic alt text if the file is missing."""
+    """Add an image, centered, at ~4.5 inches wide.
+
+    Falls back to an italic placeholder paragraph if the file is missing or
+    cannot be decoded (corrupted / unsupported format).
+    """
     if not path.exists():
-        p = doc.add_paragraph()
-        run = p.add_run(f"[missing image: {path.name}]" + (f" - {alt}" if alt else ""))
-        run.italic = True
+        _missing_image_placeholder(doc, path, alt, "file not found")
         return
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     run = p.add_run()
-    run.add_picture(str(path), width=Inches(4.5))
+    try:
+        run.add_picture(str(path), width=Inches(4.5))
+    except Exception as exc:
+        # Remove the empty paragraph we already added, then emit the placeholder
+        # so the rest of the build keeps going.
+        p._element.getparent().remove(p._element)
+        _missing_image_placeholder(doc, path, alt, f"decode error: {exc.__class__.__name__}")
+        return
     if alt:
         cap = doc.add_paragraph()
         cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -213,6 +231,8 @@ def parse_markdown(doc, md_text, base_dir=None):
             if l.strip().startswith("|") and "|" in l:
                 break
             if l.strip().startswith("```"):
+                break
+            if l.strip().startswith("!["):
                 break
             para_lines.append(l.strip())
             i += 1

@@ -4,30 +4,36 @@
 
 Bundled examples live in `lab_instruments/examples.py` as a Python dictionary:
 
-    EXAMPLES = {
-        "psu_dmm_test": {
-            "description": "Set PSU to a voltage, measure with DMM, log result",
-            "lines": [
-                "# psu_dmm_test",
-                "voltage = 5.0",
-                "label = vtest",
-                "",
-                "psu1 chan 1 on",
-                "psu1 set 1 {voltage}",
-                "sleep 0.5",
-                "{label} = dmm1 meas unit=V",
-                "log print",
-            ],
-            "code": '''
-    """PSU + DMM voltage test -- Python API version."""
-    import time
-    psu.set_voltage(1, 5.0)
-    time.sleep(0.5)
-    v = dmm.read()
-    print(f"Measured: {v} V")
-            ''',
-        },
-    }
+<!-- doc-test: skip reason="Python dict literal, not a REPL script" -->
+
+```python
+EXAMPLES = {
+    "psu_dmm_test": {
+        "description": "Set PSU to a voltage, measure with DMM, log result",
+        "lines": [
+            "# psu_dmm_test",
+            "voltage = 5.0",
+            "label = vtest",
+            "",
+            "psu1 chan 1 on",
+            "psu1 set 1 {voltage}",
+            "sleep 0.5",
+            "{label} = dmm1 meas unit=V",
+            "log print",
+        ],
+        # Note: the triple-quoted string must NOT have leading indentation --
+        # the raw text of the "code" field is written verbatim to <name>.py.
+        "code": '''\
+"""PSU + DMM voltage test -- Python API version."""
+import time
+psu.set_voltage(1, 5.0)
+time.sleep(0.5)
+v = dmm.read()
+print(f"Measured: {v} V")
+''',
+    },
+}
+```
 
 ### Required fields
 

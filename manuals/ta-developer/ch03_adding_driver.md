@@ -57,8 +57,10 @@ Create `lab_instruments/src/my_new_instrument.py`:
             ch_str = self.CHANNEL_FROM_NUMBER.get(channel)
             if ch_str is None:
                 raise ValueError(f"Invalid channel: {channel}")
-            self.send_command(f"VOLT {voltage}")
-            self._voltage = voltage   # update cache atomically
+            # Always include the resolved channel identifier in the SCPI command
+            # so the command targets the correct output.
+            self.send_command(f"{ch_str}:VOLT {voltage}")
+            self._voltage[channel] = voltage   # update cache atomically after success
 
         def set_mode(self, mode: str):
             mode = mode.upper()

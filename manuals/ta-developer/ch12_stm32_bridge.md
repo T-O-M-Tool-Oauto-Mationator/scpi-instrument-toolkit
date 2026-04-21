@@ -20,7 +20,7 @@ Key properties of the replacement:
 | JST-PH 4-pin right-angle connector | 1 | Mates the ribbon cable that ships with the BQ EVM I2C header |
 | Male pin header strips, 0.1 in | 2 | Cut to length for the Feather edges |
 | 22 AWG solid hookup wire (yellow, blue, black) | ~6 in each | SDA, SCL, GND |
-| Heat-shrink, 3 mm | ~2 in | Strain relief where the JST pigtail meets the board |
+| Heat-shrink, 3 mm diameter | ~50 mm (~2 in) | Strain relief where the JST pigtail meets the board |
 | USB-C cable | 1 | Reuse from bench kit |
 
 Cost is ~$25 per kit at current Adafruit pricing.
@@ -45,12 +45,15 @@ The build goes in five stages. Take continuity measurements between stages 3 and
 
 ### Step 3 - Back-side wiring to the JST
 
+> **WARNING - do NOT connect the red wire on the BQ EVM ribbon.**
+> The red wire is a NO-CONNECT. **Do not route it to 3V3** - the BQ EVM provides its own logic rail and back-powering the bridge through that pin will fight the Feather regulator, and can destroy either board. Clip and heat-shrink the red conductor before you start wiring.
+
 ![Yellow and blue hookup wires soldered across the back of the protoboard to the JST pins](../../docs/img/stm32/IMG_0263_wires_soldered.jpg)
 
 - SDA pad on the Feather footprint routes to JST pin 2 (yellow).
 - SCL pad routes to JST pin 3 (blue).
 - GND pad routes to JST pin 4.
-- The red wire on the BQ EVM ribbon is a no-connect. Do not route it to 3V3 - the EVM provides its own logic rail and back-powering the bridge through that pin will fight the Feather regulator.
+- The red wire on the BQ EVM ribbon is a no-connect - see the warning above.
 - Before stacking, buzz each pad-to-pin trace with a DMM in continuity mode. Any two adjacent pins should read OL.
 
 ### Step 4 - Headers on the Feather
@@ -72,11 +75,20 @@ The build goes in five stages. Take continuity measurements between stages 3 and
 
 Flash the Feather with the STM32 bridge firmware before handing the unit out.
 
-- Firmware source: internal repo (ask the course coordinator for the current link; this chapter intentionally does not hardcode it because the repo is still private).
-- Flash path: USB DFU. Press RESET while holding BOOT to enter DFU mode, then use `dfu-util` or the Adafruit WebDFU page.
-- The driver matches on both USB descriptors:
-    - Real EV2300A: VID `0x0451`, PID `0x0036`
-    - STM32 bridge: reuses the same VID/PID after firmware enumeration, so `lab_instruments/src/ev2300.py` sees it as a normal `EV2300A`.
+- **Firmware source:** the firmware repo is currently private to the course. Ask the course coordinator (or open an issue on this repo) for the build artifact. Do **not** hardcode a URL in this chapter until the firmware repo is moved to a public home.
+- **Flash path:** USB DFU. Press RESET while holding BOOT to enter DFU mode, then use `dfu-util` or the Adafruit WebDFU page.
+
+### USB VID/PID: lab-only reuse
+
+During lab deployment the STM32 firmware currently enumerates with the same USB descriptor as the retired TI EV2300A (VID `0x0451`, PID `0x0036`). That lets `lab_instruments/src/ev2300.py` pick the bridge up with zero driver changes.
+
+This reuse is acceptable **only** on closed lab benches and unit-under-test kits that never touch a commercial product:
+
+- `0x0451` belongs to Texas Instruments; reusing it on hardware we distribute outside the course would violate the USB-IF rules on VID/PID reuse. Do not ship this firmware on anything that leaves the VOAL lab until one of the following is done:
+    - Obtain explicit written authorization from TI for the continued use of their VID/PID on this replacement, **or**
+    - Rebuild the firmware with a project-owned VID/PID (Adafruit's test-bench range or a pid.codes sublicense are both reasonable options), and update the driver's match table in `lab_instruments/src/ev2300.py` to add the new descriptor alongside the existing TI one.
+
+Record whichever decision was made in this chapter and in `docs/ev2300.md` before any external release.
 
 If the bridge comes up in DFU mode (no I2C traffic, `scan` shows a "bootloader" descriptor), reflash. There is no recovery path from the REPL.
 
@@ -115,7 +127,28 @@ Another process holds the HID handle. Close BQ Studio, then retry.
 
 ### Board is dead after flashing
 
-The DFU flow leaves the Feather in app mode only after a clean reset. Unplug USB, hold BOOT, plug USB back in, release BOOT, and reflash. If the board still does not enumerate, the STM32F405 may have been bricked by a bad firmware image - fall back to the STM32CubeProgrammer and reflash the default Adafruit bootloader first.
+The DFU flow leaves the Feather in app mode only after a clean reset. Try the quick recovery first; if it fails, fall through to the full bootloader re-flash.
+
+**Quick recovery (no extra tools):**
+
+1. Unplug USB.
+2. Press and hold **BOOT**.
+3. Plug USB back in while still holding BOOT.
+4. Release BOOT once the host enumerates the device (1 - 2 s).
+5. Re-run `dfu-util` / WebDFU with the STM32 bridge firmware binary.
+
+**Full recovery (STM32CubeProgrammer + ST-LINK):**
+
+Use this when the board does not enumerate at all after the quick recovery:
+
+1. Connect an ST-LINK V2 (or V3) to the Feather's SWD pads (SWCLK, SWDIO, GND, 3V3) - the pads are on the bottom silkscreen.
+2. Open STM32CubeProgrammer, select **ST-LINK** as the interface, and click **Connect**.
+3. **Full Chip Erase**.
+4. Flash the Adafruit STM32F405 bootloader DFU image (`tinyuf2-feather_stm32f405_express_*.bin` from the Adafruit release page) to `0x08000000`.
+5. Disconnect ST-LINK, power-cycle the Feather, confirm the Adafruit bootloader enumerates (a USB drive named `FTHRBOOT` should appear).
+6. Drop the STM32 bridge firmware UF2 onto that drive to flash the application image.
+
+If STM32CubeProgrammer still cannot connect, the STM32F405 silicon is likely damaged - retire the unit.
 
 ## Making another one
 

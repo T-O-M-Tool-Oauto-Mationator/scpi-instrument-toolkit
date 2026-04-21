@@ -50,9 +50,31 @@ Each sub-handler parses its specific arguments, validates inputs, calls the driv
             self.error("Usage: psu set <channel> <voltage> [current]")
             return
         channel = self._resolve_channel(dev, args[0])
-        voltage = float(args[1])
-        dev.set_voltage(channel, voltage)
-        ColorPrinter.success(f"Set {args[0]}: {voltage}V")
+        if channel is None:
+            return  # _resolve_channel already logged the error
+        try:
+            voltage = float(args[1])
+        except ValueError:
+            self.error(f"Invalid voltage {args[1]!r} -- must be a number.")
+            return
+        current = None
+        if len(args) >= 3:
+            try:
+                current = float(args[2])
+            except ValueError:
+                self.error(f"Invalid current {args[2]!r} -- must be a number.")
+                return
+        try:
+            dev.set_voltage(channel, voltage)
+            if current is not None:
+                dev.set_current(channel, current)
+        except (ValueError, RuntimeError) as exc:
+            self.error(f"psu set failed: {exc}")
+            return
+        msg = f"Set {args[0]}: {voltage} V"
+        if current is not None:
+            msg += f", {current} A"
+        ColorPrinter.success(msg)
 
 ## Registering a New Command in shell.py
 
@@ -74,15 +96,12 @@ Each sub-handler parses its specific arguments, validates inputs, calls the driv
 
     def do_mytype(self, arg):
         """Control mytype instruments."""
-        parts = arg.split(None, 1)
-        cmd_token = parts[0] if parts else ""
-        rest = parts[1] if len(parts) > 1 else ""
-
         dev_name = self.ctx.registry.resolve_type("mytype")
         if not dev_name:
             ColorPrinter.warning("No mytype found. Run 'scan' first.")
             return
         dev = self.ctx.registry.get_device(dev_name)
+        # The command handler owns argument parsing.
         self._mytype_cmd.execute(arg, dev, dev_name)
 
 ### 5. Add to help system

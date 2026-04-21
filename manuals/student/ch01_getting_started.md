@@ -23,11 +23,21 @@ Open a terminal (PowerShell on Windows, Terminal on Mac/Linux) and run:
 
 ### TAMU managed machines (VOAL lab)
 
-On TAMU-managed Windows machines where admin access is restricted, use this one-liner in PowerShell:
+On TAMU-managed Windows machines where admin access is restricted, use the installer script `setup-tamu.ps1` from this repo. It handles PATH issues and installs the toolkit into your user Python directory.
 
-    irm https://raw.githubusercontent.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit/main/setup-tamu.ps1 | iex
+**Recommended (safer): download, review, then run**
 
-This handles PATH issues and installs the toolkit in your user Python directory.
+    irm "https://raw.githubusercontent.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit/main/setup-tamu.ps1" -OutFile setup-tamu.ps1
+    notepad setup-tamu.ps1                 # skim the contents, look for anything unexpected
+    powershell -ExecutionPolicy Bypass -File .\setup-tamu.ps1
+
+Downloading to a file first lets you (or a TA) inspect exactly what will run before executing it. This is the right habit to form for any "install-from-internet" script.
+
+**Shortcut (only if you trust the source):**
+
+    irm "https://raw.githubusercontent.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit/main/setup-tamu.ps1" | iex
+
+`irm | iex` runs the fetched script directly in your shell without saving it, so you cannot review what you are about to execute. Use this form only when you have seen the script before or a TA tells you to.
 
 ### Verify installation
 
