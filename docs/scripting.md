@@ -16,15 +16,30 @@ Script directives (`set`, `array`, `linspace`, `print`, `pause`, `sleep`, `repea
 
 Create a new script and open it in your editor.
 
+<!-- doc-test: skip reason="illustrative syntax -- opens $EDITOR, which the doc-test harness cannot drive" -->
+
 ```text
 script new <name>
 ```
 
 Opens your system editor (`$EDITOR` / `$VISUAL`). Write one command per line. Save and close to finish.
 
+<!-- doc-test: skip reason="illustrative syntax -- opens $EDITOR and interacts with the user's real scripts dir" -->
+
 ```text
 script new my_psu_test
 ```
+
+If a script with the same name already exists, the REPL prompts for confirmation before replacing it:
+
+<!-- doc-test: skip reason="illustrative transcript -- the interactive overwrite prompt reads from stdin, which pytest captures" -->
+
+```text
+eset> script new my_psu_test
+Script 'my_psu_test' already exists. Overwrite and discard its contents? [y/N]:
+```
+
+Answering anything other than `y` / `yes` (including a blank line or Ctrl-D) leaves the original script untouched. Use `script edit <name>` to modify an existing script without destroying its contents.
 
 ### script run
 
