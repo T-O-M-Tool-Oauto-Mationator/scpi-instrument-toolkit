@@ -52,7 +52,7 @@ smu set -12.0 0.1    # negative voltage for four-quadrant operation
     Setting a voltage without a current limit uses whatever limit was set previously (default: 10 mA). Always specify the limit when powering an unknown DUT. DC source power is capped at 20 W and sink power at 12 W by the hardware.
 
 !!! tip "How to sink current"
-    Use `smu sink <current>` for sinking and `smu source <current>` for sourcing. The SMU acts as a programmable electronic load when sinking. By the standard 4-quadrant SMU convention, **negative current = sink from DUT** (current flows into the SMU) and **positive current = source into DUT**. `smu sink` rejects non-negative input with a `ValueError`; `smu source` rejects non-positive input. See [smu sink / smu source](#smu-sink--smu-source) below.
+    Use `smu sink <current>` for sinking and `smu source <current>` for sourcing. The SMU acts as a programmable electronic load when sinking. By the standard 4-quadrant SMU convention, **negative current = sink from DUT** (current flows into the SMU) and **positive current = source into DUT**. `smu sink` rejects non-negative input with a `ValueError`; `smu source` rejects non-positive input. See [smu sink / smu source](#smu-sink-smu-source) below.
 
 ---
 
