@@ -435,3 +435,339 @@ class TestMockInstrumentControlFlow:
         mock_repl.onecmd('assert v > 4.0 "PSU voltage in range"')
         out = capsys.readouterr().out
         assert "PASS" in out
+
+
+# ---------------------------------------------------------------------------
+# Regression tests for issue #87: assignment grammar for multi-channel PSU
+# (v = psu meas <ch> v unit=V) and EV2300 reads (code = ev2300 read_word ...).
+# ---------------------------------------------------------------------------
+
+
+class _StateTrackingMultiChanPSU:
+    """Multi-channel PSU mock that tracks which channel was measured.
+
+    Values are deterministic per channel but reflect the last setpoint so
+    a sweep of `psu set 2 V; psu meas 2 v` reads back what was written.
+    Per-channel read and write counts are incremented on every call so this
+    is not a constant-returning stub (state tracking per project rules).
+    """
+
+    CHANNEL_FROM_NUMBER = {1: "P6V", 2: "P25V", 3: "N25V"}
+
+    def __init__(self):
+        self.v_reads = {1: 0, 2: 0, 3: 0}
+        self.i_reads = {1: 0, 2: 0, 3: 0}
+        self.setpoints_v = {1: 6.0, 2: 25.0, 3: -25.0}
+        self.setpoints_i = {1: 0.10, 2: 0.25, 3: -0.25}
+        self.output_enabled = False
+        self.selected_channel = None
+        self.last_channel = None
+
+    def _ch_num(self, channel):
+        inv = {v: k for k, v in self.CHANNEL_FROM_NUMBER.items()}
+        return inv.get(channel, channel if isinstance(channel, int) else 1)
+
+    def measure_voltage(self, channel):
+        n = self._ch_num(channel)
+        self.v_reads[n] += 1
+        self.last_channel = n
+        return self.setpoints_v[n]
+
+    def measure_current(self, channel):
+        n = self._ch_num(channel)
+        self.i_reads[n] += 1
+        self.last_channel = n
+        return self.setpoints_i[n]
+
+    def set_output_channel(self, channel, voltage, current=None):
+        n = self._ch_num(channel)
+        self.setpoints_v[n] = float(voltage)
+        if current is not None:
+            self.setpoints_i[n] = float(current)
+        self.last_channel = n
+
+    def select_channel(self, channel):
+        self.selected_channel = self._ch_num(channel)
+
+    def enable_output(self, state):
+        self.output_enabled = bool(state)
+
+    def safe_all(self):
+        self.output_enabled = False
+
+
+class _StateTrackingEV2300:
+    """EV2300 mock that tracks each read call; returns distinct values."""
+
+    def __init__(self):
+        self.word_reads = []
+        self.byte_reads = []
+        self.block_reads = []
+
+    def read_word(self, addr, reg):
+        self.word_reads.append((addr, reg))
+        return {"ok": True, "value": 0x1234}
+
+    def read_byte(self, addr, reg):
+        self.byte_reads.append((addr, reg))
+        return {"ok": True, "value": 0x5A}
+
+    def read_block(self, addr, reg):
+        self.block_reads.append((addr, reg))
+        return {"ok": True, "block": [0xDE, 0xAD, 0xBE, 0xEF]}
+
+    def safe_all(self):
+        pass
+
+
+@pytest.fixture
+def repl_multi_psu(make_repl):
+    return make_repl({"psu1": _StateTrackingMultiChanPSU()})
+
+
+@pytest.fixture
+def repl_ev2300(make_repl):
+    return make_repl({"ev2300": _StateTrackingEV2300()})
+
+
+class TestAssignPsuMeasWithChannel:
+    """Issue #87: `v = psu meas <ch> v unit=V` must forward the channel."""
+
+    def test_assign_psu_meas_with_channel_multi(self, repl_multi_psu):
+        repl_multi_psu.onecmd("v = psu meas 2 v unit=V")
+        assert repl_multi_psu.ctx.command_had_error is False
+        assert float(repl_multi_psu.ctx.script_vars["v"]) == 25.0
+        entry = repl_multi_psu.ctx.measurements.get_by_label("v")
+        assert entry is not None
+        assert entry["unit"] == "V"
+        assert float(entry["value"]) == 25.0
+        dev = repl_multi_psu.ctx.registry.get_device("psu1")
+        assert dev.v_reads[2] == 1
+        assert dev.last_channel == 2
+
+    def test_assign_psu_meas_with_channel_current(self, repl_multi_psu):
+        repl_multi_psu.onecmd("i = psu meas 3 i unit=A")
+        assert repl_multi_psu.ctx.command_had_error is False
+        assert float(repl_multi_psu.ctx.script_vars["i"]) == -0.25
+        entry = repl_multi_psu.ctx.measurements.get_by_label("i")
+        assert entry is not None
+        assert entry["unit"] == "A"
+        dev = repl_multi_psu.ctx.registry.get_device("psu1")
+        assert dev.i_reads[3] == 1
+        assert dev.last_channel == 3
+
+
+class TestAssignEV2300Read:
+    """Issue #87: `code = ev2300 read_word ...` must capture the value."""
+
+    def test_assign_ev2300_read_word(self, repl_ev2300):
+        repl_ev2300.onecmd("code = ev2300 read_word 0x08 0x0C")
+        assert repl_ev2300.ctx.command_had_error is False
+        assert repl_ev2300.ctx.script_vars["code"] == 0x1234
+        entry = repl_ev2300.ctx.measurements.get_by_label("code")
+        assert entry is not None
+        assert entry["value"] == 0x1234
+        dev = repl_ev2300.ctx.registry.get_device("ev2300")
+        assert dev.word_reads == [(0x08, 0x0C)]
+
+    def test_assign_ev2300_read_byte(self, repl_ev2300):
+        repl_ev2300.onecmd("b = ev2300 read_byte 0x08 0x00")
+        assert repl_ev2300.ctx.command_had_error is False
+        assert repl_ev2300.ctx.script_vars["b"] == 0x5A
+        dev = repl_ev2300.ctx.registry.get_device("ev2300")
+        assert dev.byte_reads == [(0x08, 0x00)]
+
+    def test_assign_ev2300_read_block(self, repl_ev2300):
+        repl_ev2300.onecmd("blk = ev2300 read_block 0x08 0x20")
+        assert repl_ev2300.ctx.command_had_error is False
+        assert repl_ev2300.ctx.script_vars["blk"] == "DE AD BE EF"
+        dev = repl_ev2300.ctx.registry.get_device("ev2300")
+        assert dev.block_reads == [(0x08, 0x20)]
+
+
+# ---------------------------------------------------------------------------
+# End-to-end regression for issue #87: replay the student's sweep script
+# (linspace + for + psu set + ev2300 read_word + psu meas <ch> + log save).
+# If any of the four underlying bugs regress, this test fails rather than
+# returning silently with "No measurements recorded."
+# ---------------------------------------------------------------------------
+
+
+class TestIssue87SweepEndToEnd:
+    """Regression test for https://github.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit/issues/87.
+
+    Runs the user's reported script through the full script engine (linspace
+    expansion, for-loop, command dispatch) and asserts that measurements are
+    recorded for every iteration and that `log save` produces a CSV with all
+    rows. Silently passing (empty log, no error) was the original symptom.
+    """
+
+    def test_student_sweep_records_all_measurements(self, make_repl, tmp_path, monkeypatch):
+        from lab_instruments.repl.commands import variables as variables_mod
+
+        psu = _StateTrackingMultiChanPSU()
+        ev = _StateTrackingEV2300()
+        repl = make_repl({"psu1": psu, "ev2300": ev})
+
+        monkeypatch.setattr(variables_mod.time, "sleep", lambda _secs: None)
+        # In script mode `log save <relative>` resolves under the scripts
+        # dir (see logging_cmd.py: `base = ctx.get_scripts_dir() if ctx.in_script`).
+        monkeypatch.setenv("SCPI_SCRIPTS_DIR", str(tmp_path))
+        monkeypatch.setenv("SCPI_DATA_DIR", str(tmp_path))
+
+        # The mock's safe_all() (fired by make_repl's scan) leaves output=False.
+        # The student's real session had the channel enabled before running the
+        # sweep, so prime it here — otherwise the `psu chan 2 off` assertion
+        # below would pass tautologically.
+        psu.output_enabled = True
+
+        csv_name = "ADC_digital_code.csv"
+        script_lines = [
+            "val = linspace 18 21.5 3",
+            "for v val",
+            '    print "Setting {v}V..."',
+            "    psu set 2 {v}",
+            "    sleep 0.3",
+            "    code = ev2300 read_word 0x08 0x0C",
+            "    readback = psu meas 2 v unit=V",
+            "end",
+            "psu chan 2 off",
+            'print "=== Sweep complete ==="',
+            "log print",
+            f"log save {csv_name}",
+        ]
+
+        repl._run_script_lines(script_lines)
+
+        # The sweep must not silently fail: no command-level errors.
+        assert repl.ctx.command_had_error is False
+
+        # Three iterations -> three code reads + three readback measurements.
+        entries = repl.ctx.measurements.entries
+        code_entries = [e for e in entries if e["label"] == "code"]
+        readback_entries = [e for e in entries if e["label"] == "readback"]
+        assert len(code_entries) == 3, f"expected 3 ev2300 reads, got {len(code_entries)}: {entries}"
+        assert len(readback_entries) == 3, f"expected 3 psu readbacks, got {len(readback_entries)}: {entries}"
+
+        # PSU channel 2 must have been written and read back three times each,
+        # and the final readback must match the final setpoint (21.5 V).
+        assert psu.v_reads[2] == 3
+        assert psu.setpoints_v[2] == pytest.approx(21.5)
+        assert readback_entries[-1]["value"] == pytest.approx(21.5)
+        assert readback_entries[-1]["unit"] == "V"
+
+        # EV2300 read_word must have been called with the documented args.
+        assert ev.word_reads == [(0x08, 0x0C), (0x08, 0x0C), (0x08, 0x0C)]
+        assert all(e["value"] == 0x1234 for e in code_entries)
+
+        # `psu chan 2 off` must have disabled the output.
+        assert psu.output_enabled is False
+
+        # `log save` must have written a CSV with header + 6 data rows (order
+        # preserved: code, readback, code, readback, code, readback).
+        csv_path = tmp_path / csv_name
+        assert csv_path.exists(), f"log save did not write {csv_path}"
+        lines = csv_path.read_text(encoding="utf-8").splitlines()
+        assert lines[0] == "label,value,unit,source"
+        data_rows = lines[1:]
+        assert len(data_rows) == 6
+        labels_in_order = [row.split(",")[0] for row in data_rows]
+        assert labels_in_order == [
+            "code",
+            "readback",
+            "code",
+            "readback",
+            "code",
+            "readback",
+        ]
+
+    def test_student_sweep_without_fix_would_fail(self, make_repl, monkeypatch):
+        """Tight assertion on the specific symptom from the bug report.
+
+        Before the fix, `psu meas 2 v unit=V` raised a TypeError from
+        `HP_E3631A.measure_voltage()` and `ev2300 read_word ...` fell
+        through to a literal string assignment. This test fails loudly if
+        either regression returns, independent of the broader log-save path.
+        """
+        from lab_instruments.repl.commands import variables as variables_mod
+
+        psu = _StateTrackingMultiChanPSU()
+        ev = _StateTrackingEV2300()
+        repl = make_repl({"psu1": psu, "ev2300": ev})
+        monkeypatch.setattr(variables_mod.time, "sleep", lambda _secs: None)
+
+        repl._run_script_lines(
+            [
+                "code = ev2300 read_word 0x08 0x0C",
+                "readback = psu meas 2 v unit=V",
+            ]
+        )
+
+        assert repl.ctx.command_had_error is False
+        # `code` must be the integer 0x1234, not the literal string
+        # "ev2300 read_word 0x08 0x0C" that the pre-fix fallthrough produced.
+        assert repl.ctx.script_vars["code"] == 0x1234
+        assert not isinstance(repl.ctx.script_vars["code"], str)
+        # `readback` must hold the float from measure_voltage(channel), not
+        # error out with "missing 1 required positional argument: 'channel'".
+        assert repl.ctx.script_vars["readback"] == pytest.approx(25.0)
+        assert psu.last_channel == 2
+
+
+# ---------------------------------------------------------------------------
+# CodeRabbit review follow-ups on PR #88:
+#   1. Suffixed ev2300 aliases (ev23001, ev23002) must resolve to "ev2300"
+#      instead of being stripped to "ev" by the generic trailing-digit strip.
+#   2. Unknown PSU/SMU measurement modes must raise ValueError instead of
+#      silently falling through to measure_voltage().
+# ---------------------------------------------------------------------------
+
+
+class TestSuffixedEV2300Aliases:
+    """A registered device named ``ev23001`` must still dispatch to the
+    ev2300 read handler — the assignment grammar's base_type resolution
+    must mirror DeviceRegistry.base_type for digit-bearing types."""
+
+    def test_assign_ev23001_read_word(self, make_repl):
+        ev = _StateTrackingEV2300()
+        repl = make_repl({"ev23001": ev})
+        repl.onecmd("code = ev23001 read_word 0x08 0x0C")
+        assert repl.ctx.command_had_error is False
+        assert repl.ctx.script_vars["code"] == 0x1234
+        assert ev.word_reads == [(0x08, 0x0C)]
+
+    def test_assign_ev23002_read_byte(self, make_repl):
+        ev = _StateTrackingEV2300()
+        repl = make_repl({"ev23002": ev})
+        repl.onecmd("b = ev23002 read_byte 0x08 0x00")
+        assert repl.ctx.command_had_error is False
+        assert repl.ctx.script_vars["b"] == 0x5A
+        assert ev.byte_reads == [(0x08, 0x00)]
+
+
+class TestInvalidMeasMode:
+    """Unknown PSU/SMU meas modes must raise ValueError (caught and surfaced
+    via command_had_error), never silently fall through to voltage. A typo
+    like ``psu meas 2 currnt`` would otherwise corrupt sweep data."""
+
+    def test_psu_meas_rejects_unknown_mode(self, repl_multi_psu, capsys):
+        repl_multi_psu.onecmd("v = psu meas 2 currnt")
+        assert repl_multi_psu.ctx.command_had_error is True
+        captured = capsys.readouterr()
+        assert "Invalid PSU measurement mode" in captured.out + captured.err
+        # The variable must not be assigned a phantom voltage reading.
+        assert "v" not in repl_multi_psu.ctx.script_vars
+        dev = repl_multi_psu.ctx.registry.get_device("psu1")
+        assert dev.v_reads == {1: 0, 2: 0, 3: 0}
+        assert dev.i_reads == {1: 0, 2: 0, 3: 0}
+
+    def test_smu_meas_rejects_unknown_mode(self, make_repl, capsys):
+        psu = _StateTrackingMultiChanPSU()
+        # Re-use the multi-channel PSU shape as an SMU stand-in; the
+        # assignment grammar treats them symmetrically.
+        repl = make_repl({"smu": psu})
+        repl.onecmd("i = smu meas 1 amps")
+        assert repl.ctx.command_had_error is True
+        captured = capsys.readouterr()
+        assert "Invalid SMU measurement mode" in captured.out + captured.err
+        assert "i" not in repl.ctx.script_vars
