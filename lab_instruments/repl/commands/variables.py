@@ -91,8 +91,13 @@ class VariableCommands(BaseCommand):
         # Resolve the instrument: could be "dmm", "psu", "psu1", "smu", etc.
         # Known base types whose names embed digits (e.g. "ev2300") must not be
         # truncated by the trailing-digit strip -- mirrors DeviceRegistry.base_type.
+        # Suffixed aliases like "ev23001"/"ev23002" must resolve to "ev2300".
         _DIGIT_BEARING_TYPES = ("ev2300",)
-        base_type = instr_token if instr_token in _DIGIT_BEARING_TYPES else re.sub(r"\d+$", "", instr_token)
+        digit_bearing_type = next(
+            (typ for typ in _DIGIT_BEARING_TYPES if instr_token == typ or re.fullmatch(rf"{typ}\d+", instr_token)),
+            None,
+        )
+        base_type = digit_bearing_type or re.sub(r"\d+$", "", instr_token)
 
         # Check if it's a known instrument type
         known_types = ("dmm", "psu", "scope", "awg", "smu", "ev2300")
@@ -158,7 +163,9 @@ class VariableCommands(BaseCommand):
         """
         from .psu import _is_multi_channel, _resolve_channel
 
-        _MODE_TOKENS = ("v", "volt", "voltage", "i", "curr", "current")
+        _VOLTAGE_MODE_TOKENS = ("v", "volt", "voltage")
+        _CURRENT_MODE_TOKENS = ("i", "curr", "current")
+        _MODE_TOKENS = _VOLTAGE_MODE_TOKENS + _CURRENT_MODE_TOKENS
         ch_token = "1"
         mode_arg = ""
         if len(meas_args) >= 2:
@@ -171,16 +178,18 @@ class VariableCommands(BaseCommand):
                 ch_token = tok
 
         mode = mode_arg or self.ctx.last_instrument_mode.get(dev_name, "v")
+        if mode not in _MODE_TOKENS:
+            raise ValueError(f"Invalid PSU measurement mode: {mode}")
 
         if _is_multi_channel(dev):
             channel = _resolve_channel(dev, ch_token)
             if channel is None:
                 raise ValueError(f"Invalid PSU channel: {ch_token}")
-            if mode in ("i", "curr", "current"):
+            if mode in _CURRENT_MODE_TOKENS:
                 return dev.measure_current(channel), "A"
             return dev.measure_voltage(channel), "V"
 
-        if mode in ("i", "curr", "current"):
+        if mode in _CURRENT_MODE_TOKENS:
             return dev.measure_current(), "A"
         return dev.measure_voltage(), "V"
 
@@ -192,7 +201,9 @@ class VariableCommands(BaseCommand):
         """
         from .psu import _is_multi_channel, _resolve_channel
 
-        _MODE_TOKENS = ("v", "volt", "voltage", "i", "curr", "current")
+        _VOLTAGE_MODE_TOKENS = ("v", "volt", "voltage")
+        _CURRENT_MODE_TOKENS = ("i", "curr", "current")
+        _MODE_TOKENS = _VOLTAGE_MODE_TOKENS + _CURRENT_MODE_TOKENS
         ch_token = "1"
         mode_arg = ""
         if len(meas_args) >= 2:
@@ -205,16 +216,18 @@ class VariableCommands(BaseCommand):
                 ch_token = tok
 
         mode = mode_arg or self.ctx.last_instrument_mode.get(dev_name, "v")
+        if mode not in _MODE_TOKENS:
+            raise ValueError(f"Invalid SMU measurement mode: {mode}")
 
         if _is_multi_channel(dev):
             channel = _resolve_channel(dev, ch_token)
             if channel is None:
                 raise ValueError(f"Invalid SMU channel: {ch_token}")
-            if mode in ("i", "curr", "current"):
+            if mode in _CURRENT_MODE_TOKENS:
                 return dev.measure_current(channel), "A"
             return dev.measure_voltage(channel), "V"
 
-        if mode in ("i", "curr", "current"):
+        if mode in _CURRENT_MODE_TOKENS:
             return dev.measure_current(), "A"
         return dev.measure_voltage(), "V"
 

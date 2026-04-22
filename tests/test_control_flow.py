@@ -712,3 +712,62 @@ class TestIssue87SweepEndToEnd:
         # error out with "missing 1 required positional argument: 'channel'".
         assert repl.ctx.script_vars["readback"] == pytest.approx(25.0)
         assert psu.last_channel == 2
+
+
+# ---------------------------------------------------------------------------
+# CodeRabbit review follow-ups on PR #88:
+#   1. Suffixed ev2300 aliases (ev23001, ev23002) must resolve to "ev2300"
+#      instead of being stripped to "ev" by the generic trailing-digit strip.
+#   2. Unknown PSU/SMU measurement modes must raise ValueError instead of
+#      silently falling through to measure_voltage().
+# ---------------------------------------------------------------------------
+
+
+class TestSuffixedEV2300Aliases:
+    """A registered device named ``ev23001`` must still dispatch to the
+    ev2300 read handler — the assignment grammar's base_type resolution
+    must mirror DeviceRegistry.base_type for digit-bearing types."""
+
+    def test_assign_ev23001_read_word(self, make_repl):
+        ev = _StateTrackingEV2300()
+        repl = make_repl({"ev23001": ev})
+        repl.onecmd("code = ev23001 read_word 0x08 0x0C")
+        assert repl.ctx.command_had_error is False
+        assert repl.ctx.script_vars["code"] == 0x1234
+        assert ev.word_reads == [(0x08, 0x0C)]
+
+    def test_assign_ev23002_read_byte(self, make_repl):
+        ev = _StateTrackingEV2300()
+        repl = make_repl({"ev23002": ev})
+        repl.onecmd("b = ev23002 read_byte 0x08 0x00")
+        assert repl.ctx.command_had_error is False
+        assert repl.ctx.script_vars["b"] == 0x5A
+        assert ev.byte_reads == [(0x08, 0x00)]
+
+
+class TestInvalidMeasMode:
+    """Unknown PSU/SMU meas modes must raise ValueError (caught and surfaced
+    via command_had_error), never silently fall through to voltage. A typo
+    like ``psu meas 2 currnt`` would otherwise corrupt sweep data."""
+
+    def test_psu_meas_rejects_unknown_mode(self, repl_multi_psu, capsys):
+        repl_multi_psu.onecmd("v = psu meas 2 currnt")
+        assert repl_multi_psu.ctx.command_had_error is True
+        captured = capsys.readouterr()
+        assert "Invalid PSU measurement mode" in captured.out + captured.err
+        # The variable must not be assigned a phantom voltage reading.
+        assert "v" not in repl_multi_psu.ctx.script_vars
+        dev = repl_multi_psu.ctx.registry.get_device("psu1")
+        assert dev.v_reads == {1: 0, 2: 0, 3: 0}
+        assert dev.i_reads == {1: 0, 2: 0, 3: 0}
+
+    def test_smu_meas_rejects_unknown_mode(self, make_repl, capsys):
+        psu = _StateTrackingMultiChanPSU()
+        # Re-use the multi-channel PSU shape as an SMU stand-in; the
+        # assignment grammar treats them symmetrically.
+        repl = make_repl({"smu": psu})
+        repl.onecmd("i = smu meas 1 amps")
+        assert repl.ctx.command_had_error is True
+        captured = capsys.readouterr()
+        assert "Invalid SMU measurement mode" in captured.out + captured.err
+        assert "i" not in repl.ctx.script_vars
