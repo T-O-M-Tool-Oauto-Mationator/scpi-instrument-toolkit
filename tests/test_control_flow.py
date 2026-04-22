@@ -446,9 +446,10 @@ class TestMockInstrumentControlFlow:
 class _StateTrackingMultiChanPSU:
     """Multi-channel PSU mock that tracks which channel was measured.
 
-    Values are deterministic per channel so assertions can be exact; the
-    per-channel read count is incremented on every call so this is not a
-    constant-returning stub (state tracking per project rules).
+    Values are deterministic per channel but reflect the last setpoint so
+    a sweep of `psu set 2 V; psu meas 2 v` reads back what was written.
+    Per-channel read and write counts are incremented on every call so this
+    is not a constant-returning stub (state tracking per project rules).
     """
 
     CHANNEL_FROM_NUMBER = {1: "P6V", 2: "P25V", 3: "N25V"}
@@ -456,6 +457,10 @@ class _StateTrackingMultiChanPSU:
     def __init__(self):
         self.v_reads = {1: 0, 2: 0, 3: 0}
         self.i_reads = {1: 0, 2: 0, 3: 0}
+        self.setpoints_v = {1: 6.0, 2: 25.0, 3: -25.0}
+        self.setpoints_i = {1: 0.10, 2: 0.25, 3: -0.25}
+        self.output_enabled = False
+        self.selected_channel = None
         self.last_channel = None
 
     def _ch_num(self, channel):
@@ -466,16 +471,29 @@ class _StateTrackingMultiChanPSU:
         n = self._ch_num(channel)
         self.v_reads[n] += 1
         self.last_channel = n
-        return {1: 6.0, 2: 25.0, 3: -25.0}[n]
+        return self.setpoints_v[n]
 
     def measure_current(self, channel):
         n = self._ch_num(channel)
         self.i_reads[n] += 1
         self.last_channel = n
-        return {1: 0.10, 2: 0.25, 3: -0.25}[n]
+        return self.setpoints_i[n]
+
+    def set_output_channel(self, channel, voltage, current=None):
+        n = self._ch_num(channel)
+        self.setpoints_v[n] = float(voltage)
+        if current is not None:
+            self.setpoints_i[n] = float(current)
+        self.last_channel = n
+
+    def select_channel(self, channel):
+        self.selected_channel = self._ch_num(channel)
+
+    def enable_output(self, state):
+        self.output_enabled = bool(state)
 
     def safe_all(self):
-        pass
+        self.output_enabled = False
 
 
 class _StateTrackingEV2300:
@@ -565,3 +583,132 @@ class TestAssignEV2300Read:
         assert repl_ev2300.ctx.script_vars["blk"] == "DE AD BE EF"
         dev = repl_ev2300.ctx.registry.get_device("ev2300")
         assert dev.block_reads == [(0x08, 0x20)]
+
+
+# ---------------------------------------------------------------------------
+# End-to-end regression for issue #87: replay the student's sweep script
+# (linspace + for + psu set + ev2300 read_word + psu meas <ch> + log save).
+# If any of the four underlying bugs regress, this test fails rather than
+# returning silently with "No measurements recorded."
+# ---------------------------------------------------------------------------
+
+
+class TestIssue87SweepEndToEnd:
+    """Regression test for https://github.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit/issues/87.
+
+    Runs the user's reported script through the full script engine (linspace
+    expansion, for-loop, command dispatch) and asserts that measurements are
+    recorded for every iteration and that `log save` produces a CSV with all
+    rows. Silently passing (empty log, no error) was the original symptom.
+    """
+
+    def test_student_sweep_records_all_measurements(self, make_repl, tmp_path, monkeypatch):
+        from lab_instruments.repl.commands import variables as variables_mod
+
+        psu = _StateTrackingMultiChanPSU()
+        ev = _StateTrackingEV2300()
+        repl = make_repl({"psu1": psu, "ev2300": ev})
+
+        monkeypatch.setattr(variables_mod.time, "sleep", lambda _secs: None)
+        # In script mode `log save <relative>` resolves under the scripts
+        # dir (see logging_cmd.py: `base = ctx.get_scripts_dir() if ctx.in_script`).
+        monkeypatch.setenv("SCPI_SCRIPTS_DIR", str(tmp_path))
+        monkeypatch.setenv("SCPI_DATA_DIR", str(tmp_path))
+
+        # The mock's safe_all() (fired by make_repl's scan) leaves output=False.
+        # The student's real session had the channel enabled before running the
+        # sweep, so prime it here — otherwise the `psu chan 2 off` assertion
+        # below would pass tautologically.
+        psu.output_enabled = True
+
+        csv_name = "ADC_digital_code.csv"
+        script_lines = [
+            "val = linspace 18 21.5 3",
+            "for v val",
+            '    print "Setting {v}V..."',
+            "    psu set 2 {v}",
+            "    sleep 0.3",
+            "    code = ev2300 read_word 0x08 0x0C",
+            "    readback = psu meas 2 v unit=V",
+            "end",
+            "psu chan 2 off",
+            'print "=== Sweep complete ==="',
+            "log print",
+            f"log save {csv_name}",
+        ]
+
+        repl._run_script_lines(script_lines)
+
+        # The sweep must not silently fail: no command-level errors.
+        assert repl.ctx.command_had_error is False
+
+        # Three iterations -> three code reads + three readback measurements.
+        entries = repl.ctx.measurements.entries
+        code_entries = [e for e in entries if e["label"] == "code"]
+        readback_entries = [e for e in entries if e["label"] == "readback"]
+        assert len(code_entries) == 3, f"expected 3 ev2300 reads, got {len(code_entries)}: {entries}"
+        assert len(readback_entries) == 3, f"expected 3 psu readbacks, got {len(readback_entries)}: {entries}"
+
+        # PSU channel 2 must have been written and read back three times each,
+        # and the final readback must match the final setpoint (21.5 V).
+        assert psu.v_reads[2] == 3
+        assert psu.setpoints_v[2] == pytest.approx(21.5)
+        assert readback_entries[-1]["value"] == pytest.approx(21.5)
+        assert readback_entries[-1]["unit"] == "V"
+
+        # EV2300 read_word must have been called with the documented args.
+        assert ev.word_reads == [(0x08, 0x0C), (0x08, 0x0C), (0x08, 0x0C)]
+        assert all(e["value"] == 0x1234 for e in code_entries)
+
+        # `psu chan 2 off` must have disabled the output.
+        assert psu.output_enabled is False
+
+        # `log save` must have written a CSV with header + 6 data rows (order
+        # preserved: code, readback, code, readback, code, readback).
+        csv_path = tmp_path / csv_name
+        assert csv_path.exists(), f"log save did not write {csv_path}"
+        lines = csv_path.read_text(encoding="utf-8").splitlines()
+        assert lines[0] == "label,value,unit,source"
+        data_rows = lines[1:]
+        assert len(data_rows) == 6
+        labels_in_order = [row.split(",")[0] for row in data_rows]
+        assert labels_in_order == [
+            "code",
+            "readback",
+            "code",
+            "readback",
+            "code",
+            "readback",
+        ]
+
+    def test_student_sweep_without_fix_would_fail(self, make_repl, monkeypatch):
+        """Tight assertion on the specific symptom from the bug report.
+
+        Before the fix, `psu meas 2 v unit=V` raised a TypeError from
+        `HP_E3631A.measure_voltage()` and `ev2300 read_word ...` fell
+        through to a literal string assignment. This test fails loudly if
+        either regression returns, independent of the broader log-save path.
+        """
+        from lab_instruments.repl.commands import variables as variables_mod
+
+        psu = _StateTrackingMultiChanPSU()
+        ev = _StateTrackingEV2300()
+        repl = make_repl({"psu1": psu, "ev2300": ev})
+        monkeypatch.setattr(variables_mod.time, "sleep", lambda _secs: None)
+
+        repl._run_script_lines(
+            [
+                "code = ev2300 read_word 0x08 0x0C",
+                "readback = psu meas 2 v unit=V",
+            ]
+        )
+
+        assert repl.ctx.command_had_error is False
+        # `code` must be the integer 0x1234, not the literal string
+        # "ev2300 read_word 0x08 0x0C" that the pre-fix fallthrough produced.
+        assert repl.ctx.script_vars["code"] == 0x1234
+        assert not isinstance(repl.ctx.script_vars["code"], str)
+        # `readback` must hold the float from measure_voltage(channel), not
+        # error out with "missing 1 required positional argument: 'channel'".
+        assert repl.ctx.script_vars["readback"] == pytest.approx(25.0)
+        assert psu.last_channel == 2
