@@ -42,6 +42,12 @@ class SmuCommand(BaseCommand):
             elif cmd_name == "set_mode":
                 self._handle_set_mode(args, dev, smu_name)
 
+            elif cmd_name == "sink":
+                self._handle_sink(args, dev, smu_name)
+
+            elif cmd_name == "source":
+                self._handle_source(args, dev, smu_name)
+
             elif cmd_name == "meas":
                 self._handle_meas(args, dev, smu_name)
 
@@ -99,6 +105,10 @@ class SmuCommand(BaseCommand):
                 "smu set_mode voltage <v> [current_limit]",
                 "smu set_mode current <i> [voltage_limit]",
                 "  - example: smu set_mode current 0.05 5.0",
+                "smu sink <current_A> [voltage_limit_V]   (current must be negative)",
+                "  - example: smu sink -0.05 5.0",
+                "smu source <current_A> [voltage_limit_V] (current must be positive)",
+                "  - example: smu source 0.05 5.0",
                 "smu meas [v|i|vi]",
                 "  - no arg or vi: atomic V+I+compliance in one call",
                 "  - assign + log: label = smu meas v [unit=V]",
@@ -171,6 +181,30 @@ class SmuCommand(BaseCommand):
             ColorPrinter.success(f"Mode: {SMUSourceMode.CURRENT}  {current}A{suffix}")
         else:
             ColorPrinter.warning("smu set_mode voltage|current ...")
+
+    def _handle_sink(self, args, dev, smu_name) -> None:
+        if len(args) < 2:
+            ColorPrinter.warning("Usage: smu sink <current_A> [voltage_limit_V]   (current must be negative)")
+            return
+        current = float(args[1])
+        voltage_limit = float(args[2]) if len(args) >= 3 else None
+        if not self.safety.check_psu_limits(smu_name, None, voltage=voltage_limit, current=current):
+            return
+        dev.set_sink_current(current, voltage_limit)
+        suffix = f"  voltage_limit={voltage_limit}V" if voltage_limit is not None else ""
+        ColorPrinter.success(f"Mode: {SMUSourceMode.CURRENT} (sink)  {current}A{suffix}")
+
+    def _handle_source(self, args, dev, smu_name) -> None:
+        if len(args) < 2:
+            ColorPrinter.warning("Usage: smu source <current_A> [voltage_limit_V] (current must be positive)")
+            return
+        current = float(args[1])
+        voltage_limit = float(args[2]) if len(args) >= 3 else None
+        if not self.safety.check_psu_limits(smu_name, None, voltage=voltage_limit, current=current):
+            return
+        dev.set_source_current(current, voltage_limit)
+        suffix = f"  voltage_limit={voltage_limit}V" if voltage_limit is not None else ""
+        ColorPrinter.success(f"Mode: {SMUSourceMode.CURRENT} (source)  {current}A{suffix}")
 
     def _handle_compliance(self, args, dev) -> None:
         state = dev.query_in_compliance()

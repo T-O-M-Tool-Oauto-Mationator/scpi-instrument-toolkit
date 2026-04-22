@@ -909,6 +909,20 @@ class MockNI_PXIe_4139(MockPSU):
             self._voltage_limit = float(voltage_limit)
         self._output_mode = "current"
 
+    def set_sink_current(self, current: float, voltage_limit: float = None) -> None:
+        if current >= 0:
+            raise ValueError(
+                f"Sink current must be negative (got {current} A) - use set_source_current for positive current"
+            )
+        self.set_current_mode(current, voltage_limit)
+
+    def set_source_current(self, current: float, voltage_limit: float = None) -> None:
+        if current <= 0:
+            raise ValueError(
+                f"Source current must be positive (got {current} A) - use set_sink_current for negative current"
+            )
+        self.set_current_mode(current, voltage_limit)
+
     def get_output_mode(self) -> str:
         return self._output_mode
 
