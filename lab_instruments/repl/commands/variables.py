@@ -34,8 +34,8 @@ _MODE_UNIT_MAP = {
     # SMU modes (same as PSU)
 }
 
-# Pattern: <instrument_alias> (read|meas) [args...] [unit=<override>]
-_INSTR_READ_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*)\s+(read|meas)(?:\s+(.*))?$")
+# Pattern: <instrument_alias> (read|meas|read_word|read_byte|read_block) [args...] [unit=<override>]
+_INSTR_READ_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*)\s+(read_word|read_byte|read_block|read|meas)(?:\s+(.*))?$")
 
 
 class VariableCommands(BaseCommand):
@@ -89,7 +89,10 @@ class VariableCommands(BaseCommand):
                 meas_args.append(token.lower())
 
         # Resolve the instrument: could be "dmm", "psu", "psu1", "smu", etc.
-        base_type = re.sub(r"\d+$", "", instr_token)
+        # Known base types whose names embed digits (e.g. "ev2300") must not be
+        # truncated by the trailing-digit strip -- mirrors DeviceRegistry.base_type.
+        _DIGIT_BEARING_TYPES = ("ev2300",)
+        base_type = instr_token if instr_token in _DIGIT_BEARING_TYPES else re.sub(r"\d+$", "", instr_token)
 
         # Check if it's a known instrument type
         known_types = ("dmm", "psu", "scope", "awg", "smu", "ev2300")
@@ -115,17 +118,14 @@ class VariableCommands(BaseCommand):
             self.ctx.command_had_error = True
             return True
 
-        # Determine measurement mode from args
-        mode_arg = meas_args[0] if meas_args else ""
-
         # Execute the measurement
         try:
             if base_type == "ev2300":
                 value, auto_unit = self._ev2300_read(dev, dev_name, _verb, meas_args)
             elif base_type == "smu":
-                value, auto_unit = self._smu_meas(dev, dev_name, mode_arg)
+                value, auto_unit = self._smu_meas(dev, dev_name, meas_args)
             elif base_type == "psu":
-                value, auto_unit = self._psu_meas(dev, dev_name, mode_arg)
+                value, auto_unit = self._psu_meas(dev, dev_name, meas_args)
             elif base_type == "scope":
                 value, auto_unit = self._scope_meas(dev, dev_name, meas_args)
             else:
@@ -147,16 +147,73 @@ class VariableCommands(BaseCommand):
         ColorPrinter.cyan(f"{varname} = {value}{suffix}")
         return True
 
-    def _psu_meas(self, dev, dev_name: str, mode_arg: str) -> tuple:
-        """Measure from PSU. Returns (value, auto_unit)."""
+    def _psu_meas(self, dev, dev_name: str, meas_args: list) -> tuple:
+        """Measure from PSU. Returns (value, auto_unit).
+
+        Accepted meas_args forms (see docs/psu.md):
+            []            -> channel 1, last-used mode (default 'v')
+            [mode]        -> channel 1, explicit mode (single-channel PSUs)
+            [ch]          -> explicit channel, last-used mode
+            [ch, mode]    -> explicit channel and mode
+        """
+        from .psu import _is_multi_channel, _resolve_channel
+
+        _MODE_TOKENS = ("v", "volt", "voltage", "i", "curr", "current")
+        ch_token = "1"
+        mode_arg = ""
+        if len(meas_args) >= 2:
+            ch_token, mode_arg = meas_args[0], meas_args[1]
+        elif len(meas_args) == 1:
+            tok = meas_args[0]
+            if tok in _MODE_TOKENS:
+                mode_arg = tok
+            else:
+                ch_token = tok
+
         mode = mode_arg or self.ctx.last_instrument_mode.get(dev_name, "v")
+
+        if _is_multi_channel(dev):
+            channel = _resolve_channel(dev, ch_token)
+            if channel is None:
+                raise ValueError(f"Invalid PSU channel: {ch_token}")
+            if mode in ("i", "curr", "current"):
+                return dev.measure_current(channel), "A"
+            return dev.measure_voltage(channel), "V"
+
         if mode in ("i", "curr", "current"):
             return dev.measure_current(), "A"
         return dev.measure_voltage(), "V"
 
-    def _smu_meas(self, dev, dev_name: str, mode_arg: str) -> tuple:
-        """Measure from SMU. Returns (value, auto_unit)."""
+    def _smu_meas(self, dev, dev_name: str, meas_args: list) -> tuple:
+        """Measure from SMU. Returns (value, auto_unit).
+
+        Mirrors _psu_meas: accepts the same [ch, mode] / [mode] / [ch] / []
+        forms so the assignment grammar stays consistent across PSU and SMU.
+        """
+        from .psu import _is_multi_channel, _resolve_channel
+
+        _MODE_TOKENS = ("v", "volt", "voltage", "i", "curr", "current")
+        ch_token = "1"
+        mode_arg = ""
+        if len(meas_args) >= 2:
+            ch_token, mode_arg = meas_args[0], meas_args[1]
+        elif len(meas_args) == 1:
+            tok = meas_args[0]
+            if tok in _MODE_TOKENS:
+                mode_arg = tok
+            else:
+                ch_token = tok
+
         mode = mode_arg or self.ctx.last_instrument_mode.get(dev_name, "v")
+
+        if _is_multi_channel(dev):
+            channel = _resolve_channel(dev, ch_token)
+            if channel is None:
+                raise ValueError(f"Invalid SMU channel: {ch_token}")
+            if mode in ("i", "curr", "current"):
+                return dev.measure_current(channel), "A"
+            return dev.measure_voltage(channel), "V"
+
         if mode in ("i", "curr", "current"):
             return dev.measure_current(), "A"
         return dev.measure_voltage(), "V"

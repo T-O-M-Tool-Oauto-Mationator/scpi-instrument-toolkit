@@ -435,3 +435,133 @@ class TestMockInstrumentControlFlow:
         mock_repl.onecmd('assert v > 4.0 "PSU voltage in range"')
         out = capsys.readouterr().out
         assert "PASS" in out
+
+
+# ---------------------------------------------------------------------------
+# Regression tests for issue #87: assignment grammar for multi-channel PSU
+# (v = psu meas <ch> v unit=V) and EV2300 reads (code = ev2300 read_word ...).
+# ---------------------------------------------------------------------------
+
+
+class _StateTrackingMultiChanPSU:
+    """Multi-channel PSU mock that tracks which channel was measured.
+
+    Values are deterministic per channel so assertions can be exact; the
+    per-channel read count is incremented on every call so this is not a
+    constant-returning stub (state tracking per project rules).
+    """
+
+    CHANNEL_FROM_NUMBER = {1: "P6V", 2: "P25V", 3: "N25V"}
+
+    def __init__(self):
+        self.v_reads = {1: 0, 2: 0, 3: 0}
+        self.i_reads = {1: 0, 2: 0, 3: 0}
+        self.last_channel = None
+
+    def _ch_num(self, channel):
+        inv = {v: k for k, v in self.CHANNEL_FROM_NUMBER.items()}
+        return inv.get(channel, channel if isinstance(channel, int) else 1)
+
+    def measure_voltage(self, channel):
+        n = self._ch_num(channel)
+        self.v_reads[n] += 1
+        self.last_channel = n
+        return {1: 6.0, 2: 25.0, 3: -25.0}[n]
+
+    def measure_current(self, channel):
+        n = self._ch_num(channel)
+        self.i_reads[n] += 1
+        self.last_channel = n
+        return {1: 0.10, 2: 0.25, 3: -0.25}[n]
+
+    def safe_all(self):
+        pass
+
+
+class _StateTrackingEV2300:
+    """EV2300 mock that tracks each read call; returns distinct values."""
+
+    def __init__(self):
+        self.word_reads = []
+        self.byte_reads = []
+        self.block_reads = []
+
+    def read_word(self, addr, reg):
+        self.word_reads.append((addr, reg))
+        return {"ok": True, "value": 0x1234}
+
+    def read_byte(self, addr, reg):
+        self.byte_reads.append((addr, reg))
+        return {"ok": True, "value": 0x5A}
+
+    def read_block(self, addr, reg):
+        self.block_reads.append((addr, reg))
+        return {"ok": True, "block": [0xDE, 0xAD, 0xBE, 0xEF]}
+
+    def safe_all(self):
+        pass
+
+
+@pytest.fixture
+def repl_multi_psu(make_repl):
+    return make_repl({"psu1": _StateTrackingMultiChanPSU()})
+
+
+@pytest.fixture
+def repl_ev2300(make_repl):
+    return make_repl({"ev2300": _StateTrackingEV2300()})
+
+
+class TestAssignPsuMeasWithChannel:
+    """Issue #87: `v = psu meas <ch> v unit=V` must forward the channel."""
+
+    def test_assign_psu_meas_with_channel_multi(self, repl_multi_psu):
+        repl_multi_psu.onecmd("v = psu meas 2 v unit=V")
+        assert repl_multi_psu.ctx.command_had_error is False
+        assert float(repl_multi_psu.ctx.script_vars["v"]) == 25.0
+        entry = repl_multi_psu.ctx.measurements.get_by_label("v")
+        assert entry is not None
+        assert entry["unit"] == "V"
+        assert float(entry["value"]) == 25.0
+        dev = repl_multi_psu.ctx.registry.get_device("psu1")
+        assert dev.v_reads[2] == 1
+        assert dev.last_channel == 2
+
+    def test_assign_psu_meas_with_channel_current(self, repl_multi_psu):
+        repl_multi_psu.onecmd("i = psu meas 3 i unit=A")
+        assert repl_multi_psu.ctx.command_had_error is False
+        assert float(repl_multi_psu.ctx.script_vars["i"]) == -0.25
+        entry = repl_multi_psu.ctx.measurements.get_by_label("i")
+        assert entry is not None
+        assert entry["unit"] == "A"
+        dev = repl_multi_psu.ctx.registry.get_device("psu1")
+        assert dev.i_reads[3] == 1
+        assert dev.last_channel == 3
+
+
+class TestAssignEV2300Read:
+    """Issue #87: `code = ev2300 read_word ...` must capture the value."""
+
+    def test_assign_ev2300_read_word(self, repl_ev2300):
+        repl_ev2300.onecmd("code = ev2300 read_word 0x08 0x0C")
+        assert repl_ev2300.ctx.command_had_error is False
+        assert repl_ev2300.ctx.script_vars["code"] == 0x1234
+        entry = repl_ev2300.ctx.measurements.get_by_label("code")
+        assert entry is not None
+        assert entry["value"] == 0x1234
+        dev = repl_ev2300.ctx.registry.get_device("ev2300")
+        assert dev.word_reads == [(0x08, 0x0C)]
+
+    def test_assign_ev2300_read_byte(self, repl_ev2300):
+        repl_ev2300.onecmd("b = ev2300 read_byte 0x08 0x00")
+        assert repl_ev2300.ctx.command_had_error is False
+        assert repl_ev2300.ctx.script_vars["b"] == 0x5A
+        dev = repl_ev2300.ctx.registry.get_device("ev2300")
+        assert dev.byte_reads == [(0x08, 0x00)]
+
+    def test_assign_ev2300_read_block(self, repl_ev2300):
+        repl_ev2300.onecmd("blk = ev2300 read_block 0x08 0x20")
+        assert repl_ev2300.ctx.command_had_error is False
+        assert repl_ev2300.ctx.script_vars["blk"] == "DE AD BE EF"
+        dev = repl_ev2300.ctx.registry.get_device("ev2300")
+        assert dev.block_reads == [(0x08, 0x20)]
