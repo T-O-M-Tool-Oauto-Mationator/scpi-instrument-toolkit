@@ -1,5 +1,6 @@
 """Script management commands: script, record, examples, python, limits."""
 
+import builtins
 import contextlib
 import json
 import os
@@ -51,6 +52,9 @@ class ScriptingCommands(BaseCommand):
         sub = args[0].lower()
         if sub == "new" and len(args) >= 2:
             name = args[1]
+            if self._script_exists(name) and not self._confirm_overwrite(name):
+                ColorPrinter.warning(f"Script '{name}' was not overwritten.")
+                return
             lines = self._edit_script(name, [])
             if lines is not None:
                 self.ctx.scripts[name] = lines
@@ -416,6 +420,40 @@ class ScriptingCommands(BaseCommand):
                     f.write("\n")
         except Exception as exc:
             ColorPrinter.error(f"Failed to save script '{name}': {exc}")
+
+    def _script_exists(self, name: str) -> bool:
+        """Return True if *name* is already a known script in memory or on disk."""
+        if name in self.ctx.scripts:
+            return True
+        try:
+            path = self.ctx.script_file(name)
+        except (OSError, ValueError):
+            # Scripts dir is unreachable or the name is malformed; treat as
+            # not-existing so the caller can proceed (the downstream save
+            # will surface the real error).
+            return False
+        return os.path.exists(path)
+
+    def _confirm_overwrite(self, name: str) -> bool:
+        """Prompt the user before `script new` replaces an existing script.
+
+        Default is No -- a blank line, a Ctrl-D / EOF, or any answer that is
+        not an explicit yes leaves the existing script untouched. Protects
+        against the student who retypes `script new X` over a file they
+        already populated and loses the whole thing. Ctrl-C is *not*
+        swallowed -- it propagates so the REPL aborts back to its prompt
+        as users expect.
+        """
+        prompt = (
+            f"{ColorPrinter.YELLOW}Script '{name}' already exists. "
+            f"Overwrite and discard its contents? [y/N]:{ColorPrinter.RESET} "
+        )
+        try:
+            answer = builtins.input(prompt)
+        except EOFError:
+            builtins.print()
+            return False
+        return answer.strip().lower() in ("y", "yes")
 
     def _edit_script(self, name: str, current_lines: list):
         if os.name == "nt":
