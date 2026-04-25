@@ -613,12 +613,16 @@ foo = "hello"
 calc x = foo + 1
 # [error] TypeError: can only concatenate str (not "int") to str
 #          at line 2 in my_test.scpi
+#          |  calc x = foo + 1
 print "x is {x}"   # prints: x is {x}  (x was never created)
 ```
 
-Error messages include the script path and line number when the failing
-command runs as part of a script -- interactive commands just show the
-class and message.
+Error messages include the script path, the 1-based line number, and the
+exact source text of the offending command when the failure happens during
+script execution. The continuation line under the location pointer
+(prefixed with `|`) is the verbatim line from your `.scpi` file, so you
+can spot the bad command without opening the editor. Interactive
+commands typed at the prompt just show the class and message.
 
 !!! note "`print` stays lenient"
     The two contexts differ on purpose: `print "hello {undef}"` leaves the
