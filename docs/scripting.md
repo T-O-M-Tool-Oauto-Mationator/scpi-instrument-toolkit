@@ -918,7 +918,7 @@ Iterates over a whitespace-separated list of values. On each iteration, `{var}` 
 ```text
 dmm1 config vdc
 for v 1.0 2.0 3.3 5.0 9.0 12.0
-  print Setting {v}V...
+  print "Setting {v}V..."
   psu1 set {v}
   sleep 0.5
   v_{v} = dmm1 meas unit=V
@@ -950,7 +950,7 @@ Loop over multiple variables at once by separating them with commas. Values in t
 
 ```text
 for VIN,VSCALE,LABEL 5.0,1.0,five 3.3,0.5,three 2.5,0.5,two
-  print Testing {VIN}V with scale {VSCALE} ({LABEL})
+  print "Testing {VIN}V with scale {VSCALE} ({LABEL})"
   psu1 set {VIN}
   sleep 0.5
 end
