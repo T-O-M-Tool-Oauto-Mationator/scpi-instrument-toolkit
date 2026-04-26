@@ -297,7 +297,16 @@ class Ev2300Command(BaseCommand):
         else:
             ColorPrinter.warning(f"Invalid state {args[1]!r}; expected on|off")
             return
-        result = dev.i2c_power(enabled=enabled)
+        # Cmd 0x18 is silent on the wire (firmware sends no HID response),
+        # so the driver currently always returns ok=True -- the only path
+        # to a real failure is a USB transport exception. Catch those so
+        # they surface via _fail like the read/write commands do, instead
+        # of bubbling a raw exception out of the REPL command loop.
+        try:
+            result = dev.i2c_power(enabled=enabled)
+        except Exception as exc:
+            self._fail("i2c_power", {"status_text": f"{type(exc).__name__}: {exc}"})
+            return
         if result.get("ok"):
             state_word = "ON" if enabled else "OFF"
             ColorPrinter.success(f"I2C power rail: {state_word}")

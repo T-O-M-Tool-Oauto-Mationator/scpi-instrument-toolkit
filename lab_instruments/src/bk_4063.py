@@ -16,6 +16,16 @@ class BK_4063(DeviceManager):
 
     CHANNEL_MAP = {1: "C1", 2: "C2"}
 
+    # Device hardware limits (BK 4063 / Siglent SDG family, conservative
+    # high-impedance termination values). Validated in the partial-update
+    # setters below so out-of-range requests fail fast with a clear Python
+    # error instead of being sent to the device and showing up later as a
+    # generic SCPI execution error.
+    MAX_FREQUENCY_HZ = 60_000_000  # BK 4063: 1 µHz to 60 MHz
+    MAX_AMPLITUDE_VPP = 20.0  # 20 Vpp into HighZ (10 Vpp into 50 Ω)
+    MIN_OFFSET_V = -10.0  # ±10 V into HighZ
+    MAX_OFFSET_V = 10.0
+
     VALID_WAVEFORMS = {"SINE", "SQUARE", "RAMP", "PULSE", "NOISE", "DC", "ARB"}
 
     # Accept SCPI abbreviations and common aliases in addition to full names
@@ -108,8 +118,8 @@ class BK_4063(DeviceManager):
             f = float(frequency)
         except (TypeError, ValueError) as err:
             raise ValueError(f"frequency must be numeric, got {frequency!r}") from err
-        if f < 0:
-            raise ValueError(f"frequency must be non-negative, got {f}")
+        if f < 0 or f > self.MAX_FREQUENCY_HZ:
+            raise ValueError(f"frequency must be between 0 and {self.MAX_FREQUENCY_HZ} Hz, got {f}")
         scpi_name = self.CHANNEL_MAP[channel]
         self.send_command(f"{scpi_name}:BSWV FRQ,{f}")
 
@@ -124,8 +134,8 @@ class BK_4063(DeviceManager):
             a = float(amplitude)
         except (TypeError, ValueError) as err:
             raise ValueError(f"amplitude must be numeric, got {amplitude!r}") from err
-        if a < 0:
-            raise ValueError(f"amplitude must be non-negative, got {a}")
+        if a < 0 or a > self.MAX_AMPLITUDE_VPP:
+            raise ValueError(f"amplitude must be between 0 and {self.MAX_AMPLITUDE_VPP} Vpp, got {a}")
         scpi_name = self.CHANNEL_MAP[channel]
         self.send_command(f"{scpi_name}:BSWV AMP,{a}")
 
@@ -140,6 +150,8 @@ class BK_4063(DeviceManager):
             o = float(offset)
         except (TypeError, ValueError) as err:
             raise ValueError(f"offset must be numeric, got {offset!r}") from err
+        if o < self.MIN_OFFSET_V or o > self.MAX_OFFSET_V:
+            raise ValueError(f"offset must be between {self.MIN_OFFSET_V} and {self.MAX_OFFSET_V} V, got {o}")
         scpi_name = self.CHANNEL_MAP[channel]
         self.send_command(f"{scpi_name}:BSWV OFST,{o}")
 

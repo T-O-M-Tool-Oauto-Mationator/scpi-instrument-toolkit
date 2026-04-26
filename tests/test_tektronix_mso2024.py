@@ -247,7 +247,7 @@ class TestNumericValidation:
 
 
 # ===========================================================================
-# 9. TestGetErrorUsesEventQueue  (regression: SYSTem:ERRor? hangs the bus)
+# 10. TestGetErrorUsesEventQueue  (regression: SYSTem:ERRor? hangs the bus)
 # ===========================================================================
 
 
@@ -284,7 +284,7 @@ class TestGetErrorUsesEventQueue:
 
 
 # ===========================================================================
-# 10. TestScreenshot  (new method using Tek-specific SAVe:IMAGe)
+# 11. TestScreenshot  (new method using Tek-specific SAVe:IMAGe)
 # ===========================================================================
 
 
@@ -305,9 +305,19 @@ class TestScreenshot:
         with pytest.raises(ValueError):
             scope.screenshot(123)
 
+    def test_screenshot_rejects_embedded_double_quote(self, tektronix_mso2024):
+        """Regression: SAVe:IMAGe wraps the path in `"..."`. A `"` inside the
+        path would terminate the SCPI string and let further tokens be
+        injected. Reject up front."""
+        scope, mi = tektronix_mso2024
+        with pytest.raises(ValueError, match="double-quote"):
+            scope.screenshot('C:/foo".bin"; *RST')
+        # Nothing should have been sent to the bus on rejection.
+        assert not any("SAVe:IMAGe" in c.args[0] for c in mi.write.call_args_list)
+
 
 # ===========================================================================
-# 11. TestMeasClear  (new method using Tek-specific MEASUrement:DELETEALL)
+# 12. TestMeasClear  (new method using Tek-specific MEASUrement:DELETEALL)
 # ===========================================================================
 
 

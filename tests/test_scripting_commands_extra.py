@@ -170,6 +170,12 @@ class TestScriptNewOverwriteConfirm:
                 repl.onecmd("script new existing")
 
             assert repl.ctx.scripts["existing"] == ["psu off"]
+            # Symmetric on-disk check with
+            # test_student_scenario_explicit_yes_overwrites_cleanly --
+            # confirms _save_script was actually invoked, not just the
+            # in-memory dict updated.
+            with open(repl.ctx.script_file("existing")) as f:
+                assert "psu off" in f.read()
 
     def test_new_on_fresh_name_does_not_prompt(self, repl, capsys):
         """A brand-new name must skip the prompt entirely."""

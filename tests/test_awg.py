@@ -299,6 +299,13 @@ class TestBK4063_SetFrequency:
         with pytest.raises(ValueError):
             awg.set_frequency(1, "fast")
 
+    def test_above_max_frequency_raises(self, bk_4063):
+        """Regression: BK 4063 tops out at 60 MHz; reject anything above so a
+        device-side execution error doesn't surface later as a generic NACK."""
+        awg, _ = bk_4063
+        with pytest.raises(ValueError, match="60000000"):
+            awg.set_frequency(1, 70_000_000)
+
 
 class TestBK4063_SetAmplitude:
     def test_set_amplitude_ch1(self, bk_4063):
@@ -315,6 +322,12 @@ class TestBK4063_SetAmplitude:
         awg, _ = bk_4063
         with pytest.raises(ValueError):
             awg.set_amplitude(1, -0.1)
+
+    def test_above_max_amplitude_raises(self, bk_4063):
+        """Regression: spec ceiling is 20 Vpp into HighZ (10 Vpp into 50 Ω)."""
+        awg, _ = bk_4063
+        with pytest.raises(ValueError, match="20"):
+            awg.set_amplitude(1, 25.0)
 
 
 class TestBK4063_SetOffset:
@@ -333,6 +346,16 @@ class TestBK4063_SetOffset:
         awg, _ = bk_4063
         with pytest.raises(ValueError):
             awg.set_offset(3, 0)
+
+    def test_offset_above_max_raises(self, bk_4063):
+        awg, _ = bk_4063
+        with pytest.raises(ValueError, match="-10.0 and 10.0"):
+            awg.set_offset(1, 12.0)
+
+    def test_offset_below_min_raises(self, bk_4063):
+        awg, _ = bk_4063
+        with pytest.raises(ValueError, match="-10.0 and 10.0"):
+            awg.set_offset(1, -12.0)
 
 
 class TestBK4063_SetSyncOutput:

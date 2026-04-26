@@ -155,8 +155,9 @@ print "PSU voltage: {psu_v_reading} V"
 print "PSU current: {psu_i_reading} A"
 
 # Ramp through several voltages using a for loop.
-# 9 V and 12 V require channel 2 (P25V on HP E3631A); channel 1 (P6V)
-# can only deliver up to 6 V so the higher setpoints get clamped.
+# Driven on channel 2 (P25V on HP E3631A) because the sweep includes
+# 9 V and 12 V setpoints; channel 2 covers 0-25 V so every setpoint
+# in the loop is in range and no clamping occurs.
 psu1 chan 2 on
 for v 1.0 2.0 3.3 5.0 9.0 12.0
   psu1 set 2 {v}

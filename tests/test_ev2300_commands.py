@@ -141,6 +141,22 @@ class TestEv2300I2CPower:
         out = capsys.readouterr().out
         assert "maybe" in out or "Invalid" in out or "invalid" in out.lower()
 
+    def test_transport_exception_routed_through_fail(self, ev2300_repl, capsys, monkeypatch):
+        """Regression: a USB transport exception must surface via _fail with
+        a recovery hint, not bubble out of the REPL command loop. The driver
+        normally returns ok=True for cmd 0x18 (silent on the wire), so this
+        exercises the unreachable-by-default exception branch."""
+        dev = ev2300_repl.ctx.registry.devices["ev2300"]
+
+        def boom(**_kwargs):
+            raise OSError("simulated USB stall")
+
+        monkeypatch.setattr(dev, "i2c_power", boom)
+        ev2300_repl.onecmd("ev2300 i2c_power on")
+        out = capsys.readouterr().out
+        assert "i2c_power" in out
+        assert "OSError" in out or "simulated USB stall" in out
+
 
 class TestEv2300Mock:
     def test_mock_read_word(self):

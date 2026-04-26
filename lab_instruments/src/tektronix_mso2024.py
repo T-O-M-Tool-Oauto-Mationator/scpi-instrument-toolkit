@@ -99,6 +99,11 @@ class Tektronix_MSO2024(DeviceManager):
         """
         if not isinstance(filepath, str) or not filepath:
             raise ValueError("filepath must be a non-empty string")
+        # SCPI quoting: SAVe:IMAGe wraps the path in double quotes, so an
+        # embedded `"` would terminate the string and smuggle further
+        # SCPI tokens into the command. Reject those paths up front.
+        if '"' in filepath:
+            raise ValueError(f"filepath must not contain double-quote characters: {filepath!r}")
         self._write(f'SAVe:IMAGe "{filepath}"')
 
     def meas_clear(self) -> None:
