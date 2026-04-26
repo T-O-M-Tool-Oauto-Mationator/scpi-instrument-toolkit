@@ -148,25 +148,34 @@ class TestScriptNewOverwriteConfirm:
 
     def test_new_on_existing_script_yes_overwrites(self, repl, capsys):
         """With an existing script and a 'y' answer, the editor is invoked
-        and the new contents replace the old."""
+        and the new contents replace the old.
+
+        Patches _edit_script directly so this is portable across platforms:
+        on POSIX it calls subprocess.run on $EDITOR; on Windows it launches
+        the file non-blocking and returns None expecting a manual reload.
+        Both paths funnel through _edit_script(); patching there lets the
+        test assert the do_script("new") wiring without coupling to the
+        platform-specific editor invocation.
+        """
         repl.ctx.scripts["existing"] = ["psu set 1 5.0"]
 
         with tempfile.TemporaryDirectory() as tmpdir:
             repl.ctx._scripts_dir_override = tmpdir
             repl._script_cmd._save_script("existing")
 
-            def fake_run(cmd, **kwargs):
-                if len(cmd) >= 2:
-                    with open(cmd[1], "w") as f:
-                        f.write("psu off\n")
-
             with (
                 patch("builtins.input", return_value="y"),
-                patch("subprocess.run", side_effect=fake_run),
+                patch.object(repl._script_cmd, "_edit_script", return_value=["psu off"]),
             ):
                 repl.onecmd("script new existing")
 
             assert repl.ctx.scripts["existing"] == ["psu off"]
+            # Symmetric on-disk check with
+            # test_student_scenario_explicit_yes_overwrites_cleanly --
+            # confirms _save_script was actually invoked, not just the
+            # in-memory dict updated.
+            with open(repl.ctx.script_file("existing")) as f:
+                assert "psu off" in f.read()
 
     def test_new_on_fresh_name_does_not_prompt(self, repl, capsys):
         """A brand-new name must skip the prompt entirely."""
@@ -318,7 +327,12 @@ class TestScriptNewOverwriteRegression:
 
     def test_student_scenario_explicit_yes_overwrites_cleanly(self, repl):
         """If the student really does mean to start over, `y` overwrites
-        the script and the new content lands in both memory and on disk."""
+        the script and the new content lands in both memory and on disk.
+
+        Patches _edit_script directly to keep this portable across the
+        POSIX (synchronous subprocess.run) and Windows (non-blocking
+        launch) editor paths -- see test_new_on_existing_script_yes_overwrites.
+        """
         with tempfile.TemporaryDirectory() as tmpdir:
             repl.ctx._scripts_dir_override = tmpdir
 
@@ -326,16 +340,9 @@ class TestScriptNewOverwriteRegression:
             repl._script_cmd._save_script("my_lab")
             disk_path = repl.ctx.script_file("my_lab")
 
-            new_content = "psu off\n"
-
-            def fake_run(cmd, **kwargs):
-                if len(cmd) >= 2:
-                    with open(cmd[1], "w") as f:
-                        f.write(new_content)
-
             with (
                 patch("builtins.input", return_value="y"),
-                patch("subprocess.run", side_effect=fake_run),
+                patch.object(repl._script_cmd, "_edit_script", return_value=["psu off"]),
             ):
                 repl.onecmd("script new my_lab")
 

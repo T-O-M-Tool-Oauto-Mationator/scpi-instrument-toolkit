@@ -16,6 +16,16 @@ class BK_4063(DeviceManager):
 
     CHANNEL_MAP = {1: "C1", 2: "C2"}
 
+    # Device hardware limits (BK 4063 / Siglent SDG family, conservative
+    # high-impedance termination values). Validated in the partial-update
+    # setters below so out-of-range requests fail fast with a clear Python
+    # error instead of being sent to the device and showing up later as a
+    # generic SCPI execution error.
+    MAX_FREQUENCY_HZ = 60_000_000  # BK 4063: 1 µHz to 60 MHz
+    MAX_AMPLITUDE_VPP = 20.0  # 20 Vpp into HighZ (10 Vpp into 50 Ω)
+    MIN_OFFSET_V = -10.0  # ±10 V into HighZ
+    MAX_OFFSET_V = 10.0
+
     VALID_WAVEFORMS = {"SINE", "SQUARE", "RAMP", "PULSE", "NOISE", "DC", "ARB"}
 
     # Accept SCPI abbreviations and common aliases in addition to full names
@@ -82,14 +92,68 @@ class BK_4063(DeviceManager):
         scpi_name = self.CHANNEL_MAP[channel]
         self.send_command(f"{scpi_name}:OUTPut LOAD,{load}")
 
-    def set_sync_output(self, channel, enabled: bool):
-        """Enable or disable sync output for the specified channel."""
+    def set_sync_output(self, channel, enabled: bool = True):
+        """Enable or disable sync output for the specified channel.
+
+        `enabled` defaults to True so callers that just want to toggle sync on
+        can write `awg.set_sync_output(1)` without a positional argument.
+        """
         if channel not in self.CHANNEL_MAP:
             raise ValueError(f"Invalid channel. Must be one of: {list(self.CHANNEL_MAP.keys())}")
 
         scpi_name = self.CHANNEL_MAP[channel]
         state = "ON" if enabled else "OFF"
         self.send_command(f"{scpi_name}:SYNC {state}")
+
+    def set_frequency(self, channel, frequency):
+        """Set frequency only; preserve current waveform, amplitude, offset.
+
+        Uses Siglent's partial-update form `Cn:BSWV FRQ,<value>` per the
+        SDG manual ("Changes current signal frequency of channel one to 2000
+        Hz: C1: BSWV FRQ, 2000HZ").
+        """
+        if channel not in self.CHANNEL_MAP:
+            raise ValueError(f"Invalid channel. Must be one of: {list(self.CHANNEL_MAP.keys())}")
+        try:
+            f = float(frequency)
+        except (TypeError, ValueError) as err:
+            raise ValueError(f"frequency must be numeric, got {frequency!r}") from err
+        if f < 0 or f > self.MAX_FREQUENCY_HZ:
+            raise ValueError(f"frequency must be between 0 and {self.MAX_FREQUENCY_HZ} Hz, got {f}")
+        scpi_name = self.CHANNEL_MAP[channel]
+        self.send_command(f"{scpi_name}:BSWV FRQ,{f}")
+
+    def set_amplitude(self, channel, amplitude):
+        """Set amplitude (Vpp) only; preserve current waveform, frequency, offset.
+
+        Uses Siglent's partial-update form `Cn:BSWV AMP,<value>`.
+        """
+        if channel not in self.CHANNEL_MAP:
+            raise ValueError(f"Invalid channel. Must be one of: {list(self.CHANNEL_MAP.keys())}")
+        try:
+            a = float(amplitude)
+        except (TypeError, ValueError) as err:
+            raise ValueError(f"amplitude must be numeric, got {amplitude!r}") from err
+        if a < 0 or a > self.MAX_AMPLITUDE_VPP:
+            raise ValueError(f"amplitude must be between 0 and {self.MAX_AMPLITUDE_VPP} Vpp, got {a}")
+        scpi_name = self.CHANNEL_MAP[channel]
+        self.send_command(f"{scpi_name}:BSWV AMP,{a}")
+
+    def set_offset(self, channel, offset):
+        """Set DC offset (V) only; preserve current waveform, frequency, amplitude.
+
+        Uses Siglent's partial-update form `Cn:BSWV OFST,<value>`.
+        """
+        if channel not in self.CHANNEL_MAP:
+            raise ValueError(f"Invalid channel. Must be one of: {list(self.CHANNEL_MAP.keys())}")
+        try:
+            o = float(offset)
+        except (TypeError, ValueError) as err:
+            raise ValueError(f"offset must be numeric, got {offset!r}") from err
+        if o < self.MIN_OFFSET_V or o > self.MAX_OFFSET_V:
+            raise ValueError(f"offset must be between {self.MIN_OFFSET_V} and {self.MAX_OFFSET_V} V, got {o}")
+        scpi_name = self.CHANNEL_MAP[channel]
+        self.send_command(f"{scpi_name}:BSWV OFST,{o}")
 
     # ==========================================
     # STATE QUERIES

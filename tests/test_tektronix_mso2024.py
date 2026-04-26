@@ -244,3 +244,88 @@ class TestNumericValidation:
         scope, _mi = tektronix_mso2024
         with pytest.raises(ValueError, match="positive"):
             scope.set_vertical_scale(1, 0)
+
+
+# ===========================================================================
+# 10. TestGetErrorUsesEventQueue  (regression: SYSTem:ERRor? hangs the bus)
+# ===========================================================================
+
+
+class TestGetErrorUsesEventQueue:
+    """Tek 2-Series does not implement SYSTem:ERRor? — the driver must use
+    *ESR? + ALLEv? per the Programmer Manual. Querying SYSTem:ERRor? hangs
+    the bus until the VISA timeout fires; this regression catches that.
+    """
+
+    def test_get_error_no_pending_event_returns_no_error(self, tektronix_mso2024):
+        scope, mi = tektronix_mso2024
+        mi.query.return_value = "0"  # *ESR? returns 0 = no events
+        result = scope.get_error()
+        assert result == '0,"No error"'
+        # Must not have queried SYSTem:ERRor?
+        queries = [c.args[0] for c in mi.query.call_args_list]
+        assert "*ESR?" in queries
+        assert not any("SYST" in q for q in queries)
+
+    def test_get_error_with_pending_event_drains_via_allev(self, tektronix_mso2024):
+        scope, mi = tektronix_mso2024
+        # Bit 5 (CME, command error) is set
+        mi.query.side_effect = ["32", '420,"Query UNTERMINATED"']
+        result = scope.get_error()
+        assert "Query UNTERMINATED" in result
+        queries = [c.args[0] for c in mi.query.call_args_list]
+        assert queries == ["*ESR?", "ALLEv?"]
+
+    def test_get_error_handles_garbage_esr_response(self, tektronix_mso2024):
+        scope, mi = tektronix_mso2024
+        mi.query.return_value = "not-a-number"
+        result = scope.get_error()
+        assert result == '0,"No error"'
+
+
+# ===========================================================================
+# 11. TestScreenshot  (new method using Tek-specific SAVe:IMAGe)
+# ===========================================================================
+
+
+class TestScreenshot:
+    def test_screenshot_emits_save_image(self, tektronix_mso2024):
+        scope, mi = tektronix_mso2024
+        scope.screenshot("C:/captures/test.png")
+        writes = [c.args[0] for c in mi.write.call_args_list]
+        assert 'SAVe:IMAGe "C:/captures/test.png"' in writes
+
+    def test_screenshot_rejects_empty_path(self, tektronix_mso2024):
+        scope, _mi = tektronix_mso2024
+        with pytest.raises(ValueError):
+            scope.screenshot("")
+
+    def test_screenshot_rejects_non_string(self, tektronix_mso2024):
+        scope, _mi = tektronix_mso2024
+        with pytest.raises(ValueError):
+            scope.screenshot(123)
+
+    def test_screenshot_rejects_embedded_double_quote(self, tektronix_mso2024):
+        """Regression: SAVe:IMAGe wraps the path in `"..."`. A `"` inside the
+        path would terminate the SCPI string and let further tokens be
+        injected. Reject up front."""
+        scope, mi = tektronix_mso2024
+        with pytest.raises(ValueError, match="double-quote"):
+            scope.screenshot('C:/foo".bin"; *RST')
+        # Nothing should have been sent to the bus on rejection.
+        assert not any("SAVe:IMAGe" in c.args[0] for c in mi.write.call_args_list)
+
+
+# ===========================================================================
+# 12. TestMeasClear  (new method using Tek-specific MEASUrement:DELETEALL)
+# ===========================================================================
+
+
+class TestMeasClear:
+    def test_meas_clear_emits_delete_all(self, tektronix_mso2024):
+        scope, mi = tektronix_mso2024
+        scope.meas_clear()
+        writes = [c.args[0] for c in mi.write.call_args_list]
+        assert "MEASUrement:DELETEALL" in writes
+        # Must NOT use the Rigol-style MEASure:CLEar
+        assert not any("MEASure:CLEar" in w for w in writes)
