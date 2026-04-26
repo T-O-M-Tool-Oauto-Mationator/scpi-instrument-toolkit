@@ -56,6 +56,8 @@ class Ev2300Command(BaseCommand):
                 self._handle_probe(args, dev)
             elif cmd_name == "wait_for_bq":
                 self._handle_wait_for_bq(args, dev)
+            elif cmd_name == "i2c_power":
+                self._handle_i2c_power(args, dev)
             elif cmd_name == "fix":
                 self._handle_fix()
             elif cmd_name == "state":
@@ -99,6 +101,9 @@ class Ev2300Command(BaseCommand):
                 "ev2300 wait_for_bq [timeout_s]",
                 "  - wait until BQ76920 IC is live (default timeout: 30s)",
                 "  - use after connect if the EVM was powered on after the bridge",
+                "ev2300 i2c_power on|off",
+                "  - enable or disable the EV2300's I2C bus power rail (cmd 0x18)",
+                "  - silent command: bridge sends no HID response, success is implicit",
                 "ev2300 fix",
                 "  - step-by-step recovery for communication errors",
             ]
@@ -280,6 +285,25 @@ class Ev2300Command(BaseCommand):
         else:
             ColorPrinter.cyan(f"0x{cmd_code:02X}: resp=0x{resp_cmd:02X}  [{hex_str}]")
 
+    def _handle_i2c_power(self, args: list, dev: Any) -> None:
+        if len(args) < 2:
+            ColorPrinter.warning("Usage: ev2300 i2c_power on|off")
+            return
+        token = args[1].strip().lower()
+        if token in ("on", "1", "enable", "enabled", "true"):
+            enabled = 1
+        elif token in ("off", "0", "disable", "disabled", "false"):
+            enabled = 0
+        else:
+            ColorPrinter.warning(f"Invalid state {args[1]!r}; expected on|off")
+            return
+        result = dev.i2c_power(enabled=enabled)
+        if result.get("ok"):
+            state_word = "ON" if enabled else "OFF"
+            ColorPrinter.success(f"I2C power rail: {state_word}")
+        else:
+            self._fail("i2c_power", result)
+
     def _handle_wait_for_bq(self, args: list, dev: Any) -> None:
         timeout_s = 30.0
         if len(args) >= 2:
@@ -297,36 +321,40 @@ class Ev2300Command(BaseCommand):
                 "# EV2300 Communication Recovery",
                 "",
                 "If you are getting 'Device error (0x46)' or similar I2C failures,",
-                "follow these steps:",
+                "follow these steps in order:",
                 "",
-                "  1. Make sure the BQ EVM board is powered (e.g. PSU set to 18V)",
+                "  1. Confirm the BQ EVM board is powered (PSU at 9-21 V on BATT+/-).",
+                "     For a single HP E3631A this means chan 2 (P25V) at 18 V / 0.5 A.",
                 "",
-                "  1b. If the bridge was connected before the EVM was powered, run:",
-                "        ev2300 wait_for_bq",
-                "      This waits up to 30s for the BQ76920 to appear on the bus.",
-                "      No reconnect needed -- the firmware retries automatically.",
+                "  2. PRESS THE BOOT BUTTON ON THE BQ76920 EVM.",
+                "     The BQ76920 enters SHIP mode if the EVM is idle or was",
+                "     unpowered, and a hardware BOOT pulse is the only way to",
+                "     wake it. Do this every time you power-cycle the EVM.",
+                "     If you do not have cells installed, also confirm the cell",
+                "     simulator DIP switches are CLOSED (otherwise the BQ will",
+                "     latch into UV-fault immediately on wake).",
                 "",
-                "  2. If still failing, press the BOOT button on the BQ EVM board",
-                "     (this resets the EV2300 and the fuel gauge IC)",
+                "  3. Run 'ev2300 wait_for_bq' to confirm the chip is responding.",
+                "     Reads CC_CFG (reg 0x0B) until it ACKs, with a 30 s default",
+                "     timeout. The STM32 bridge re-runs init every 2 s, so once",
+                "     the chip is awake no reconnect is required.",
                 "",
-                "  3. In the REPL, disconnect the EV2300:",
+                "  4. Optional: 'ev2300 i2c_power on' explicitly enables the",
+                "     bridge's I2C bus power rail (cmd 0x18). Most builds enable",
+                "     it at startup, but if reads still NACK after BOOT, try this.",
+                "",
+                "  5. If still failing, disconnect and re-scan:",
                 "       disconnect ev2300",
-                "",
-                "  4. Re-scan to pick it back up:",
                 "       scan",
                 "",
-                "  5. Retry your command",
-                "",
-                "If it still doesn't work:",
-                "  6. Unplug the EV2300 USB cable and plug it back in",
-                "  7. Run: disconnect ev2300",
-                "  8. Run: scan",
-                "  9. Retry your command",
+                "  6. Last resort: unplug the EV2300 USB cable, replug, then",
+                "     'disconnect ev2300' and 'scan' again.",
                 "",
                 "Why this works:",
-                "  The EV2300 USB-to-I2C bridge can get into a bad state if the",
-                "  fuel gauge is not powered or was powered on after the EV2300.",
-                "  Pressing BOOT resets both the bridge and the I2C bus, clearing",
-                "  any stuck transactions.",
+                "  The BQ76920 is a battery-protection AFE -- it powers down to",
+                "  microamps if no cells are present or it has been idle. The",
+                "  STM32 bridge can only talk to a BQ that is awake on I2C, so",
+                "  BOOT is required after every power-up. The bridge itself",
+                "  retries init transparently every 2 s once the chip wakes.",
             ]
         )

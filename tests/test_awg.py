@@ -261,6 +261,101 @@ class TestBK4063_GetError:
         mi.query.assert_called_with("SYSTem:ERRor?")
 
 
+class TestBK4063_SetFrequency:
+    """Regression: examples/python/live_freq_sweep.py and complete_cross_script
+    call set_frequency(channel, freq); the method was missing entirely."""
+
+    def test_set_frequency_ch1(self, bk_4063):
+        awg, mi = bk_4063
+        awg.set_frequency(1, 5000)
+        mi.write.assert_called_with("C1:BSWV FRQ,5000.0")
+
+    def test_set_frequency_ch2(self, bk_4063):
+        awg, mi = bk_4063
+        awg.set_frequency(2, 10_000)
+        mi.write.assert_called_with("C2:BSWV FRQ,10000.0")
+
+    def test_set_frequency_preserves_other_params(self, bk_4063):
+        """Partial-update form must NOT include WVTP, AMP, or OFST."""
+        awg, mi = bk_4063
+        awg.set_frequency(1, 1000)
+        cmd = mi.write.call_args.args[0]
+        assert "WVTP" not in cmd
+        assert "AMP" not in cmd
+        assert "OFST" not in cmd
+
+    def test_invalid_channel_raises(self, bk_4063):
+        awg, _ = bk_4063
+        with pytest.raises(ValueError):
+            awg.set_frequency(3, 1000)
+
+    def test_negative_frequency_raises(self, bk_4063):
+        awg, _ = bk_4063
+        with pytest.raises(ValueError):
+            awg.set_frequency(1, -1)
+
+    def test_non_numeric_frequency_raises(self, bk_4063):
+        awg, _ = bk_4063
+        with pytest.raises(ValueError):
+            awg.set_frequency(1, "fast")
+
+
+class TestBK4063_SetAmplitude:
+    def test_set_amplitude_ch1(self, bk_4063):
+        awg, mi = bk_4063
+        awg.set_amplitude(1, 3.5)
+        mi.write.assert_called_with("C1:BSWV AMP,3.5")
+
+    def test_invalid_channel_raises(self, bk_4063):
+        awg, _ = bk_4063
+        with pytest.raises(ValueError):
+            awg.set_amplitude(3, 1.0)
+
+    def test_negative_amplitude_raises(self, bk_4063):
+        awg, _ = bk_4063
+        with pytest.raises(ValueError):
+            awg.set_amplitude(1, -0.1)
+
+
+class TestBK4063_SetOffset:
+    def test_set_offset_ch1(self, bk_4063):
+        awg, mi = bk_4063
+        awg.set_offset(1, 1.2)
+        mi.write.assert_called_with("C1:BSWV OFST,1.2")
+
+    def test_set_offset_negative_allowed(self, bk_4063):
+        """Offset is bipolar — negative values are valid."""
+        awg, mi = bk_4063
+        awg.set_offset(1, -0.5)
+        mi.write.assert_called_with("C1:BSWV OFST,-0.5")
+
+    def test_invalid_channel_raises(self, bk_4063):
+        awg, _ = bk_4063
+        with pytest.raises(ValueError):
+            awg.set_offset(3, 0)
+
+
+class TestBK4063_SetSyncOutput:
+    """Regression: examples/Cross Script/complete_cross_script.scpi expects
+    set_sync_output(channel) to default to enabling sync. Previously it
+    required a positional `enabled` arg and crashed."""
+
+    def test_default_enables_sync(self, bk_4063):
+        awg, mi = bk_4063
+        awg.set_sync_output(1)
+        mi.write.assert_called_with("C1:SYNC ON")
+
+    def test_explicit_disable(self, bk_4063):
+        awg, mi = bk_4063
+        awg.set_sync_output(1, False)
+        mi.write.assert_called_with("C1:SYNC OFF")
+
+    def test_invalid_channel_raises(self, bk_4063):
+        awg, _ = bk_4063
+        with pytest.raises(ValueError):
+            awg.set_sync_output(3)
+
+
 # ===========================================================================
 # JDS6600_Generator
 # ===========================================================================

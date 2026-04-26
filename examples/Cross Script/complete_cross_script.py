@@ -499,13 +499,14 @@ ColorPrinter.info("PATTERN 14: called _interop_helper.scpi via script run")
 # ── PATTERN 15: Python var → f-string in repl.onecmd ─────────────────
 ColorPrinter.info("")
 ColorPrinter.info("--- PATTERN 15: Python var used in SCPI inline ---")
+# 7.5 V exceeds P6V (chan 1) on HP E3631A — drive channel 2 (P25V) instead.
 py_voltage = 7.5
-repl.onecmd("psu1 chan 1 on")
-repl.onecmd(f"psu1 set 1 {py_voltage}")
+repl.onecmd("psu1 chan 2 on")
+repl.onecmd(f"psu1 set 2 {py_voltage}")
 repl.onecmd("sleep 100ms")
 repl.onecmd("p15_v = psu1 meas v unit=V")
 val = repl.ctx.script_vars.get("p15_v", "?")
-repl.onecmd("psu1 chan 1 off")
+repl.onecmd("psu1 chan 2 off")
 ColorPrinter.info(f"PATTERN 15: Python var py_voltage={py_voltage} used in SCPI inline, measured={val}")
 
 # ── PATTERN 16: Python var → script_vars → SCPI file reads {var} ─────

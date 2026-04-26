@@ -1,15 +1,15 @@
-print Starting Test...
-use psu1
-psu set 5.0 0.1
+print "Starting Test..."
+# Single PSU (HP E3631A) — uses its three independent channels:
+#   chan 1 = P6V  (0 to +6V, max 5A)
+#   chan 2 = P25V (0 to +25V, max 1A)
+#   chan 3 = N25V (0 to -25V, max 1A)
+psu set 1 5.0 0.1
 psu chan 1 on
-use psu2
-psu set 3.3 0.1
-psu chan 1 on
+psu set 2 3.3 0.1
+psu chan 2 on
 sleep 3
-use dmm
-dmm meas vdc
-print Test Complete
-use psu1
+v1 = dmm meas vdc unit=V
+print "Measured: {v1}"
 psu chan 1 off
-use psu2
-psu chan 1 off
+psu chan 2 off
+print "Test Complete"

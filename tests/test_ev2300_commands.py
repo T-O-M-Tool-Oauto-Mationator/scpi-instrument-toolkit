@@ -85,6 +85,62 @@ class TestEv2300Help:
         out = capsys.readouterr().out
         assert "Unknown" in out or "unknown" in out.lower()
 
+    def test_help_lists_i2c_power(self, ev2300_repl, capsys):
+        """Regression: i2c_power was implemented in the driver but not surfaced
+        in the REPL help, so users had no interactive way to enable the bus
+        rail when reads NACKed after a fresh power-up."""
+        ev2300_repl.onecmd("ev2300")
+        out = capsys.readouterr().out
+        assert "i2c_power" in out
+
+    def test_fix_text_leads_with_boot(self, ev2300_repl, capsys):
+        """Regression: the previous 'fix' text mentioned BOOT only as step 2.
+        After characterising a real BQ76920 EVM cold-start we confirmed BOOT
+        is mandatory after every power-up, so it has to be the first remedy."""
+        ev2300_repl.onecmd("ev2300 fix")
+        out = capsys.readouterr().out
+        # The "BOOT" instruction should come before any 'disconnect ev2300' step
+        assert "BOOT" in out
+        boot_pos = out.find("BOOT")
+        disconnect_pos = out.find("disconnect ev2300")
+        assert boot_pos < disconnect_pos, "BOOT recovery step must precede disconnect/rescan"
+
+
+class TestEv2300I2CPower:
+    """Regression: i2c_power was previously only callable via the Python API.
+    Bench debugging of the BQ76920 EVM motivated exposing it interactively."""
+
+    def test_on_emits_enabled_1(self, ev2300_repl, capsys):
+        ev2300_repl.onecmd("ev2300 i2c_power on")
+        out = capsys.readouterr().out
+        assert "ON" in out
+        assert "I2C power" in out or "i2c power" in out.lower()
+
+    def test_off_emits_enabled_0(self, ev2300_repl, capsys):
+        ev2300_repl.onecmd("ev2300 i2c_power off")
+        out = capsys.readouterr().out
+        assert "OFF" in out
+
+    def test_alias_1_means_on(self, ev2300_repl, capsys):
+        ev2300_repl.onecmd("ev2300 i2c_power 1")
+        out = capsys.readouterr().out
+        assert "ON" in out
+
+    def test_alias_0_means_off(self, ev2300_repl, capsys):
+        ev2300_repl.onecmd("ev2300 i2c_power 0")
+        out = capsys.readouterr().out
+        assert "OFF" in out
+
+    def test_missing_arg_shows_usage(self, ev2300_repl, capsys):
+        ev2300_repl.onecmd("ev2300 i2c_power")
+        out = capsys.readouterr().out
+        assert "Usage" in out or "usage" in out.lower()
+
+    def test_invalid_arg_warns(self, ev2300_repl, capsys):
+        ev2300_repl.onecmd("ev2300 i2c_power maybe")
+        out = capsys.readouterr().out
+        assert "maybe" in out or "Invalid" in out or "invalid" in out.lower()
+
 
 class TestEv2300Mock:
     def test_mock_read_word(self):

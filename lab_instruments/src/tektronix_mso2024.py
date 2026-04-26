@@ -77,8 +77,38 @@ class Tektronix_MSO2024(DeviceManager):
         self.disable_all_channels()
 
     def get_error(self):
-        """Reads the most recent error from the system error queue."""
-        return self.query("SYSTem:ERRor?")
+        """Reads pending events from the Tek event queue.
+
+        The Tektronix 2-Series uses *ESR? + ALLEv? — `SYSTem:ERRor?` is not
+        implemented and querying it hangs the bus until VISA times out.
+        """
+        try:
+            esr = int(str(self.query("*ESR?")).strip())
+        except (ValueError, TypeError):
+            return '0,"No error"'
+        # Bits 2-5 of the SESR are the error bits (Query, Device-Dep, Execution, Command).
+        if esr & 0b00111100:
+            return self.query("ALLEv?")
+        return '0,"No error"'
+
+    def screenshot(self, filepath: str) -> None:
+        """Save a screenshot of the scope display to a file on the scope's disk.
+
+        Uses Tek's `SAVe:IMAGe` command (Programmer Manual 2-488). Supports
+        PNG, BMP, and JPEG based on the file extension in `filepath`.
+        """
+        if not isinstance(filepath, str) or not filepath:
+            raise ValueError("filepath must be a non-empty string")
+        self._write(f'SAVe:IMAGe "{filepath}"')
+
+    def meas_clear(self) -> None:
+        """Delete every active measurement on the scope.
+
+        Tek 2-Series uses `MEASUrement:DELETEALL` (Programmer Manual 2-383).
+        Other vendors document `:MEASure:CLEar` (Rigol) — this driver
+        emits the Tek-specific form.
+        """
+        self._write("MEASUrement:DELETEALL")
 
     def disable_all_channels(self):
         """Disable all channels (Analog + Math)."""

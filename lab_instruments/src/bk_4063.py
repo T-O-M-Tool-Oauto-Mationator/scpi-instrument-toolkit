@@ -82,14 +82,66 @@ class BK_4063(DeviceManager):
         scpi_name = self.CHANNEL_MAP[channel]
         self.send_command(f"{scpi_name}:OUTPut LOAD,{load}")
 
-    def set_sync_output(self, channel, enabled: bool):
-        """Enable or disable sync output for the specified channel."""
+    def set_sync_output(self, channel, enabled: bool = True):
+        """Enable or disable sync output for the specified channel.
+
+        `enabled` defaults to True so callers that just want to toggle sync on
+        can write `awg.set_sync_output(1)` without a positional argument.
+        """
         if channel not in self.CHANNEL_MAP:
             raise ValueError(f"Invalid channel. Must be one of: {list(self.CHANNEL_MAP.keys())}")
 
         scpi_name = self.CHANNEL_MAP[channel]
         state = "ON" if enabled else "OFF"
         self.send_command(f"{scpi_name}:SYNC {state}")
+
+    def set_frequency(self, channel, frequency):
+        """Set frequency only; preserve current waveform, amplitude, offset.
+
+        Uses Siglent's partial-update form `Cn:BSWV FRQ,<value>` per the
+        SDG manual ("Changes current signal frequency of channel one to 2000
+        Hz: C1: BSWV FRQ, 2000HZ").
+        """
+        if channel not in self.CHANNEL_MAP:
+            raise ValueError(f"Invalid channel. Must be one of: {list(self.CHANNEL_MAP.keys())}")
+        try:
+            f = float(frequency)
+        except (TypeError, ValueError) as err:
+            raise ValueError(f"frequency must be numeric, got {frequency!r}") from err
+        if f < 0:
+            raise ValueError(f"frequency must be non-negative, got {f}")
+        scpi_name = self.CHANNEL_MAP[channel]
+        self.send_command(f"{scpi_name}:BSWV FRQ,{f}")
+
+    def set_amplitude(self, channel, amplitude):
+        """Set amplitude (Vpp) only; preserve current waveform, frequency, offset.
+
+        Uses Siglent's partial-update form `Cn:BSWV AMP,<value>`.
+        """
+        if channel not in self.CHANNEL_MAP:
+            raise ValueError(f"Invalid channel. Must be one of: {list(self.CHANNEL_MAP.keys())}")
+        try:
+            a = float(amplitude)
+        except (TypeError, ValueError) as err:
+            raise ValueError(f"amplitude must be numeric, got {amplitude!r}") from err
+        if a < 0:
+            raise ValueError(f"amplitude must be non-negative, got {a}")
+        scpi_name = self.CHANNEL_MAP[channel]
+        self.send_command(f"{scpi_name}:BSWV AMP,{a}")
+
+    def set_offset(self, channel, offset):
+        """Set DC offset (V) only; preserve current waveform, frequency, amplitude.
+
+        Uses Siglent's partial-update form `Cn:BSWV OFST,<value>`.
+        """
+        if channel not in self.CHANNEL_MAP:
+            raise ValueError(f"Invalid channel. Must be one of: {list(self.CHANNEL_MAP.keys())}")
+        try:
+            o = float(offset)
+        except (TypeError, ValueError) as err:
+            raise ValueError(f"offset must be numeric, got {offset!r}") from err
+        scpi_name = self.CHANNEL_MAP[channel]
+        self.send_command(f"{scpi_name}:BSWV OFST,{o}")
 
     # ==========================================
     # STATE QUERIES

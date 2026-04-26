@@ -58,8 +58,10 @@ int_div = 17 // 3
 print "target={target}  half={half}  doubled={doubled}  squared={squared}"
 print "17 mod 5 = {remainder}   17 // 3 = {int_div}"
 
-# Linspace generates evenly-spaced values
-sweep_voltages = linspace 0.5 12.0 10
+# Linspace generates evenly-spaced values.
+# Range capped at 6.0 V so the sweep can run safely on a P6V channel
+# (HP E3631A's chan 1 maxes at 6 V; values above clamp to ~5 V).
+sweep_voltages = linspace 0.5 6.0 10
 print "Sweep voltages: {sweep_voltages}"
 
 # Augmented assignment operators
@@ -152,12 +154,16 @@ psu_i_reading = psu1 meas i unit=A
 print "PSU voltage: {psu_v_reading} V"
 print "PSU current: {psu_i_reading} A"
 
-# Ramp through several voltages using a for loop
+# Ramp through several voltages using a for loop.
+# 9 V and 12 V require channel 2 (P25V on HP E3631A); channel 1 (P6V)
+# can only deliver up to 6 V so the higher setpoints get clamped.
+psu1 chan 2 on
 for v 1.0 2.0 3.3 5.0 9.0 12.0
-  psu1 set 1 {v}
+  psu1 set 2 {v}
   sleep 100ms
   psu_sweep_{v} = psu1 meas v unit=V
 end
+psu1 chan 2 off
 
 # Disable PSU channel
 psu1 chan 1 off
