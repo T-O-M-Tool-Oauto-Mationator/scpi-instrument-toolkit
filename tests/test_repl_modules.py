@@ -649,6 +649,10 @@ class TestBaseCommand:
         assert cmd.is_help(["arg", "help"]) is True
         assert cmd.is_help(["arg", "-h"]) is True
         assert cmd.is_help(["arg", "--help"]) is True
+        # `?` is documented in the TA developer guide as a help token; keep
+        # is_help in sync with the docs so users typing e.g. `psu set ?`
+        # get the usage banner instead of an unknown-args error.
+        assert cmd.is_help(["arg", "?"]) is True
 
     def test_is_help_false(self):
         cmd = self._make()

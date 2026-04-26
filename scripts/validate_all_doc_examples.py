@@ -1,8 +1,21 @@
 #!/usr/bin/env python3
-"""Walk every docs/*.md file, extract REPL code blocks, and execute them.
+"""Walk markdown doc roots, extract code blocks, and validate them.
 
 Shares extraction/runner logic with ``tests/test_docs_examples_live.py`` via
 ``lab_instruments._docs_extract``. Exits non-zero on any FAIL.
+
+Three block languages are handled:
+
+* **REPL** (``text`` / ``bash`` / unlabeled fences, CommonMark 4-space
+  indented blocks) -- executed line-by-line against a mock instrument
+  session. Blocks inside a file with a ``<!-- doc-test: setup -->`` marker
+  share REPL state so later blocks can build on earlier context.
+* **Python** (``python`` fence or body with ``import`` / ``def`` / ``class``)
+  -- ``ast.parse`` + ``lab_instruments.*`` symbol-resolution check. No
+  ``exec``.
+* **Shell** (``bash`` fence with a known shell prefix, or any block starting
+  with ``pip`` / ``git`` / ``pytest`` / etc.) -- always SKIP, logged with
+  ``--show-skipped``.
 """
 
 from __future__ import annotations
@@ -18,10 +31,12 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from lab_instruments._docs_extract import (  # noqa: E402
     _build_mock_repl,
     classify_block,
-    extract_blocks,
+    classify_language,
+    extract_all_blocks,
     iter_doc_files,
     not_repl_reason,
     run_block,
+    run_python_snippet,
 )
 
 ANSI_GREEN = "\033[92m"
@@ -39,9 +54,31 @@ def _fmt(status: str) -> str:
     }[status]
 
 
+def _resolve_roots(explicit_roots: list[str]) -> list[Path]:
+    """Return the directories to scan. Defaults to ``<project>/docs``."""
+    if not explicit_roots:
+        return [PROJECT_ROOT / "docs"]
+    out: list[Path] = []
+    for r in explicit_roots:
+        p = Path(r)
+        p = (PROJECT_ROOT / p).resolve() if not p.is_absolute() else p.resolve()
+        out.append(p)
+    return out
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--file", help="Restrict to a single docs/*.md file.")
+    parser.add_argument(
+        "--root",
+        action="append",
+        default=[],
+        metavar="DIR",
+        help="Directory to scan for *.md files. Repeatable. Defaults to <project>/docs.",
+    )
+    parser.add_argument(
+        "--file",
+        help="Restrict to a single *.md file (must live under one of the --root dirs).",
+    )
     parser.add_argument(
         "--first-failure",
         action="store_true",
@@ -54,17 +91,19 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    docs_dir = PROJECT_ROOT / "docs"
-    if not docs_dir.is_dir():
-        print(f"error: no docs directory at {docs_dir}", file=sys.stderr)
-        return 2
+    roots = _resolve_roots(args.root)
+    files: list[Path] = []
+    for root in roots:
+        if not root.is_dir():
+            print(f"error: no such directory: {root}", file=sys.stderr)
+            return 2
+        files.extend(iter_doc_files(root))
 
-    files = list(iter_doc_files(docs_dir))
     if args.file:
         target = Path(args.file).resolve()
         files = [p for p in files if p.resolve() == target]
         if not files:
-            print(f"error: {args.file} not among tracked docs files", file=sys.stderr)
+            print(f"error: {args.file} not among tracked markdown files", file=sys.stderr)
             return 2
 
     totals = {"pass": 0, "fail": 0, "skip": 0}
@@ -76,14 +115,45 @@ def main() -> int:
                 repl.close()
 
     for md in files:
-        rel = md.relative_to(PROJECT_ROOT)
+        try:
+            rel = md.relative_to(PROJECT_ROOT)
+        except ValueError:
+            rel = md
         print(f"\n{ANSI_CYAN}=== {rel} ==={ANSI_RESET}")
-        blocks = extract_blocks(md)
+        blocks = extract_all_blocks(md)
         # Per-file shared REPL for setup+run chaining.
         shared_repl = None
         setup_failed = False
         for block in blocks:
             kind = classify_block(block)
+            lang = classify_language(block)
+
+            # Python blocks use their own runner regardless of REPL classify.
+            if lang == "python" and kind not in ("skip", "setup"):
+                status, message = run_python_snippet(block)
+                totals[status] += 1
+                label = f"{_fmt(status)}  {block.short_id}  [python]"
+                if status == "fail":
+                    any_failure = True
+                    print(f"  {label}\n      {message}")
+                    if args.first_failure:
+                        _close_shared(shared_repl)
+                        _summary(totals)
+                        return 1
+                elif status == "skip":
+                    if args.show_skipped:
+                        print(f"  {label}  ({message})")
+                else:
+                    print(f"  {label}")
+                continue
+
+            # Shell recipes are documentation, not runnable under the harness.
+            if lang == "shell":
+                totals["skip"] += 1
+                if args.show_skipped:
+                    print(f"  {_fmt('skip')}  {block.short_id}  [shell] (not executed)")
+                continue
+
             if kind == "not-repl":
                 totals["skip"] += 1
                 if args.show_skipped:

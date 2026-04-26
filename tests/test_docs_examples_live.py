@@ -1,5 +1,5 @@
 """Parametrized pytest harness that executes every REPL-looking code block
-in ``docs/*.md``.
+in ``docs/*.md`` **and** every block in the manuals under ``manuals/**/*.md``.
 
 Blocks are grouped per source file. For each file the harness builds one
 mock REPL, then feeds the classified blocks in document order so
@@ -8,10 +8,13 @@ mock REPL, then feeds the classified blocks in document order so
 ``scripts/validate_all_doc_examples.py``.
 
 Each ``run`` block becomes its own pytest node whose ID is shaped
-``docs/FILE.md:Lstart-Lend``, so a failing block still surfaces its exact
-doc location even though the REPL is shared with its siblings.
+``<root>/FILE.md:Lstart-Lend``. Python-language blocks (detected by fence
+tag or body heuristics) get their own parametrized test function
+(:func:`test_python_snippet`) that validates syntax + ``lab_instruments.*``
+imports without executing the code.
 
-Skip a block explicitly with an HTML comment directly above its fence:
+Skip a block explicitly with an HTML comment directly above its fence
+(or blank line above an indented block):
 
     <!-- doc-test: skip reason="requires GUI liveplot" -->
     ```text
@@ -31,13 +34,21 @@ from lab_instruments._docs_extract import (
     DocBlock,
     _build_mock_repl,
     classify_block,
-    extract_blocks,
+    classify_language,
+    extract_all_blocks,
     iter_doc_files,
     run_block,
+    run_python_snippet,
 )
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-DOCS_DIR = PROJECT_ROOT / "docs"
+# Roots scanned by pytest collection. docs/ is the public mkdocs site; the
+# manuals/ directories carry PR #83's standalone student + TA references.
+_DOC_ROOTS: tuple[Path, ...] = (
+    PROJECT_ROOT / "docs",
+    PROJECT_ROOT / "manuals" / "student",
+    PROJECT_ROOT / "manuals" / "ta-developer",
+)
 
 
 @dataclass(frozen=True)
@@ -50,13 +61,17 @@ class _FileGroup:
 
 def _collect_groups() -> list[_FileGroup]:
     groups: list[_FileGroup] = []
-    if not DOCS_DIR.is_dir():
-        return groups
-    for md in iter_doc_files(DOCS_DIR):
-        blocks = tuple(extract_blocks(md))
-        # Only keep groups that contain at least one testable block.
-        if any(classify_block(b) in ("run", "setup") for b in blocks):
-            groups.append(_FileGroup(source=md, blocks=blocks))
+    for root in _DOC_ROOTS:
+        if not root.is_dir():
+            continue
+        for md in iter_doc_files(root):
+            blocks = tuple(extract_all_blocks(md))
+            # Only keep groups with at least one testable block (REPL or Python).
+            has_testable = any(
+                classify_block(b) in ("run", "setup") or classify_language(b) == "python" for b in blocks
+            )
+            if has_testable:
+                groups.append(_FileGroup(source=md, blocks=blocks))
     return groups
 
 
@@ -139,12 +154,29 @@ def _enumerate_run_blocks() -> list[tuple[_FileGroup, DocBlock]]:
     pairs: list[tuple[_FileGroup, DocBlock]] = []
     for group in _GROUPS:
         for block in group.blocks:
+            # Python-language blocks route to test_python_snippet instead.
+            if classify_language(block) == "python":
+                continue
             if classify_block(block) == "run":
                 pairs.append((group, block))
     return pairs
 
 
+def _enumerate_python_blocks() -> list[DocBlock]:
+    out: list[DocBlock] = []
+    for group in _GROUPS:
+        for block in group.blocks:
+            if classify_language(block) != "python":
+                continue
+            kind = classify_block(block)
+            if kind in ("skip", "setup"):
+                continue
+            out.append(block)
+    return out
+
+
 _RUN_PAIRS = _enumerate_run_blocks()
+_PY_BLOCKS = _enumerate_python_blocks()
 
 
 @pytest.mark.parametrize(
@@ -158,6 +190,26 @@ def test_doc_block(group: _FileGroup, block: DocBlock, _file_repls) -> None:
     if setup_failed:
         pytest.skip(f"setup block for {group.source.name} failed earlier")
     status, message = run_block(block, repl=repl)
+    if status == "fail":
+        pytest.fail(message, pytrace=False)
+    if status == "skip":
+        pytest.skip(message)
+
+
+@pytest.mark.parametrize(
+    "block",
+    _PY_BLOCKS,
+    ids=[b.short_id for b in _PY_BLOCKS],
+)
+def test_python_snippet(block: DocBlock) -> None:
+    """Validate a Python code block: ast.parse + lab_instruments.* imports.
+
+    No ``exec`` -- the check is syntax correctness + that every referenced
+    ``lab_instruments`` symbol actually exists. Third-party imports
+    (pandas, matplotlib, etc.) are ignored so the harness works without
+    those installed.
+    """
+    status, message = run_python_snippet(block)
     if status == "fail":
         pytest.fail(message, pytrace=False)
     if status == "skip":
