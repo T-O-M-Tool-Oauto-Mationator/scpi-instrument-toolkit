@@ -6,6 +6,8 @@ Scripts let you automate entire test sequences. Instead of typing commands one a
 
 ### Method 1: Script Editor
 
+<!-- doc-test: skip reason="opens editor and prompts for confirmation if script exists; needs stdin" -->
+
     script new my_test
 
 This opens your system text editor. Write commands, one per line. Save and close.
