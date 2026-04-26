@@ -88,12 +88,19 @@ Sweep the PSU through a range of voltages and record DMM readings at each step.
     psu1 chan 1 on
     dmm1 config vdc
 
+    # Track the loop counter and the current setpoint as separate vars so
+    # we don't end up with identifiers like "error_1.0" (a dot in a Python
+    # identifier is invalid). The error is overwritten on each iteration;
+    # use `log` to keep a per-iteration record.
+    idx = 0
     for v 1.0 2.0 3.3 5.0 9.0 12.0
+      idx = idx + 1
       psu1 set 1 {v}
       sleep 0.5
       psu_v = psu1 meas v unit=V
       dmm_v = dmm1 meas unit=V
-      calc error_{v} = psu_v - dmm_v unit=V
+      calc error = psu_v - dmm_v unit=V
+      print "step {idx}: setpoint={v}V, error={error}V"
     end
 
     psu1 chan 1 off
@@ -131,10 +138,16 @@ Measure both voltage and current to compute power dissipation.
     i = dmm1 meas unit=A
 
     calc power = v * i unit=W
-    calc resistance = v / i unit=ohms
 
-    print "V = {v} V, I = {i} A"
-    print "P = {power} W, R = {resistance} ohms"
+    # Guard against divide-by-zero when the load is open-circuit. A live
+    # 0-A reading means no current is flowing, so resistance is undefined
+    # (effectively infinite). Skipping the calc keeps the log clean.
+    if abs(i) > 1e-9
+      calc resistance = v / i unit=ohms
+      print "V = {v} V, I = {i} A, P = {power} W, R = {resistance} ohms"
+    else
+      print "V = {v} V, I = {i} A, P = {power} W, R = open-circuit (i=0)"
+    end
     log print
 
 ## Pattern 6: Dual-Supply Configuration
@@ -225,6 +238,9 @@ Or shut down individually:
 ## Try It
 
 1. In mock mode, run Pattern 1 (PSU + DMM verification)
-2. Run Pattern 2 (AWG + scope signal check)
-3. Try the full V&V test sequence
+2. In mock mode, run Pattern 2 (AWG + scope signal check)
+3. Pattern 7 (full V&V sequence) **requires two real DMMs and a real DUT
+   at 3.3 V** -- run only on a real lab setup, not in mock mode. The
+   asserted current/voltage tolerances will fail against the unconfigured
+   mock readings.
 4. Export results and review the CSV

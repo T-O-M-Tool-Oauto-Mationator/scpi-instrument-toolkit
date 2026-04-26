@@ -190,17 +190,14 @@ def parse_markdown(doc, md_text, base_dir=None):
                     in_table = False
                 continue
 
-        # Headings
-        if line.startswith("# "):
-            doc.add_heading(line[2:].strip(), level=1)
-            i += 1
-            continue
-        if line.startswith("## "):
-            doc.add_heading(line[3:].strip(), level=2)
-            i += 1
-            continue
-        if line.startswith("### "):
-            doc.add_heading(line[4:].strip(), level=3)
+        # Headings: any level 1-6 (Word caps add_heading at 9 but we use 6).
+        # Without this any "#### ..." line fell through all three checks and
+        # the paragraph collector below `break`ed on it without advancing i,
+        # causing an infinite loop.
+        heading = re.match(r"^(#{1,6})\s+(.*)$", line)
+        if heading:
+            level = min(len(heading.group(1)), 6)
+            doc.add_heading(heading.group(2).strip(), level=level)
             i += 1
             continue
 
@@ -338,7 +335,7 @@ def build():
             print(f"  WARNING: {ch_file} not found, skipping")
             continue
         print(f"  Adding {ch_file}...")
-        md = path.read_text()
+        md = path.read_text(encoding="utf-8")
         parse_markdown(doc, md, base_dir=path.parent)
         doc.add_page_break()
 

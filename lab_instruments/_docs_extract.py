@@ -258,8 +258,11 @@ class DocBlock:
         """
         pairs: list[tuple[int, str]] = []
         for offset, raw in enumerate(self.lines):
-            line_no = self.start_line + 1 + offset
+            # For fenced blocks, start_line points at the opening ``` so the
+            # first code line is start_line + 1. For indented blocks,
+            # start_line is already the first code line, so no +1.
             if self.kind == "indented":
+                line_no = self.start_line + offset
                 # Strip one leading indent unit (4 spaces or a tab). Lines
                 # that don't start with it are blank markdown separators.
                 if raw.startswith("    "):
@@ -269,6 +272,7 @@ class DocBlock:
                 else:
                     raw_for_run = raw
             else:
+                line_no = self.start_line + 1 + offset
                 raw_for_run = raw
             stripped = raw_for_run.strip()
             if not stripped or stripped.startswith("#"):
@@ -729,9 +733,18 @@ def _check_import(module: str, symbol: str | None, block: DocBlock, rel_line: in
         mod = importlib.import_module(module)
     except Exception as exc:  # pragma: no cover -- defensive; importable-but-broken
         return f"{block.short_id}:L{abs_line}: ImportError resolving {module!r}: {exc}"
-    if not hasattr(mod, symbol):
-        return f"{block.short_id}:L{abs_line}: ImportError: cannot import name {symbol!r} from {module!r}"
-    return None
+    if hasattr(mod, symbol):
+        return None
+    # ``from package import submodule`` is valid Python even when the
+    # symbol is a package, not an attribute on its parent. Probe the
+    # submodule's spec before giving up.
+    try:
+        sub_spec = importlib.util.find_spec(f"{module}.{symbol}")
+    except (ImportError, ValueError):
+        sub_spec = None
+    if sub_spec is not None:
+        return None
+    return f"{block.short_id}:L{abs_line}: ImportError: cannot import name {symbol!r} from {module!r}"
 
 
 def parametrize_ids(blocks: Iterable[DocBlock]) -> list[str]:

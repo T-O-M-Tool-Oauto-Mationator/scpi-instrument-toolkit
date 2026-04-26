@@ -40,7 +40,7 @@ class BaseCommand:
     def is_help(self, args: list[str]) -> bool:
         if not args:
             return False
-        return args[-1].lower() in ("help", "-h", "--help")
+        return args[-1].lower() in ("help", "-h", "--help", "?")
 
     def strip_help(self, args: list[str]):
         if self.is_help(args):

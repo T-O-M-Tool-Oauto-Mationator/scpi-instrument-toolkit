@@ -45,7 +45,7 @@ After installing, verify it works:
 
     scpi-repl --version
 
-You should see something like `scpi-instrument-toolkit v1.0.17`.
+You should see something like `scpi-instrument-toolkit v1.0.30`.
 
 If `scpi-repl` is not recognized, use the module form instead:
 
@@ -77,7 +77,7 @@ This simulates 14 instruments so you can practice commands without being in the 
 When you start the REPL, it automatically scans for connected instruments:
 
     $ scpi-repl --mock
-    ESET Instrument REPL v1.0.17. Type 'help' for commands.
+    ESET Instrument REPL v1.0.30. Type 'help' for commands.
     [INFO] Scanning for instruments in background...
     [SUCCESS] Scan complete: found 14 device(s).
     eset>
