@@ -260,6 +260,26 @@ class NI_PXIe_4139:
         self._session.commit()
         self._session.initiate()
 
+    def set_sink_current(self, current: float, voltage_limit: float = None) -> None:
+        """Configure the SMU as a current sink. Sink current must be negative
+        (4-quadrant convention: current flows into the SMU from the DUT)."""
+        self._check_session()
+        if current >= 0:
+            raise ValueError(
+                f"Sink current must be negative (got {current} A) - use set_source_current for positive current"
+            )
+        self.set_current_mode(current, voltage_limit)
+
+    def set_source_current(self, current: float, voltage_limit: float = None) -> None:
+        """Configure the SMU as a current source. Source current must be positive
+        (4-quadrant convention: current flows out of the SMU into the DUT)."""
+        self._check_session()
+        if current <= 0:
+            raise ValueError(
+                f"Source current must be positive (got {current} A) - use set_sink_current for negative current"
+            )
+        self.set_current_mode(current, voltage_limit)
+
     def get_output_mode(self) -> str:
         """Return the active output mode: 'voltage' or 'current'."""
         self._check_session()

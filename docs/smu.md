@@ -52,7 +52,7 @@ smu set -12.0 0.1    # negative voltage for four-quadrant operation
     Setting a voltage without a current limit uses whatever limit was set previously (default: 10 mA). Always specify the limit when powering an unknown DUT. DC source power is capped at 20 W and sink power at 12 W by the hardware.
 
 !!! tip "How to sink current"
-    Use `smu set_mode current` instead of `smu set`. In current mode, the SMU acts as a programmable electronic load — positive current = sink from DUT, negative current = source into DUT. See [smu set_mode](#smu-set_mode) below.
+    Use `smu sink <current>` for sinking and `smu source <current>` for sourcing. The SMU acts as a programmable electronic load when sinking. By the standard 4-quadrant SMU convention, **negative current = sink from DUT** (current flows into the SMU) and **positive current = source into DUT**. `smu sink` rejects non-negative input with a `ValueError`; `smu source` rejects non-positive input. See [smu sink / smu source](#smu-sink-smu-source) below.
 
 ---
 
@@ -99,14 +99,41 @@ smu set_mode current <i> [voltage_limit]
 
 ```bash
 smu set_mode voltage 3.3 0.1    # source 3.3 V with 100 mA current limit
-smu set_mode current 0.010 3.0  # sink 10 mA from DUT (electronic load), 3 V compliance
-smu set_mode current -0.5 5.0   # source 0.5 A into DUT, 5 V compliance
+smu set_mode current -0.010 3.0 # sink 10 mA from DUT (electronic load), 3 V compliance
+smu set_mode current 0.5 5.0    # source 0.5 A into DUT, 5 V compliance
 ```
 
 !!! note "Current mode polarity"
-    In current mode, **positive current = sink** (draw current from the DUT, acting as a load) and **negative current = source** (push current into the DUT). This is the standard four-quadrant SMU convention. Use positive values when the SMU is loading an LDO, regulator, or other voltage source.
+    In current mode, **negative current = sink** (draw current from the DUT, acting as a load) and **positive current = source** (push current into the DUT). This is the standard four-quadrant SMU convention. `smu set_mode current` accepts either sign. Use the dedicated `smu sink` / `smu source` commands below when you want strict sign enforcement.
 
 Safety limits (`upper_limit` / `lower_limit`) are enforced before the mode switch is applied.
+
+---
+
+## smu sink / smu source
+
+Configure current mode with strict sign enforcement.
+
+```bash
+smu sink   <current_A> [voltage_limit_V]   # current must be negative
+smu source <current_A> [voltage_limit_V]   # current must be positive
+```
+
+Both commands route to `set_current_mode` after validating the sign. They follow the standard 4-quadrant SMU convention: **negative current = sink** (current flows into the SMU from the DUT, SMU acts as a load) and **positive current = source** (current flows out of the SMU into the DUT).
+
+| Command | Accepts | Rejects |
+|---------|---------|---------|
+| `smu sink <i>` | `i < 0` (e.g. `-0.05`) | `i >= 0`; raises `ValueError("Sink current must be negative ...")` |
+| `smu source <i>` | `i > 0` (e.g. `0.05`) | `i <= 0`; raises `ValueError("Source current must be positive ...")` |
+
+```bash
+smu sink -0.010 3.0    # sink 10 mA from DUT, 3 V compliance
+smu sink 0.010         # ERROR: Sink current must be negative
+smu source 0.5 5.0     # source 0.5 A into DUT, 5 V compliance
+smu source -0.5        # ERROR: Source current must be positive
+```
+
+When validation fails, the SMU's mode and setpoint are left unchanged.
 
 ---
 

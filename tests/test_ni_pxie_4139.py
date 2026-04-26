@@ -387,6 +387,98 @@ class TestNIPXIe4139_CurrentMode:
 
 
 # ===========================================================================
+# Sink / source current sign enforcement (4-quadrant convention)
+# ===========================================================================
+
+
+class TestNIPXIe4139_SinkSourceSign:
+    def test_set_sink_current_negative_ok(self, ni_pxie_4139):
+        import nidcpower
+
+        smu, ms = ni_pxie_4139
+        smu.set_sink_current(-0.05, 5.0)
+        assert ms.current_level == pytest.approx(-0.05)
+        assert ms.voltage_limit == pytest.approx(5.0)
+        assert ms.output_function == nidcpower.OutputFunction.DC_CURRENT
+        assert smu._output_mode == "current"
+
+    def test_set_sink_current_positive_raises(self, ni_pxie_4139):
+        smu, _ms = ni_pxie_4139
+        with pytest.raises(ValueError, match="Sink current must be negative"):
+            smu.set_sink_current(0.05)
+
+    def test_set_sink_current_zero_raises(self, ni_pxie_4139):
+        smu, _ms = ni_pxie_4139
+        with pytest.raises(ValueError, match="Sink current must be negative"):
+            smu.set_sink_current(0.0)
+
+    def test_set_sink_current_below_min_raises(self, ni_pxie_4139):
+        smu, _ms = ni_pxie_4139
+        with pytest.raises(ValueError, match="Current must be between"):
+            smu.set_sink_current(-5.0)
+
+    def test_set_sink_current_invalid_does_not_mutate_state(self, ni_pxie_4139):
+        import nidcpower
+
+        smu, ms = ni_pxie_4139
+        smu.set_voltage_mode(3.3, 0.1)
+        baseline_func = ms.output_function
+        baseline_voltage = ms.voltage_level
+        with pytest.raises(ValueError, match="Sink current must be negative"):
+            smu.set_sink_current(0.05)
+        assert ms.output_function == baseline_func == nidcpower.OutputFunction.DC_VOLTAGE
+        assert ms.voltage_level == baseline_voltage
+        assert smu._output_mode == "voltage"
+
+    def test_set_source_current_positive_ok(self, ni_pxie_4139):
+        import nidcpower
+
+        smu, ms = ni_pxie_4139
+        smu.set_source_current(0.05, 5.0)
+        assert ms.current_level == pytest.approx(0.05)
+        assert ms.voltage_limit == pytest.approx(5.0)
+        assert ms.output_function == nidcpower.OutputFunction.DC_CURRENT
+        assert smu._output_mode == "current"
+
+    def test_set_source_current_negative_raises(self, ni_pxie_4139):
+        smu, _ms = ni_pxie_4139
+        with pytest.raises(ValueError, match="Source current must be positive"):
+            smu.set_source_current(-0.05)
+
+    def test_set_source_current_zero_raises(self, ni_pxie_4139):
+        smu, _ms = ni_pxie_4139
+        with pytest.raises(ValueError, match="Source current must be positive"):
+            smu.set_source_current(0.0)
+
+    def test_mock_sink_current_positive_raises(self):
+        from lab_instruments.mock_instruments import MockNI_PXIe_4139
+
+        mock = MockNI_PXIe_4139()
+        mock.set_voltage_mode(3.3, 0.1)
+        with pytest.raises(ValueError, match="Sink current must be negative"):
+            mock.set_sink_current(0.05)
+        assert mock._output_mode == "voltage"
+        assert mock._current_level == 0.0
+
+    def test_mock_source_current_negative_raises(self):
+        from lab_instruments.mock_instruments import MockNI_PXIe_4139
+
+        mock = MockNI_PXIe_4139()
+        with pytest.raises(ValueError, match="Source current must be positive"):
+            mock.set_source_current(-0.05)
+        assert mock._output_mode == "voltage"
+
+    def test_mock_sink_current_negative_ok(self):
+        from lab_instruments.mock_instruments import MockNI_PXIe_4139
+
+        mock = MockNI_PXIe_4139()
+        mock.set_sink_current(-0.05, 5.0)
+        assert mock._output_mode == "current"
+        assert mock._current_level == -0.05
+        assert mock._voltage_limit == 5.0
+
+
+# ===========================================================================
 # Samples to average
 # ===========================================================================
 
