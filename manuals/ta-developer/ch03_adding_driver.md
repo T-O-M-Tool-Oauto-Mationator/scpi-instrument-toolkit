@@ -34,7 +34,11 @@ Create `lab_instruments/src/my_new_instrument.py`:
 
         def __init__(self, resource_name: str):
             super().__init__(resource_name)
-            self._voltage = 0.0
+            # Per-channel voltage cache (keyed by channel int).
+            # Use a dict because set_voltage takes a channel parameter --
+            # a single float here would raise TypeError on the
+            # `self._voltage[channel] = voltage` assignment below.
+            self._voltage: dict[int, float] = {}
             self._output = False
             self._mode = "MODE1"
 
@@ -71,8 +75,11 @@ Create `lab_instruments/src/my_new_instrument.py`:
 
         # --- Getters (never hardcode, always return self._attr) ---
 
-        def get_voltage_setpoint(self) -> float:
-            return self._voltage       # return cached value
+        def get_voltage_setpoint(self, channel: int) -> float:
+            # Return the cached setpoint for the requested channel.
+            # Returns 0.0 if set_voltage hasn't been called for this
+            # channel yet (matches the post-RST device state).
+            return self._voltage.get(channel, 0.0)
 
         def get_mode(self) -> str:
             return self._mode

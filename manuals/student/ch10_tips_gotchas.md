@@ -84,7 +84,9 @@ Each instrument has quirks. This chapter covers the things that trip students up
 
 ### BK Precision 4063 (awg3)
 
-- **Single channel only.** No channel 2.
+- **Dual channel.** Both channels can output independently. Use `awg chan 1 on` and `awg chan 2 on`. Driver maps integer 1 to wire-level `C1` and 2 to `C2` (Siglent SDG dialect).
+- **Spec ceiling.** 60 MHz max frequency, 20 Vpp max amplitude into HighZ (10 Vpp into 50 Ω), ±10 V offset. The driver enforces these in `set_frequency` / `set_amplitude` / `set_offset` and raises `ValueError` rather than silently sending an out-of-range value.
+- **Partial-update setters.** `set_frequency`, `set_amplitude`, `set_offset` issue a single `Cn:BSWV FRQ,…` style update instead of resending the whole waveform — preserves the other parameters.
 
 ## Source Measure Unit
 
