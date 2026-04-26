@@ -75,8 +75,8 @@ The build goes in five stages. Take continuity measurements between stages 3 and
 
 Flash the Feather with the STM32 bridge firmware before handing the unit out.
 
-- **Firmware source:** the firmware repo is currently private to the course. Ask the course coordinator (or open an issue on this repo) for the build artifact. Do **not** hardcode a URL in this chapter until the firmware repo is moved to a public home.
-- **Flash path:** USB DFU. Press RESET while holding BOOT to enter DFU mode, then use `dfu-util` or the Adafruit WebDFU page.
+- **Firmware source:** [`github.com/CesMag/BQ76920_Bridge`](https://github.com/CesMag/BQ76920_Bridge) (public). Build artifacts (`BQ76920_Bridge.bin` / `.elf`) are produced by the repo's CI on every PR and uploaded as workflow artifacts.
+- **Flash path:** USB DFU into the STM32F405 ROM bootloader. Move the `B0` jumper on the Feather to `3V3`, press `RESET`, then either run `dfu-util -a 0 --dfuse-address 0x08000000:leave -D BQ76920_Bridge.bin` or use the Adafruit WebDFU page. Move `B0` back to `GND` and press `RESET` to boot the new firmware.
 
 ### USB VID/PID: lab-only reuse
 
@@ -101,8 +101,8 @@ After assembly, run this top-to-bottom before labeling the unit as good:
 3. Press the BOOT button on the BQ EVM. This clears any stuck I2C state from the last session.
 4. Launch the REPL: `scpi-repl --no-color`.
 5. Run `scan`. Expect `ev2300` in the device list within two seconds.
-6. Run `ev2300 read_word 0x08 0x09`. For a nominal 3.3 V cell stack you should see `0x0CE4 (3300)` or similar; the exact value depends on the battery state but it must not be `0x0000` or `0xFFFF`.
-7. Run `ev2300 scan 0x08` and confirm you get more than 20 readable registers.
+6. Run `ev2300 read_byte 0x08 0x0B` (CC_CFG). The BQ76920 datasheet requires this register to be set to `0x19` at startup, and the STM32 firmware writes it as part of `BQ76920_Initialise`. A successful read returning `0x19` confirms both that the bridge is talking to the BQ over I2C and that the AFE has completed its init sequence. `0xFF` means no ACK on the bus; `0x00` usually means the chip is in SHIP mode -- press the EVM `BOOT` button and retry.
+7. Run `ev2300 scan 0x08` and confirm you get more than 20 readable registers (the BQ76920 occupies 0x00 through 0x59 and most are readable when the AFE is alive).
 8. Run the regression subset: `python -m pytest tests/test_ev2300_driver.py -x`.
 
 If any step fails, move to the troubleshooting section below before handing out the kit.
