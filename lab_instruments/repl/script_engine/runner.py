@@ -84,6 +84,7 @@ def run_expanded(
                             break
                         ctx.command_had_error = False
                         ctx.current_script_line = idx + 1
+                        ctx.current_script_line_text = source_lines[idx]
                         try:
                             if shell.onecmd(line):
                                 return True
@@ -95,6 +96,7 @@ def run_expanded(
                             break
                         finally:
                             ctx.current_script_line = None
+                            ctx.current_script_line_text = None
                         if ctx.exit_on_error and ctx.command_had_error:
                             ColorPrinter.error("Script stopped (set -e)")
                             return True
@@ -111,6 +113,7 @@ def run_expanded(
                         ctx.in_debugger = False
                         ctx.command_had_error = False
                         ctx.current_script_line = idx + 1
+                        ctx.current_script_line_text = source_lines[idx]
                         try:
                             if shell.onecmd(line):
                                 return True
@@ -122,6 +125,7 @@ def run_expanded(
                             break
                         finally:
                             ctx.current_script_line = None
+                            ctx.current_script_line_text = None
                         if ctx.exit_on_error and ctx.command_had_error:
                             ColorPrinter.error("Script stopped (set -e)")
                             return True
@@ -201,17 +205,21 @@ def run_expanded(
                         # Ad-hoc debugger command: clear the script line so any
                         # error it triggers isn't blamed on the paused script line.
                         prev_line = ctx.current_script_line
+                        prev_text = ctx.current_script_line_text
                         ctx.current_script_line = None
+                        ctx.current_script_line_text = None
                         try:
                             shell.onecmd(cmd)
                         finally:
                             ctx.current_script_line = prev_line
+                            ctx.current_script_line_text = prev_text
             else:
                 if line == "__NOP__":
                     idx += 1
                     continue
                 ctx.command_had_error = False
                 ctx.current_script_line = idx + 1
+                ctx.current_script_line_text = source_lines[idx]
                 try:
                     if shell.onecmd(line):
                         return True
@@ -223,6 +231,7 @@ def run_expanded(
                     continue
                 finally:
                     ctx.current_script_line = None
+                    ctx.current_script_line_text = None
                 if ctx.exit_on_error and ctx.command_had_error:
                     ColorPrinter.error("Script stopped (set -e)")
                     return True
@@ -239,6 +248,7 @@ def run_expanded(
         ctx.interrupt_requested = False
         ctx.current_script_source = None
         ctx.current_script_line = None
+        ctx.current_script_line_text = None
 
     return False
 

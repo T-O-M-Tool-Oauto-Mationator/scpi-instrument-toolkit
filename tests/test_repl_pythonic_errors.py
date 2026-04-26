@@ -238,6 +238,49 @@ class TestErrorLocationFormat:
         assert re.search(r"\bat line 3\b", out)
         assert src_name in out
 
+    def test_script_error_includes_offending_line_text(self, repl, capsys, tmp_path):
+        """Issue #82: error output must show the offending source line text.
+
+        Lab scripts run 20-100+ lines. A line number alone forces students to
+        cross-reference the file; printing the offending command inline
+        eliminates the trip back to the editor.
+        """
+        from lab_instruments.repl.script_engine.runner import run_expanded
+
+        src_name = str(tmp_path / "measure.scpi")
+        lines = [
+            "calc a = 1",
+            "calc b = 2",
+            "calc c = nosuch + 1",
+            "calc d = 3",
+        ]
+        expanded = [(line, line) for line in lines]
+        run_expanded(expanded, repl, repl.ctx, debug=False, source=src_name)
+        out = capsys.readouterr().out
+        assert "NameError" in out
+        # The offending command text must appear verbatim so the user can
+        # see exactly which line failed without opening the file.
+        assert "calc c = nosuch + 1" in out
+        # And it must follow the location pointer (line+source come first,
+        # then the offending text on the next continuation line).
+        loc_idx = out.find("at line 3")
+        text_idx = out.find("calc c = nosuch + 1", loc_idx)
+        assert loc_idx != -1 and text_idx != -1 and text_idx > loc_idx
+
+    def test_line_text_cleared_between_commands(self, repl, capsys, tmp_path):
+        """A successful command must not leave stale line text on ctx.
+
+        Otherwise a later REPL error (typed after the script finished) would
+        wrongly print the last script line as its source.
+        """
+        from lab_instruments.repl.script_engine.runner import run_expanded
+
+        expanded = [("calc a = 1", "calc a = 1")]
+        run_expanded(expanded, repl, repl.ctx, debug=False, source="x.scpi")
+        assert repl.ctx.current_script_line_text is None
+        assert repl.ctx.current_script_line is None
+        assert repl.ctx.current_script_source is None
+
 
 # ---------------------------------------------------------------------------
 # REPL survives every error class and stays usable

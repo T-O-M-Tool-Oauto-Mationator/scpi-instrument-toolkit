@@ -16,15 +16,30 @@ Script directives (`set`, `array`, `linspace`, `print`, `pause`, `sleep`, `repea
 
 Create a new script and open it in your editor.
 
+<!-- doc-test: skip reason="illustrative syntax -- opens $EDITOR, which the doc-test harness cannot drive" -->
+
 ```text
 script new <name>
 ```
 
 Opens your system editor (`$EDITOR` / `$VISUAL`). Write one command per line. Save and close to finish.
 
+<!-- doc-test: skip reason="illustrative syntax -- opens $EDITOR and interacts with the user's real scripts dir" -->
+
 ```text
 script new my_psu_test
 ```
+
+If a script with the same name already exists, the REPL prompts for confirmation before replacing it:
+
+<!-- doc-test: skip reason="illustrative transcript -- the interactive overwrite prompt reads from stdin, which pytest captures" -->
+
+```text
+eset> script new my_psu_test
+Script 'my_psu_test' already exists. Overwrite and discard its contents? [y/N]:
+```
+
+Answering anything other than `y` / `yes` (including a blank line or Ctrl-D) leaves the original script untouched. Use `script edit <name>` to modify an existing script without destroying its contents.
 
 ### script run
 
@@ -598,12 +613,16 @@ foo = "hello"
 calc x = foo + 1
 # [error] TypeError: can only concatenate str (not "int") to str
 #          at line 2 in my_test.scpi
+#          |  calc x = foo + 1
 print "x is {x}"   # prints: x is {x}  (x was never created)
 ```
 
-Error messages include the script path and line number when the failing
-command runs as part of a script -- interactive commands just show the
-class and message.
+Error messages include the script path, the 1-based line number, and the
+exact source text of the offending command when the failure happens during
+script execution. The continuation line under the location pointer
+(prefixed with `|`) is the verbatim line from your `.scpi` file, so you
+can spot the bad command without opening the editor. Interactive
+commands typed at the prompt just show the class and message.
 
 !!! note "`print` stays lenient"
     The two contexts differ on purpose: `print "hello {undef}"` leaves the
@@ -899,7 +918,7 @@ Iterates over a whitespace-separated list of values. On each iteration, `{var}` 
 ```text
 dmm1 config vdc
 for v 1.0 2.0 3.3 5.0 9.0 12.0
-  print Setting {v}V...
+  print "Setting {v}V..."
   psu1 set {v}
   sleep 0.5
   v_{v} = dmm1 meas unit=V
@@ -931,7 +950,7 @@ Loop over multiple variables at once by separating them with commas. Values in t
 
 ```text
 for VIN,VSCALE,LABEL 5.0,1.0,five 3.3,0.5,three 2.5,0.5,two
-  print Testing {VIN}V with scale {VSCALE} ({LABEL})
+  print "Testing {VIN}V with scale {VSCALE} ({LABEL})"
   psu1 set {VIN}
   sleep 0.5
 end
