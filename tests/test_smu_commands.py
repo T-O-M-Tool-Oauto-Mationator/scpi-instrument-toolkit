@@ -263,6 +263,65 @@ class TestSmuSetMode:
         assert repl.devices["smu"]._output_mode == "voltage"  # mode unchanged
 
 
+class TestSmuSinkSource:
+    def test_sink_negative_current_ok(self, repl):
+        repl.onecmd("smu sink -0.05 5.0")
+        dev = repl.devices["smu"]
+        assert dev._output_mode == "current"
+        assert dev._current_level == pytest.approx(-0.05)
+        assert dev._voltage_limit == pytest.approx(5.0)
+
+    def test_sink_negative_current_no_voltage_limit(self, repl):
+        repl.onecmd("smu sink -0.01")
+        dev = repl.devices["smu"]
+        assert dev._output_mode == "current"
+        assert dev._current_level == pytest.approx(-0.01)
+
+    def test_sink_positive_rejected(self, repl, capsys):
+        repl.onecmd("smu sink 0.05")
+        out = capsys.readouterr().out
+        assert "Sink current must be negative" in out
+        dev = repl.devices["smu"]
+        assert dev._output_mode == "voltage"  # state unchanged
+        assert dev._current_level == 0.0
+
+    def test_sink_zero_rejected(self, repl, capsys):
+        repl.onecmd("smu sink 0")
+        out = capsys.readouterr().out
+        assert "Sink current must be negative" in out
+        assert repl.devices["smu"]._output_mode == "voltage"
+
+    def test_sink_missing_args_shows_usage(self, repl, capsys):
+        repl.onecmd("smu sink")
+        out = capsys.readouterr().out
+        assert "Usage: smu sink" in out
+
+    def test_source_positive_current_ok(self, repl):
+        repl.onecmd("smu source 0.05 5.0")
+        dev = repl.devices["smu"]
+        assert dev._output_mode == "current"
+        assert dev._current_level == pytest.approx(0.05)
+        assert dev._voltage_limit == pytest.approx(5.0)
+
+    def test_source_negative_rejected(self, repl, capsys):
+        repl.onecmd("smu source -0.05")
+        out = capsys.readouterr().out
+        assert "Source current must be positive" in out
+        dev = repl.devices["smu"]
+        assert dev._output_mode == "voltage"
+        assert dev._current_level == 0.0
+
+    def test_source_zero_rejected(self, repl, capsys):
+        repl.onecmd("smu source 0")
+        out = capsys.readouterr().out
+        assert "Source current must be positive" in out
+
+    def test_source_missing_args_shows_usage(self, repl, capsys):
+        repl.onecmd("smu source")
+        out = capsys.readouterr().out
+        assert "Usage: smu source" in out
+
+
 class TestSmuAvg:
     def test_set_avg(self, repl):
         repl.onecmd("smu avg 10")

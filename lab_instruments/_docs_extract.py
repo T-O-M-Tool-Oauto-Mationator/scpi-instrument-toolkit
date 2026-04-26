@@ -827,6 +827,7 @@ def run_block(block: DocBlock, repl=None) -> tuple[RunResult, str]:
 
         for line_no, raw in block.runnable_lines:
             ctx.current_script_line = line_no
+            ctx.current_script_line_text = raw
             ctx.command_had_error = False
             # Capture any error message that ctx.report_error emits by reading
             # the terminal buffer post-call. We rely on command_had_error as

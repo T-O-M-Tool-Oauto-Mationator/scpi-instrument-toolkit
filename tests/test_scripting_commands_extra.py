@@ -114,6 +114,261 @@ class TestScriptNewReturnsNone:
 
 
 # ---------------------------------------------------------------------------
+# script new overwrite confirmation: protect students who retype
+# `script new X` over a file they already populated.
+# ---------------------------------------------------------------------------
+
+
+class TestScriptNewOverwriteConfirm:
+    def test_new_on_existing_script_requires_confirmation(self, repl, capsys):
+        """With an existing script in memory and a 'n' answer, the original
+        contents are preserved and the editor is never invoked."""
+        original = ["psu set 1 5.0", "sleep 1"]
+        repl.ctx.scripts["existing"] = list(original)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            repl.ctx._scripts_dir_override = tmpdir
+            # Seed the disk file so we can verify it survives.
+            repl._script_cmd._save_script("existing")
+
+            with (
+                patch("builtins.input", return_value="n") as mock_input,
+                patch.object(repl._script_cmd, "_edit_script") as mock_edit,
+            ):
+                repl.onecmd("script new existing")
+                mock_input.assert_called_once()
+                mock_edit.assert_not_called()
+
+            assert repl.ctx.scripts["existing"] == original
+            with open(repl.ctx.script_file("existing")) as f:
+                disk = [line.rstrip("\n") for line in f.readlines()]
+            assert disk == original
+            out = capsys.readouterr().out
+            assert "not overwritten" in out.lower()
+
+    def test_new_on_existing_script_yes_overwrites(self, repl, capsys):
+        """With an existing script and a 'y' answer, the editor is invoked
+        and the new contents replace the old."""
+        repl.ctx.scripts["existing"] = ["psu set 1 5.0"]
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            repl.ctx._scripts_dir_override = tmpdir
+            repl._script_cmd._save_script("existing")
+
+            def fake_run(cmd, **kwargs):
+                if len(cmd) >= 2:
+                    with open(cmd[1], "w") as f:
+                        f.write("psu off\n")
+
+            with (
+                patch("builtins.input", return_value="y"),
+                patch("subprocess.run", side_effect=fake_run),
+            ):
+                repl.onecmd("script new existing")
+
+            assert repl.ctx.scripts["existing"] == ["psu off"]
+
+    def test_new_on_fresh_name_does_not_prompt(self, repl, capsys):
+        """A brand-new name must skip the prompt entirely."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            repl.ctx._scripts_dir_override = tmpdir
+
+            def fake_run(cmd, **kwargs):
+                if len(cmd) >= 2:
+                    with open(cmd[1], "w") as f:
+                        f.write("psu on\n")
+
+            with (
+                patch("builtins.input") as mock_input,
+                patch("subprocess.run", side_effect=fake_run),
+            ):
+                repl.onecmd("script new brand_new_name")
+                mock_input.assert_not_called()
+
+            assert "brand_new_name" in repl.ctx.scripts
+
+    def test_new_on_existing_eof_aborts(self, repl, capsys):
+        """Piped input / non-TTY context (EOFError on input) must abort
+        rather than silently overwrite."""
+        repl.ctx.scripts["existing"] = ["psu on"]
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            repl.ctx._scripts_dir_override = tmpdir
+            repl._script_cmd._save_script("existing")
+
+            with (
+                patch("builtins.input", side_effect=EOFError()),
+                patch.object(repl._script_cmd, "_edit_script") as mock_edit,
+            ):
+                repl.onecmd("script new existing")
+                mock_edit.assert_not_called()
+
+            assert repl.ctx.scripts["existing"] == ["psu on"]
+
+    def test_new_on_disk_only_script_prompts(self, repl, capsys):
+        """Script file on disk but not in-memory (e.g. written directly,
+        script load not yet run) must still trigger the prompt."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            repl.ctx._scripts_dir_override = tmpdir
+            disk_path = repl.ctx.script_file("disk_only")
+            with open(disk_path, "w") as f:
+                f.write("psu set 1 3.3\n")
+            repl.ctx.scripts.pop("disk_only", None)
+
+            with (
+                patch("builtins.input", return_value="n") as mock_input,
+                patch.object(repl._script_cmd, "_edit_script") as mock_edit,
+            ):
+                repl.onecmd("script new disk_only")
+                mock_input.assert_called_once()
+                mock_edit.assert_not_called()
+
+            with open(disk_path) as f:
+                assert "psu set 1 3.3" in f.read()
+
+    def test_ctrl_c_during_prompt_propagates(self, repl, capsys):
+        """Ctrl-C at the overwrite prompt must NOT be silently swallowed.
+
+        Users expect Ctrl-C to abort back to the REPL prompt. Treating it
+        as an implicit 'No' would hide a signal we don't own.
+        """
+        repl.ctx.scripts["existing"] = ["psu on"]
+        with tempfile.TemporaryDirectory() as tmpdir:
+            repl.ctx._scripts_dir_override = tmpdir
+            repl._script_cmd._save_script("existing")
+
+            with (
+                patch("builtins.input", side_effect=KeyboardInterrupt()),
+                patch.object(repl._script_cmd, "_edit_script") as mock_edit,
+                pytest.raises(KeyboardInterrupt),
+            ):
+                repl._script_cmd.do_script("new existing")
+
+            mock_edit.assert_not_called()
+            assert repl.ctx.scripts["existing"] == ["psu on"]
+
+
+# ---------------------------------------------------------------------------
+# End-to-end regression for the student scenario that motivated this fix:
+# a script with real content exists; the student types `script new X`
+# again; the REPL must not silently destroy the prior work.
+# ---------------------------------------------------------------------------
+
+
+class TestScriptNewOverwriteRegression:
+    """Regression for the `script new` overwrite footgun.
+
+    These tests replay the exact sequence a student follows:
+
+      1. `script new my_lab`   -> write real content, save
+      2. (time passes, student forgets)
+      3. `script new my_lab`   -> must prompt, default No
+
+    Before the fix step (3) silently truncated the file. The student's
+    entire lab script was gone with no warning.
+    """
+
+    STUDENT_SCRIPT = [
+        "# Lab 3 sweep -- 2 hours of work",
+        "val = linspace 0 5 11",
+        "for v val",
+        '    print "Setting {v}V..."',
+        "    psu set 1 {v}",
+        "    sleep 0.5",
+        "    reading = psu meas 1 v unit=V",
+        "end",
+        "log save lab3_results.csv",
+    ]
+
+    def test_student_scenario_default_no_preserves_both_memory_and_disk(self, repl, capsys):
+        """The full retype-and-press-enter sequence must leave both the
+        in-memory script and the on-disk .scpi file untouched."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            repl.ctx._scripts_dir_override = tmpdir
+
+            # Step 1: populate the script the way the student did.
+            repl.ctx.scripts["my_lab"] = list(self.STUDENT_SCRIPT)
+            repl._script_cmd._save_script("my_lab")
+            disk_path = repl.ctx.script_file("my_lab")
+            with open(disk_path) as f:
+                original_on_disk = f.read()
+            assert "linspace 0 5 11" in original_on_disk
+
+            # Step 3: student retypes `script new my_lab` and presses Enter
+            # (blank answer) -- the pre-fix code silently blew it away.
+            with (
+                patch("builtins.input", return_value="") as mock_input,
+                patch.object(repl._script_cmd, "_edit_script") as mock_edit,
+            ):
+                repl.onecmd("script new my_lab")
+                mock_input.assert_called_once()
+                mock_edit.assert_not_called()
+
+            # In-memory script is intact line-for-line.
+            assert repl.ctx.scripts["my_lab"] == self.STUDENT_SCRIPT
+
+            # On-disk file is byte-identical.
+            with open(disk_path) as f:
+                assert f.read() == original_on_disk
+
+            # The REPL must explicitly tell the student what happened --
+            # silence here is how the student lost work in the first place.
+            out = capsys.readouterr().out
+            assert "not overwritten" in out.lower()
+
+    def test_student_scenario_explicit_yes_overwrites_cleanly(self, repl):
+        """If the student really does mean to start over, `y` overwrites
+        the script and the new content lands in both memory and on disk."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            repl.ctx._scripts_dir_override = tmpdir
+
+            repl.ctx.scripts["my_lab"] = list(self.STUDENT_SCRIPT)
+            repl._script_cmd._save_script("my_lab")
+            disk_path = repl.ctx.script_file("my_lab")
+
+            new_content = "psu off\n"
+
+            def fake_run(cmd, **kwargs):
+                if len(cmd) >= 2:
+                    with open(cmd[1], "w") as f:
+                        f.write(new_content)
+
+            with (
+                patch("builtins.input", return_value="y"),
+                patch("subprocess.run", side_effect=fake_run),
+            ):
+                repl.onecmd("script new my_lab")
+
+            assert repl.ctx.scripts["my_lab"] == ["psu off"]
+            with open(disk_path) as f:
+                disk_content = f.read()
+            assert "linspace" not in disk_content
+            assert "psu off" in disk_content
+
+    def test_student_scenario_non_interactive_abort_preserves_work(self, repl):
+        """Running in a non-TTY context (e.g. piped stdin) must abort
+        rather than treat missing input as implicit consent."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            repl.ctx._scripts_dir_override = tmpdir
+            repl.ctx.scripts["my_lab"] = list(self.STUDENT_SCRIPT)
+            repl._script_cmd._save_script("my_lab")
+            disk_path = repl.ctx.script_file("my_lab")
+            with open(disk_path) as f:
+                original = f.read()
+
+            with (
+                patch("builtins.input", side_effect=EOFError()),
+                patch.object(repl._script_cmd, "_edit_script") as mock_edit,
+            ):
+                repl.onecmd("script new my_lab")
+                mock_edit.assert_not_called()
+
+            assert repl.ctx.scripts["my_lab"] == self.STUDENT_SCRIPT
+            with open(disk_path) as f:
+                assert f.read() == original
+
+
+# ---------------------------------------------------------------------------
 # record start with existing script (line 165-166: if name not in scripts)
 # ---------------------------------------------------------------------------
 
