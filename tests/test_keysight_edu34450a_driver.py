@@ -282,6 +282,47 @@ class TestTriggerConfig:
         device.set_sample_count()
         mock_inst.write.assert_called_with("SAMPle:COUNt 1")
 
+    def test_set_trigger_delay_negative_raises(self, dmm):
+        device, _ = dmm
+        with pytest.raises(ValueError, match=r"out of range"):
+            device.set_trigger_delay(-0.5)
+
+    def test_set_trigger_delay_above_3600_raises(self, dmm):
+        device, _ = dmm
+        with pytest.raises(ValueError):
+            device.set_trigger_delay(3601)
+
+    def test_set_trigger_delay_string_keyword_passes(self, dmm):
+        """MIN / MAX / DEF strings bypass numeric validation by design."""
+        device, mock_inst = dmm
+        device.set_trigger_delay("MAX")
+        mock_inst.write.assert_called_with("TRIGger:DELay MAX")
+
+    def test_set_sample_count_zero_raises(self, dmm):
+        device, _ = dmm
+        with pytest.raises(ValueError):
+            device.set_sample_count(0)
+
+    def test_set_sample_count_above_50000_raises(self, dmm):
+        device, _ = dmm
+        with pytest.raises(ValueError):
+            device.set_sample_count(50001)
+
+    def test_set_trigger_delay_invalid_keyword_raises(self, dmm):
+        device, _ = dmm
+        with pytest.raises(ValueError, match=r"Trigger delay keyword"):
+            device.set_trigger_delay("FOO")
+
+    def test_set_trigger_delay_keyword_min_passes(self, dmm):
+        device, mock_inst = dmm
+        device.set_trigger_delay("MIN")
+        mock_inst.write.assert_called_with("TRIGger:DELay MIN")
+
+    def test_set_trigger_delay_keyword_default_passes(self, dmm):
+        device, mock_inst = dmm
+        device.set_trigger_delay("DEFault")
+        mock_inst.write.assert_called_with("TRIGger:DELay DEFault")
+
     def test_trigger(self, dmm):
         device, mock_inst = dmm
         device.trigger()

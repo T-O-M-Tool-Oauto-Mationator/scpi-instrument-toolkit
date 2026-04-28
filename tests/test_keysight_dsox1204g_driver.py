@@ -1,5 +1,7 @@
 """tests/test_keysight_dsox1204g_driver.py — Driver-level unit tests for Keysight DSOX1204G oscilloscope."""
 
+from unittest.mock import DEFAULT
+
 import pytest
 
 
@@ -21,6 +23,17 @@ def scope(mock_visa_rm):
     dev = Keysight_DSOX1204G("USB::0x2A8D::0x0396::CN63347188::INSTR")
     dev.instrument = mock_instrument
     mock_instrument.reset_mock()
+
+    # measure() / acquire_waveform() now precondition-check :CHANnel<n>:DISPlay?
+    # via _require_channel_displayed. Default the mock to "channel ON" so most
+    # existing tests are unaffected; tests that exercise the guard override
+    # side_effect explicitly.
+    def _display_aware(cmd, *_args, **_kwargs):
+        if "DISPlay?" in cmd:
+            return "1"
+        return DEFAULT
+
+    mock_instrument.query.side_effect = _display_aware
     return dev, mock_instrument
 
 
@@ -124,6 +137,16 @@ class TestVerticalScale:
         assert ":CHANnel1:SCALe 1.0" in cmds
         assert ":CHANnel1:OFFSet 0.0" in cmds
 
+    def test_set_vertical_scale_zero_raises(self, scope):
+        dev, _ = scope
+        with pytest.raises(ValueError, match=r"must be positive"):
+            dev.set_vertical_scale(1, 0.0)
+
+    def test_set_vertical_scale_negative_raises(self, scope):
+        dev, _ = scope
+        with pytest.raises(ValueError):
+            dev.set_vertical_scale(1, -1.0)
+
 
 # ===========================================================================
 # 4. TestCoupling
@@ -213,6 +236,16 @@ class TestProbe:
         dev.set_probe_attenuation(2, 10)
         mi.write.assert_called_with(":CHANnel2:PROBe 10")
 
+    def test_probe_below_min_raises(self, scope):
+        dev, _ = scope
+        with pytest.raises(ValueError):
+            dev.set_probe_attenuation(1, 0.05)
+
+    def test_probe_above_max_raises(self, scope):
+        dev, _ = scope
+        with pytest.raises(ValueError):
+            dev.set_probe_attenuation(1, 99999)
+
 
 # ===========================================================================
 # 9. TestHorizontal
@@ -224,6 +257,16 @@ class TestHorizontal:
         dev, mi = scope
         dev.set_horizontal_scale(0.001)
         mi.write.assert_called_with(":TIMebase:SCALe 0.001")
+
+    def test_set_horizontal_scale_below_5ns_raises(self, scope):
+        dev, _ = scope
+        with pytest.raises(ValueError):
+            dev.set_horizontal_scale(1e-9)
+
+    def test_set_horizontal_scale_above_50s_raises(self, scope):
+        dev, _ = scope
+        with pytest.raises(ValueError):
+            dev.set_horizontal_scale(100.0)
 
     def test_set_horizontal_offset_uses_position(self, scope):
         """Keysight uses :TIMebase:POSition, NOT :TIMebase:MAIN:OFFSet."""
@@ -403,6 +446,79 @@ class TestMeasurements:
 
 
 # ===========================================================================
+# 13b. TestMeasurementPreconditionGuard
+# ===========================================================================
+
+
+class TestMeasurementPreconditionGuard:
+    """measure() / measure_delay() / measure_counter() / acquire_waveform() must
+    refuse to issue queries when the source channel is not displayed. Programmer's
+    Guide p347/p623 says queries only operate on a displayed source; on firmware
+    <= 02.12 a non-displayed source wedges the USB-TMC parser instead of the
+    documented 9.9E+37."""
+
+    @staticmethod
+    def _override_display(mi, *, ch_n_display: dict[int, str], measure_value: str = "1.0"):
+        """Make :CHANnel<n>:DISPlay? return per-channel values; other queries return measure_value."""
+
+        def fn(cmd, *_a, **_kw):
+            for ch, state in ch_n_display.items():
+                if cmd == f":CHANnel{ch}:DISPlay?":
+                    return state
+            return measure_value
+
+        mi.query.side_effect = fn
+
+    def test_measure_raises_when_channel_off(self, scope):
+        dev, mi = scope
+        self._override_display(mi, ch_n_display={1: "0"})
+        with pytest.raises(RuntimeError, match=r"CH1 is not displayed"):
+            dev.measure(1, "vpp")
+        # Guard ran, but no :MEASure:VPP? should have been issued.
+        for c in mi.query.call_args_list:
+            assert "MEASure:VPP" not in c.args[0]
+
+    def test_measure_passes_when_channel_on(self, scope):
+        dev, mi = scope
+        self._override_display(mi, ch_n_display={1: "1"}, measure_value="3.3")
+        assert dev.measure(1, "vpp") == pytest.approx(3.3)
+
+    def test_measure_accepts_ON_text_response(self, scope):
+        # Some firmware returns "ON"/"OFF" rather than "1"/"0"
+        dev, mi = scope
+        self._override_display(mi, ch_n_display={1: "ON"}, measure_value="0.5")
+        assert dev.measure(1, "vrms") == pytest.approx(0.5)
+
+    def test_measure_delay_raises_if_either_channel_off(self, scope):
+        dev, mi = scope
+        self._override_display(mi, ch_n_display={1: "1", 2: "0"})
+        with pytest.raises(RuntimeError, match=r"CH2 is not displayed"):
+            dev.measure_delay(1, 2)
+
+    def test_measure_counter_raises_when_channel_off(self, scope):
+        dev, mi = scope
+        self._override_display(mi, ch_n_display={3: "0"})
+        with pytest.raises(RuntimeError, match=r"CH3 is not displayed"):
+            dev.measure_counter(3)
+
+    def test_measure_counter_no_channel_skips_guard(self, scope):
+        # measure_counter() with no argument uses the scope's current source
+        # and does not require a specific channel guard.
+        dev, mi = scope
+        self._override_display(mi, ch_n_display={}, measure_value="1234.5")
+        assert dev.measure_counter() == pytest.approx(1234.5)
+
+    def test_acquire_waveform_raises_when_channel_off(self, scope):
+        dev, mi = scope
+        self._override_display(mi, ch_n_display={1: "0"})
+        with pytest.raises(RuntimeError, match=r"CH1 is not displayed"):
+            dev.acquire_waveform(1)
+        # No :WAVeform:* writes should have been issued.
+        for cmd in _writes(mi):
+            assert ":WAVeform" not in cmd
+
+
+# ===========================================================================
 # 14. TestClearMeasurements
 # ===========================================================================
 
@@ -463,6 +579,16 @@ class TestAcquire:
         dev.set_average_count(64)
         mi.write.assert_called_with(":ACQuire:COUNt 64")
 
+    def test_set_average_count_below_min_raises(self, scope):
+        dev, _ = scope
+        with pytest.raises(ValueError):
+            dev.set_average_count(1)
+
+    def test_set_average_count_above_max_raises(self, scope):
+        dev, _ = scope
+        with pytest.raises(ValueError):
+            dev.set_average_count(65537)
+
     def test_get_sample_rate(self, scope):
         dev, mi = scope
         mi.query.return_value = "2.0E+09"
@@ -517,6 +643,129 @@ class TestAWG:
         dev.awg_set_ramp_symmetry(75)
         mi.write.assert_called_with(":WGEN:FUNCtion:RAMP:SYMMetry 75")
 
+    # Numeric validation per Programmer's Guide p665/p666
+    def test_awg_square_duty_below_min_raises(self, scope):
+        """WGEN duty range is 20% to 80% per p666."""
+        dev, _ = scope
+        with pytest.raises(ValueError, match=r"out of range \(20 to 80\)"):
+            dev.awg_set_square_duty(10)
+
+    def test_awg_square_duty_above_max_raises(self, scope):
+        dev, _ = scope
+        with pytest.raises(ValueError):
+            dev.awg_set_square_duty(85)
+
+    def test_awg_square_duty_at_edges_passes(self, scope):
+        dev, mi = scope
+        dev.awg_set_square_duty(20)
+        dev.awg_set_square_duty(80)
+        cmds = _writes(mi)
+        assert ":WGEN:FUNCtion:SQUare:DCYCle 20" in cmds
+        assert ":WGEN:FUNCtion:SQUare:DCYCle 80" in cmds
+
+    def test_awg_ramp_symmetry_negative_raises(self, scope):
+        dev, _ = scope
+        with pytest.raises(ValueError):
+            dev.awg_set_ramp_symmetry(-1)
+
+    def test_awg_ramp_symmetry_above_100_raises(self, scope):
+        dev, _ = scope
+        with pytest.raises(ValueError):
+            dev.awg_set_ramp_symmetry(101)
+
+
+# ===========================================================================
+# 17b. TestAcquireWaveformMode
+# ===========================================================================
+
+
+class TestAcquireWaveformMode:
+    """Programmer's Guide p635: :WAVeform:POINts:MODE accepts NORMal | MAXimum | RAW."""
+
+    def test_acquire_waveform_invalid_mode_raises(self, scope):
+        dev, _ = scope
+        with pytest.raises(ValueError, match=r"Mode must be one of"):
+            dev.acquire_waveform(1, mode="BOGUS")
+
+    def test_acquire_waveform_digitizes_first(self, scope):
+        """Programmer's Guide p624: :DIGitize must precede :WAVeform:DATA?."""
+        dev, mi = scope
+        # Stub preamble + binary so the call completes without erroring.
+        mi.query.side_effect = lambda cmd, *a, **k: "1" if "DISPlay?" in cmd else "0,0,1,1,1e-6,0,0,1,0,128"
+        mi.query_binary_values.return_value = [128]
+        dev.acquire_waveform(1)
+        cmds = _writes(mi)
+        # :DIGitize must be sent before :WAVeform:SOURce
+        digitize_idx = next(i for i, c in enumerate(cmds) if c.startswith(":DIGitize"))
+        wsource_idx = next(i for i, c in enumerate(cmds) if c.startswith(":WAVeform:SOURce"))
+        assert digitize_idx < wsource_idx
+        assert ":DIGitize CHANnel1" in cmds
+
+
+class TestSelfTestTimeout:
+    def test_self_test_extends_then_restores_timeout(self, scope):
+        """*TST? can take >10s; driver must extend temporarily and restore."""
+        dev, mi = scope
+        mi.timeout = 5000  # baseline
+        mi.query.side_effect = lambda cmd, *a, **k: "1" if "DISPlay?" in cmd else "0"
+        rc = dev.self_test()
+        assert rc == 0
+        # Timeout must be restored to its baseline.
+        assert mi.timeout == 5000
+
+
+class TestSafeQueryRetry:
+    """Firmware <= 02.12 occasionally returns USB-TMC INP_PROT_VIOL on the
+    first query after a long write burst. _safe_query() must clear+retry
+    once before re-raising.
+
+    Note: conftest aliases pyvisa.errors.VisaIOError to OSError in the test
+    environment, so we construct the exception by hand and set error_code
+    manually rather than calling the (potentially aliased) constructor.
+    """
+
+    @staticmethod
+    def _make_visa_error(code):
+        import pyvisa
+
+        e = pyvisa.errors.VisaIOError.__new__(pyvisa.errors.VisaIOError)
+        Exception.__init__(e, f"VisaIOError code={code}")
+        e.error_code = code
+        return e
+
+    def test_safe_query_retries_after_inp_prot_viol(self, scope, monkeypatch):
+        import pyvisa
+
+        dev, mi = scope
+        prot_viol = self._make_visa_error(pyvisa.constants.VI_ERROR_INP_PROT_VIOL)
+        calls = {"n": 0}
+
+        def fake_query(cmd, *_a, **_kw):
+            calls["n"] += 1
+            if calls["n"] == 1:
+                raise prot_viol
+            return "RESULT"
+
+        mi.query.side_effect = fake_query
+        monkeypatch.setattr("lab_instruments.src.keysight_dsox1204g.time.sleep", lambda _: None)
+
+        out = dev._safe_query(":SOMECMD?")
+        assert out == "RESULT"
+        mi.clear.assert_called()
+        cls_writes = [c for c in mi.write.call_args_list if c.args[0] == "*CLS"]
+        assert len(cls_writes) == 1
+        assert calls["n"] == 2
+
+    def test_safe_query_passes_through_non_protocol_errors(self, scope):
+        import pyvisa
+
+        dev, mi = scope
+        timeout = self._make_visa_error(pyvisa.constants.VI_ERROR_TMO)
+        mi.query.side_effect = timeout
+        with pytest.raises(pyvisa.errors.VisaIOError):
+            dev._safe_query(":SOMECMD?")
+        mi.clear.assert_not_called()
+
 
 # ===========================================================================
 # 18. TestDVM
@@ -557,6 +806,21 @@ class TestMaskTest:
         dev, mi = scope
         dev.set_mask_source(1)
         mi.write.assert_called_with(":MTESt:SOURce CHANnel1")
+
+    def test_set_mask_tolerance_x_negative_raises(self, scope):
+        dev, _ = scope
+        with pytest.raises(ValueError):
+            dev.set_mask_tolerance_x(-0.1)
+
+    def test_set_mask_tolerance_x_above_40_raises(self, scope):
+        dev, _ = scope
+        with pytest.raises(ValueError):
+            dev.set_mask_tolerance_x(40.1)
+
+    def test_set_mask_tolerance_y_negative_raises(self, scope):
+        dev, _ = scope
+        with pytest.raises(ValueError):
+            dev.set_mask_tolerance_y(-1)
 
     def test_create_mask(self, scope):
         dev, mi = scope

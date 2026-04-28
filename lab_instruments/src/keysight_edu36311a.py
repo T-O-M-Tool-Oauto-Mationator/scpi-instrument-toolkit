@@ -13,6 +13,8 @@ Triangle Brackets < >: Indicate that you must substitute a value or a code for t
 Vertical Bar |: Separates one of two or more alternative parameters.
 """
 
+import contextlib  # noqa: E402
+
 from .device_manager import DeviceManager  # noqa: E402
 
 
@@ -58,7 +60,10 @@ class Keysight_EDU36311A(DeviceManager):
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        self.disable_all_channels()
+        # Suppress cleanup errors so an exception inside the `with` block is
+        # not masked if the instrument is unresponsive at teardown.
+        with contextlib.suppress(Exception):
+            self.disable_all_channels()
 
     def disable_all_channels(self):
         """
@@ -92,6 +97,15 @@ class Keysight_EDU36311A(DeviceManager):
         command = f"INSTrument:NSELect {self._CHANNEL_NUM[channel]}"
         self.send_command(command)
 
+    def _validate_setpoint(self, channel, voltage=None, current_limit=None):
+        # Per CHANNEL_LIMITS, magnitudes only — channels (incl. N30V) are specified
+        # as magnitudes; the EDU36311A handles the sign of the negative rail.
+        v_max, i_max = self.CHANNEL_LIMITS[channel]
+        if voltage is not None and not (0.0 <= float(voltage) <= v_max):
+            raise ValueError(f"Voltage {voltage} V out of range for {channel} (0..{v_max} V)")
+        if current_limit is not None and not (0.0 <= float(current_limit) <= i_max):
+            raise ValueError(f"Current limit {current_limit} A out of range for {channel} (0..{i_max} A)")
+
     def set_output_channel(self, channel, voltage, current_limit=None):
         """Set the output voltage and current limit for a specific channel.
 
@@ -107,6 +121,8 @@ class Keysight_EDU36311A(DeviceManager):
         # Use default current limit if none provided
         if current_limit is None:
             current_limit = self.DEFAULT_CURRENT_LIMIT[channel]
+
+        self._validate_setpoint(channel, voltage=voltage, current_limit=current_limit)
 
         scpi_name = self.CHANNEL_MAP[channel]
         self.send_command(f"APPLy {scpi_name}, {voltage}, {current_limit}")
@@ -155,11 +171,13 @@ class Keysight_EDU36311A(DeviceManager):
 
     def set_voltage(self, channel, voltage):
         """Set only the voltage for the specified channel."""
+        self._validate_setpoint(channel, voltage=voltage)
         self.select_channel(channel)
         self.send_command(f"SOURce:VOLTage {voltage}")
 
     def set_current_limit(self, channel, current):
         """Set only the current limit for the specified channel."""
+        self._validate_setpoint(channel, current_limit=current)
         self.select_channel(channel)
         self.send_command(f"SOURce:CURRent {current}")
 
