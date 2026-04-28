@@ -458,8 +458,10 @@ class Keysight_EDU34450A(DeviceManager):
         Args:
             count (int): Number of samples (1 to 50000).
         """
-        if not (1 <= int(count) <= 50000):
-            raise ValueError(f"Sample count {count} out of range (1 to 50000)")
+        # Reject floats — int(1.9) silently truncates to 1 and would otherwise
+        # send "1.9" to the SCPI parser.
+        if not isinstance(count, int) or isinstance(count, bool) or not (1 <= count <= 50000):
+            raise ValueError(f"Sample count {count!r} must be an int in 1..50000")
         self.send_command(f"SAMPle:COUNt {count}")
 
     def trigger(self):

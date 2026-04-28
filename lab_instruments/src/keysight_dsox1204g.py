@@ -1120,8 +1120,10 @@ class Keysight_DSOX1204G(DeviceManager):
         Args:
             count: Number of averages (2 to 65536 per Programmer's Guide)
         """
-        if not (2 <= int(count) <= 65536):
-            raise ValueError(f"Average count {count} out of range (2 to 65536)")
+        # Reject floats — int(2.5) silently truncates to 2 and would otherwise
+        # send "2.5" to the SCPI parser.
+        if not isinstance(count, int) or isinstance(count, bool) or not (2 <= count <= 65536):
+            raise ValueError(f"Average count {count!r} must be an int in 2..65536")
         self._write(f":ACQuire:COUNt {count}", acq_count=count)
         print(f"Average count set to {count}")
 

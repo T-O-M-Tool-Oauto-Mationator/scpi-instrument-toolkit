@@ -180,6 +180,18 @@ class TestSetVoltageCurrent:
         with pytest.raises(ValueError):
             device.set_current_limit("p30v_channel", 99.0)
 
+    def test_set_voltage_rejects_unknown_channel_with_value_error(self, psu):
+        # Regression: CR flagged that _validate_setpoint indexed CHANNEL_LIMITS
+        # immediately, so an invalid channel raised KeyError instead of ValueError.
+        device, _ = psu
+        with pytest.raises(ValueError, match=r"Invalid channel"):
+            device.set_voltage("bogus", 1.0)
+
+    def test_set_current_limit_rejects_unknown_channel_with_value_error(self, psu):
+        device, _ = psu
+        with pytest.raises(ValueError, match=r"Invalid channel"):
+            device.set_current_limit("bogus", 0.1)
+
 
 # ---------------------------------------------------------------------------
 # measure_voltage

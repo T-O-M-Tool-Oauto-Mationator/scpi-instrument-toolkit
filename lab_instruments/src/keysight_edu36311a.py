@@ -100,6 +100,8 @@ class Keysight_EDU36311A(DeviceManager):
     def _validate_setpoint(self, channel, voltage=None, current_limit=None):
         # Per CHANNEL_LIMITS, magnitudes only — channels (incl. N30V) are specified
         # as magnitudes; the EDU36311A handles the sign of the negative rail.
+        if channel not in self.CHANNEL_LIMITS:
+            raise ValueError(f"Invalid channel. Must be one of: {list(self.CHANNEL_LIMITS.keys())}")
         v_max, i_max = self.CHANNEL_LIMITS[channel]
         if voltage is not None and not (0.0 <= float(voltage) <= v_max):
             raise ValueError(f"Voltage {voltage} V out of range for {channel} (0..{v_max} V)")

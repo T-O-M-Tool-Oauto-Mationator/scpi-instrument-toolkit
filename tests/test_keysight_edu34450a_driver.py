@@ -308,6 +308,17 @@ class TestTriggerConfig:
         with pytest.raises(ValueError):
             device.set_sample_count(50001)
 
+    def test_set_sample_count_rejects_float(self, dmm):
+        # int(1.9) == 1 must NOT be silently accepted: SCPI parser would see "1.9".
+        device, _ = dmm
+        with pytest.raises(ValueError, match=r"must be an int"):
+            device.set_sample_count(1.9)
+
+    def test_set_sample_count_rejects_bool(self, dmm):
+        device, _ = dmm
+        with pytest.raises(ValueError, match=r"must be an int"):
+            device.set_sample_count(True)
+
     def test_set_trigger_delay_invalid_keyword_raises(self, dmm):
         device, _ = dmm
         with pytest.raises(ValueError, match=r"Trigger delay keyword"):

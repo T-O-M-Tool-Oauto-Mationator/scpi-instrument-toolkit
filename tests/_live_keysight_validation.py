@@ -78,6 +78,22 @@ def drain_errors(label: str, getter) -> list[str]:
     return errs
 
 
+def assert_no_errors(r: Recorder, label: str, getter) -> None:
+    """Drain the SCPI error queue and record a failure on the recorder if non-empty.
+
+    Without this the script logged but ignored leftover SCPI errors and could
+    exit 0 with the instrument still complaining (-222, -410, -113, ...).
+    """
+    errs = drain_errors(label, getter)
+    if errs:
+        r.failed += 1
+        r.errors.append((f"{label} error queue", "; ".join(errs)))
+        print(f"  [FAIL] {label} error queue non-empty after run")
+    else:
+        r.passed += 1
+        print(f"  [PASS] {label} error queue is empty")
+
+
 # ----------------------------------------------------------------------
 # PSU: Keysight EDU36311A
 # ----------------------------------------------------------------------
@@ -86,7 +102,7 @@ def test_psu(psu) -> Recorder:
     print(f"\n=== {r.label} @ {psu.resource_name} ===")
 
     # Baseline: outputs already disabled by connect(); confirm.
-    psu.clear_status()
+    r.check("clear_status (preflight)", psu.clear_status)
 
     r.check(
         "output state is OFF after connect",
@@ -200,7 +216,7 @@ def test_psu(psu) -> Recorder:
         )
 
     # Drain error queue
-    drain_errors("PSU", psu.get_error)
+    assert_no_errors(r, "PSU", psu.get_error)
 
     # Final safety: re-disable everything.
     r.check("disable_all_channels (final)", psu.disable_all_channels)
@@ -214,7 +230,7 @@ def test_dmm(dmm) -> Recorder:
     r = Recorder("DMM EDU34450A")
     print(f"\n=== {r.label} @ {dmm.resource_name} ===")
 
-    dmm.clear_status()
+    r.check("clear_status (preflight)", dmm.clear_status)
 
     # Configure + read each function; we just verify the read returns a float
     # (open leads typically return ~0V or overload ~9.9e37).
@@ -273,6 +289,7 @@ def test_dmm(dmm) -> Recorder:
     r.check("set_trigger_source IMM", lambda: dmm.set_trigger_source("IMM"))
     r.check("set_trigger_delay 0", lambda: dmm.set_trigger_delay(0))
     r.check("set_sample_count 5", lambda: dmm.set_sample_count(5))
+
     # Per EDU34450A Programmer's Reference: after explicit INITiate the
     # correct readout is FETCh? (READ? = INITiate+FETCh and re-INITiating
     # while INIT'd raises -410 "Query INTERRUPTED"). Drivers map READ→read()
@@ -304,7 +321,7 @@ def test_dmm(dmm) -> Recorder:
     r.check("set_trigger_source invalid", lambda: expect_value_error(dmm.set_trigger_source, "bogus"))
 
     # Drain error queue
-    drain_errors("DMM", dmm.get_error)
+    assert_no_errors(r, "DMM", dmm.get_error)
 
     return r
 
@@ -316,7 +333,7 @@ def test_scope(scope) -> Recorder:
     r = Recorder("Scope DSOX1204G")
     print(f"\n=== {r.label} @ {scope.resource_name} ===")
 
-    scope.clear_status()
+    r.check("clear_status (preflight)", scope.clear_status)
 
     # On firmware <= 02.12 long write bursts can wedge the USB-TMC parser; a
     # USBTMC clear() at section boundaries mirrors how a real user paces work
@@ -324,12 +341,16 @@ def test_scope(scope) -> Recorder:
     import contextlib
 
     def _settle(label):
-        with contextlib.suppress(Exception):
-            scope.instrument.clear()
-        time.sleep(0.05)
-        scope.instrument.write("*CLS")
-        time.sleep(0.02)
-        print(f"     -- settle before {label}")
+        # Recorded as a check so a USBTMC error here gets logged and the run
+        # continues to the consolidated summary instead of aborting silently.
+        def _do():
+            with contextlib.suppress(Exception):
+                scope.instrument.clear()
+            time.sleep(0.05)
+            scope.instrument.write("*CLS")
+            time.sleep(0.02)
+
+        r.check(f"settle before {label}", _do)
 
     # Make sure WGEN is OFF before we touch anything.
     r.check("WGEN output OFF (pre)", lambda: scope.awg_set_output_enable(False))
@@ -558,7 +579,7 @@ def test_scope(scope) -> Recorder:
     # Earlier trigger section left sweep in NORMAL — :DIGitize would wait
     # forever for a trigger that never fires on an open input. Force AUTO so
     # :DIGitize completes promptly regardless of input signal.
-    scope.set_trigger_sweep("AUTO")
+    r.check("restore trigger sweep to AUTO", lambda: scope.set_trigger_sweep("AUTO"))
     r.check(
         "acquire_waveform CH1",
         lambda: (
@@ -619,7 +640,7 @@ def test_scope(scope) -> Recorder:
         ),
     )
 
-    drain_errors("Scope", scope.get_error)
+    assert_no_errors(r, "Scope", scope.get_error)
 
     return r
 
@@ -631,11 +652,17 @@ def test_awg(awg) -> Recorder:
     r = Recorder("AWG EDU33212A")
     print(f"\n=== {r.label} @ {awg.resource_name} ===")
 
-    awg.clear_status()
+    r.check("clear_status (preflight)", awg.clear_status)
 
     # SAFETY: verify both outputs are OFF before doing anything else.
-    out1 = awg.get_output_state(1)
-    out2 = awg.get_output_state(2)
+    try:
+        out1 = awg.get_output_state(1)
+        out2 = awg.get_output_state(2)
+    except Exception as e:
+        r.failed += 1
+        r.errors.append(("AWG output preflight", f"{type(e).__name__}: {e}"))
+        print(f"  [ERR ] AWG output preflight: {e}")
+        return r
     if out1 or out2:
         print(
             f"  !! ABORT: AWG outputs are ON (CH1={out1}, CH2={out2}). "
@@ -772,7 +799,7 @@ def test_awg(awg) -> Recorder:
     )
     r.check("disable_all_channels (final)", awg.disable_all_channels)
 
-    drain_errors("AWG", awg.get_error)
+    assert_no_errors(r, "AWG", awg.get_error)
     return r
 
 

@@ -513,8 +513,11 @@ class TestMeasurementPreconditionGuard:
         self._override_display(mi, ch_n_display={1: "0"})
         with pytest.raises(RuntimeError, match=r"CH1 is not displayed"):
             dev.acquire_waveform(1)
-        # No :WAVeform:* writes should have been issued.
+        # No acquisition-side writes should have been issued — neither
+        # :DIGitize (which would block waiting for a hidden channel's
+        # trigger) nor :WAVeform:* (which only operate on a displayed source).
         for cmd in _writes(mi):
+            assert ":DIGitize" not in cmd
             assert ":WAVeform" not in cmd
 
 
@@ -588,6 +591,18 @@ class TestAcquire:
         dev, _ = scope
         with pytest.raises(ValueError):
             dev.set_average_count(65537)
+
+    def test_set_average_count_rejects_float(self, scope):
+        # int(2.5) == 2 must NOT be silently accepted: SCPI parser would see "2.5".
+        dev, _ = scope
+        with pytest.raises(ValueError, match=r"must be an int"):
+            dev.set_average_count(2.5)
+
+    def test_set_average_count_rejects_bool(self, scope):
+        # bool is an int subclass in Python; reject it explicitly.
+        dev, _ = scope
+        with pytest.raises(ValueError, match=r"must be an int"):
+            dev.set_average_count(True)
 
     def test_get_sample_rate(self, scope):
         dev, mi = scope
@@ -736,6 +751,8 @@ class TestSafeQueryRetry:
     def test_safe_query_retries_after_inp_prot_viol(self, scope, monkeypatch):
         import pyvisa
 
+        from lab_instruments.src import keysight_dsox1204g as _mod
+
         dev, mi = scope
         prot_viol = self._make_visa_error(pyvisa.constants.VI_ERROR_INP_PROT_VIOL)
         calls = {"n": 0}
@@ -747,7 +764,7 @@ class TestSafeQueryRetry:
             return "RESULT"
 
         mi.query.side_effect = fake_query
-        monkeypatch.setattr("lab_instruments.src.keysight_dsox1204g.time.sleep", lambda _: None)
+        monkeypatch.setattr(_mod.time, "sleep", lambda _: None)
 
         out = dev._safe_query(":SOMECMD?")
         assert out == "RESULT"
