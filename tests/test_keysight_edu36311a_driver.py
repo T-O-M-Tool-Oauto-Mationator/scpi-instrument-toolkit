@@ -119,6 +119,36 @@ class TestSetOutputChannel:
         with pytest.raises(ValueError):
             device.set_output_channel("bad_channel", 5.0)
 
+    def test_set_output_voltage_above_p6v_limit_raises(self, psu):
+        """p6v_channel max is 6.0 V per CHANNEL_LIMITS — 7.0 must raise."""
+        device, _ = psu
+        with pytest.raises(ValueError, match=r"Voltage 7\.0 V out of range"):
+            device.set_output_channel("p6v_channel", 7.0, 0.5)
+
+    def test_set_output_voltage_above_p30v_limit_raises(self, psu):
+        device, _ = psu
+        with pytest.raises(ValueError):
+            device.set_output_channel("p30v_channel", 31.0, 0.5)
+
+    def test_set_output_current_above_p6v_limit_raises(self, psu):
+        """p6v_channel max current is 5.0 A — 6.0 A must raise."""
+        device, _ = psu
+        with pytest.raises(ValueError, match=r"Current limit 6\.0 A out of range"):
+            device.set_output_channel("p6v_channel", 3.0, 6.0)
+
+    def test_set_output_negative_voltage_raises(self, psu):
+        """CHANNEL_LIMITS uses magnitudes; negatives are rejected (incl. n30v_channel)."""
+        device, _ = psu
+        with pytest.raises(ValueError):
+            device.set_output_channel("n30v_channel", -1.0, 0.5)
+
+    def test_set_output_voltage_at_max_passes(self, psu):
+        """Edge: exactly the max should be accepted."""
+        device, mock_inst = psu
+        device.set_output_channel("p6v_channel", 6.0, 5.0)
+        cmds = [c.args[0] for c in mock_inst.write.call_args_list]
+        assert any("APPLy P6V" in c for c in cmds)
+
 
 # ---------------------------------------------------------------------------
 # set_voltage / set_current_limit
@@ -139,6 +169,28 @@ class TestSetVoltageCurrent:
             mock_inst.reset_mock()
             device.set_current_limit(ch, 0.5)
             mock_inst.write.assert_called()
+
+    def test_set_voltage_above_limit_raises(self, psu):
+        device, _ = psu
+        with pytest.raises(ValueError):
+            device.set_voltage("p6v_channel", 99.0)
+
+    def test_set_current_limit_above_limit_raises(self, psu):
+        device, _ = psu
+        with pytest.raises(ValueError):
+            device.set_current_limit("p30v_channel", 99.0)
+
+    def test_set_voltage_rejects_unknown_channel_with_value_error(self, psu):
+        # Regression: CR flagged that _validate_setpoint indexed CHANNEL_LIMITS
+        # immediately, so an invalid channel raised KeyError instead of ValueError.
+        device, _ = psu
+        with pytest.raises(ValueError, match=r"Invalid channel"):
+            device.set_voltage("bogus", 1.0)
+
+    def test_set_current_limit_rejects_unknown_channel_with_value_error(self, psu):
+        device, _ = psu
+        with pytest.raises(ValueError, match=r"Invalid channel"):
+            device.set_current_limit("bogus", 0.1)
 
 
 # ---------------------------------------------------------------------------

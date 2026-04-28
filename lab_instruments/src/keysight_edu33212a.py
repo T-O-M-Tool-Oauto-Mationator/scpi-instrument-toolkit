@@ -9,6 +9,8 @@ IDN response: Keysight Technologies,EDU33212A,<serial>,<firmware>
 Interface: USB-B (USB-TMC) or LAN
 """
 
+import contextlib
+
 from lab_instruments.enums import WaveformType
 
 from .device_manager import DeviceManager
@@ -29,6 +31,8 @@ class Keysight_EDU33212A(DeviceManager):
 
     VALID_MOD_FUNCS = {"SIN", "SQU", "TRI", "UPRAMP", "DNRAMP", "NOIS", "PRBS", "ARB"}
 
+    _VOLTAGE_UNIT_ALLOWLIST = ("VPP", "VRMS", "DBM")
+
     def __init__(self, resource_name):
         """Initialize the Keysight EDU33212A AWG."""
         super().__init__(resource_name)
@@ -40,8 +44,13 @@ class Keysight_EDU33212A(DeviceManager):
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        """Context manager exit: disable all outputs for safety."""
-        self.disable_all_channels()
+        """Context manager exit: disable all outputs for safety.
+
+        Suppresses cleanup errors so an exception inside the `with` block is
+        not masked if the instrument is unresponsive at teardown.
+        """
+        with contextlib.suppress(Exception):
+            self.disable_all_channels()
 
     # ==========================================
     # INTERNAL HELPERS
@@ -71,14 +80,20 @@ class Keysight_EDU33212A(DeviceManager):
         self.send_command(f"OUTPut{channel} {state}")
 
     def disable_all_channels(self):
-        """Zeroes SINE memory (0Hz freq, 0V amp/offset), switches to DC 0V, then disables output."""
+        """Park each channel at its documented minimums, switch to DC 0V, disable output.
+
+        Uses SCPI MIN for freq/amp (1 µHz / 1 mVpp per User's Guide §SOURce[1|2]:FREQuency
+        and §SOURce[1|2]:VOLTage); writing literal 0.0 was clipped by the instrument
+        and emitted -222 ("Data out of range") into the error queue on every disable.
+        """
         for channel in self.CHANNEL_MAP:
-            # Zero stored SINE parameters so they are safe if the user switches back
+            # Park SIN parameters at documented minimums so reselecting SIN
+            # later leaves the channel quiet rather than at stale loud values.
             self.set_function(channel, "SIN")
-            self.set_frequency(channel, 0.0)
-            self.set_amplitude(channel, 0.0)
+            self.send_command(f"{self._src(channel)}:FREQuency MINimum")
+            self.send_command(f"{self._src(channel)}:VOLTage MINimum")
             self.set_offset(channel, 0.0)
-            # Then switch to DC at 0V and disable
+            # Switch to DC at 0V and disable output.
             self.set_dc_output(channel, 0.0)
             self.enable_output(channel, False)
 
@@ -201,8 +216,8 @@ class Keysight_EDU33212A(DeviceManager):
         """
         self._validate_channel(channel)
         u = unit.upper()
-        if u not in ("VPP", "VRMS", "DBM"):
-            raise ValueError(f"Invalid voltage unit '{unit}'. Must be VPP, VRMS, or DBM.")
+        if u not in self._VOLTAGE_UNIT_ALLOWLIST:
+            raise ValueError(f"Voltage unit must be one of {self._VOLTAGE_UNIT_ALLOWLIST}, got '{unit}'")
         self.send_command(f"{self._src(channel)}:VOLTage:UNIT {u}")
 
     # ==========================================
@@ -217,6 +232,8 @@ class Keysight_EDU33212A(DeviceManager):
             duty_cycle (float): Duty cycle as a percentage (0.01 to 99.99).
         """
         self._validate_channel(channel)
+        if not (0.01 <= float(duty_cycle) <= 99.99):
+            raise ValueError(f"Square duty cycle {duty_cycle}% out of range (0.01 to 99.99)")
         self.send_command(f"{self._src(channel)}:FUNCtion:SQUare:DCYCle {duty_cycle}")
 
     def set_ramp_symmetry(self, channel, symmetry):
@@ -228,6 +245,8 @@ class Keysight_EDU33212A(DeviceManager):
                               0% = sawtooth down, 50% = triangle.
         """
         self._validate_channel(channel)
+        if not (0.0 <= float(symmetry) <= 100.0):
+            raise ValueError(f"Ramp symmetry {symmetry}% out of range (0 to 100)")
         self.send_command(f"{self._src(channel)}:FUNCtion:RAMP:SYMMetry {symmetry}")
 
     # ==========================================
@@ -239,9 +258,11 @@ class Keysight_EDU33212A(DeviceManager):
 
         Args:
             channel (int): Channel number (1 or 2).
-            period (float): Period in seconds.
+            period (float): Period in seconds (33 ns to 1e6 s per User's Guide).
         """
         self._validate_channel(channel)
+        if not (33e-9 <= float(period) <= 1e6):
+            raise ValueError(f"Pulse period {period} s out of range (33 ns to 1e6 s)")
         self.send_command(f"{self._src(channel)}:FUNCtion:PULSe:PERiod {period}")
 
     def set_pulse_width(self, channel, width):
@@ -252,6 +273,8 @@ class Keysight_EDU33212A(DeviceManager):
             width (float): Pulse width in seconds (minimum 16 ns).
         """
         self._validate_channel(channel)
+        if float(width) < 16e-9:
+            raise ValueError(f"Pulse width {width} s out of range (>= 16 ns)")
         self.send_command(f"{self._src(channel)}:FUNCtion:PULSe:WIDTh {width}")
 
     def set_pulse_duty(self, channel, duty_cycle):
@@ -262,6 +285,8 @@ class Keysight_EDU33212A(DeviceManager):
             duty_cycle (float): Duty cycle as a percentage (0.01 to 99.99).
         """
         self._validate_channel(channel)
+        if not (0.01 <= float(duty_cycle) <= 99.99):
+            raise ValueError(f"Pulse duty cycle {duty_cycle}% out of range (0.01 to 99.99)")
         self.send_command(f"{self._src(channel)}:FUNCtion:PULSe:DCYCle {duty_cycle}")
 
     def set_pulse_edge(self, channel, leading=None, trailing=None):
@@ -273,6 +298,9 @@ class Keysight_EDU33212A(DeviceManager):
             trailing (float|None): Trailing edge time in seconds (8.4 ns to 1 µs).
         """
         self._validate_channel(channel)
+        for label, val in (("leading", leading), ("trailing", trailing)):
+            if val is not None and not (8.4e-9 <= float(val) <= 1e-6):
+                raise ValueError(f"Pulse {label} edge {val} s out of range (8.4 ns to 1 µs)")
         src = self._src(channel)
         if leading is not None:
             self.send_command(f"{src}:FUNCtion:PULSe:TRANsition:LEADing {leading}")
@@ -360,6 +388,8 @@ class Keysight_EDU33212A(DeviceManager):
             dssc (bool): Enable double-sideband suppressed carrier. Default False.
         """
         self._validate_channel(channel)
+        if state and not (0.0 <= float(depth) <= 120.0):
+            raise ValueError(f"AM depth {depth}% out of range (0 to 120)")
         src = self._src(channel)
         st = "ON" if state else "OFF"
         self.send_command(f"{src}:AM:STATe {st}")
@@ -391,6 +421,8 @@ class Keysight_EDU33212A(DeviceManager):
             source (str): INTernal, CH1, or CH2. Default INTernal.
         """
         self._validate_channel(channel)
+        if state and float(deviation) <= 0.0:
+            raise ValueError(f"FM deviation {deviation} Hz must be positive")
         src = self._src(channel)
         st = "ON" if state else "OFF"
         self.send_command(f"{src}:FM:STATe {st}")
@@ -420,6 +452,8 @@ class Keysight_EDU33212A(DeviceManager):
             source (str): INTernal, CH1, or CH2. Default INTernal.
         """
         self._validate_channel(channel)
+        if state and not (-360.0 <= float(deviation) <= 360.0):
+            raise ValueError(f"PM deviation {deviation}° out of range (-360 to 360)")
         src = self._src(channel)
         st = "ON" if state else "OFF"
         self.send_command(f"{src}:PM:STATe {st}")
@@ -476,6 +510,8 @@ class Keysight_EDU33212A(DeviceManager):
             source (str): INTernal, CH1, or CH2. Default INTernal.
         """
         self._validate_channel(channel)
+        if state and deviation is not None and float(deviation) <= 0.0:
+            raise ValueError(f"PWM deviation {deviation} s must be positive")
         src = self._src(channel)
         st = "ON" if state else "OFF"
         self.send_command(f"{src}:PWM:STATe {st}")
@@ -549,6 +585,11 @@ class Keysight_EDU33212A(DeviceManager):
             phase (float): Start phase in degrees (-360 to +360). Default 0.
         """
         self._validate_channel(channel)
+        if state:
+            if not (1 <= int(n_cycles) <= 100_000_000):
+                raise ValueError(f"Burst n_cycles {n_cycles} out of range (1 to 100,000,000)")
+            if not (-360.0 <= float(phase) <= 360.0):
+                raise ValueError(f"Burst phase {phase}° out of range (-360 to +360)")
         src = self._src(channel)
         st = "ON" if state else "OFF"
         self.send_command(f"{src}:BURSt:STATe {st}")
