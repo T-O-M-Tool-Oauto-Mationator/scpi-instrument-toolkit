@@ -233,3 +233,32 @@ If it still doesn't work, unplug the EV2300 USB cable, plug it back in, then `di
 Another program (e.g. **BQ Studio**) likely has the EV2300 HID handle open. Close it and run `scan` again. Only one program can use the EV2300 at a time.
 
 See [EV2300 Troubleshooting](ev2300.md#troubleshooting) for more details.
+
+### BQ76920 CC_CFG stays 0x00 after BOOT (open-source bridge firmware only)
+
+If you are using the open-source [BQ76920_Bridge](https://github.com/T-O-M-Tool-Oauto-Mationator/BQ76920_Bridge) firmware (the STM32F405 replacement for the TI EV2300/EV2400) and `ev2300 read_byte 0x08 0x0B` returns `0x00` instead of `0x19` after pressing BOOT on the EVM, the bridge's automatic re-init is not firing. The fix until firmware is patched: write the init values from the host:
+
+```bash
+ev2300 write_byte 0x08 0x00 0xFF   # clear SYS_STAT fault latches (write-1-to-clear, SLUSBK2I Table 8-3)
+ev2300 write_byte 0x08 0x0B 0x19   # CC_CFG = 0x19 (SLUSBK2I sec 8.5 Register Maps requires this)
+ev2300 write_byte 0x08 0x04 0x10   # SYS_CTRL1 ADC_EN (bit 4, SLUSBK2I Table 8-7)
+ev2300 write_byte 0x08 0x05 0x40   # SYS_CTRL2 CC_EN (bit 6, SLUSBK2I Table 8-8)
+ev2300 write_byte 0x08 0x00 0xFF   # clear any UV/OV that latched on first ADC frame
+```
+
+Verify CC_CFG = 0x19 with `ev2300 read_byte 0x08 0x0B` before doing measurements. The genuine TI EV2300/EV2400 with bqStudio handles this automatically and is unaffected.
+
+### After `scan`, BQ goes silent (PSU was disabled)
+
+The REPL applies a "safe state" to every discovered instrument on startup. For the HP E3631A this means `OUTPUT:STATE OFF` plus zeroing all channel setpoints. If the BQ EVM was running on that PSU before you launched the REPL, the BQ now has no rail and falls into SHIP mode within seconds. Subsequent `ev2300 read_*` commands will return `Device error (0x46)`.
+
+Recovery, in order, after `scan`:
+
+```bash
+psu set 2 18.0 0.5            # reconfigure P25V to 18 V / 0.5 A
+psu chan 2 on                  # re-enable output
+ev2300 wait_for_bq 30          # press BOOT on the EVM during this 30 s window
+ev2300 read_byte 0x08 0x0B     # confirm BQ is up; expect 0x19 once init runs
+```
+
+A future REPL flag may let you skip the PSU safe-state when an EV2300 is also present; until then, the four lines above are the canonical recovery.
