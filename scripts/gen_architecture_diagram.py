@@ -34,12 +34,11 @@ LAYERS = [
         5.5, "#F5F5F5", "#9E9E9E",
         "Layer 4 — Frontends", 14, 10,
         [
-            ("REPL / CLI\nscpi-repl",    *xy(m4, 122)),   # upper-left
-            ("GUI  (Tkinter)\nscpi-gui", *xy(m4,  58)),   # upper-right
+            ("REPL / CLI\nscpi-repl",    *xy(m4,  90)),   # top
             ("LabVIEW bridge",           *xy(m4, 165)),   # left
             ("Python scripts",           *xy(m4,  15)),   # right
-            ("…",                        *xy(m4, 220)),   # lower-left
-            ("…",                        *xy(m4, 320)),   # lower-right
+            ("...",                      *xy(m4, 220)),   # lower-left
+            ("...",                      *xy(m4, 320)),   # lower-right
         ],
     ),
     # ── Layer 3 — REPL Session Layer ───────────────────────────────────────

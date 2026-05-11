@@ -97,7 +97,7 @@ log save ../results/data.csv      # relative path from script dir
 !!! note "Path resolution"
     Relative paths are resolved from the **script directory** when running inside a script, or the **data directory** when used interactively. Use absolute paths to override.
 
-CSV files can be opened directly in Excel, LibreOffice Calc, or imported into Python with pandas.
+CSV files can be opened directly in Excel or imported into Python with pandas.
 
 ---
 
