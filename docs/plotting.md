@@ -1,6 +1,6 @@
 # Plotting
 
-The toolkit provides two plotting systems: **static plots** (matplotlib, rendered as PNG) and **live plots** (pyqtgraph, real-time in the GUI). Both work with measurement data collected via the assignment syntax (`label = instrument meas ...`).
+The toolkit provides two plotting systems: **static plots** (matplotlib, rendered as PNG) and **live plots** (real-time, requires an external GUI frontend that consumes the `__PLOT__:` marker line emitted by the REPL). Both work with measurement data collected via the assignment syntax (`label = instrument meas ...`).
 
 ---
 
@@ -16,7 +16,7 @@ plot --title "Line Regulation"          # custom title
 plot load_* --save ../plots/load.png    # save to a specific path
 ```
 
-The chart opens as an image tab in the GUI. If the matched measurements have different units (e.g. V and A), they are split into separate subplots automatically.
+The chart is saved as a PNG (to `--save <path>` if given, plus always to a temp file). The REPL emits a `__PLOT__:<path>` marker line so a frontend can open it. If the matched measurements have different units (e.g. V and A), they are split into separate subplots automatically.
 
 ### Options
 
@@ -40,7 +40,7 @@ liveplot dmm_* --title "Sweep" --xlabel "Time (s)" --ylabel "Voltage (V)"
 ### How it works
 
 1. Run the `liveplot` command **before** collecting data (typically at the top of your script).
-2. A new tab opens in the GUI immediately.
+2. The REPL emits a `__LIVEPLOT__:` marker that an external GUI frontend can pick up to open a live-updating window.
 3. As measurements are recorded, matching points appear on the chart automatically.
 4. The x-axis is time (seconds since the REPL session started).
 
@@ -177,7 +177,7 @@ script run live_freq_sweep
 
 ## Python API examples
 
-Every example above also has a Python version. Import from the GUI menu under **Examples > Python Scripts**, or use the REPL:
+Every example above also has a Python version. Run from the REPL:
 
 ```text
 python examples/python/live_voltage_sweep.py

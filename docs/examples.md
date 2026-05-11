@@ -322,7 +322,7 @@ log print
 
 These examples use `liveplot` to visualize data in real time as it's collected. All work with `--mock`. See [Plotting](plotting.md) for full details on the plotting system.
 
-Every example below has both a `.scpi` and `.py` version. Import either from the GUI menu (**Examples > SCPI Scripts** or **Examples > Python Scripts**).
+Every example below has both a `.scpi` and `.py` version. Run the `.scpi` file with `run <path>` in the REPL, or the `.py` file with `python <path>`.
 
 ---
 
