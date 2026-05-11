@@ -151,10 +151,12 @@ raw MEAS:VOLT:DC?     # query — prints the response
 
 ## state
 
-Set the active instrument to a named state.
+Set the active instrument to a named state, or list the current output state of every connected instrument.
 
 ```text
 state <on|off|safe|reset>
+state <device> <on|off|safe|reset>
+state list
 ```
 
 | Value | Effect |
@@ -163,11 +165,16 @@ state <on|off|safe|reset>
 | `off` | Disable output |
 | `safe` | Outputs off, returns to safe defaults |
 | `reset` | Sends `*RST` — restores factory defaults |
+| `list` | Show current output state of all connected instruments |
 
 ```text
 state safe     # safe state on active instrument
 state reset    # factory reset active instrument
+state psu1 off # disable a specific instrument's output
+state list     # show output state of every instrument
 ```
+
+`state list` prints one row per instrument with the driver class and a best-effort output state (`ON`/`OFF` for PSUs and SMUs, per-channel for AWGs, `RUN`/`STOP` for scopes that support it, `n/a` otherwise).
 
 ---
 
