@@ -6,11 +6,14 @@ Protocol: ASCII commands over USB serial at 115200 baud
 Based on JDS6600 communication protocol
 """
 
+import logging
 import time
 
 import pyvisa
 
 from .device_manager import DeviceManager
+
+logger = logging.getLogger(__name__)
 
 
 class JDS6600_Generator(DeviceManager):
@@ -69,9 +72,9 @@ class JDS6600_Generator(DeviceManager):
             self.instrument.stop_bits = pyvisa.constants.StopBits.one
             self.instrument.read_termination = "\r\n"
             self.instrument.write_termination = "\r\n"
-            print(f"Connected to {self.resource_name}")
+            logger.info("Connected to %s", self.resource_name)
         except pyvisa.VisaIOError as e:
-            print(f"Failed to connect to {self.resource_name}: {e}")
+            logger.error("Failed to connect to %s: %s", self.resource_name, e)
             raise
 
     def _send_command(self, cmd: str) -> str:
@@ -120,7 +123,7 @@ class JDS6600_Generator(DeviceManager):
         val1 = 1 if ch1 else 0
         val2 = 1 if ch2 else 0
         self._send_command(f":w20={val1},{val2}.")
-        print(f"Output: CH1={'ON' if ch1 else 'OFF'}, CH2={'ON' if ch2 else 'OFF'}")
+        logger.info("Output: CH1=%s, CH2=%s", "ON" if ch1 else "OFF", "ON" if ch2 else "OFF")
 
     def set_waveform(self, channel: int, waveform: str):
         """
@@ -140,7 +143,7 @@ class JDS6600_Generator(DeviceManager):
         code = self.WAVEFORMS[waveform]
         func_code = 21 if channel == 1 else 22
         self._send_command(f":w{func_code}={code}.")
-        print(f"CH{channel} waveform: {waveform}")
+        logger.info("CH%s waveform: %s", channel, waveform)
 
     def set_frequency(self, channel: int, freq_hz: float):
         """
@@ -187,7 +190,7 @@ class JDS6600_Generator(DeviceManager):
         func_code = 23 if channel == 1 else 24
         self._send_command(f":w{func_code}={value},{unit}.")
         self._ch_frequency[channel] = freq_hz
-        print(f"CH{channel} frequency: {display_freq:.4f} {unit_str}")
+        logger.info("CH%s frequency: %.4f %s", channel, display_freq, unit_str)
 
     def set_amplitude(self, channel: int, amplitude_v: float):
         """
@@ -206,7 +209,7 @@ class JDS6600_Generator(DeviceManager):
         func_code = 25 if channel == 1 else 26
         self._send_command(f":w{func_code}={value}.")
         self._ch_amplitude[channel] = amplitude_v
-        print(f"CH{channel} amplitude: {amplitude_v:.3f} Vpp")
+        logger.info("CH%s amplitude: %.3f Vpp", channel, amplitude_v)
 
     def set_duty_cycle(self, channel: int, duty_percent: float):
         """
@@ -227,7 +230,7 @@ class JDS6600_Generator(DeviceManager):
 
         func_code = 29 if channel == 1 else 30
         self._send_command(f":w{func_code}={value}.")
-        print(f"CH{channel} duty cycle: {duty_percent:.1f}%")
+        logger.info("CH%s duty cycle: %.1f%%", channel, duty_percent)
 
     def set_offset(self, channel: int, offset_v: float):
         """
@@ -252,7 +255,7 @@ class JDS6600_Generator(DeviceManager):
         func_code = 27 if channel == 1 else 28
         self._send_command(f":w{func_code}={value}.")
         self._ch_offset[channel] = offset_v
-        print(f"CH{channel} offset: {offset_v:.3f} V")
+        logger.info("CH%s offset: %.3f V", channel, offset_v)
 
     def set_phase(self, channel: int, phase_deg: float):
         """
@@ -273,7 +276,7 @@ class JDS6600_Generator(DeviceManager):
 
         func_code = 31 if channel == 1 else 32
         self._send_command(f":w{func_code}={value}.")
-        print(f"CH{channel} phase: {phase_deg:.1f} degrees")
+        logger.info("CH%s phase: %.1f degrees", channel, phase_deg)
 
     def set_sync(
         self,
@@ -314,9 +317,9 @@ class JDS6600_Generator(DeviceManager):
             sync_list.append("duty")
 
         if sync_list:
-            print(f"Sync enabled: {', '.join(sync_list)}")
+            logger.info("Sync enabled: %s", ", ".join(sync_list))
         else:
-            print("Sync disabled (channels independent)")
+            logger.info("Sync disabled (channels independent)")
 
     def get_amplitude(self, channel):
         """Return cached amplitude (Vpp) for a channel, or None if never set."""

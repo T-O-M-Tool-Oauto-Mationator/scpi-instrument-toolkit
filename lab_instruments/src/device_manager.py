@@ -1,4 +1,8 @@
+import logging
+
 import pyvisa
+
+logger = logging.getLogger(__name__)
 
 
 class DeviceManager:
@@ -43,9 +47,9 @@ class DeviceManager:
             self.instrument = self.rm.open_resource(self.resource_name)
             self.instrument.timeout = 5000
             self.instrument.read_termination = "\n"
-            print(f"Connected to {self.resource_name}")
+            logger.info("Connected to %s", self.resource_name)
         except pyvisa.VisaIOError as e:
-            print(f"Failed to connect to {self.resource_name}: {e}")
+            logger.error("Failed to connect to %s: %s", self.resource_name, e)
             raise
 
     def disconnect(self):
@@ -57,7 +61,7 @@ class DeviceManager:
         if self.instrument:
             self.instrument.close()
             self.instrument = None
-            print(f"Disconnected from {self.resource_name}")
+            logger.info("Disconnected from %s", self.resource_name)
 
     def send_command(self, command):
         """Write a SCPI command to the instrument (fire-and-forget).
@@ -70,7 +74,7 @@ class DeviceManager:
         """
         if self.instrument:
             self.instrument.write(command)
-            print(f"Sent command: {command}")
+            logger.debug("Sent command: %s", command)
         else:
             raise ConnectionError("Instrument not connected.")
 

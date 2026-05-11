@@ -1,5 +1,10 @@
 # Log & Calc
 
+> **Looking for Python-API logging?** This page documents the REPL `log` command
+> (the measurement log). To silence or enable the library's own log output
+> (`Sent command: ...`, `Connected to ...`, etc.) from Python code, see
+> [Controlling library log output](python.md#controlling-library-log-output).
+
 ---
 
 ## The measurement log -- what it is and why you need it

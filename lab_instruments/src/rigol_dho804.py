@@ -6,12 +6,15 @@ Protocol: SCPI over USB-TMC/VISA
 Based on DHO800/DHO900 Programming Guide
 """
 
+import logging
 from dataclasses import dataclass
 
 import numpy as np
 import pyvisa
 
 from .device_manager import DeviceManager
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -60,7 +63,7 @@ class WaveformData:
             plt.tight_layout()
             plt.show()
         except ImportError:
-            print("matplotlib not installed. Install with: pip install matplotlib")
+            logger.warning("matplotlib not installed. Install with: pip install matplotlib")
 
 
 class Rigol_DHO804(DeviceManager):
@@ -77,16 +80,16 @@ class Rigol_DHO804(DeviceManager):
             self.instrument.timeout = 5000  # 5 second timeout
             self.instrument.write_termination = "\n"
             self.instrument.read_termination = "\n"
-            print(f"Connected to {self.resource_name}")
+            logger.info(f"Connected to {self.resource_name}")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to connect to {self.resource_name}: {e}")
+            logger.error(f"Failed to connect to {self.resource_name}: {e}")
             raise
 
     def disconnect(self):
         """Disconnect from the oscilloscope."""
         if self.instrument:
             self.instrument.close()
-            print(f"Disconnected from {self.resource_name}")
+            logger.info(f"Disconnected from {self.resource_name}")
 
     # Channel control
     def enable_channel(self, channel: int):
@@ -94,14 +97,14 @@ class Rigol_DHO804(DeviceManager):
         if channel not in (1, 2, 3, 4):
             raise ValueError("Channel must be 1-4")
         self.instrument.write(f":CHANnel{channel}:DISPlay ON")
-        print(f"CH{channel} enabled")
+        logger.info(f"CH{channel} enabled")
 
     def disable_channel(self, channel: int):
         """Disable a channel."""
         if channel not in (1, 2, 3, 4):
             raise ValueError("Channel must be 1-4")
         self.instrument.write(f":CHANnel{channel}:DISPlay OFF")
-        print(f"CH{channel} disabled")
+        logger.info(f"CH{channel} disabled")
 
     def set_vertical_scale(self, channel: int, volts_per_div: float, offset: float = 0.0):
         """
@@ -117,7 +120,7 @@ class Rigol_DHO804(DeviceManager):
 
         self.instrument.write(f":CHANnel{channel}:SCALe {volts_per_div}")
         self.instrument.write(f":CHANnel{channel}:OFFSet {offset}")
-        print(f"CH{channel}: {volts_per_div} V/div, offset {offset} V")
+        logger.info(f"CH{channel}: {volts_per_div} V/div, offset {offset} V")
 
     def set_coupling(self, channel: int, coupling: str):
         """
@@ -134,7 +137,7 @@ class Rigol_DHO804(DeviceManager):
             raise ValueError("Coupling must be 'DC', 'AC', or 'GND'")
 
         self.instrument.write(f":CHANnel{channel}:COUPling {coupling}")
-        print(f"CH{channel} coupling: {coupling}")
+        logger.info(f"CH{channel} coupling: {coupling}")
 
     def set_bandwidth_limit(self, channel: int, limit: str) -> None:
         """
@@ -163,9 +166,9 @@ class Rigol_DHO804(DeviceManager):
 
         try:
             self.instrument.write(f":CHANnel{channel}:BWLimit {limit}")
-            print(f"CH{channel} bandwidth limit: {limit}")
+            logger.info(f"CH{channel} bandwidth limit: {limit}")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set bandwidth limit: {e}")
+            logger.warning(f"Failed to set bandwidth limit: {e}")
             raise
 
     def invert_channel(self, channel: int, enable: bool) -> None:
@@ -194,9 +197,9 @@ class Rigol_DHO804(DeviceManager):
         try:
             self.instrument.write(f":CHANnel{channel}:INVert {value}")
             state = "inverted" if enable else "normal"
-            print(f"CH{channel} display: {state}")
+            logger.info(f"CH{channel} display: {state}")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set invert: {e}")
+            logger.warning(f"Failed to set invert: {e}")
             raise
 
     def set_probe_ratio(self, channel: int, ratio: float) -> None:
@@ -258,9 +261,9 @@ class Rigol_DHO804(DeviceManager):
 
         try:
             self.instrument.write(f":CHANnel{channel}:PROBe {ratio:g}")
-            print(f"CH{channel} probe ratio: {ratio:g}X")
+            logger.info(f"CH{channel} probe ratio: {ratio:g}X")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set probe ratio: {e}")
+            logger.warning(f"Failed to set probe ratio: {e}")
             raise
 
     def set_probe_attenuation(self, channel: int, ratio: float) -> None:
@@ -292,9 +295,9 @@ class Rigol_DHO804(DeviceManager):
 
         try:
             self.instrument.write(f":CHANnel{channel}:POSition {position}")
-            print(f"CH{channel} vertical position: {position} V")
+            logger.info(f"CH{channel} vertical position: {position} V")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set position: {e}")
+            logger.warning(f"Failed to set position: {e}")
             raise
 
     def get_channel_position(self, channel: int) -> float:
@@ -320,7 +323,7 @@ class Rigol_DHO804(DeviceManager):
             response = self.instrument.query(f":CHANnel{channel}:POSition?")
             return float(response.strip())
         except pyvisa.VisaIOError as e:
-            print(f"Failed to get position: {e}")
+            logger.warning(f"Failed to get position: {e}")
             raise
 
     def set_vertical_position(self, channel: int, position: float) -> None:
@@ -394,9 +397,9 @@ class Rigol_DHO804(DeviceManager):
             self.instrument.write(f":CHANnel{channel}:LABel:SHOW {show_value}")
 
             state = "visible" if show else "hidden"
-            print(f'CH{channel} label: "{label}" ({state})')
+            logger.info(f'CH{channel} label: "{label}" ({state})')
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set channel label: {e}")
+            logger.warning(f"Failed to set channel label: {e}")
             raise
 
     def set_vernier(self, channel: int, enable: bool) -> None:
@@ -426,9 +429,9 @@ class Rigol_DHO804(DeviceManager):
         try:
             self.instrument.write(f":CHANnel{channel}:VERNier {value}")
             mode = "fine" if enable else "coarse"
-            print(f"CH{channel} vertical scale mode: {mode}")
+            logger.info(f"CH{channel} vertical scale mode: {mode}")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set vernier: {e}")
+            logger.warning(f"Failed to set vernier: {e}")
             raise
 
     # ========================================
@@ -451,9 +454,9 @@ class Rigol_DHO804(DeviceManager):
         """
         try:
             self.instrument.write(f":TIMebase:SCALe {seconds_per_div}")
-            print(f"Timebase: {seconds_per_div} s/div")
+            logger.info(f"Timebase: {seconds_per_div} s/div")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set horizontal scale: {e}")
+            logger.warning(f"Failed to set horizontal scale: {e}")
             raise
 
     def set_horizontal_offset(self, offset: float) -> None:
@@ -476,9 +479,9 @@ class Rigol_DHO804(DeviceManager):
         """
         try:
             self.instrument.write(f":TIMebase:MAIN:OFFSet {offset}")
-            print(f"Horizontal offset: {offset} s")
+            logger.info(f"Horizontal offset: {offset} s")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set horizontal offset: {e}")
+            logger.warning(f"Failed to set horizontal offset: {e}")
             raise
 
     def set_timebase_mode(self, mode: str) -> None:
@@ -509,9 +512,9 @@ class Rigol_DHO804(DeviceManager):
 
         try:
             self.instrument.write(f":TIMebase:MODE {mode}")
-            print(f"Timebase mode: {mode}")
+            logger.info(f"Timebase mode: {mode}")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set timebase mode: {e}")
+            logger.warning(f"Failed to set timebase mode: {e}")
             raise
 
     def enable_delayed_timebase(self, enable: bool) -> None:
@@ -536,9 +539,9 @@ class Rigol_DHO804(DeviceManager):
         try:
             self.instrument.write(f":TIMebase:DELay:ENABle {value}")
             state = "enabled" if enable else "disabled"
-            print(f"Delayed timebase (zoom): {state}")
+            logger.info(f"Delayed timebase (zoom): {state}")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set delayed timebase: {e}")
+            logger.warning(f"Failed to set delayed timebase: {e}")
             raise
 
     def set_delayed_offset(self, offset: float) -> None:
@@ -563,9 +566,9 @@ class Rigol_DHO804(DeviceManager):
         """
         try:
             self.instrument.write(f":TIMebase:DELay:OFFSet {offset}")
-            print(f"Delayed offset: {offset} s")
+            logger.info(f"Delayed offset: {offset} s")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set delayed offset: {e}")
+            logger.warning(f"Failed to set delayed offset: {e}")
             raise
 
     def set_delayed_scale(self, scale: float) -> None:
@@ -588,9 +591,9 @@ class Rigol_DHO804(DeviceManager):
         """
         try:
             self.instrument.write(f":TIMebase:DELay:SCALe {scale}")
-            print(f"Delayed scale: {scale} s/div (zoom)")
+            logger.info(f"Delayed scale: {scale} s/div (zoom)")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set delayed scale: {e}")
+            logger.warning(f"Failed to set delayed scale: {e}")
             raise
 
     def enable_xy_mode(self, enable: bool = True, x_channel: int = 1, y_channel: int = 2) -> None:
@@ -629,11 +632,11 @@ class Rigol_DHO804(DeviceManager):
             if enable:
                 # Note: X and Y channel configuration would go here
                 # if the commands :TIMebase:XY:X and :TIMebase:XY:Y are needed
-                print(f"XY mode enabled (X=CH{x_channel}, Y=CH{y_channel})")
+                logger.info(f"XY mode enabled (X=CH{x_channel}, Y=CH{y_channel})")
             else:
-                print("XY mode disabled (back to time display)")
+                logger.info("XY mode disabled (back to time display)")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set XY mode: {e}")
+            logger.warning(f"Failed to set XY mode: {e}")
             raise
 
     # Trigger control
@@ -664,7 +667,7 @@ class Rigol_DHO804(DeviceManager):
         self.instrument.write(f":TRIGger:EDGE:SOURce CHAN{channel}")
         self.instrument.write(f":TRIGger:EDGE:SLOPe {slope_cmd}")
         self.instrument.write(f":TRIGger:EDGE:LEVel {level}")
-        print(f"Trigger: CH{channel}, {level}V, {slope}")
+        logger.info(f"Trigger: CH{channel}, {level}V, {slope}")
 
     # ========================================
     # Trigger Control (Section 3.27)
@@ -698,9 +701,9 @@ class Rigol_DHO804(DeviceManager):
 
         try:
             self.instrument.write(f":TRIGger:SWEep {sweep}")
-            print(f"Trigger sweep mode: {sweep}")
+            logger.info(f"Trigger sweep mode: {sweep}")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set trigger sweep: {e}")
+            logger.warning(f"Failed to set trigger sweep: {e}")
             raise
 
     def set_trigger_coupling(self, coupling: str) -> None:
@@ -732,9 +735,9 @@ class Rigol_DHO804(DeviceManager):
 
         try:
             self.instrument.write(f":TRIGger:COUPling {coupling}")
-            print(f"Trigger coupling: {coupling}")
+            logger.info(f"Trigger coupling: {coupling}")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set trigger coupling: {e}")
+            logger.warning(f"Failed to set trigger coupling: {e}")
             raise
 
     def set_trigger_holdoff(self, time: float) -> None:
@@ -762,9 +765,9 @@ class Rigol_DHO804(DeviceManager):
 
         try:
             self.instrument.write(f":TRIGger:HOLDoff {time}")
-            print(f"Trigger holdoff: {time} s")
+            logger.info(f"Trigger holdoff: {time} s")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set trigger holdoff: {e}")
+            logger.warning(f"Failed to set trigger holdoff: {e}")
             raise
 
     def get_trigger_status(self) -> str:
@@ -788,7 +791,7 @@ class Rigol_DHO804(DeviceManager):
             status = self.instrument.query(":TRIGger:STATus?").strip()
             return status
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query trigger status: {e}")
+            logger.warning(f"Failed to query trigger status: {e}")
             raise
 
     def configure_pulse_trigger(
@@ -852,11 +855,11 @@ class Rigol_DHO804(DeviceManager):
 
             self.instrument.write(f":TRIGger:PULSe:LEVel {level}")
 
-            print(f"Pulse trigger: CH{source}, {polarity}, {when}, lower={width_lower}s")
+            logger.info(f"Pulse trigger: CH{source}, {polarity}, {when}, lower={width_lower}s")
             if width_upper:
-                print(f"  Upper width: {width_upper}s")
+                logger.info(f"  Upper width: {width_upper}s")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to configure pulse trigger: {e}")
+            logger.warning(f"Failed to configure pulse trigger: {e}")
             raise
 
     def configure_timeout_trigger(self, source: int, slope: str, timeout: float, level: float = 0.0) -> None:
@@ -905,9 +908,9 @@ class Rigol_DHO804(DeviceManager):
             self.instrument.write(f":TRIGger:TIMeout:TIME {timeout}")
             self.instrument.write(f":TRIGger:TIMeout:LEVel {level}")
 
-            print(f"Timeout trigger: CH{source}, {slope}, timeout={timeout}s, level={level}V")
+            logger.info(f"Timeout trigger: CH{source}, {slope}, timeout={timeout}s, level={level}V")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to configure timeout trigger: {e}")
+            logger.warning(f"Failed to configure timeout trigger: {e}")
             raise
 
     # ========================================
@@ -929,9 +932,9 @@ class Rigol_DHO804(DeviceManager):
         """
         try:
             self.instrument.write(":CLEar")
-            print("Display cleared")
+            logger.info("Display cleared")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to clear display: {e}")
+            logger.warning(f"Failed to clear display: {e}")
             raise
 
     def run(self) -> None:
@@ -950,9 +953,9 @@ class Rigol_DHO804(DeviceManager):
         """
         try:
             self.instrument.write(":RUN")
-            print("Oscilloscope running")
+            logger.info("Oscilloscope running")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to start acquisition: {e}")
+            logger.warning(f"Failed to start acquisition: {e}")
             raise
 
     def stop(self) -> None:
@@ -971,9 +974,9 @@ class Rigol_DHO804(DeviceManager):
         """
         try:
             self.instrument.write(":STOP")
-            print("Oscilloscope stopped")
+            logger.info("Oscilloscope stopped")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to stop acquisition: {e}")
+            logger.warning(f"Failed to stop acquisition: {e}")
             raise
 
     def single(self) -> None:
@@ -999,9 +1002,9 @@ class Rigol_DHO804(DeviceManager):
         """
         try:
             self.instrument.write(":SINGle")
-            print("Single trigger armed")
+            logger.info("Single trigger armed")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set single trigger: {e}")
+            logger.warning(f"Failed to set single trigger: {e}")
             raise
 
     def wait_for_stop(self, timeout: float = 10.0) -> bool:
@@ -1054,9 +1057,9 @@ class Rigol_DHO804(DeviceManager):
         """
         try:
             self.instrument.write(":TFORce")
-            print("Trigger forced")
+            logger.info("Trigger forced")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to force trigger: {e}")
+            logger.warning(f"Failed to force trigger: {e}")
             raise
 
     # ========================================
@@ -1091,9 +1094,9 @@ class Rigol_DHO804(DeviceManager):
 
         try:
             self.instrument.write(f":WAVeform:SOURce {source}")
-            print(f"Waveform source: {source}")
+            logger.info(f"Waveform source: {source}")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set waveform source: {e}")
+            logger.warning(f"Failed to set waveform source: {e}")
             raise
 
     def set_waveform_mode(self, mode: str) -> None:
@@ -1124,9 +1127,9 @@ class Rigol_DHO804(DeviceManager):
 
         try:
             self.instrument.write(f":WAVeform:MODE {mode}")
-            print(f"Waveform mode: {mode}")
+            logger.info(f"Waveform mode: {mode}")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set waveform mode: {e}")
+            logger.warning(f"Failed to set waveform mode: {e}")
             raise
 
     def set_waveform_format(self, format: str) -> None:
@@ -1156,9 +1159,9 @@ class Rigol_DHO804(DeviceManager):
 
         try:
             self.instrument.write(f":WAVeform:FORMat {format}")
-            print(f"Waveform format: {format}")
+            logger.info(f"Waveform format: {format}")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set waveform format: {e}")
+            logger.warning(f"Failed to set waveform format: {e}")
             raise
 
     def get_waveform_preamble(self) -> dict:
@@ -1205,7 +1208,7 @@ class Rigol_DHO804(DeviceManager):
             }
             return preamble
         except pyvisa.VisaIOError as e:
-            print(f"Failed to get waveform preamble: {e}")
+            logger.warning(f"Failed to get waveform preamble: {e}")
             raise
 
     def _convert_raw_to_voltage(self, raw_data: np.ndarray, preamble: dict) -> np.ndarray:
@@ -1268,7 +1271,7 @@ class Rigol_DHO804(DeviceManager):
         Example:
             >>> scope.stop()  # For deep memory acquisition
             >>> waveform = scope.acquire_waveform(1, mode='MAXIMUM')
-            >>> print(f"Captured {len(waveform)} points")
+            >>> logger.info(f"Captured {len(waveform)} points")
             >>> waveform.plot()
 
         Raises:
@@ -1290,7 +1293,7 @@ class Rigol_DHO804(DeviceManager):
             preamble = self.get_waveform_preamble()
 
             # Get waveform data
-            print(f"Acquiring waveform data ({preamble['points']} points)...")
+            logger.info(f"Acquiring waveform data ({preamble['points']} points)...")
             raw_data = self.instrument.query_binary_values(
                 ":WAVeform:DATA?",
                 datatype="B",  # Unsigned byte
@@ -1312,14 +1315,14 @@ class Rigol_DHO804(DeviceManager):
                 time=time, voltage=voltage, channel=channel, sample_rate=sample_rate, points=len(raw_data)
             )
 
-            print(f"Acquired {len(waveform)} points from CH{channel}")
-            print(f"Time range: {time[0]:.6f} to {time[-1]:.6f} s")
-            print(f"Voltage range: {voltage.min():.3f} to {voltage.max():.3f} V")
+            logger.info(f"Acquired {len(waveform)} points from CH{channel}")
+            logger.info(f"Time range: {time[0]:.6f} to {time[-1]:.6f} s")
+            logger.info(f"Voltage range: {voltage.min():.3f} to {voltage.max():.3f} V")
 
             return waveform
 
         except pyvisa.VisaIOError as e:
-            print(f"Failed to acquire waveform: {e}")
+            logger.warning(f"Failed to acquire waveform: {e}")
             raise
 
     def save_waveform_csv(
@@ -1352,7 +1355,7 @@ class Rigol_DHO804(DeviceManager):
         volts = waveform.voltage
 
         if len(times) == 0:
-            print("No data captured.")
+            logger.warning("No data captured.")
             return
 
         # Apply windowing if specified
@@ -1367,7 +1370,7 @@ class Rigol_DHO804(DeviceManager):
             times = times[-max_points:]
             volts = volts[-max_points:]
             actual_time = times[-1] - times[0]
-            print(f"Saving {max_points} points ({actual_time:.6f} seconds) - most recent data")
+            logger.info(f"Saving {max_points} points ({actual_time:.6f} seconds) - most recent data")
 
         # Write CSV file
         with open(filename, "w", newline="") as csvfile:
@@ -1376,7 +1379,7 @@ class Rigol_DHO804(DeviceManager):
             for t, v in zip(times, volts, strict=True):
                 writer.writerow([t, v])
 
-        print(f"Waveform from CH{channel} saved to {filename}")
+        logger.info(f"Waveform from CH{channel} saved to {filename}")
 
     def save_waveforms_csv(
         self, channels: list, filename: str, max_points: int | None = None, time_window: float | None = None
@@ -1412,7 +1415,7 @@ class Rigol_DHO804(DeviceManager):
             waveform = self.acquire_waveform(channel, mode="NORMAL")
 
             if len(waveform.time) == 0:
-                print(f"No data captured from CH{channel}.")
+                logger.warning(f"No data captured from CH{channel}.")
                 continue
 
             channel_data[channel] = waveform.voltage
@@ -1420,7 +1423,7 @@ class Rigol_DHO804(DeviceManager):
                 times = waveform.time  # Use time base from first valid channel
 
         if not channel_data:
-            print("No data captured from any channel.")
+            logger.warning("No data captured from any channel.")
             return
 
         # Apply windowing if specified
@@ -1436,7 +1439,7 @@ class Rigol_DHO804(DeviceManager):
             for ch in channel_data:
                 channel_data[ch] = channel_data[ch][-max_points:]
             actual_time = times[-1] - times[0]
-            print(f"Saving {max_points} points ({actual_time:.6f} seconds) - most recent data")
+            logger.info(f"Saving {max_points} points ({actual_time:.6f} seconds) - most recent data")
 
         # Write CSV file
         with open(filename, "w", newline="") as csvfile:
@@ -1456,7 +1459,7 @@ class Rigol_DHO804(DeviceManager):
                 writer.writerow(row)
 
         channels_list = ",".join(str(ch) for ch in sorted(channel_data.keys()))
-        print(f"Waveforms from CH{channels_list} saved to {filename}")
+        logger.info(f"Waveforms from CH{channels_list} saved to {filename}")
 
     # ========================================
     # Automated Measurements (Section 3.17)
@@ -1485,9 +1488,9 @@ class Rigol_DHO804(DeviceManager):
 
         try:
             self.instrument.write(f":MEASure:SOURce {source}")
-            print(f"Measurement source: {source}")
+            logger.info(f"Measurement source: {source}")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set measurement source: {e}")
+            logger.warning(f"Failed to set measurement source: {e}")
             raise
 
     def measure(self, channel: int, measurement_type: str) -> float:
@@ -1581,10 +1584,10 @@ class Rigol_DHO804(DeviceManager):
             value = float(response.strip())
             return value
         except pyvisa.VisaIOError as e:
-            print(f"Failed to measure {meas_type}: {e}")
+            logger.warning(f"Failed to measure {meas_type}: {e}")
             raise
         except ValueError as e:
-            print(f"Invalid measurement value for {meas_type}: {e}")
+            logger.warning(f"Invalid measurement value for {meas_type}: {e}")
             raise
 
     def _resolve_meas_type(self, measurement_type: str) -> str:
@@ -1681,9 +1684,9 @@ class Rigol_DHO804(DeviceManager):
         """
         try:
             self.instrument.write(":MEASure:CLEar")
-            print("Measurement items cleared from display")
+            logger.info("Measurement items cleared from display")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to clear measurement display: {e}")
+            logger.warning(f"Failed to clear measurement display: {e}")
             raise
 
     # Convenience methods for common measurements
@@ -1762,7 +1765,7 @@ class Rigol_DHO804(DeviceManager):
             delay = float(response.strip())
             return delay
         except pyvisa.VisaIOError as e:
-            print(f"Failed to measure delay: {e}")
+            logger.warning(f"Failed to measure delay: {e}")
             raise
 
     # ====================================================================
@@ -1792,9 +1795,9 @@ class Rigol_DHO804(DeviceManager):
 
         try:
             self.instrument.write(f":CURSor:MODE {mode}")
-            print(f"Cursor mode set to {mode}")
+            logger.info(f"Cursor mode set to {mode}")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set cursor mode: {e}")
+            logger.warning(f"Failed to set cursor mode: {e}")
             raise
 
     # Manual Cursor Methods
@@ -1822,9 +1825,9 @@ class Rigol_DHO804(DeviceManager):
 
         try:
             self.instrument.write(f":CURSor:MANual:TYPE {cursor_type}")
-            print(f"Manual cursor type set to {cursor_type}")
+            logger.info(f"Manual cursor type set to {cursor_type}")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set manual cursor type: {e}")
+            logger.warning(f"Failed to set manual cursor type: {e}")
             raise
 
     def set_manual_cursor_source(self, source: str) -> None:
@@ -1855,9 +1858,9 @@ class Rigol_DHO804(DeviceManager):
             # Convert CHAN to CHANnel for SCPI command
             scpi_source = source.replace("CHAN", "CHANnel")
             self.instrument.write(f":CURSor:MANual:SOURce {scpi_source}")
-            print(f"Manual cursor source set to {source}")
+            logger.info(f"Manual cursor source set to {source}")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set manual cursor source: {e}")
+            logger.warning(f"Failed to set manual cursor source: {e}")
             raise
 
     def set_manual_cursor_positions(
@@ -1908,9 +1911,9 @@ class Rigol_DHO804(DeviceManager):
                 positions.append(f"BY={by:.3f}V")
 
             if positions:
-                print(f"Manual cursor positions set: {', '.join(positions)}")
+                logger.info(f"Manual cursor positions set: {', '.join(positions)}")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set manual cursor positions: {e}")
+            logger.warning(f"Failed to set manual cursor positions: {e}")
             raise
 
     def get_manual_cursor_values(self) -> dict:
@@ -1936,9 +1939,9 @@ class Rigol_DHO804(DeviceManager):
 
         Example:
             values = scope.get_manual_cursor_values()
-            print(f"Time difference: {values['delta_x']*1e6:.2f} us")
-            print(f"Voltage difference: {values['delta_y']:.3f} V")
-            print(f"Frequency (1/ΔX): {values['inv_delta_x']:.2f} Hz")
+            logger.info(f"Time difference: {values['delta_x']*1e6:.2f} us")
+            logger.info(f"Voltage difference: {values['delta_y']:.3f} V")
+            logger.info(f"Frequency (1/ΔX): {values['inv_delta_x']:.2f} Hz")
         """
         try:
             values = {}
@@ -1968,7 +1971,7 @@ class Rigol_DHO804(DeviceManager):
 
             return values
         except pyvisa.VisaIOError as e:
-            print(f"Failed to get manual cursor values: {e}")
+            logger.warning(f"Failed to get manual cursor values: {e}")
             raise
 
     # Track Cursor Methods
@@ -2012,9 +2015,9 @@ class Rigol_DHO804(DeviceManager):
 
             self.instrument.write(f":CURSor:TRACk:SOURce1 {scpi_source1}")
             self.instrument.write(f":CURSor:TRACk:SOURce2 {scpi_source2}")
-            print(f"Track cursor sources set: Cursor A={source1}, Cursor B={source2}")
+            logger.info(f"Track cursor sources set: Cursor A={source1}, Cursor B={source2}")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set track cursor sources: {e}")
+            logger.warning(f"Failed to set track cursor sources: {e}")
             raise
 
     def set_track_cursor_positions(self, ax: float, bx: float) -> None:
@@ -2037,9 +2040,9 @@ class Rigol_DHO804(DeviceManager):
         try:
             self.instrument.write(f":CURSor:TRACk:CAX {ax}")
             self.instrument.write(f":CURSor:TRACk:CBX {bx}")
-            print(f"Track cursor positions: AX={ax * 1e6:.2f}us, BX={bx * 1e6:.2f}us")
+            logger.info(f"Track cursor positions: AX={ax * 1e6:.2f}us, BX={bx * 1e6:.2f}us")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set track cursor positions: {e}")
+            logger.warning(f"Failed to set track cursor positions: {e}")
             raise
 
     def set_track_cursor_mode(self, mode: str) -> None:
@@ -2065,9 +2068,9 @@ class Rigol_DHO804(DeviceManager):
 
         try:
             self.instrument.write(f":CURSor:TRACk:MODE {mode}")
-            print(f"Track cursor mode set to {mode}-axis")
+            logger.info(f"Track cursor mode set to {mode}-axis")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set track cursor mode: {e}")
+            logger.warning(f"Failed to set track cursor mode: {e}")
             raise
 
     def get_track_cursor_values(self) -> dict:
@@ -2093,9 +2096,9 @@ class Rigol_DHO804(DeviceManager):
 
         Example:
             values = scope.get_track_cursor_values()
-            print(f"Cursor A: X={values['ax']*1e6:.2f}us, Y={values['ay']:.3f}V")
-            print(f"Cursor B: X={values['bx']*1e6:.2f}us, Y={values['by']:.3f}V")
-            print(f"ΔX={values['delta_x']*1e6:.2f}us, ΔY={values['delta_y']:.3f}V")
+            logger.info(f"Cursor A: X={values['ax']*1e6:.2f}us, Y={values['ay']:.3f}V")
+            logger.info(f"Cursor B: X={values['bx']*1e6:.2f}us, Y={values['by']:.3f}V")
+            logger.info(f"ΔX={values['delta_x']*1e6:.2f}us, ΔY={values['delta_y']:.3f}V")
         """
         try:
             values = {}
@@ -2125,7 +2128,7 @@ class Rigol_DHO804(DeviceManager):
 
             return values
         except pyvisa.VisaIOError as e:
-            print(f"Failed to get track cursor values: {e}")
+            logger.warning(f"Failed to get track cursor values: {e}")
             raise
 
     # XY Cursor Methods
@@ -2159,9 +2162,9 @@ class Rigol_DHO804(DeviceManager):
             self.instrument.write(f":CURSor:XY:AY {ay}")
             self.instrument.write(f":CURSor:XY:BX {bx}")
             self.instrument.write(f":CURSor:XY:BY {by}")
-            print(f"XY cursor positions: A=({ax:.3f}V,{ay:.3f}V), B=({bx:.3f}V,{by:.3f}V)")
+            logger.info(f"XY cursor positions: A=({ax:.3f}V,{ay:.3f}V), B=({bx:.3f}V,{by:.3f}V)")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set XY cursor positions: {e}")
+            logger.warning(f"Failed to set XY cursor positions: {e}")
             raise
 
     def get_xy_cursor_values(self) -> dict:
@@ -2186,9 +2189,9 @@ class Rigol_DHO804(DeviceManager):
 
         Example:
             values = scope.get_xy_cursor_values()
-            print(f"Cursor A: ({values['ax']:.3f}V, {values['ay']:.3f}V)")
-            print(f"Cursor B: ({values['bx']:.3f}V, {values['by']:.3f}V)")
-            print(f"Δ: ({values['delta_x']:.3f}V, {values['delta_y']:.3f}V)")
+            logger.info(f"Cursor A: ({values['ax']:.3f}V, {values['ay']:.3f}V)")
+            logger.info(f"Cursor B: ({values['bx']:.3f}V, {values['by']:.3f}V)")
+            logger.info(f"Δ: ({values['delta_x']:.3f}V, {values['delta_y']:.3f}V)")
         """
         try:
             values = {}
@@ -2215,7 +2218,7 @@ class Rigol_DHO804(DeviceManager):
 
             return values
         except pyvisa.VisaIOError as e:
-            print(f"Failed to get XY cursor values: {e}")
+            logger.warning(f"Failed to get XY cursor values: {e}")
             raise
 
     # ====================================================================
@@ -2246,9 +2249,9 @@ class Rigol_DHO804(DeviceManager):
         try:
             state = "ON" if enable else "OFF"
             self.instrument.write(f":MATH{math_ch}:DISPlay {state}")
-            print(f"MATH{math_ch} {'enabled' if enable else 'disabled'}")
+            logger.info(f"MATH{math_ch} {'enabled' if enable else 'disabled'}")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to enable/disable math channel: {e}")
+            logger.warning(f"Failed to enable/disable math channel: {e}")
             raise
 
     def set_math_scale(self, math_ch: int, scale: float, offset: float = None) -> None:
@@ -2278,11 +2281,11 @@ class Rigol_DHO804(DeviceManager):
             self.instrument.write(f":MATH{math_ch}:SCALe {scale}")
             if offset is not None:
                 self.instrument.write(f":MATH{math_ch}:OFFSet {offset}")
-                print(f"MATH{math_ch} scale: {scale} V/div, offset: {offset} V")
+                logger.info(f"MATH{math_ch} scale: {scale} V/div, offset: {offset} V")
             else:
-                print(f"MATH{math_ch} scale: {scale} V/div")
+                logger.info(f"MATH{math_ch} scale: {scale} V/div")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set math scale: {e}")
+            logger.warning(f"Failed to set math scale: {e}")
             raise
 
     def configure_math_operation(self, math_ch: int, operation: str, source1: str, source2: str = None) -> None:
@@ -2343,9 +2346,9 @@ class Rigol_DHO804(DeviceManager):
                 scpi_source2 = source2.replace("CHAN", "CHANnel")
                 self.instrument.write(f":MATH{math_ch}:SOURce2 {scpi_source2}")
 
-            print(f"MATH{math_ch} configured: {source1} {operation} {source2 if source2 else ''}")
+            logger.info(f"MATH{math_ch} configured: {source1} {operation} {source2 if source2 else ''}")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to configure math operation: {e}")
+            logger.warning(f"Failed to configure math operation: {e}")
             raise
 
     def configure_math_function(self, math_ch: int, function: str, source: str) -> None:
@@ -2396,9 +2399,9 @@ class Rigol_DHO804(DeviceManager):
             scpi_source = source.replace("CHAN", "CHANnel")
             self.instrument.write(f":MATH{math_ch}:SOURce1 {scpi_source}")
 
-            print(f"MATH{math_ch} configured: {function}({source})")
+            logger.info(f"MATH{math_ch} configured: {function}({source})")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to configure math function: {e}")
+            logger.warning(f"Failed to configure math function: {e}")
             raise
 
     def configure_fft(self, math_ch: int, source: str, window: str = "RECT") -> None:
@@ -2456,9 +2459,9 @@ class Rigol_DHO804(DeviceManager):
             # Set FFT window
             self.instrument.write(f":MATH{math_ch}:FFT:WINDow {window}")
 
-            print(f"MATH{math_ch} configured: FFT({source}) with {window} window")
+            logger.info(f"MATH{math_ch} configured: FFT({source}) with {window} window")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to configure FFT: {e}")
+            logger.warning(f"Failed to configure FFT: {e}")
             raise
 
     def configure_digital_filter(
@@ -2541,13 +2544,13 @@ class Rigol_DHO804(DeviceManager):
                 self.instrument.write(f":MATH{math_ch}:FILTer:W2 {cutoff_freq2}")
 
             if cutoff_freq2:
-                print(
+                logger.info(
                     f"MATH{math_ch} configured: {filter_type} filter on {source}, {cutoff_freq1:.0f}Hz - {cutoff_freq2:.0f}Hz"
                 )
             else:
-                print(f"MATH{math_ch} configured: {filter_type} filter on {source}, cutoff {cutoff_freq1:.0f}Hz")
+                logger.info(f"MATH{math_ch} configured: {filter_type} filter on {source}, cutoff {cutoff_freq1:.0f}Hz")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to configure digital filter: {e}")
+            logger.warning(f"Failed to configure digital filter: {e}")
             raise
 
     # ========================================================================
@@ -2593,9 +2596,9 @@ class Rigol_DHO804(DeviceManager):
 
         try:
             self.instrument.write(f":ACQuire:TYPE {acq_type}")
-            print(f"Acquisition type set to {acq_type}")
+            logger.info(f"Acquisition type set to {acq_type}")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set acquisition type: {e}")
+            logger.warning(f"Failed to set acquisition type: {e}")
             raise
 
     def set_average_count(self, count: int) -> None:
@@ -2635,9 +2638,9 @@ class Rigol_DHO804(DeviceManager):
 
         try:
             self.instrument.write(f":ACQuire:AVERages {count}")
-            print(f"Average count set to {count}")
+            logger.info(f"Average count set to {count}")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set average count: {e}")
+            logger.warning(f"Failed to set average count: {e}")
             raise
 
     def set_memory_depth(self, depth: str) -> None:
@@ -2678,9 +2681,9 @@ class Rigol_DHO804(DeviceManager):
 
         try:
             self.instrument.write(f":ACQuire:MDEPth {depth}")
-            print(f"Memory depth set to {depth}")
+            logger.info(f"Memory depth set to {depth}")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set memory depth: {e}")
+            logger.warning(f"Failed to set memory depth: {e}")
             raise
 
     def get_memory_depth(self) -> str:
@@ -2697,15 +2700,15 @@ class Rigol_DHO804(DeviceManager):
 
         Example:
             depth = scope.get_memory_depth()
-            print(f"Current memory depth: {depth}")
+            logger.info(f"Current memory depth: {depth}")
         """
         try:
             response = self.instrument.query(":ACQuire:MDEPth?")
             depth = response.strip()
-            print(f"Memory depth: {depth}")
+            logger.info(f"Memory depth: {depth}")
             return depth
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query memory depth: {e}")
+            logger.warning(f"Failed to query memory depth: {e}")
             raise
 
     def get_sample_rate(self) -> float:
@@ -2727,15 +2730,15 @@ class Rigol_DHO804(DeviceManager):
 
         Example:
             rate = scope.get_sample_rate()
-            print(f"Sample rate: {rate/1e9:.2f} GSa/s")
+            logger.info(f"Sample rate: {rate/1e9:.2f} GSa/s")
         """
         try:
             response = self.instrument.query(":ACQuire:SRATe?")
             sample_rate = float(response.strip())
-            print(f"Sample rate: {sample_rate:.3e} Sa/s ({sample_rate / 1e9:.3f} GSa/s)")
+            logger.info(f"Sample rate: {sample_rate:.3e} Sa/s ({sample_rate / 1e9:.3f} GSa/s)")
             return sample_rate
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query sample rate: {e}")
+            logger.warning(f"Failed to query sample rate: {e}")
             raise
 
     # ========================================================================
@@ -2761,9 +2764,9 @@ class Rigol_DHO804(DeviceManager):
         """
         try:
             self.instrument.write(":DISPlay:CLEar")
-            print("Display cleared")
+            logger.info("Display cleared")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to clear display: {e}")
+            logger.warning(f"Failed to clear display: {e}")
             raise
 
     def set_display_type(self, display_type: str) -> None:
@@ -2795,9 +2798,9 @@ class Rigol_DHO804(DeviceManager):
 
         try:
             self.instrument.write(":DISPlay:TYPE VECTors")
-            print("Display type set to VECTORS")
+            logger.info("Display type set to VECTORS")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set display type: {e}")
+            logger.warning(f"Failed to set display type: {e}")
             raise
 
     def set_grid_type(self, grid: str) -> None:
@@ -2839,9 +2842,9 @@ class Rigol_DHO804(DeviceManager):
 
         try:
             self.instrument.write(f":DISPlay:GRID {grid}")
-            print(f"Grid type set to {grid}")
+            logger.info(f"Grid type set to {grid}")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set grid type: {e}")
+            logger.warning(f"Failed to set grid type: {e}")
             raise
 
     def set_persistence(self, time: str) -> None:
@@ -2888,9 +2891,9 @@ class Rigol_DHO804(DeviceManager):
 
         try:
             self.instrument.write(f":DISPlay:GRADing:TIME {time}")
-            print(f"Persistence time set to {time}")
+            logger.info(f"Persistence time set to {time}")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set persistence time: {e}")
+            logger.warning(f"Failed to set persistence time: {e}")
             raise
 
     def get_screenshot(self) -> bytes:
@@ -2918,13 +2921,13 @@ class Rigol_DHO804(DeviceManager):
                 f.write(screenshot_data)
         """
         try:
-            print("Capturing screenshot (this may take several seconds)...")
+            logger.info("Capturing screenshot (this may take several seconds)...")
             # Query screenshot data - returns binary data
             screenshot_data = self.instrument.query_binary_values(":DISPlay:DATA?", datatype="B", container=bytes)
-            print(f"Screenshot captured ({len(screenshot_data)} bytes)")
+            logger.info(f"Screenshot captured ({len(screenshot_data)} bytes)")
             return screenshot_data
         except pyvisa.VisaIOError as e:
-            print(f"Failed to capture screenshot: {e}")
+            logger.warning(f"Failed to capture screenshot: {e}")
             raise
 
     def set_waveform_brightness(self, brightness: int) -> None:
@@ -2961,9 +2964,9 @@ class Rigol_DHO804(DeviceManager):
 
         try:
             self.instrument.write(f":DISPlay:WBRightness {brightness}")
-            print(f"Waveform brightness set to {brightness}%")
+            logger.info(f"Waveform brightness set to {brightness}%")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set waveform brightness: {e}")
+            logger.warning(f"Failed to set waveform brightness: {e}")
             raise
 
     def set_grid_brightness(self, brightness: int) -> None:
@@ -3003,9 +3006,9 @@ class Rigol_DHO804(DeviceManager):
 
         try:
             self.instrument.write(f":DISPlay:GBRightness {brightness}")
-            print(f"Grid brightness set to {brightness}%")
+            logger.info(f"Grid brightness set to {brightness}%")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set grid brightness: {e}")
+            logger.warning(f"Failed to set grid brightness: {e}")
             raise
 
     # ========================================================================
@@ -3052,9 +3055,9 @@ class Rigol_DHO804(DeviceManager):
 
         try:
             self.instrument.write(f":SAVE:IMAGe {path}")
-            print(f"Screenshot saved to oscilloscope storage: {path}")
+            logger.info(f"Screenshot saved to oscilloscope storage: {path}")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to save screenshot: {e}")
+            logger.warning(f"Failed to save screenshot: {e}")
             raise
 
     def save_setup(self, path: str) -> None:
@@ -3095,9 +3098,9 @@ class Rigol_DHO804(DeviceManager):
 
         try:
             self.instrument.write(f":SAVE:SETup {path}")
-            print(f"Setup saved to oscilloscope storage: {path}")
+            logger.info(f"Setup saved to oscilloscope storage: {path}")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to save setup: {e}")
+            logger.warning(f"Failed to save setup: {e}")
             raise
 
     def load_setup(self, path: str) -> None:
@@ -3137,9 +3140,9 @@ class Rigol_DHO804(DeviceManager):
 
         try:
             self.instrument.write(f":LOAD:SETup {path}")
-            print(f"Setup loaded from oscilloscope storage: {path}")
+            logger.info(f"Setup loaded from oscilloscope storage: {path}")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to load setup: {e}")
+            logger.warning(f"Failed to load setup: {e}")
             raise
 
     def save_waveform_to_scope(self, path: str) -> None:
@@ -3182,9 +3185,9 @@ class Rigol_DHO804(DeviceManager):
 
         try:
             self.instrument.write(f":SAVE:WAVeform {path}")
-            print(f"Waveform data saved to oscilloscope storage: {path}")
+            logger.info(f"Waveform data saved to oscilloscope storage: {path}")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to save waveform: {e}")
+            logger.warning(f"Failed to save waveform: {e}")
             raise
 
     # ========================================================================
@@ -3211,16 +3214,16 @@ class Rigol_DHO804(DeviceManager):
 
         Example:
             idn = scope.get_identity()
-            print(idn)
+            logger.info(idn)
             # Output: RIGOL TECHNOLOGIES,DHO804,DHO8A264M00015,00.01.02.00.01
         """
         try:
             response = self.instrument.query("*IDN?")
             identity = response.strip()
-            print(f"Instrument ID: {identity}")
+            logger.info(f"Instrument ID: {identity}")
             return identity
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query identity: {e}")
+            logger.warning(f"Failed to query identity: {e}")
             raise
 
     def reset(self) -> None:
@@ -3253,10 +3256,10 @@ class Rigol_DHO804(DeviceManager):
         """
         try:
             self.instrument.write("*RST")
-            print("Oscilloscope reset to factory defaults")
-            print("WARNING: All settings have been erased!")
+            logger.info("Oscilloscope reset to factory defaults")
+            logger.info("WARNING: All settings have been erased!")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to reset oscilloscope: {e}")
+            logger.warning(f"Failed to reset oscilloscope: {e}")
             raise
 
     def clear_status(self) -> None:
@@ -3287,9 +3290,9 @@ class Rigol_DHO804(DeviceManager):
         """
         try:
             self.instrument.write("*CLS")
-            print("Status and error queue cleared")
+            logger.info("Status and error queue cleared")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to clear status: {e}")
+            logger.warning(f"Failed to clear status: {e}")
             raise
 
     def operation_complete(self) -> None:
@@ -3318,9 +3321,9 @@ class Rigol_DHO804(DeviceManager):
         """
         try:
             self.instrument.write("*OPC")
-            print("Operation complete flag set")
+            logger.info("Operation complete flag set")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set operation complete: {e}")
+            logger.warning(f"Failed to set operation complete: {e}")
             raise
 
     def get_status_byte(self) -> int:
@@ -3350,19 +3353,19 @@ class Rigol_DHO804(DeviceManager):
 
             # Check Message Available bit
             if status & 16:
-                print("Data available in output buffer")
+                logger.info("Data available in output buffer")
 
             # Check Event Status bit
             if status & 32:
-                print("Event occurred")
+                logger.info("Event occurred")
         """
         try:
             response = self.instrument.query("*STB?")
             status = int(response.strip())
-            print(f"Status byte: {status} (0x{status:02X})")
+            logger.info(f"Status byte: {status} (0x{status:02X})")
             return status
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query status byte: {e}")
+            logger.warning(f"Failed to query status byte: {e}")
             raise
 
     def self_test(self) -> bool:
@@ -3385,27 +3388,27 @@ class Rigol_DHO804(DeviceManager):
             - Self-test may take several seconds
 
         Example:
-            print("Running self-test...")
+            logger.info("Running self-test...")
             if scope.self_test():
-                print("Self-test PASSED")
+                logger.info("Self-test PASSED")
             else:
-                print("Self-test FAILED - check error queue")
+                logger.info("Self-test FAILED - check error queue")
                 # Query error details if needed
         """
         try:
-            print("Performing self-test (may take several seconds)...")
+            logger.info("Performing self-test (may take several seconds)...")
             response = self.instrument.query("*TST?")
             result = int(response.strip())
 
             if result == 0:
-                print("Self-test PASSED")
+                logger.info("Self-test PASSED")
                 return True
             else:
-                print("Self-test FAILED (one or more tests failed)")
-                print("Use :SYSTem:ERRor[:NEXT]? to read error details")
+                logger.info("Self-test FAILED (one or more tests failed)")
+                logger.info("Use :SYSTem:ERRor[:NEXT]? to read error details")
                 return False
         except pyvisa.VisaIOError as e:
-            print(f"Failed to perform self-test: {e}")
+            logger.warning(f"Failed to perform self-test: {e}")
             raise
 
     # ========================================================================
@@ -3439,9 +3442,9 @@ class Rigol_DHO804(DeviceManager):
         """
         try:
             self.instrument.write(":AUToset")
-            print("Autoset executed - optimizing display settings...")
+            logger.info("Autoset executed - optimizing display settings...")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to execute autoset: {e}")
+            logger.warning(f"Failed to execute autoset: {e}")
             raise
 
     def autoset_peak(self) -> None:
@@ -3466,9 +3469,9 @@ class Rigol_DHO804(DeviceManager):
         """
         try:
             self.instrument.write(":AUToset:PEAK")
-            print("Peak detect autoset executed...")
+            logger.info("Peak detect autoset executed...")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to execute peak autoset: {e}")
+            logger.warning(f"Failed to execute peak autoset: {e}")
             raise
 
     def set_autoset_enable(self, enable: bool) -> None:
@@ -3500,9 +3503,9 @@ class Rigol_DHO804(DeviceManager):
         try:
             self.instrument.write(f":AUToset:ENAble {state}")
             status = "enabled" if enable else "disabled"
-            print(f"Autoset function {status}")
+            logger.info(f"Autoset function {status}")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set autoset enable: {e}")
+            logger.warning(f"Failed to set autoset enable: {e}")
             raise
 
     def get_autoset_enable(self) -> bool:
@@ -3519,19 +3522,19 @@ class Rigol_DHO804(DeviceManager):
 
         Example:
             if scope.get_autoset_enable():
-                print("AUTO function is enabled")
+                logger.info("AUTO function is enabled")
                 scope.autoset()
             else:
-                print("AUTO function is disabled")
+                logger.info("AUTO function is disabled")
         """
         try:
             response = self.instrument.query(":AUToset:ENAble?")
             enabled = response.strip() == "1"
             status = "enabled" if enabled else "disabled"
-            print(f"Autoset function is {status}")
+            logger.info(f"Autoset function is {status}")
             return enabled
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query autoset enable: {e}")
+            logger.warning(f"Failed to query autoset enable: {e}")
             raise
 
     # ===================================================================
@@ -3561,9 +3564,9 @@ class Rigol_DHO804(DeviceManager):
             state = "ON" if enable else "OFF"
             self.instrument.write(f":SYSTem:BEEPer {state}")
             status = "enabled" if enable else "disabled"
-            print(f"Beeper {status}")
+            logger.info(f"Beeper {status}")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set beeper enable: {e}")
+            logger.warning(f"Failed to set beeper enable: {e}")
             raise
 
     def get_beeper_enable(self) -> bool:
@@ -3580,18 +3583,18 @@ class Rigol_DHO804(DeviceManager):
 
         Example:
             if scope.get_beeper_enable():
-                print("Beeper is enabled")
+                logger.info("Beeper is enabled")
             else:
-                print("Beeper is disabled")
+                logger.info("Beeper is disabled")
         """
         try:
             response = self.instrument.query(":SYSTem:BEEPer?")
             enabled = response.strip() == "1"
             status = "enabled" if enabled else "disabled"
-            print(f"Beeper is {status}")
+            logger.info(f"Beeper is {status}")
             return enabled
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query beeper enable: {e}")
+            logger.warning(f"Failed to query beeper enable: {e}")
             raise
 
     def get_next_error(self) -> dict:
@@ -3610,9 +3613,9 @@ class Rigol_DHO804(DeviceManager):
         Example:
             error = scope.get_next_error()
             if error['code'] != 0:
-                print(f"Error {error['code']}: {error['message']}")
+                logger.info(f"Error {error['code']}: {error['message']}")
             else:
-                print("No errors in queue")
+                logger.info("No errors in queue")
         """
         try:
             response = self.instrument.query(":SYSTem:ERRor:NEXT?")
@@ -3624,13 +3627,13 @@ class Rigol_DHO804(DeviceManager):
             error_message = parts[1].strip('"') if len(parts) > 1 else ""
 
             if error_code != 0:
-                print(f"Error {error_code}: {error_message}")
+                logger.info(f"Error {error_code}: {error_message}")
             else:
-                print("No errors in queue")
+                logger.info("No errors in queue")
 
             return {"code": error_code, "message": error_message}
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query error queue: {e}")
+            logger.warning(f"Failed to query error queue: {e}")
             raise
 
     def set_front_panel_lock(self, locked: bool) -> None:
@@ -3659,9 +3662,9 @@ class Rigol_DHO804(DeviceManager):
             state = "ON" if locked else "OFF"
             self.instrument.write(f":SYSTem:LOCKed {state}")
             status = "locked" if locked else "unlocked"
-            print(f"Front panel {status}")
+            logger.info(f"Front panel {status}")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set front panel lock: {e}")
+            logger.warning(f"Failed to set front panel lock: {e}")
             raise
 
     def get_front_panel_lock(self) -> bool:
@@ -3678,18 +3681,18 @@ class Rigol_DHO804(DeviceManager):
 
         Example:
             if scope.get_front_panel_lock():
-                print("Front panel is locked")
+                logger.info("Front panel is locked")
             else:
-                print("Front panel is unlocked")
+                logger.info("Front panel is unlocked")
         """
         try:
             response = self.instrument.query(":SYSTem:LOCKed?")
             locked = response.strip() == "1"
             status = "locked" if locked else "unlocked"
-            print(f"Front panel is {status}")
+            logger.info(f"Front panel is {status}")
             return locked
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query front panel lock: {e}")
+            logger.warning(f"Failed to query front panel lock: {e}")
             raise
 
     def get_scpi_version(self) -> str:
@@ -3706,15 +3709,15 @@ class Rigol_DHO804(DeviceManager):
 
         Example:
             version = scope.get_scpi_version()
-            print(f"SCPI version: {version}")
+            logger.info(f"SCPI version: {version}")
         """
         try:
             response = self.instrument.query(":SYSTem:VERSion?")
             version = response.strip()
-            print(f"SCPI version: {version}")
+            logger.info(f"SCPI version: {version}")
             return version
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query SCPI version: {e}")
+            logger.warning(f"Failed to query SCPI version: {e}")
             raise
 
     def get_channel_count(self) -> int:
@@ -3731,15 +3734,15 @@ class Rigol_DHO804(DeviceManager):
 
         Example:
             channels = scope.get_channel_count()
-            print(f"This oscilloscope has {channels} analog channels")
+            logger.info(f"This oscilloscope has {channels} analog channels")
         """
         try:
             response = self.instrument.query(":SYSTem:RAMount?")
             channel_count = int(response.strip())
-            print(f"Analog channels: {channel_count}")
+            logger.info(f"Analog channels: {channel_count}")
             return channel_count
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query channel count: {e}")
+            logger.warning(f"Failed to query channel count: {e}")
             raise
 
     # ===================================================================
@@ -3769,9 +3772,9 @@ class Rigol_DHO804(DeviceManager):
             state = "ON" if enable else "OFF"
             self.instrument.write(f":RECord:WRECord:ENABle {state}")
             status = "enabled" if enable else "disabled"
-            print(f"Waveform recording {status}")
+            logger.info(f"Waveform recording {status}")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set recording enable: {e}")
+            logger.warning(f"Failed to set recording enable: {e}")
             raise
 
     def get_recording_enable(self) -> bool:
@@ -3788,18 +3791,18 @@ class Rigol_DHO804(DeviceManager):
 
         Example:
             if scope.get_recording_enable():
-                print("Recording is enabled")
+                logger.info("Recording is enabled")
             else:
-                print("Recording is disabled")
+                logger.info("Recording is disabled")
         """
         try:
             response = self.instrument.query(":RECord:WRECord:ENABle?")
             enabled = response.strip() == "1"
             status = "enabled" if enabled else "disabled"
-            print(f"Waveform recording is {status}")
+            logger.info(f"Waveform recording is {status}")
             return enabled
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query recording enable: {e}")
+            logger.warning(f"Failed to query recording enable: {e}")
             raise
 
     def set_recording_frames(self, frames: int) -> None:
@@ -3827,9 +3830,9 @@ class Rigol_DHO804(DeviceManager):
 
         try:
             self.instrument.write(f":RECord:WRECord:FRAMes {frames}")
-            print(f"Recording frames set to {frames}")
+            logger.info(f"Recording frames set to {frames}")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set recording frames: {e}")
+            logger.warning(f"Failed to set recording frames: {e}")
             raise
 
     def get_recording_frames(self) -> int:
@@ -3846,15 +3849,15 @@ class Rigol_DHO804(DeviceManager):
 
         Example:
             frames = scope.get_recording_frames()
-            print(f"Will record {frames} frames")
+            logger.info(f"Will record {frames} frames")
         """
         try:
             response = self.instrument.query(":RECord:WRECord:FRAMes?")
             frames = int(response.strip())
-            print(f"Recording frames: {frames}")
+            logger.info(f"Recording frames: {frames}")
             return frames
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query recording frames: {e}")
+            logger.warning(f"Failed to query recording frames: {e}")
             raise
 
     def get_max_recording_frames(self) -> int:
@@ -3871,15 +3874,15 @@ class Rigol_DHO804(DeviceManager):
 
         Example:
             max_frames = scope.get_max_recording_frames()
-            print(f"Can record up to {max_frames} frames")
+            logger.info(f"Can record up to {max_frames} frames")
         """
         try:
             response = self.instrument.query(":RECord:WRECord:FMAX?")
             max_frames = int(response.strip())
-            print(f"Maximum recording frames: {max_frames}")
+            logger.info(f"Maximum recording frames: {max_frames}")
             return max_frames
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query max recording frames: {e}")
+            logger.warning(f"Failed to query max recording frames: {e}")
             raise
 
     def start_recording(self) -> None:
@@ -3902,9 +3905,9 @@ class Rigol_DHO804(DeviceManager):
         """
         try:
             self.instrument.write(":RECord:WRECord:OPERate RUN")
-            print("Waveform recording started")
+            logger.info("Waveform recording started")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to start recording: {e}")
+            logger.warning(f"Failed to start recording: {e}")
             raise
 
     def stop_recording(self) -> None:
@@ -3922,9 +3925,9 @@ class Rigol_DHO804(DeviceManager):
         """
         try:
             self.instrument.write(":RECord:WRECord:OPERate STOP")
-            print("Waveform recording stopped")
+            logger.info("Waveform recording stopped")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to stop recording: {e}")
+            logger.warning(f"Failed to stop recording: {e}")
             raise
 
     def get_recording_status(self) -> str:
@@ -3942,17 +3945,17 @@ class Rigol_DHO804(DeviceManager):
         Example:
             status = scope.get_recording_status()
             if status == 'RUN':
-                print("Recording in progress")
+                logger.info("Recording in progress")
             else:
-                print("Recording stopped")
+                logger.info("Recording stopped")
         """
         try:
             response = self.instrument.query(":RECord:WRECord:OPERate?")
             status = response.strip()
-            print(f"Recording status: {status}")
+            logger.info(f"Recording status: {status}")
             return status
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query recording status: {e}")
+            logger.warning(f"Failed to query recording status: {e}")
             raise
 
     def set_playback_current_frame(self, frame: int) -> None:
@@ -3977,9 +3980,9 @@ class Rigol_DHO804(DeviceManager):
 
         try:
             self.instrument.write(f":RECord:WREPlay:FCURrent {frame}")
-            print(f"Playback frame set to {frame}")
+            logger.info(f"Playback frame set to {frame}")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set playback frame: {e}")
+            logger.warning(f"Failed to set playback frame: {e}")
             raise
 
     def get_playback_current_frame(self) -> int:
@@ -3996,15 +3999,15 @@ class Rigol_DHO804(DeviceManager):
 
         Example:
             frame = scope.get_playback_current_frame()
-            print(f"Currently viewing frame {frame}")
+            logger.info(f"Currently viewing frame {frame}")
         """
         try:
             response = self.instrument.query(":RECord:WREPlay:FCURrent?")
             frame = int(response.strip())
-            print(f"Current playback frame: {frame}")
+            logger.info(f"Current playback frame: {frame}")
             return frame
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query playback frame: {e}")
+            logger.warning(f"Failed to query playback frame: {e}")
             raise
 
     def start_playback(self) -> None:
@@ -4025,9 +4028,9 @@ class Rigol_DHO804(DeviceManager):
         """
         try:
             self.instrument.write(":RECord:WREPlay:OPERate RUN")
-            print("Waveform playback started")
+            logger.info("Waveform playback started")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to start playback: {e}")
+            logger.warning(f"Failed to start playback: {e}")
             raise
 
     def stop_playback(self) -> None:
@@ -4045,9 +4048,9 @@ class Rigol_DHO804(DeviceManager):
         """
         try:
             self.instrument.write(":RECord:WREPlay:OPERate STOP")
-            print("Waveform playback stopped")
+            logger.info("Waveform playback stopped")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to stop playback: {e}")
+            logger.warning(f"Failed to stop playback: {e}")
             raise
 
     def get_playback_status(self) -> str:
@@ -4065,17 +4068,17 @@ class Rigol_DHO804(DeviceManager):
         Example:
             status = scope.get_playback_status()
             if status == 'RUN':
-                print("Playback in progress")
+                logger.info("Playback in progress")
             else:
-                print("Playback stopped")
+                logger.info("Playback stopped")
         """
         try:
             response = self.instrument.query(":RECord:WREPlay:OPERate?")
             status = response.strip()
-            print(f"Playback status: {status}")
+            logger.info(f"Playback status: {status}")
             return status
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query playback status: {e}")
+            logger.warning(f"Failed to query playback status: {e}")
             raise
 
     def playback_next_frame(self) -> None:
@@ -4095,9 +4098,9 @@ class Rigol_DHO804(DeviceManager):
         """
         try:
             self.instrument.write(":RECord:WREPlay:NEXT")
-            print("Stepped to next frame")
+            logger.info("Stepped to next frame")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to step to next frame: {e}")
+            logger.warning(f"Failed to step to next frame: {e}")
             raise
 
     def playback_previous_frame(self) -> None:
@@ -4117,9 +4120,9 @@ class Rigol_DHO804(DeviceManager):
         """
         try:
             self.instrument.write(":RECord:WREPlay:BACK")
-            print("Stepped to previous frame")
+            logger.info("Stepped to previous frame")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to step to previous frame: {e}")
+            logger.warning(f"Failed to step to previous frame: {e}")
             raise
 
     # ===================================================================
@@ -4149,9 +4152,9 @@ class Rigol_DHO804(DeviceManager):
             state = "ON" if enable else "OFF"
             self.instrument.write(f":MASK:ENABle {state}")
             status = "enabled" if enable else "disabled"
-            print(f"Mask testing {status}")
+            logger.info(f"Mask testing {status}")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set mask enable: {e}")
+            logger.warning(f"Failed to set mask enable: {e}")
             raise
 
     def get_mask_enable(self) -> bool:
@@ -4168,18 +4171,18 @@ class Rigol_DHO804(DeviceManager):
 
         Example:
             if scope.get_mask_enable():
-                print("Mask testing is enabled")
+                logger.info("Mask testing is enabled")
             else:
-                print("Mask testing is disabled")
+                logger.info("Mask testing is disabled")
         """
         try:
             response = self.instrument.query(":MASK:ENABle?")
             enabled = response.strip() == "1"
             status = "enabled" if enabled else "disabled"
-            print(f"Mask testing is {status}")
+            logger.info(f"Mask testing is {status}")
             return enabled
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query mask enable: {e}")
+            logger.warning(f"Failed to query mask enable: {e}")
             raise
 
     def set_mask_source(self, channel: int) -> None:
@@ -4207,9 +4210,9 @@ class Rigol_DHO804(DeviceManager):
 
         try:
             self.instrument.write(f":MASK:SOURce CHANnel{channel}")
-            print(f"Mask test source set to CH{channel}")
+            logger.info(f"Mask test source set to CH{channel}")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set mask source: {e}")
+            logger.warning(f"Failed to set mask source: {e}")
             raise
 
     def get_mask_source(self) -> int:
@@ -4226,17 +4229,17 @@ class Rigol_DHO804(DeviceManager):
 
         Example:
             channel = scope.get_mask_source()
-            print(f"Testing channel {channel}")
+            logger.info(f"Testing channel {channel}")
         """
         try:
             response = self.instrument.query(":MASK:SOURce?")
             # Response format: CHAN1, CHAN2, etc.
             channel_str = response.strip()
             channel = int(channel_str.replace("CHAN", ""))
-            print(f"Mask test source: CH{channel}")
+            logger.info(f"Mask test source: CH{channel}")
             return channel
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query mask source: {e}")
+            logger.warning(f"Failed to query mask source: {e}")
             raise
 
     def set_mask_tolerance_x(self, tolerance: float) -> None:
@@ -4261,9 +4264,9 @@ class Rigol_DHO804(DeviceManager):
 
         try:
             self.instrument.write(f":MASK:X {tolerance}")
-            print(f"Mask horizontal tolerance: {tolerance} div")
+            logger.info(f"Mask horizontal tolerance: {tolerance} div")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set mask X tolerance: {e}")
+            logger.warning(f"Failed to set mask X tolerance: {e}")
             raise
 
     def get_mask_tolerance_x(self) -> float:
@@ -4280,15 +4283,15 @@ class Rigol_DHO804(DeviceManager):
 
         Example:
             tolerance = scope.get_mask_tolerance_x()
-            print(f"Horizontal tolerance: {tolerance} div")
+            logger.info(f"Horizontal tolerance: {tolerance} div")
         """
         try:
             response = self.instrument.query(":MASK:X?")
             tolerance = float(response.strip())
-            print(f"Mask horizontal tolerance: {tolerance} div")
+            logger.info(f"Mask horizontal tolerance: {tolerance} div")
             return tolerance
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query mask X tolerance: {e}")
+            logger.warning(f"Failed to query mask X tolerance: {e}")
             raise
 
     def set_mask_tolerance_y(self, tolerance: float) -> None:
@@ -4313,9 +4316,9 @@ class Rigol_DHO804(DeviceManager):
 
         try:
             self.instrument.write(f":MASK:Y {tolerance}")
-            print(f"Mask vertical tolerance: {tolerance} div")
+            logger.info(f"Mask vertical tolerance: {tolerance} div")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set mask Y tolerance: {e}")
+            logger.warning(f"Failed to set mask Y tolerance: {e}")
             raise
 
     def get_mask_tolerance_y(self) -> float:
@@ -4332,15 +4335,15 @@ class Rigol_DHO804(DeviceManager):
 
         Example:
             tolerance = scope.get_mask_tolerance_y()
-            print(f"Vertical tolerance: {tolerance} div")
+            logger.info(f"Vertical tolerance: {tolerance} div")
         """
         try:
             response = self.instrument.query(":MASK:Y?")
             tolerance = float(response.strip())
-            print(f"Mask vertical tolerance: {tolerance} div")
+            logger.info(f"Mask vertical tolerance: {tolerance} div")
             return tolerance
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query mask Y tolerance: {e}")
+            logger.warning(f"Failed to query mask Y tolerance: {e}")
             raise
 
     def create_mask(self) -> None:
@@ -4367,9 +4370,9 @@ class Rigol_DHO804(DeviceManager):
         """
         try:
             self.instrument.write(":MASK:CREate")
-            print("Mask created from current waveform")
+            logger.info("Mask created from current waveform")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to create mask: {e}")
+            logger.warning(f"Failed to create mask: {e}")
             raise
 
     def start_mask_test(self) -> None:
@@ -4391,15 +4394,15 @@ class Rigol_DHO804(DeviceManager):
 
             # Check results
             stats = scope.get_mask_statistics()
-            print(f"Passed: {stats['passed']}, Failed: {stats['failed']}")
+            logger.info(f"Passed: {stats['passed']}, Failed: {stats['failed']}")
 
             scope.stop_mask_test()
         """
         try:
             self.instrument.write(":MASK:OPERate RUN")
-            print("Mask test started")
+            logger.info("Mask test started")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to start mask test: {e}")
+            logger.warning(f"Failed to start mask test: {e}")
             raise
 
     def stop_mask_test(self) -> None:
@@ -4417,9 +4420,9 @@ class Rigol_DHO804(DeviceManager):
         """
         try:
             self.instrument.write(":MASK:OPERate STOP")
-            print("Mask test stopped")
+            logger.info("Mask test stopped")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to stop mask test: {e}")
+            logger.warning(f"Failed to stop mask test: {e}")
             raise
 
     def get_mask_test_status(self) -> str:
@@ -4437,17 +4440,17 @@ class Rigol_DHO804(DeviceManager):
         Example:
             status = scope.get_mask_test_status()
             if status == 'RUN':
-                print("Mask test in progress")
+                logger.info("Mask test in progress")
             else:
-                print("Mask test stopped")
+                logger.info("Mask test stopped")
         """
         try:
             response = self.instrument.query(":MASK:OPERate?")
             status = response.strip()
-            print(f"Mask test status: {status}")
+            logger.info(f"Mask test status: {status}")
             return status
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query mask test status: {e}")
+            logger.warning(f"Failed to query mask test status: {e}")
             raise
 
     def reset_mask_statistics(self) -> None:
@@ -4466,9 +4469,9 @@ class Rigol_DHO804(DeviceManager):
         """
         try:
             self.instrument.write(":MASK:RESet")
-            print("Mask statistics reset")
+            logger.info("Mask statistics reset")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to reset mask statistics: {e}")
+            logger.warning(f"Failed to reset mask statistics: {e}")
             raise
 
     def get_mask_failed_count(self) -> int:
@@ -4485,15 +4488,15 @@ class Rigol_DHO804(DeviceManager):
 
         Example:
             failed = scope.get_mask_failed_count()
-            print(f"{failed} frames failed the test")
+            logger.info(f"{failed} frames failed the test")
         """
         try:
             response = self.instrument.query(":MASK:FAILed?")
             failed = int(response.strip())
-            print(f"Failed frames: {failed}")
+            logger.warning(f"Failed frames: {failed}")
             return failed
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query mask failed count: {e}")
+            logger.warning(f"Failed to query mask failed count: {e}")
             raise
 
     def get_mask_passed_count(self) -> int:
@@ -4510,15 +4513,15 @@ class Rigol_DHO804(DeviceManager):
 
         Example:
             passed = scope.get_mask_passed_count()
-            print(f"{passed} frames passed the test")
+            logger.info(f"{passed} frames passed the test")
         """
         try:
             response = self.instrument.query(":MASK:PASSed?")
             passed = int(response.strip())
-            print(f"Passed frames: {passed}")
+            logger.info(f"Passed frames: {passed}")
             return passed
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query mask passed count: {e}")
+            logger.warning(f"Failed to query mask passed count: {e}")
             raise
 
     def get_mask_total_count(self) -> int:
@@ -4535,15 +4538,15 @@ class Rigol_DHO804(DeviceManager):
 
         Example:
             total = scope.get_mask_total_count()
-            print(f"{total} total frames tested")
+            logger.info(f"{total} total frames tested")
         """
         try:
             response = self.instrument.query(":MASK:TOTal?")
             total = int(response.strip())
-            print(f"Total frames tested: {total}")
+            logger.info(f"Total frames tested: {total}")
             return total
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query mask total count: {e}")
+            logger.warning(f"Failed to query mask total count: {e}")
             raise
 
     def get_mask_statistics(self) -> dict:
@@ -4558,19 +4561,19 @@ class Rigol_DHO804(DeviceManager):
 
         Example:
             stats = scope.get_mask_statistics()
-            print(f"Results: {stats['passed']} passed, {stats['failed']} failed")
-            print(f"Pass rate: {stats['passed']/stats['total']*100:.1f}%")
+            logger.info(f"Results: {stats['passed']} passed, {stats['failed']} failed")
+            logger.info(f"Pass rate: {stats['passed']/stats['total']*100:.1f}%")
         """
         try:
             passed = int(self.instrument.query(":MASK:PASSed?").strip())
             failed = int(self.instrument.query(":MASK:FAILed?").strip())
             total = int(self.instrument.query(":MASK:TOTal?").strip())
 
-            print(f"Mask statistics: {passed} passed, {failed} failed, {total} total")
+            logger.info(f"Mask statistics: {passed} passed, {failed} failed, {total} total")
 
             return {"passed": passed, "failed": failed, "total": total}
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query mask statistics: {e}")
+            logger.warning(f"Failed to query mask statistics: {e}")
             raise
 
     # =========================================================================
@@ -4590,15 +4593,15 @@ class Rigol_DHO804(DeviceManager):
 
         Example:
             freq = scope.get_counter_current()
-            print(f"Current measurement: {freq} Hz")
+            logger.info(f"Current measurement: {freq} Hz")
         """
         try:
             response = self.instrument.query(":COUNter:CURRent?")
             value = float(response.strip())
-            print(f"Counter current value: {value}")
+            logger.info(f"Counter current value: {value}")
             return value
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query counter current value: {e}")
+            logger.warning(f"Failed to query counter current value: {e}")
             raise
 
     def set_counter_enable(self, enable: bool) -> None:
@@ -4617,9 +4620,9 @@ class Rigol_DHO804(DeviceManager):
         try:
             state = "ON" if enable else "OFF"
             self.instrument.write(f":COUNter:ENABle {state}")
-            print(f"Counter {'enabled' if enable else 'disabled'}")
+            logger.info(f"Counter {'enabled' if enable else 'disabled'}")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set counter enable: {e}")
+            logger.warning(f"Failed to set counter enable: {e}")
             raise
 
     def get_counter_enable(self) -> bool:
@@ -4634,15 +4637,15 @@ class Rigol_DHO804(DeviceManager):
 
         Example:
             if scope.get_counter_enable():
-                print("Counter is enabled")
+                logger.info("Counter is enabled")
         """
         try:
             response = self.instrument.query(":COUNter:ENABle?")
             enabled = bool(int(response.strip()))
-            print(f"Counter enable: {enabled}")
+            logger.info(f"Counter enable: {enabled}")
             return enabled
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query counter enable: {e}")
+            logger.warning(f"Failed to query counter enable: {e}")
             raise
 
     def set_counter_source(self, source: int) -> None:
@@ -4664,9 +4667,9 @@ class Rigol_DHO804(DeviceManager):
                 raise ValueError("Source must be 1, 2, 3, or 4")
 
             self.instrument.write(f":COUNter:SOURce CHANnel{source}")
-            print(f"Counter source set to CH{source}")
+            logger.info(f"Counter source set to CH{source}")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set counter source: {e}")
+            logger.warning(f"Failed to set counter source: {e}")
             raise
 
     def get_counter_source(self) -> int:
@@ -4681,17 +4684,17 @@ class Rigol_DHO804(DeviceManager):
 
         Example:
             source = scope.get_counter_source()
-            print(f"Counter source: CH{source}")
+            logger.info(f"Counter source: CH{source}")
         """
         try:
             response = self.instrument.query(":COUNter:SOURce?")
             # Response is like "CHAN1" or "CHAN2"
             source_str = response.strip()
             source = int(source_str[4:]) if source_str.startswith("CHAN") else 1
-            print(f"Counter source: CH{source}")
+            logger.info(f"Counter source: CH{source}")
             return source
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query counter source: {e}")
+            logger.warning(f"Failed to query counter source: {e}")
             raise
 
     def set_counter_mode(self, mode: str) -> None:
@@ -4715,9 +4718,9 @@ class Rigol_DHO804(DeviceManager):
                 raise ValueError(f"Mode must be one of {valid_modes}")
 
             self.instrument.write(f":COUNter:MODE {mode}")
-            print(f"Counter mode set to {mode}")
+            logger.info(f"Counter mode set to {mode}")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set counter mode: {e}")
+            logger.warning(f"Failed to set counter mode: {e}")
             raise
 
     def get_counter_mode(self) -> str:
@@ -4732,15 +4735,15 @@ class Rigol_DHO804(DeviceManager):
 
         Example:
             mode = scope.get_counter_mode()
-            print(f"Counter mode: {mode}")
+            logger.info(f"Counter mode: {mode}")
         """
         try:
             response = self.instrument.query(":COUNter:MODE?")
             mode = response.strip()
-            print(f"Counter mode: {mode}")
+            logger.info(f"Counter mode: {mode}")
             return mode
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query counter mode: {e}")
+            logger.warning(f"Failed to query counter mode: {e}")
             raise
 
     def set_counter_resolution(self, digits: int) -> None:
@@ -4762,9 +4765,9 @@ class Rigol_DHO804(DeviceManager):
                 raise ValueError("Resolution must be between 3 and 6 digits")
 
             self.instrument.write(f":COUNter:NDIGits {digits}")
-            print(f"Counter resolution set to {digits} digits")
+            logger.info(f"Counter resolution set to {digits} digits")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set counter resolution: {e}")
+            logger.warning(f"Failed to set counter resolution: {e}")
             raise
 
     def get_counter_resolution(self) -> int:
@@ -4779,15 +4782,15 @@ class Rigol_DHO804(DeviceManager):
 
         Example:
             digits = scope.get_counter_resolution()
-            print(f"Counter resolution: {digits} digits")
+            logger.info(f"Counter resolution: {digits} digits")
         """
         try:
             response = self.instrument.query(":COUNter:NDIGits?")
             digits = int(response.strip())
-            print(f"Counter resolution: {digits} digits")
+            logger.info(f"Counter resolution: {digits} digits")
             return digits
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query counter resolution: {e}")
+            logger.warning(f"Failed to query counter resolution: {e}")
             raise
 
     def set_counter_totalize_enable(self, enable: bool) -> None:
@@ -4806,9 +4809,9 @@ class Rigol_DHO804(DeviceManager):
         try:
             state = "ON" if enable else "OFF"
             self.instrument.write(f":COUNter:TOTalize:ENABle {state}")
-            print(f"Counter totalize {'enabled' if enable else 'disabled'}")
+            logger.info(f"Counter totalize {'enabled' if enable else 'disabled'}")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set counter totalize enable: {e}")
+            logger.warning(f"Failed to set counter totalize enable: {e}")
             raise
 
     def get_counter_totalize_enable(self) -> bool:
@@ -4823,15 +4826,15 @@ class Rigol_DHO804(DeviceManager):
 
         Example:
             if scope.get_counter_totalize_enable():
-                print("Totalize is enabled")
+                logger.info("Totalize is enabled")
         """
         try:
             response = self.instrument.query(":COUNter:TOTalize:ENABle?")
             enabled = bool(int(response.strip()))
-            print(f"Counter totalize enable: {enabled}")
+            logger.info(f"Counter totalize enable: {enabled}")
             return enabled
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query counter totalize enable: {e}")
+            logger.warning(f"Failed to query counter totalize enable: {e}")
             raise
 
     def clear_counter_totalize(self) -> None:
@@ -4846,9 +4849,9 @@ class Rigol_DHO804(DeviceManager):
         """
         try:
             self.instrument.write(":COUNter:TOTalize:CLEar")
-            print("Counter totalize cleared")
+            logger.info("Counter totalize cleared")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to clear counter totalize: {e}")
+            logger.warning(f"Failed to clear counter totalize: {e}")
             raise
 
     # DVM Commands - Digital voltmeter measurements
@@ -4865,15 +4868,15 @@ class Rigol_DHO804(DeviceManager):
 
         Example:
             voltage = scope.get_dvm_current()
-            print(f"Current voltage: {voltage} V")
+            logger.info(f"Current voltage: {voltage} V")
         """
         try:
             response = self.instrument.query(":DVM:CURRent?")
             value = float(response.strip())
-            print(f"DVM current value: {value} V")
+            logger.info(f"DVM current value: {value} V")
             return value
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query DVM current value: {e}")
+            logger.warning(f"Failed to query DVM current value: {e}")
             raise
 
     def set_dvm_enable(self, enable: bool) -> None:
@@ -4892,9 +4895,9 @@ class Rigol_DHO804(DeviceManager):
         try:
             state = "ON" if enable else "OFF"
             self.instrument.write(f":DVM:ENABle {state}")
-            print(f"DVM {'enabled' if enable else 'disabled'}")
+            logger.info(f"DVM {'enabled' if enable else 'disabled'}")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set DVM enable: {e}")
+            logger.warning(f"Failed to set DVM enable: {e}")
             raise
 
     def get_dvm_enable(self) -> bool:
@@ -4909,15 +4912,15 @@ class Rigol_DHO804(DeviceManager):
 
         Example:
             if scope.get_dvm_enable():
-                print("DVM is enabled")
+                logger.info("DVM is enabled")
         """
         try:
             response = self.instrument.query(":DVM:ENABle?")
             enabled = bool(int(response.strip()))
-            print(f"DVM enable: {enabled}")
+            logger.info(f"DVM enable: {enabled}")
             return enabled
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query DVM enable: {e}")
+            logger.warning(f"Failed to query DVM enable: {e}")
             raise
 
     def set_dvm_source(self, source: int) -> None:
@@ -4939,9 +4942,9 @@ class Rigol_DHO804(DeviceManager):
                 raise ValueError("Source must be 1, 2, 3, or 4")
 
             self.instrument.write(f":DVM:SOURce CHANnel{source}")
-            print(f"DVM source set to CH{source}")
+            logger.info(f"DVM source set to CH{source}")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set DVM source: {e}")
+            logger.warning(f"Failed to set DVM source: {e}")
             raise
 
     def get_dvm_source(self) -> int:
@@ -4956,17 +4959,17 @@ class Rigol_DHO804(DeviceManager):
 
         Example:
             source = scope.get_dvm_source()
-            print(f"DVM source: CH{source}")
+            logger.info(f"DVM source: CH{source}")
         """
         try:
             response = self.instrument.query(":DVM:SOURce?")
             # Response is like "CHAN1" or "CHAN2"
             source_str = response.strip()
             source = int(source_str[4:]) if source_str.startswith("CHAN") else 1
-            print(f"DVM source: CH{source}")
+            logger.info(f"DVM source: CH{source}")
             return source
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query DVM source: {e}")
+            logger.warning(f"Failed to query DVM source: {e}")
             raise
 
     def set_dvm_mode(self, mode: str) -> None:
@@ -4984,9 +4987,9 @@ class Rigol_DHO804(DeviceManager):
         """
         try:
             self.instrument.write(f":DVM:MODE {mode}")
-            print(f"DVM mode set to {mode}")
+            logger.info(f"DVM mode set to {mode}")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set DVM mode: {e}")
+            logger.warning(f"Failed to set DVM mode: {e}")
             raise
 
     def get_dvm_mode(self) -> str:
@@ -5001,15 +5004,15 @@ class Rigol_DHO804(DeviceManager):
 
         Example:
             mode = scope.get_dvm_mode()
-            print(f"DVM mode: {mode}")
+            logger.info(f"DVM mode: {mode}")
         """
         try:
             response = self.instrument.query(":DVM:MODE?")
             mode = response.strip()
-            print(f"DVM mode: {mode}")
+            logger.info(f"DVM mode: {mode}")
             return mode
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query DVM mode: {e}")
+            logger.warning(f"Failed to query DVM mode: {e}")
             raise
 
     # =========================================================================
@@ -5035,9 +5038,9 @@ class Rigol_DHO804(DeviceManager):
         try:
             state = "ON" if enable else "OFF"
             self.instrument.write(f":HISTogram:ENABle {state}")
-            print(f"Histogram {'enabled' if enable else 'disabled'}")
+            logger.info(f"Histogram {'enabled' if enable else 'disabled'}")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set histogram enable: {e}")
+            logger.warning(f"Failed to set histogram enable: {e}")
             raise
 
     def get_histogram_enable(self) -> bool:
@@ -5052,15 +5055,15 @@ class Rigol_DHO804(DeviceManager):
 
         Example:
             if scope.get_histogram_enable():
-                print("Histogram is enabled")
+                logger.info("Histogram is enabled")
         """
         try:
             response = self.instrument.query(":HISTogram:ENABle?")
             enabled = bool(int(response.strip()))
-            print(f"Histogram enable: {enabled}")
+            logger.info(f"Histogram enable: {enabled}")
             return enabled
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query histogram enable: {e}")
+            logger.warning(f"Failed to query histogram enable: {e}")
             raise
 
     def set_histogram_type(self, hist_type: str) -> None:
@@ -5084,9 +5087,9 @@ class Rigol_DHO804(DeviceManager):
                 raise ValueError(f"Type must be one of {valid_types}")
 
             self.instrument.write(f":HISTogram:TYPE {hist_type}")
-            print(f"Histogram type set to {hist_type}")
+            logger.info(f"Histogram type set to {hist_type}")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set histogram type: {e}")
+            logger.warning(f"Failed to set histogram type: {e}")
             raise
 
     def get_histogram_type(self) -> str:
@@ -5101,15 +5104,15 @@ class Rigol_DHO804(DeviceManager):
 
         Example:
             hist_type = scope.get_histogram_type()
-            print(f"Histogram type: {hist_type}")
+            logger.info(f"Histogram type: {hist_type}")
         """
         try:
             response = self.instrument.query(":HISTogram:TYPE?")
             hist_type = response.strip()
-            print(f"Histogram type: {hist_type}")
+            logger.info(f"Histogram type: {hist_type}")
             return hist_type
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query histogram type: {e}")
+            logger.warning(f"Failed to query histogram type: {e}")
             raise
 
     def set_histogram_source(self, source: int) -> None:
@@ -5131,9 +5134,9 @@ class Rigol_DHO804(DeviceManager):
                 raise ValueError("Source must be 1, 2, 3, or 4")
 
             self.instrument.write(f":HISTogram:SOURce CHANnel{source}")
-            print(f"Histogram source set to CH{source}")
+            logger.info(f"Histogram source set to CH{source}")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set histogram source: {e}")
+            logger.warning(f"Failed to set histogram source: {e}")
             raise
 
     def get_histogram_source(self) -> int:
@@ -5148,17 +5151,17 @@ class Rigol_DHO804(DeviceManager):
 
         Example:
             source = scope.get_histogram_source()
-            print(f"Histogram source: CH{source}")
+            logger.info(f"Histogram source: CH{source}")
         """
         try:
             response = self.instrument.query(":HISTogram:SOURce?")
             # Response is like "CHAN1" or "CHAN2"
             source_str = response.strip()
             source = int(source_str[4:]) if source_str.startswith("CHAN") else 1
-            print(f"Histogram source: CH{source}")
+            logger.info(f"Histogram source: CH{source}")
             return source
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query histogram source: {e}")
+            logger.warning(f"Failed to query histogram source: {e}")
             raise
 
     def set_histogram_height(self, height: int) -> None:
@@ -5180,9 +5183,9 @@ class Rigol_DHO804(DeviceManager):
                 raise ValueError("Height must be between 1 and 4 divisions")
 
             self.instrument.write(f":HISTogram:HEIGht {height}")
-            print(f"Histogram height set to {height} div")
+            logger.info(f"Histogram height set to {height} div")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set histogram height: {e}")
+            logger.warning(f"Failed to set histogram height: {e}")
             raise
 
     def get_histogram_height(self) -> int:
@@ -5197,15 +5200,15 @@ class Rigol_DHO804(DeviceManager):
 
         Example:
             height = scope.get_histogram_height()
-            print(f"Histogram height: {height} div")
+            logger.info(f"Histogram height: {height} div")
         """
         try:
             response = self.instrument.query(":HISTogram:HEIGht?")
             height = int(response.strip())
-            print(f"Histogram height: {height} div")
+            logger.info(f"Histogram height: {height} div")
             return height
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query histogram height: {e}")
+            logger.warning(f"Failed to query histogram height: {e}")
             raise
 
     def set_histogram_range_left(self, value: float) -> None:
@@ -5224,9 +5227,9 @@ class Rigol_DHO804(DeviceManager):
         """
         try:
             self.instrument.write(f":HISTogram:RANGe:LEFT {value}")
-            print(f"Histogram left limit set to {value} s")
+            logger.info(f"Histogram left limit set to {value} s")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set histogram left limit: {e}")
+            logger.warning(f"Failed to set histogram left limit: {e}")
             raise
 
     def get_histogram_range_left(self) -> float:
@@ -5241,15 +5244,15 @@ class Rigol_DHO804(DeviceManager):
 
         Example:
             left = scope.get_histogram_range_left()
-            print(f"Histogram left limit: {left} s")
+            logger.info(f"Histogram left limit: {left} s")
         """
         try:
             response = self.instrument.query(":HISTogram:RANGe:LEFT?")
             value = float(response.strip())
-            print(f"Histogram left limit: {value} s")
+            logger.info(f"Histogram left limit: {value} s")
             return value
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query histogram left limit: {e}")
+            logger.warning(f"Failed to query histogram left limit: {e}")
             raise
 
     def set_histogram_range_right(self, value: float) -> None:
@@ -5268,9 +5271,9 @@ class Rigol_DHO804(DeviceManager):
         """
         try:
             self.instrument.write(f":HISTogram:RANGe:RIGHt {value}")
-            print(f"Histogram right limit set to {value} s")
+            logger.info(f"Histogram right limit set to {value} s")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set histogram right limit: {e}")
+            logger.warning(f"Failed to set histogram right limit: {e}")
             raise
 
     def get_histogram_range_right(self) -> float:
@@ -5285,15 +5288,15 @@ class Rigol_DHO804(DeviceManager):
 
         Example:
             right = scope.get_histogram_range_right()
-            print(f"Histogram right limit: {right} s")
+            logger.info(f"Histogram right limit: {right} s")
         """
         try:
             response = self.instrument.query(":HISTogram:RANGe:RIGHt?")
             value = float(response.strip())
-            print(f"Histogram right limit: {value} s")
+            logger.info(f"Histogram right limit: {value} s")
             return value
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query histogram right limit: {e}")
+            logger.warning(f"Failed to query histogram right limit: {e}")
             raise
 
     def set_histogram_range_top(self, value: float) -> None:
@@ -5312,9 +5315,9 @@ class Rigol_DHO804(DeviceManager):
         """
         try:
             self.instrument.write(f":HISTogram:RANGe:TOP {value}")
-            print(f"Histogram top limit set to {value} V")
+            logger.info(f"Histogram top limit set to {value} V")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set histogram top limit: {e}")
+            logger.warning(f"Failed to set histogram top limit: {e}")
             raise
 
     def get_histogram_range_top(self) -> float:
@@ -5329,15 +5332,15 @@ class Rigol_DHO804(DeviceManager):
 
         Example:
             top = scope.get_histogram_range_top()
-            print(f"Histogram top limit: {top} V")
+            logger.info(f"Histogram top limit: {top} V")
         """
         try:
             response = self.instrument.query(":HISTogram:RANGe:TOP?")
             value = float(response.strip())
-            print(f"Histogram top limit: {value} V")
+            logger.info(f"Histogram top limit: {value} V")
             return value
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query histogram top limit: {e}")
+            logger.warning(f"Failed to query histogram top limit: {e}")
             raise
 
     def set_histogram_range_bottom(self, value: float) -> None:
@@ -5356,9 +5359,9 @@ class Rigol_DHO804(DeviceManager):
         """
         try:
             self.instrument.write(f":HISTogram:RANGe:BOTTom {value}")
-            print(f"Histogram bottom limit set to {value} V")
+            logger.info(f"Histogram bottom limit set to {value} V")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set histogram bottom limit: {e}")
+            logger.warning(f"Failed to set histogram bottom limit: {e}")
             raise
 
     def get_histogram_range_bottom(self) -> float:
@@ -5373,15 +5376,15 @@ class Rigol_DHO804(DeviceManager):
 
         Example:
             bottom = scope.get_histogram_range_bottom()
-            print(f"Histogram bottom limit: {bottom} V")
+            logger.info(f"Histogram bottom limit: {bottom} V")
         """
         try:
             response = self.instrument.query(":HISTogram:RANGe:BOTTom?")
             value = float(response.strip())
-            print(f"Histogram bottom limit: {value} V")
+            logger.info(f"Histogram bottom limit: {value} V")
             return value
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query histogram bottom limit: {e}")
+            logger.warning(f"Failed to query histogram bottom limit: {e}")
             raise
 
     def get_histogram_statistics(self) -> dict:
@@ -5407,8 +5410,8 @@ class Rigol_DHO804(DeviceManager):
 
         Example:
             stats = scope.get_histogram_statistics()
-            print(f"Mean: {stats['mean']}, Sigma: {stats['sigma']}")
-            print(f"Peak-to-peak: {stats['pk_pk']}")
+            logger.info(f"Mean: {stats['mean']}, Sigma: {stats['sigma']}")
+            logger.info(f"Peak-to-peak: {stats['pk_pk']}")
         """
         try:
             response = self.instrument.query(":HISTogram:STATistics:RESult?")
@@ -5432,14 +5435,14 @@ class Rigol_DHO804(DeviceManager):
                 "xscale": float(values[10]) if len(values) > 10 else 0.0,
             }
 
-            print(
+            logger.info(
                 f"Histogram statistics: Mean={stats['mean']:.6f}, Sigma={stats['sigma']:.6f}, "
                 f"Pk-Pk={stats['pk_pk']:.6f}"
             )
 
             return stats
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query histogram statistics: {e}")
+            logger.warning(f"Failed to query histogram statistics: {e}")
             raise
 
     # ===================================================================
@@ -5467,9 +5470,9 @@ class Rigol_DHO804(DeviceManager):
         try:
             state = "ON" if enable else "OFF"
             self.instrument.write(f":SOURce:OUTPut:STATe {state}")
-            print(f"AWG output {'enabled' if enable else 'disabled'}")
+            logger.info(f"AWG output {'enabled' if enable else 'disabled'}")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set AWG output state: {e}")
+            logger.warning(f"Failed to set AWG output state: {e}")
             raise
 
     def awg_get_output_enable(self) -> bool:
@@ -5490,10 +5493,10 @@ class Rigol_DHO804(DeviceManager):
         try:
             response = self.instrument.query(":SOURce:OUTPut:STATe?")
             enabled = response.strip() == "1"
-            print(f"AWG output enable: {enabled}")
+            logger.info(f"AWG output enable: {enabled}")
             return enabled
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query AWG output state: {e}")
+            logger.warning(f"Failed to query AWG output state: {e}")
             raise
 
     def awg_set_function(self, function: str) -> None:
@@ -5519,9 +5522,9 @@ class Rigol_DHO804(DeviceManager):
 
         try:
             self.instrument.write(f":SOURce:FUNCtion {function}")
-            print(f"AWG function set to {function}")
+            logger.info(f"AWG function set to {function}")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set AWG function: {e}")
+            logger.warning(f"Failed to set AWG function: {e}")
             raise
 
     def awg_get_function(self) -> str:
@@ -5542,10 +5545,10 @@ class Rigol_DHO804(DeviceManager):
         try:
             response = self.instrument.query(":SOURce:FUNCtion?")
             function = response.strip()
-            print(f"AWG function: {function}")
+            logger.info(f"AWG function: {function}")
             return function
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query AWG function: {e}")
+            logger.warning(f"Failed to query AWG function: {e}")
             raise
 
     def awg_set_frequency(self, frequency: float) -> None:
@@ -5570,9 +5573,9 @@ class Rigol_DHO804(DeviceManager):
         """
         try:
             self.instrument.write(f":SOURce:FREQuency {frequency}")
-            print(f"AWG frequency set to {frequency} Hz")
+            logger.info(f"AWG frequency set to {frequency} Hz")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set AWG frequency: {e}")
+            logger.warning(f"Failed to set AWG frequency: {e}")
             raise
 
     def awg_get_frequency(self) -> float:
@@ -5593,10 +5596,10 @@ class Rigol_DHO804(DeviceManager):
         try:
             response = self.instrument.query(":SOURce:FREQuency?")
             frequency = float(response.strip())
-            print(f"AWG frequency: {frequency} Hz")
+            logger.info(f"AWG frequency: {frequency} Hz")
             return frequency
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query AWG frequency: {e}")
+            logger.warning(f"Failed to query AWG frequency: {e}")
             raise
 
     def awg_set_amplitude(self, amplitude: float) -> None:
@@ -5622,9 +5625,9 @@ class Rigol_DHO804(DeviceManager):
         """
         try:
             self.instrument.write(f":SOURce:VOLTage:AMPLitude {amplitude}")
-            print(f"AWG amplitude set to {amplitude} V")
+            logger.info(f"AWG amplitude set to {amplitude} V")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set AWG amplitude: {e}")
+            logger.warning(f"Failed to set AWG amplitude: {e}")
             raise
 
     def awg_get_amplitude(self) -> float:
@@ -5645,10 +5648,10 @@ class Rigol_DHO804(DeviceManager):
         try:
             response = self.instrument.query(":SOURce:VOLTage:AMPLitude?")
             amplitude = float(response.strip())
-            print(f"AWG amplitude: {amplitude} V")
+            logger.info(f"AWG amplitude: {amplitude} V")
             return amplitude
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query AWG amplitude: {e}")
+            logger.warning(f"Failed to query AWG amplitude: {e}")
             raise
 
     def awg_set_offset(self, offset: float) -> None:
@@ -5677,9 +5680,9 @@ class Rigol_DHO804(DeviceManager):
         """
         try:
             self.instrument.write(f":SOURce:VOLTage:OFFSet {offset}")
-            print(f"AWG offset set to {offset} V")
+            logger.info(f"AWG offset set to {offset} V")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set AWG offset: {e}")
+            logger.warning(f"Failed to set AWG offset: {e}")
             raise
 
     def awg_get_offset(self) -> float:
@@ -5700,10 +5703,10 @@ class Rigol_DHO804(DeviceManager):
         try:
             response = self.instrument.query(":SOURce:VOLTage:OFFSet?")
             offset = float(response.strip())
-            print(f"AWG offset: {offset} V")
+            logger.info(f"AWG offset: {offset} V")
             return offset
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query AWG offset: {e}")
+            logger.warning(f"Failed to query AWG offset: {e}")
             raise
 
     # --- Waveform Shape Control ---
@@ -5733,9 +5736,9 @@ class Rigol_DHO804(DeviceManager):
 
         try:
             self.instrument.write(f":SOURce:PHASe {phase}")
-            print(f"AWG phase set to {phase}°")
+            logger.info(f"AWG phase set to {phase}°")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set AWG phase: {e}")
+            logger.warning(f"Failed to set AWG phase: {e}")
             raise
 
     def awg_get_phase(self) -> float:
@@ -5756,10 +5759,10 @@ class Rigol_DHO804(DeviceManager):
         try:
             response = self.instrument.query(":SOURce:PHASe?")
             phase = float(response.strip())
-            print(f"AWG phase: {phase}°")
+            logger.info(f"AWG phase: {phase}°")
             return phase
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query AWG phase: {e}")
+            logger.warning(f"Failed to query AWG phase: {e}")
             raise
 
     def awg_set_ramp_symmetry(self, symmetry: float) -> None:
@@ -5789,9 +5792,9 @@ class Rigol_DHO804(DeviceManager):
 
         try:
             self.instrument.write(f":SOURce:FUNCtion:RAMP:SYMMetry {symmetry}")
-            print(f"AWG ramp symmetry set to {symmetry}%")
+            logger.info(f"AWG ramp symmetry set to {symmetry}%")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set AWG ramp symmetry: {e}")
+            logger.warning(f"Failed to set AWG ramp symmetry: {e}")
             raise
 
     def awg_get_ramp_symmetry(self) -> float:
@@ -5812,10 +5815,10 @@ class Rigol_DHO804(DeviceManager):
         try:
             response = self.instrument.query(":SOURce:FUNCtion:RAMP:SYMMetry?")
             symmetry = float(response.strip())
-            print(f"AWG ramp symmetry: {symmetry}%")
+            logger.info(f"AWG ramp symmetry: {symmetry}%")
             return symmetry
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query AWG ramp symmetry: {e}")
+            logger.warning(f"Failed to query AWG ramp symmetry: {e}")
             raise
 
     def awg_set_square_duty(self, duty: float) -> None:
@@ -5845,9 +5848,9 @@ class Rigol_DHO804(DeviceManager):
 
         try:
             self.instrument.write(f":SOURce:FUNCtion:SQUare:DUTY {duty}")
-            print(f"AWG square duty cycle set to {duty}%")
+            logger.info(f"AWG square duty cycle set to {duty}%")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set AWG square duty cycle: {e}")
+            logger.warning(f"Failed to set AWG square duty cycle: {e}")
             raise
 
     def awg_get_square_duty(self) -> float:
@@ -5868,10 +5871,10 @@ class Rigol_DHO804(DeviceManager):
         try:
             response = self.instrument.query(":SOURce:FUNCtion:SQUare:DUTY?")
             duty = float(response.strip())
-            print(f"AWG square duty cycle: {duty}%")
+            logger.info(f"AWG square duty cycle: {duty}%")
             return duty
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query AWG square duty cycle: {e}")
+            logger.warning(f"Failed to query AWG square duty cycle: {e}")
             raise
 
     # --- Modulation Control ---
@@ -5894,9 +5897,9 @@ class Rigol_DHO804(DeviceManager):
         try:
             state = "ON" if enable else "OFF"
             self.instrument.write(f":SOURce:MOD:STATe {state}")
-            print(f"AWG modulation {'enabled' if enable else 'disabled'}")
+            logger.info(f"AWG modulation {'enabled' if enable else 'disabled'}")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set AWG modulation state: {e}")
+            logger.warning(f"Failed to set AWG modulation state: {e}")
             raise
 
     def awg_get_modulation_enable(self) -> bool:
@@ -5917,10 +5920,10 @@ class Rigol_DHO804(DeviceManager):
         try:
             response = self.instrument.query(":SOURce:MOD:STATe?")
             enabled = response.strip() == "1"
-            print(f"AWG modulation enable: {enabled}")
+            logger.info(f"AWG modulation enable: {enabled}")
             return enabled
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query AWG modulation state: {e}")
+            logger.warning(f"Failed to query AWG modulation state: {e}")
             raise
 
     def awg_set_modulation_type(self, mod_type: str) -> None:
@@ -5950,9 +5953,9 @@ class Rigol_DHO804(DeviceManager):
 
         try:
             self.instrument.write(f":SOURce:MOD:TYPe {mod_type}")
-            print(f"AWG modulation type set to {mod_type}")
+            logger.info(f"AWG modulation type set to {mod_type}")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set AWG modulation type: {e}")
+            logger.warning(f"Failed to set AWG modulation type: {e}")
             raise
 
     def awg_get_modulation_type(self) -> str:
@@ -5973,10 +5976,10 @@ class Rigol_DHO804(DeviceManager):
         try:
             response = self.instrument.query(":SOURce:MOD:TYPe?")
             mod_type = response.strip()
-            print(f"AWG modulation type: {mod_type}")
+            logger.info(f"AWG modulation type: {mod_type}")
             return mod_type
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query AWG modulation type: {e}")
+            logger.warning(f"Failed to query AWG modulation type: {e}")
             raise
 
     # --- AM Modulation ---
@@ -6007,9 +6010,9 @@ class Rigol_DHO804(DeviceManager):
 
         try:
             self.instrument.write(f":SOURce:MOD:AM:DEPTh {depth}")
-            print(f"AWG AM depth set to {depth}%")
+            logger.info(f"AWG AM depth set to {depth}%")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set AWG AM depth: {e}")
+            logger.warning(f"Failed to set AWG AM depth: {e}")
             raise
 
     def awg_get_am_depth(self) -> float:
@@ -6030,10 +6033,10 @@ class Rigol_DHO804(DeviceManager):
         try:
             response = self.instrument.query(":SOURce:MOD:AM:DEPTh?")
             depth = float(response.strip())
-            print(f"AWG AM depth: {depth}%")
+            logger.info(f"AWG AM depth: {depth}%")
             return depth
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query AWG AM depth: {e}")
+            logger.warning(f"Failed to query AWG AM depth: {e}")
             raise
 
     def awg_set_am_frequency(self, frequency: float) -> None:
@@ -6059,9 +6062,9 @@ class Rigol_DHO804(DeviceManager):
 
         try:
             self.instrument.write(f":SOURce:MOD:AM:INTernal:FREQuency {frequency}")
-            print(f"AWG AM frequency set to {frequency} Hz")
+            logger.info(f"AWG AM frequency set to {frequency} Hz")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set AWG AM frequency: {e}")
+            logger.warning(f"Failed to set AWG AM frequency: {e}")
             raise
 
     def awg_get_am_frequency(self) -> float:
@@ -6082,10 +6085,10 @@ class Rigol_DHO804(DeviceManager):
         try:
             response = self.instrument.query(":SOURce:MOD:AM:INTernal:FREQuency?")
             frequency = float(response.strip())
-            print(f"AWG AM frequency: {frequency} Hz")
+            logger.info(f"AWG AM frequency: {frequency} Hz")
             return frequency
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query AWG AM frequency: {e}")
+            logger.warning(f"Failed to query AWG AM frequency: {e}")
             raise
 
     def awg_set_am_function(self, function: str) -> None:
@@ -6113,9 +6116,9 @@ class Rigol_DHO804(DeviceManager):
 
         try:
             self.instrument.write(f":SOURce:MOD:AM:INTernal:FUNCtion {function}")
-            print(f"AWG AM function set to {function}")
+            logger.info(f"AWG AM function set to {function}")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set AWG AM function: {e}")
+            logger.warning(f"Failed to set AWG AM function: {e}")
             raise
 
     def awg_get_am_function(self) -> str:
@@ -6136,10 +6139,10 @@ class Rigol_DHO804(DeviceManager):
         try:
             response = self.instrument.query(":SOURce:MOD:AM:INTernal:FUNCtion?")
             function = response.strip()
-            print(f"AWG AM function: {function}")
+            logger.info(f"AWG AM function: {function}")
             return function
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query AWG AM function: {e}")
+            logger.warning(f"Failed to query AWG AM function: {e}")
             raise
 
     # --- FM Modulation ---
@@ -6168,9 +6171,9 @@ class Rigol_DHO804(DeviceManager):
 
         try:
             self.instrument.write(f":SOURce:MOD:FM:DEViation {deviation}")
-            print(f"AWG FM deviation set to {deviation} Hz")
+            logger.info(f"AWG FM deviation set to {deviation} Hz")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set AWG FM deviation: {e}")
+            logger.warning(f"Failed to set AWG FM deviation: {e}")
             raise
 
     def awg_get_fm_deviation(self) -> float:
@@ -6191,10 +6194,10 @@ class Rigol_DHO804(DeviceManager):
         try:
             response = self.instrument.query(":SOURce:MOD:FM:DEViation?")
             deviation = float(response.strip())
-            print(f"AWG FM deviation: {deviation} Hz")
+            logger.info(f"AWG FM deviation: {deviation} Hz")
             return deviation
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query AWG FM deviation: {e}")
+            logger.warning(f"Failed to query AWG FM deviation: {e}")
             raise
 
     def awg_set_fm_frequency(self, frequency: float) -> None:
@@ -6220,9 +6223,9 @@ class Rigol_DHO804(DeviceManager):
 
         try:
             self.instrument.write(f":SOURce:MOD:FM:INTernal:FREQuency {frequency}")
-            print(f"AWG FM frequency set to {frequency} Hz")
+            logger.info(f"AWG FM frequency set to {frequency} Hz")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set AWG FM frequency: {e}")
+            logger.warning(f"Failed to set AWG FM frequency: {e}")
             raise
 
     def awg_get_fm_frequency(self) -> float:
@@ -6243,10 +6246,10 @@ class Rigol_DHO804(DeviceManager):
         try:
             response = self.instrument.query(":SOURce:MOD:FM:INTernal:FREQuency?")
             frequency = float(response.strip())
-            print(f"AWG FM frequency: {frequency} Hz")
+            logger.info(f"AWG FM frequency: {frequency} Hz")
             return frequency
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query AWG FM frequency: {e}")
+            logger.warning(f"Failed to query AWG FM frequency: {e}")
             raise
 
     def awg_set_fm_function(self, function: str) -> None:
@@ -6274,9 +6277,9 @@ class Rigol_DHO804(DeviceManager):
 
         try:
             self.instrument.write(f":SOURce:MOD:FM:INTernal:FUNCtion {function}")
-            print(f"AWG FM function set to {function}")
+            logger.info(f"AWG FM function set to {function}")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set AWG FM function: {e}")
+            logger.warning(f"Failed to set AWG FM function: {e}")
             raise
 
     def awg_get_fm_function(self) -> str:
@@ -6297,10 +6300,10 @@ class Rigol_DHO804(DeviceManager):
         try:
             response = self.instrument.query(":SOURce:MOD:FM:INTernal:FUNCtion?")
             function = response.strip()
-            print(f"AWG FM function: {function}")
+            logger.info(f"AWG FM function: {function}")
             return function
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query AWG FM function: {e}")
+            logger.warning(f"Failed to query AWG FM function: {e}")
             raise
 
     # --- PM Modulation ---
@@ -6329,9 +6332,9 @@ class Rigol_DHO804(DeviceManager):
 
         try:
             self.instrument.write(f":SOURce:MOD:PM:DEViation {deviation}")
-            print(f"AWG PM deviation set to {deviation}°")
+            logger.info(f"AWG PM deviation set to {deviation}°")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set AWG PM deviation: {e}")
+            logger.warning(f"Failed to set AWG PM deviation: {e}")
             raise
 
     def awg_get_pm_deviation(self) -> float:
@@ -6352,10 +6355,10 @@ class Rigol_DHO804(DeviceManager):
         try:
             response = self.instrument.query(":SOURce:MOD:PM:DEViation?")
             deviation = float(response.strip())
-            print(f"AWG PM deviation: {deviation}°")
+            logger.info(f"AWG PM deviation: {deviation}°")
             return deviation
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query AWG PM deviation: {e}")
+            logger.warning(f"Failed to query AWG PM deviation: {e}")
             raise
 
     def awg_set_pm_frequency(self, frequency: float) -> None:
@@ -6381,9 +6384,9 @@ class Rigol_DHO804(DeviceManager):
 
         try:
             self.instrument.write(f":SOURce:MOD:PM:INTernal:FREQuency {frequency}")
-            print(f"AWG PM frequency set to {frequency} Hz")
+            logger.info(f"AWG PM frequency set to {frequency} Hz")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set AWG PM frequency: {e}")
+            logger.warning(f"Failed to set AWG PM frequency: {e}")
             raise
 
     def awg_get_pm_frequency(self) -> float:
@@ -6404,10 +6407,10 @@ class Rigol_DHO804(DeviceManager):
         try:
             response = self.instrument.query(":SOURce:MOD:PM:INTernal:FREQuency?")
             frequency = float(response.strip())
-            print(f"AWG PM frequency: {frequency} Hz")
+            logger.info(f"AWG PM frequency: {frequency} Hz")
             return frequency
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query AWG PM frequency: {e}")
+            logger.warning(f"Failed to query AWG PM frequency: {e}")
             raise
 
     def awg_set_pm_function(self, function: str) -> None:
@@ -6435,9 +6438,9 @@ class Rigol_DHO804(DeviceManager):
 
         try:
             self.instrument.write(f":SOURce:MOD:PM:INTernal:FUNCtion {function}")
-            print(f"AWG PM function set to {function}")
+            logger.info(f"AWG PM function set to {function}")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to set AWG PM function: {e}")
+            logger.warning(f"Failed to set AWG PM function: {e}")
             raise
 
     def awg_get_pm_function(self) -> str:
@@ -6458,10 +6461,10 @@ class Rigol_DHO804(DeviceManager):
         try:
             response = self.instrument.query(":SOURce:MOD:PM:INTernal:FUNCtion?")
             function = response.strip()
-            print(f"AWG PM function: {function}")
+            logger.info(f"AWG PM function: {function}")
             return function
         except pyvisa.VisaIOError as e:
-            print(f"Failed to query AWG PM function: {e}")
+            logger.warning(f"Failed to query AWG PM function: {e}")
             raise
 
     # --- High-Level AWG Helper Method ---
@@ -6492,7 +6495,7 @@ class Rigol_DHO804(DeviceManager):
             scope.awg_configure_simple('SQUare', 10000, 5.0, offset=1.0)
         """
         try:
-            print(f"Configuring AWG: {function}, {frequency} Hz, {amplitude} Vpp, {offset} V offset")
+            logger.info(f"Configuring AWG: {function}, {frequency} Hz, {amplitude} Vpp, {offset} V offset")
 
             # Disable output first for safety
             self.awg_set_output_enable(False)
@@ -6507,7 +6510,7 @@ class Rigol_DHO804(DeviceManager):
             if enable:
                 self.awg_set_output_enable(True)
 
-            print("AWG configured successfully")
+            logger.info("AWG configured successfully")
         except Exception as e:
-            print(f"Failed to configure AWG: {e}")
+            logger.warning(f"Failed to configure AWG: {e}")
             raise

@@ -8,9 +8,13 @@ NOTE: Non-standard SCPI implementation:
 - Run/Stop is hardware-only; no SCPI command exists to control it remotely
 """
 
+import logging
+
 import pyvisa
 
 from .device_manager import DeviceManager
+
+logger = logging.getLogger(__name__)
 
 
 class Owon_XDM1041(DeviceManager):
@@ -45,9 +49,9 @@ class Owon_XDM1041(DeviceManager):
             self.instrument.stop_bits = pyvisa.constants.StopBits.one
             self.instrument.read_termination = "\n"
             self.instrument.write_termination = "\r\n"
-            print(f"Connected to {self.resource_name}")
+            logger.info("Connected to %s", self.resource_name)
         except pyvisa.VisaIOError as e:
-            print(f"Failed to connect to {self.resource_name}: {e}")
+            logger.error("Failed to connect to %s: %s", self.resource_name, e)
             raise
 
     def __enter__(self):

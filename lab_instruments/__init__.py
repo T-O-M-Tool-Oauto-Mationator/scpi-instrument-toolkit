@@ -1,3 +1,5 @@
+import logging as _logging
+
 __version__ = "0.1.143"
 __author__ = "Brighton Sikarskie, Cesar Magana"
 
@@ -53,3 +55,7 @@ __all__ = [
     "InstrumentDiscovery",
     "find_all",
 ]
+
+# Library is silent by default. Users opt in to log output by configuring
+# stdlib logging on the "lab_instruments" logger.  See docs/python.md.
+_logging.getLogger("lab_instruments").addHandler(_logging.NullHandler())

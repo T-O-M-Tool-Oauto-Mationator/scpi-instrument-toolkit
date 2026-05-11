@@ -8,8 +8,11 @@ Does NOT inherit from DeviceManager.
 
 import contextlib
 import datetime
+import logging
 
 import nidcpower
+
+logger = logging.getLogger(__name__)
 
 
 class NI_PXIe_4139:
@@ -75,7 +78,7 @@ class NI_PXIe_4139:
         self._session.commit()
         self._session.initiate()  # Session stays Running from here on
         self._output_on = False
-        print(f"Connected to {self.resource_name}")
+        logger.info("Connected to %s", self.resource_name)
 
     def disconnect(self):
         """Close the nidcpower session."""
@@ -90,7 +93,7 @@ class NI_PXIe_4139:
             self._session.close()
             self._session = None
             self._output_on = False
-            print(f"Disconnected from {self.resource_name}")
+            logger.info("Disconnected from %s", self.resource_name)
 
     # ------------------------------------------------------------------
     # Context manager
