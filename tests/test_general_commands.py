@@ -294,6 +294,76 @@ class TestState:
         assert "dmm1" in out
         assert "n/a" in out
 
+    def test_state_list_awg_dual_channel(self, capsys):
+        awg = MockAWG()
+        repl = make_repl({"awg1": awg})
+        awg.enable_output(ch1=True, ch2=False)
+        capsys.readouterr()
+        repl.onecmd("state list")
+        out = capsys.readouterr().out
+        assert "awg1" in out
+        assert "CH1=ON" in out
+        assert "CH2=OFF" in out
+
+    def test_state_list_awg_both_on(self, capsys):
+        awg = MockAWG()
+        repl = make_repl({"awg1": awg})
+        awg.enable_output(ch1=True, ch2=True)
+        capsys.readouterr()
+        repl.onecmd("state list")
+        out = capsys.readouterr().out
+        assert "CH1=ON, CH2=ON" in out
+
+    def test_state_list_smu_shown(self, capsys):
+        repl = make_repl({"smu": MockNI_PXIe_4139()})
+        repl.onecmd("state list")
+        out = capsys.readouterr().out
+        assert "smu" in out
+        # smu is a PSU-prefixed branch in _query_state; should show ON/OFF or n/a
+        assert any(token in out for token in ("ON", "OFF", "n/a"))
+
+    def test_state_list_scope_no_acq_query_shows_na(self, capsys):
+        # MockDHO804 does not have get_acquisition_state -> "n/a"
+        repl = make_repl({"scope1": MockDHO804()})
+        repl.onecmd("state list")
+        out = capsys.readouterr().out
+        assert "scope1" in out
+        assert "n/a" in out
+
+    def test_state_list_selected_marker(self, capsys):
+        repl = make_repl({"psu1": MockHP_E3631A()})
+        repl.onecmd("use psu1")
+        capsys.readouterr()
+        repl.onecmd("state list")
+        out = capsys.readouterr().out
+        # Selected device gets an asterisk marker
+        assert "*" in out
+        assert "psu1" in out
+
+    def test_state_list_error_does_not_crash(self, capsys):
+        # A driver whose get_output_state raises an unexpected exception should
+        # be reported in-line, not crash the whole listing.
+        class BoomPSU:
+            def get_output_state(self):
+                raise RuntimeError("device offline")
+
+        repl = make_repl({"psu1": BoomPSU(), "dmm1": MockHP_34401A()})
+        repl.onecmd("state list")
+        out = capsys.readouterr().out
+        assert "psu1" in out
+        assert "error" in out.lower()
+        # The listing continues past the broken device
+        assert "dmm1" in out
+
+    def test_state_list_unknown_prefix_shows_na(self, capsys):
+        # A driver with a prefix that isn't psu/smu/awg/scope/dmm/ev2300 falls
+        # through to the "n/a (no output)" default.
+        repl = make_repl({"loadbox1": MockHP_34401A()})
+        repl.onecmd("state list")
+        out = capsys.readouterr().out
+        assert "loadbox1" in out
+        assert "n/a" in out
+
     def test_state_safe_all(self, repl_multi):
         repl_multi.onecmd("state safe")
 

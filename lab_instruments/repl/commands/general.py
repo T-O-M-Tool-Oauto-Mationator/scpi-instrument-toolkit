@@ -365,6 +365,9 @@ class GeneralCommands(BaseCommand):
             ]
         )
 
+    _STATE_GREEN = {"ON", "CH1=ON, CH2=ON", "RUN"}
+    _STATE_RED = {"OFF", "CH1=OFF, CH2=OFF", "STOP"}
+
     def _state_list(self) -> None:
         if not self.registry.devices:
             ColorPrinter.warning("No instruments connected.")
@@ -380,7 +383,12 @@ class GeneralCommands(BaseCommand):
             name_str = f"{G}{B}{name}{RST}" if name == self.registry.selected else f"{C}{name}{RST}"
             cls = f"{Y}{dev.__class__.__name__}{RST}"
             state_str = self._query_state(name, dev)
-            color = G if "ON" in state_str else (R_COL if "OFF" in state_str else Y)
+            if state_str in self._STATE_GREEN:
+                color = G
+            elif state_str in self._STATE_RED:
+                color = R_COL
+            else:
+                color = Y  # mixed AWG state, n/a, or error
             print(f" {marker} {name_str}: {cls}  output: {color}{state_str}{RST}")
 
     def _query_state(self, name: str, dev) -> str:
