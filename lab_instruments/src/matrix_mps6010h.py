@@ -9,9 +9,13 @@ IMPORTANT: This device requires enabling remote mode first with REM:ON
 - Use REM:OFF or press Shift+7 on front panel to return to local mode
 """
 
+import logging
+
 import pyvisa
 
 from .device_manager import DeviceManager
+
+logger = logging.getLogger(__name__)
 
 
 class MATRIX_MPS6010H(DeviceManager):
@@ -51,13 +55,13 @@ class MATRIX_MPS6010H(DeviceManager):
             self.instrument.stop_bits = pyvisa.constants.StopBits.one
             self.instrument.read_termination = "\n"
             self.instrument.write_termination = "\n"  # LF only, not CR+LF
-            print(f"Connected to {self.resource_name}")
+            logger.info("Connected to %s", self.resource_name)
 
             # Enable remote mode (required for commands to work)
             self.send_command("REM:ON")
-            print("Remote mode enabled")
+            logger.info("Remote mode enabled")
         except pyvisa.VisaIOError as e:
-            print(f"Failed to connect to {self.resource_name}: {e}")
+            logger.error("Failed to connect to %s: %s", self.resource_name, e)
             raise
 
     def __enter__(self):
@@ -71,7 +75,7 @@ class MATRIX_MPS6010H(DeviceManager):
         self.disable_output()
         # Return to local mode
         self.send_command("REM:OFF")
-        print("Returned to local mode")
+        logger.info("Returned to local mode")
 
     def disable_output(self):
         """

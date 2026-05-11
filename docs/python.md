@@ -4,6 +4,40 @@ Control instruments directly from Python — no REPL required.
 
 ---
 
+## Controlling library log output
+
+The library is silent by default. Driver actions (`Connected to ...`, `Sent
+command: ...`, `CH1 enabled`, etc.) are routed through Python's stdlib
+`logging` module under the `lab_instruments` logger, with a `NullHandler`
+attached at import time. Configure logging in your script to see them:
+
+```python
+import logging
+
+# See connect/disconnect and status messages (CH1 enabled, etc.)
+logging.basicConfig(level=logging.INFO)
+
+# Also see every SCPI command sent to instruments
+logging.getLogger("lab_instruments").setLevel(logging.DEBUG)
+```
+
+Target a single driver if you want a narrower view:
+
+```python
+logging.getLogger("lab_instruments.src.rigol_dho804").setLevel(logging.DEBUG)
+```
+
+To silence everything (including warnings):
+
+```python
+logging.getLogger("lab_instruments").setLevel(logging.CRITICAL)
+```
+
+This uses Python's standard `logging` module, so it composes with any handler
+or formatter your test framework already configures.
+
+---
+
 ## Quickstart — autodiscovery (recommended)
 
 No USB addresses needed. `find_all()` scans exactly like `scan` in the REPL and returns the same named device dict.
