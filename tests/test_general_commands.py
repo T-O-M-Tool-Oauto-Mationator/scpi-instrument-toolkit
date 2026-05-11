@@ -252,7 +252,47 @@ class TestState:
     def test_state_list(self, repl_multi, capsys):
         repl_multi.onecmd("state list")
         out = capsys.readouterr().out
-        assert out != ""
+        # The fix: state list now lists each device with its state, not just help.
+        # Verify each registered instrument appears in the output.
+        assert "psu1" in out
+        assert "awg1" in out
+        assert "dmm1" in out
+        assert "scope1" in out
+        assert "smu" in out
+        # And that the listing labels include "output:" (not the help banner).
+        assert "output:" in out
+        assert "# STATE" not in out  # help banner not shown
+
+    def test_state_list_empty(self, repl_empty, capsys):
+        repl_empty.onecmd("state list")
+        out = capsys.readouterr().out
+        assert "No instruments connected" in out
+
+    def test_state_list_psu_state_reflected(self, capsys):
+        psu = MockHP_E3631A()
+        repl = make_repl({"psu1": psu})
+        psu.enable_output(True)  # Set ON AFTER REPL safe-state init
+        capsys.readouterr()  # drain scan + safe-state output
+        repl.onecmd("state list")
+        out = capsys.readouterr().out
+        assert "psu1" in out
+        assert "ON" in out
+
+    def test_state_list_psu_state_off(self, capsys):
+        psu = MockHP_E3631A()
+        # Default: all channels OFF
+        repl = make_repl({"psu1": psu})
+        repl.onecmd("state list")
+        out = capsys.readouterr().out
+        assert "psu1" in out
+        assert "OFF" in out
+
+    def test_state_list_dmm_shows_no_output(self, capsys):
+        repl = make_repl({"dmm1": MockHP_34401A()})
+        repl.onecmd("state list")
+        out = capsys.readouterr().out
+        assert "dmm1" in out
+        assert "n/a" in out
 
     def test_state_safe_all(self, repl_multi):
         repl_multi.onecmd("state safe")

@@ -302,8 +302,11 @@ class GeneralCommands(BaseCommand):
         if self.is_help(args):
             self._state_help()
             return
-        if not args or args[0] == "list":
+        if not args:
             self._state_help()
+            return
+        if args[0] == "list":
+            self._state_list()
             return
         if args[0] in ("safe", "reset", "off", "on"):
             if args[0] == "safe":
@@ -361,6 +364,54 @@ class GeneralCommands(BaseCommand):
                 "  - show current output state of all instruments",
             ]
         )
+
+    def _state_list(self) -> None:
+        if not self.registry.devices:
+            ColorPrinter.warning("No instruments connected.")
+            return
+        C = ColorPrinter.CYAN
+        G = ColorPrinter.GREEN
+        Y = ColorPrinter.YELLOW
+        R_COL = ColorPrinter.RED
+        B = ColorPrinter.BOLD
+        RST = ColorPrinter.RESET
+        for name, dev in self.registry.devices.items():
+            marker = f"{G}*{RST}" if name == self.registry.selected else " "
+            name_str = f"{G}{B}{name}{RST}" if name == self.registry.selected else f"{C}{name}{RST}"
+            cls = f"{Y}{dev.__class__.__name__}{RST}"
+            state_str = self._query_state(name, dev)
+            color = G if "ON" in state_str else (R_COL if "OFF" in state_str else Y)
+            print(f" {marker} {name_str}: {cls}  output: {color}{state_str}{RST}")
+
+    def _query_state(self, name: str, dev) -> str:
+        try:
+            if name.startswith(("psu", "smu")):
+                if hasattr(dev, "get_output_state"):
+                    try:
+                        return "ON" if dev.get_output_state() else "OFF"
+                    except TypeError:
+                        pass
+                return "n/a"
+            if name.startswith("awg"):
+                if hasattr(dev, "get_output_state"):
+                    try:
+                        ch1 = dev.get_output_state(1)
+                        ch2 = dev.get_output_state(2)
+                        return f"CH1={'ON' if ch1 else 'OFF'}, CH2={'ON' if ch2 else 'OFF'}"
+                    except TypeError:
+                        try:
+                            return "ON" if dev.get_output_state() else "OFF"
+                        except Exception:
+                            return "n/a"
+                return "n/a"
+            if name.startswith("scope"):
+                if hasattr(dev, "get_acquisition_state"):
+                    state = dev.get_acquisition_state()
+                    return "RUN" if state in (1, True, "RUN") else "STOP"
+                return "n/a"
+            return "n/a (no output)"
+        except Exception as exc:  # noqa: BLE001 — best-effort listing
+            return f"error: {exc}"
 
     def _state_psu(self, name, dev, state):
         if state in ("safe", "off"):
