@@ -147,13 +147,21 @@ if (-not (Test-Path $venvPython)) {
 # ---------------------------------------------------------------------------
 Write-Step 4 "Installing scpi-instrument-toolkit into the venv..."
 Write-Host "(This can take several minutes on the TAMU network drive - be patient.)" -ForegroundColor Yellow
+Write-Host "(The package is not on PyPI - we install directly from the GitHub repo.)" -ForegroundColor DarkGray
 
+$pkgUrl = "git+https://github.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit.git"
 $venvPip = Join-Path $venvPath "Scripts\pip.exe"
 & $venvPip install --upgrade pip 2>&1 | Out-Host
-& $venvPip install scpi-instrument-toolkit 2>&1 | Out-Host
+& $venvPip install $pkgUrl 2>&1 | Out-Host
 
 if ($LASTEXITCODE -ne 0) {
-    Fail "pip install scpi-instrument-toolkit failed. See output above."
+    Fail @"
+pip install failed. See output above. The toolkit is NOT on PyPI - it installs
+from GitHub via:
+    pip install "$pkgUrl"
+Most common cause: git is not on PATH. Run setup-tamu.ps1 (which installs git)
+or install git manually, then rerun this script.
+"@
 }
 
 # ---------------------------------------------------------------------------

@@ -27,7 +27,7 @@ then the script has already done these steps for you:
 | Install git + GitHub Desktop + GitHub CLI | Yes |
 | Install Python 3.12 (user scope, no admin) | Yes |
 | Add Python and Scripts dirs to user PATH | Yes (winget package handles this) |
-| `pip install scpi-instrument-toolkit` (global) | Yes |
+| `pip install` toolkit from GitHub (global) | Yes |
 | Install Claude Code | Yes |
 | **Create a TestStand-compatible venv** | **No - run `setup-teststand.ps1` (see [section 3](#3-create-a-venv-on-a-mapped-drive))** |
 | **Configure TestStand Python adapter** | **No - do this below** |
@@ -189,9 +189,14 @@ If you used Option B (`py install 3.12`):
 
 #### Install the toolkit into the venv
 
+The toolkit is **not on PyPI** - it installs from the GitHub repo:
+
 ```cmd
-H:\Documents\eset-453\.venv\Scripts\pip.exe install scpi-instrument-toolkit
+H:\Documents\eset-453\.venv\Scripts\pip.exe install "git+https://github.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit.git"
 ```
+
+!!! warning "`pip install scpi-instrument-toolkit` will fail"
+    You will see `ERROR: Could not find a version that satisfies the requirement scpi-instrument-toolkit` if you drop the `git+https://...` URL. The package is not published on PyPI - always use the URL form. See [issue #106](https://github.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit/issues/106).
 
 If your lab has its own `requirements.txt`, install that instead:
 
@@ -432,8 +437,8 @@ rmdir /s /q H:\Documents\eset-453\.venv
 rem Recreate with Python 3.12 (use the path from your install Option above)
 "%LOCALAPPDATA%\Programs\Python\Python312\python.exe" -m venv H:\Documents\eset-453\.venv
 
-rem Reinstall the toolkit
-H:\Documents\eset-453\.venv\Scripts\pip.exe install scpi-instrument-toolkit
+rem Reinstall the toolkit (note: not on PyPI - install from GitHub)
+H:\Documents\eset-453\.venv\Scripts\pip.exe install "git+https://github.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit.git"
 ```
 
 ---
@@ -468,3 +473,13 @@ NI-VISA cannot see any instruments. Open **NI MAX** and confirm your devices app
 ### `"\\server\share\..." is not supported`
 
 You created the venv on a UNC path. Delete it and recreate on a mapped drive letter ([section 3](#3-create-a-venv-on-a-mapped-drive)).
+
+### `ERROR: Could not find a version that satisfies the requirement scpi-instrument-toolkit`
+
+You typed `pip install scpi-instrument-toolkit` (or any variant ending in just the bare name). The package is **not on PyPI**; pip is searching the index, finding nothing, and giving up. Install from the GitHub repo instead:
+
+```cmd
+H:\Documents\eset-453\.venv\Scripts\pip.exe install "git+https://github.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit.git"
+```
+
+If pip then complains that `git` is missing, install git via `setup-tamu.ps1` first.
