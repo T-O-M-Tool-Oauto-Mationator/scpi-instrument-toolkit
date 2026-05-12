@@ -29,11 +29,11 @@ then the script has already done these steps for you:
 | Add Python and Scripts dirs to user PATH | Yes (winget package handles this) |
 | `pip install scpi-instrument-toolkit` (global) | Yes |
 | Install Claude Code | Yes |
-| **Create a TestStand-compatible venv** | **No - do this below** |
+| **Create a TestStand-compatible venv** | **No - run `setup-teststand.ps1` (see [section 3](#3-create-a-venv-on-a-mapped-drive))** |
 | **Configure TestStand Python adapter** | **No - do this below** |
 | Install NI-VISA / NI-DCPower system drivers | No - needs admin, install separately |
 
-So if you already ran the setup script, skip ahead to [Create the venv](#3-create-a-venv-on-a-mapped-drive). The first two sections only matter if you are setting up Python manually.
+So if you already ran the setup script, skip ahead to [Create the venv](#3-create-a-venv-on-a-mapped-drive) and use `setup-teststand.ps1` to finish the job. The first two sections only matter if you are setting up Python manually.
 
 ---
 
@@ -119,18 +119,61 @@ Even though `setup-tamu.ps1` already installs the toolkit globally, the TestStan
 - Per-project package versions do not collide with other classes
 - The TestStand Python adapter has a stable, known location to load packages from
 
-### Why a mapped drive (not a UNC path)?
+### Why a mapped drive (not a raw UNC path)?
 
-Python and TestStand both have known issues with UNC paths (`\\server\share\...`) as working directories. Windows will refuse with "UNC paths are not supported" when Python tries to operate from one.
+On TAMU lab machines, `H:\` is a **junction to your network home directory** (a `\\coe-fs.engr.tamu.edu\Ugrads\<NetID>\...` UNC share). You should always type the `H:\` path - tools like cmd.exe refuse to use raw UNC paths as a working directory ("UNC paths are not supported"), but they handle the `H:\` junction fine.
 
-- **DO NOT** use: `\\coe-fs.engr.tamu.edu\Ugrads\<NetID>\Documents\eset-453\.venv`
+- **DO NOT** type: `\\coe-fs.engr.tamu.edu\Ugrads\<NetID>\Documents\eset-453\.venv`
 - **USE** instead: `H:\Documents\eset-453\.venv`
-
-Your TAMU home directory is already mapped to a drive letter (`H:` by default). Use that.
 
 > Replace `H:\Documents\eset-453\` with your own mapped drive letter and project path throughout this guide.
 
-### Create the venv
+!!! note "Heads-up: Python's 'redirects, links or junctions' warning is harmless here"
+    When you create the venv, Python 3.12 will print:
+
+    > Actual environment location may have moved due to redirects, links or junctions.
+    > Requested location: "H:\\Documents\\eset-453\\.venv\\Scripts\\python.exe"
+    > Actual location:    "\\\\coe-fs.engr.tamu.edu\\Ugrads\\<NetID>\\Documents\\eset-453\\.venv\\Scripts\\python.exe"
+
+    This is **expected** because `H:\` resolves to that UNC share. It is informational only - the venv works correctly, `Activate.ps1` works, and TestStand can use the `H:\...\.venv` path without issue. See [issue #104](https://github.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit/issues/104).
+
+### Option 1: Use `setup-teststand.ps1` (recommended)
+
+After `setup-tamu.ps1` has installed Python 3.12, run the helper script from the toolkit repo:
+
+```powershell
+.\setup-teststand.ps1
+```
+
+Or, if you have not cloned the repo:
+
+```powershell
+irm "https://raw.githubusercontent.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit/main/setup-teststand.ps1" | iex
+```
+
+What it does:
+
+- Picks `H:\Documents\scpi-workspace\` as the project root (or falls back to `%USERPROFILE%` if `H:\` is not mapped, with a warning)
+- Finds a real Python 3.12 from `setup-tamu.ps1` **or** `py install 3.12`
+- Creates `<project-root>\.venv` (or skips if one is already there)
+- Installs `scpi-instrument-toolkit` into the venv
+- **Validates** end-to-end: confirms `python312.dll` is loadable (the thing TestStand needs), confirms `lab_instruments` imports cleanly
+- Prints the exact TestStand adapter values to copy-paste
+
+Useful flags:
+
+| Flag | Purpose |
+|---|---|
+| `-ProjectName eset-453` | Use `H:\Documents\eset-453\` instead of `scpi-workspace`. |
+| `-Drive G` | Use a different drive letter (defaults to `H`). |
+| `-Recreate` | Wipe and rebuild the venv from scratch. |
+| `-NoPause` | Skip the "Press Enter to close" prompt. Useful when chaining scripts. |
+
+Skip ahead to [Configure the TestStand Python Adapter](#4-configure-the-teststand-python-adapter) if the script ran clean.
+
+### Option 2: Manual setup (if the script does not fit your workflow)
+
+#### Create the venv
 
 If you used Option A (`setup-tamu.ps1`):
 
@@ -144,7 +187,7 @@ If you used Option B (`py install 3.12`):
 "%LOCALAPPDATA%\Python\pythoncore-3.12-64\python.exe" -m venv H:\Documents\eset-453\.venv
 ```
 
-### Install the toolkit into the venv
+#### Install the toolkit into the venv
 
 ```cmd
 H:\Documents\eset-453\.venv\Scripts\pip.exe install scpi-instrument-toolkit
@@ -160,13 +203,24 @@ H:\Documents\eset-453\.venv\Scripts\pip.exe install -r H:\Documents\eset-453\req
 > takes 30-60 seconds and the pip install can take several minutes depending on network
 > conditions. This is normal - do not cancel. Wait for the prompt to return before continuing.
 
-### Verify the venv
+#### Verify the venv
 
-```cmd
-H:\Documents\eset-453\.venv\Scripts\python.exe -c "from lab_instruments import find_all; print('toolkit OK')"
+Run this in PowerShell - it confirms the three things TestStand actually depends on (real interpreter, loadable DLL, importable toolkit) in one shot:
+
+```powershell
+& "H:\Documents\eset-453\.venv\Scripts\python.exe" -c @"
+import sys, ctypes.util
+print('python:', sys.version.split()[0])
+print('exe:', sys.executable)
+dll = ctypes.util.find_library('python3.12')
+print('python3.12.dll:', dll if dll else '<not found>')
+assert dll, 'python3.12.dll not on PATH - TestStand will refuse to load this interpreter.'
+from lab_instruments import find_all
+print('lab_instruments: OK')
+"@
 ```
 
-Should print `toolkit OK`.
+You should see four lines printed and no traceback. If `python3.12.dll: <not found>` or the assertion fires, TestStand will not be able to load this interpreter even though the venv works on the command line - go back to [section 2](#2-install-a-real-python-312-no-admin-required) and confirm a real Python is on PATH.
 
 ---
 
@@ -363,7 +417,13 @@ We standardize on **3.12** in this guide because it is the latest version suppor
 
 ## 9. Rebuilding the Venv
 
-If you need to start over (corrupted install, wrong Python version baked in, etc.):
+If you need to start over (corrupted install, wrong Python version baked in, etc.), the script handles this with the `-Recreate` flag:
+
+```powershell
+.\setup-teststand.ps1 -Recreate
+```
+
+Or do it manually:
 
 ```cmd
 rem Delete old venv
