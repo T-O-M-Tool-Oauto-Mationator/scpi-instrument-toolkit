@@ -64,7 +64,7 @@ You only need to do this once. Pick **one** of the two options below.
 
 The setup script installs Python 3.12 via winget into your user profile:
 
-```
+```text
 %LOCALAPPDATA%\Programs\Python\Python312\python.exe
 %LOCALAPPDATA%\Programs\Python\Python312\python312.dll
 ```
@@ -75,13 +75,13 @@ That directory is added to your **user PATH** automatically, so TestStand can fi
 
 The Python install manager (`py` command, pre-installed on TAMU lab machines as a Windows app alias) can also install a real Python without admin rights. Open a terminal and run:
 
-```
+```cmd
 py install 3.12
 ```
 
 This installs Python 3.12 to:
 
-```
+```text
 %LOCALAPPDATA%\Python\pythoncore-3.12-64\python.exe
 %LOCALAPPDATA%\Python\pythoncore-3.12-64\python312.dll
 ```
