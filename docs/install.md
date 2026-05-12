@@ -2,7 +2,7 @@
 
 ## Requirements
 
-- Python 3.8 or later
+- Python 3.10 or later (use **3.12** if you plan to drive the toolkit from NI TestStand - see [NI TestStand Setup](teststand.md))
 - pip
 
 ---
