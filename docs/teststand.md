@@ -1,24 +1,43 @@
 # NI TestStand Setup
 
-This page is for students and engineers who want to drive the toolkit from **NI TestStand** on a TAMU lab machine (or any Windows machine without admin rights).
+This guide walks you through driving the toolkit from **NI TestStand** on a TAMU managed Windows machine (or any Windows machine without admin rights). By the end you will have:
+
+- A real Python 3.12 install that TestStand can load
+- A virtual environment with the toolkit installed inside it
+- A working TestStand Python adapter configuration
+- A smoke-test sequence that proves the wiring end-to-end
+- Example step modules that drive real instruments from TestStand
 
 If you are only using the REPL or the Python API directly, you do not need any of this. See [Installation](install.md).
 
 ---
 
-## Environment
+## How much of this is already done for you?
 
-- **Machine**: TAMU managed machine (no admin rights)
-- **TestStand version**: 2025 Q1 (25.0.0) - 64-bit
-- **Python version**: 3.12 (64-bit)
-- **Project path**: your mapped drive + project folder (for example `H:\Documents\eset-453\`)
-- **Mapped drive**: `H:\` points to your TAMU network home directory
+If you ran the all-in-one TAMU setup (see [Troubleshooting > First-time setup](troubleshooting.md#first-time-setup-on-tamu-managed-windows-machines)):
 
-> Replace `H:\Documents\eset-453\` with your own mapped drive letter and project path throughout this guide.
+```powershell
+irm "https://raw.githubusercontent.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit/main/setup-tamu.ps1" | iex
+```
+
+then the script has already done these steps for you:
+
+| Step | Done by `setup-tamu.ps1`? |
+|---|---|
+| Install git + GitHub Desktop + GitHub CLI | Yes |
+| Install Python 3.12 (user scope, no admin) | Yes |
+| Add Python and Scripts dirs to user PATH | Yes (winget package handles this) |
+| `pip install scpi-instrument-toolkit` (global) | Yes |
+| Install Claude Code | Yes |
+| **Create a TestStand-compatible venv** | **No - do this below** |
+| **Configure TestStand Python adapter** | **No - do this below** |
+| Install NI-VISA / NI-DCPower system drivers | No - needs admin, install separately |
+
+So if you already ran the setup script, skip ahead to [Create the venv](#3-create-a-venv-on-a-mapped-drive). The first two sections only matter if you are setting up Python manually.
 
 ---
 
-## Why Microsoft Store Python Does Not Work
+## 1. Why Microsoft Store Python Does Not Work
 
 The Microsoft Store versions of Python (3.12, 3.13, etc.) use **app execution aliases** - stub launchers that redirect to the real installation in `C:\Program Files\WindowsApps\...`, which is a protected directory. TestStand's Python adapter needs to load `python3XX.dll` directly, and that DLL is not accessible when Python is installed from the Store.
 
@@ -33,13 +52,28 @@ TestStand hits the same wall - it cannot find or load the DLL, and will show:
 
 > Unable to load specified version of python. Make sure python of proper bitness is installed and added to PATH environment variable.
 
+The fix is to install a **real** Python (not the Store stub). You have two options.
+
 ---
 
-## Python Installation (No Admin Required)
+## 2. Install a Real Python 3.12 (No Admin Required)
 
-The **Python install manager** (`py` command, pre-installed on TAMU lab machines as a Windows app alias) can install a real Python to your user profile without admin rights.
+You only need to do this once. Pick **one** of the two options below.
 
-Open a terminal and run:
+### Option A: Use `setup-tamu.ps1` (recommended)
+
+The setup script installs Python 3.12 via winget into your user profile:
+
+```
+%LOCALAPPDATA%\Programs\Python\Python312\python.exe
+%LOCALAPPDATA%\Programs\Python\Python312\python312.dll
+```
+
+That directory is added to your **user PATH** automatically, so TestStand can find the DLL on launch. No further PATH edits needed.
+
+### Option B: Use the Python Install Manager (`py install`)
+
+The Python install manager (`py` command, pre-installed on TAMU lab machines as a Windows app alias) can also install a real Python without admin rights. Open a terminal and run:
 
 ```
 py install 3.12
@@ -48,43 +82,69 @@ py install 3.12
 This installs Python 3.12 to:
 
 ```
-C:\Users\<YourNetID>\AppData\Local\Python\pythoncore-3.12-64\
+%LOCALAPPDATA%\Python\pythoncore-3.12-64\python.exe
+%LOCALAPPDATA%\Python\pythoncore-3.12-64\python312.dll
 ```
 
-The Python DLL (`python312.dll`) lives in that directory.
-
-### Add the DLL Directory to Your User PATH
-
-TestStand needs `python312.dll` on the PATH to load the interpreter. Run this in PowerShell (no admin needed - modifies user PATH only):
+Note: this is a **different directory** than Option A. Unlike Option A, `py install` does **not** add the directory to PATH automatically, so TestStand will not find the DLL unless you add it yourself:
 
 ```powershell
 $currentPath = [System.Environment]::GetEnvironmentVariable('PATH', 'User')
-$newDir = "C:\Users\$env:USERNAME\AppData\Local\Python\pythoncore-3.12-64"
+$newDir = "$env:LOCALAPPDATA\Python\pythoncore-3.12-64"
 [System.Environment]::SetEnvironmentVariable('PATH', $newDir + ';' + $currentPath, 'User')
 ```
 
-**Restart TestStand after this** - it reads the PATH only at launch.
+**Restart TestStand after editing PATH** - TestStand reads PATH only at launch.
+
+### Verify Python is on PATH
+
+After either option, open a **new** terminal and run:
+
+```powershell
+python --version
+python -c "import ctypes.util; print(ctypes.util.find_library('python3.12'))"
+```
+
+The first should print `Python 3.12.x`. The second should print a path (not `None`). If both work, TestStand will find the DLL.
 
 ---
 
-## Virtual Environment
+## 3. Create a Venv on a Mapped Drive
 
-### Why You Must Use a Mapped Drive Letter (Not a UNC Path)
+### Why a venv (and not just the global Python)?
+
+Even though `setup-tamu.ps1` already installs the toolkit globally, the TestStand adapter expects you to point it at a **virtual environment** so that:
+
+- Your environment survives roaming-profile resets on TAMU lab machines
+- Per-project package versions do not collide with other classes
+- The TestStand Python adapter has a stable, known location to load packages from
+
+### Why a mapped drive (not a UNC path)?
 
 Python and TestStand both have known issues with UNC paths (`\\server\share\...`) as working directories. Windows will refuse with "UNC paths are not supported" when Python tries to operate from one.
 
-- DO NOT use: `\\coe-fs.engr.tamu.edu\Ugrads\<NetID>\Documents\eset-453\.venv`
-- USE instead: `H:\Documents\eset-453\.venv`
+- **DO NOT** use: `\\coe-fs.engr.tamu.edu\Ugrads\<NetID>\Documents\eset-453\.venv`
+- **USE** instead: `H:\Documents\eset-453\.venv`
 
 Your TAMU home directory is already mapped to a drive letter (`H:` by default). Use that.
 
-### Create the Venv
+> Replace `H:\Documents\eset-453\` with your own mapped drive letter and project path throughout this guide.
+
+### Create the venv
+
+If you used Option A (`setup-tamu.ps1`):
 
 ```cmd
-C:\Users\<YourNetID>\AppData\Local\Python\pythoncore-3.12-64\python.exe -m venv H:\Documents\eset-453\.venv
+"%LOCALAPPDATA%\Programs\Python\Python312\python.exe" -m venv H:\Documents\eset-453\.venv
 ```
 
-### Install the Toolkit
+If you used Option B (`py install 3.12`):
+
+```cmd
+"%LOCALAPPDATA%\Python\pythoncore-3.12-64\python.exe" -m venv H:\Documents\eset-453\.venv
+```
+
+### Install the toolkit into the venv
 
 ```cmd
 H:\Documents\eset-453\.venv\Scripts\pip.exe install scpi-instrument-toolkit
@@ -100,9 +160,17 @@ H:\Documents\eset-453\.venv\Scripts\pip.exe install -r H:\Documents\eset-453\req
 > takes 30-60 seconds and the pip install can take several minutes depending on network
 > conditions. This is normal - do not cancel. Wait for the prompt to return before continuing.
 
+### Verify the venv
+
+```cmd
+H:\Documents\eset-453\.venv\Scripts\python.exe -c "from lab_instruments import find_all; print('toolkit OK')"
+```
+
+Should print `toolkit OK`.
+
 ---
 
-## TestStand Python Adapter Configuration
+## 4. Configure the TestStand Python Adapter
 
 Open TestStand, then go to **Configure > Adapters > Python > Configure**
 
@@ -117,12 +185,167 @@ Open TestStand, then go to **Configure > Adapters > Python > Configure**
 
 - The **Version** dropdown is editable - click it and type `3.12` directly if it does not appear in the list.
 - The **Executable Path** field is locked on TAMU managed machines. This is only used for step-into debugging anyway, not for normal test execution.
-- TestStand embeds the Python DLL at runtime via PATH - it does **not** invoke `python.exe` directly to run code modules.
+- TestStand embeds the Python DLL at runtime via PATH - it does **not** invoke `python.exe` directly to run code modules. That is why steps 1 and 2 above matter even when a venv is provided.
 - The venv path must use a mapped drive letter (`H:\...`), not a UNC path. See above.
 
 ---
 
-## Supported Python Versions by TestStand Release
+## 5. Smoke Test - Prove the Wiring Works
+
+Before you write a single real test step, save the file below to your project folder. It uses no instruments, just a fake reading.
+
+**`teststand_hello.py`**:
+
+```python
+"""
+Simple NI TestStand Python adapter smoke test.
+
+In TestStand, create steps that call these functions by name.
+No arguments needed - TestStand will call them directly.
+"""
+
+
+def get_voltage():
+    """
+    Numeric Limit Test step: returns a fake voltage reading.
+    In TestStand, set limits (e.g. Low=4.5, High=5.5) to pass/fail.
+    """
+    voltage = 5.0
+    print(f"Measured voltage: {voltage} V")
+    return voltage
+
+
+def check_connection():
+    """
+    Action step: prints a message to confirm the Python adapter is working.
+    """
+    print("Python adapter is working correctly.")
+
+
+def add(a, b):
+    """
+    Numeric Limit Test step: returns the sum of two numbers passed in from TestStand.
+    In TestStand, wire 'a' and 'b' to step parameters and set a limit on the result.
+    """
+    result = a + b
+    print(f"add({a}, {b}) = {result}")
+    return result
+
+
+if __name__ == "__main__":
+    # Run locally to verify the file works outside TestStand
+    check_connection()
+    print(get_voltage())
+    print(add(3, 4))
+```
+
+In TestStand, create a new sequence with three Python steps:
+
+1. **Action** step calling `check_connection` -> expect "Python adapter is working correctly." in the output.
+2. **Numeric Limit Test** step calling `get_voltage` with limits `Low=4.5`, `High=5.5` -> expect Pass.
+3. **Numeric Limit Test** step calling `add(3, 4)` with limit `== 7` -> expect Pass.
+
+If all three pass, the Python adapter, venv, and DLL load are all wired correctly. Move on.
+
+---
+
+## 6. Calling Real Instruments from TestStand
+
+Once the smoke test passes, you can call the toolkit drivers from TestStand. The example below mirrors `lab4/scripts/teststand_instruments.py` in the eset-453 reference repo - it uses `find_all()` to auto-discover instruments on the VISA bus (the same call `scpi-repl` makes).
+
+**`teststand_instruments.py`**:
+
+```python
+"""
+TestStand Python module - uses lab_instruments directly.
+
+Instruments are auto-discovered via find_all() the same way scpi-repl does it.
+Each function below is a TestStand step (Action or Numeric Limit Test).
+"""
+
+import sys as _sys
+
+# Insert the venv site-packages first on sys.path so TestStand can resolve
+# `lab_instruments` even when its embedded Python falls back to the global
+# interpreter's site-packages.
+_VENV = r'H:\Documents\eset-453\.venv\Lib\site-packages'
+if _VENV not in _sys.path:
+    _sys.path.insert(0, _VENV)
+
+from lab_instruments import find_all
+
+# Populated by setup() - do not call find_all() at module load so TestStand
+# controls when discovery runs (instruments must be powered on before setup).
+instruments = {}
+
+
+def setup(**kwargs):
+    """
+    Setup step - call this as the first step in your TestStand sequence.
+    Scans the VISA bus and connects to all recognized instruments.
+    All other functions in this module depend on this running first.
+    """
+    global instruments
+    instruments = find_all()
+    print("Instruments found:", list(instruments.keys()))
+
+
+def measure_dc_voltage(**kwargs):
+    """Numeric Limit Test - returns DMM DC voltage reading in volts."""
+    return instruments["dmm"].measure_dc_voltage()
+
+
+def measure_dc_current(**kwargs):
+    """Numeric Limit Test - returns DMM DC current reading in amps."""
+    return instruments["dmm"].measure_dc_current()
+
+
+def measure_resistance(**kwargs):
+    """Numeric Limit Test - returns DMM 2-wire resistance in ohms."""
+    return instruments["dmm"].measure_resistance_2wire()
+
+
+def set_psu_5v(**kwargs):
+    """Action - sets PSU channel 1 to 5 V, 0.5 A limit, output on."""
+    instruments["psu"].set_output_channel("positive_6_volts_channel", 5.0, 0.5)
+    instruments["psu"].enable_output(True)
+
+
+def psu_off(**kwargs):
+    """Action - disables all PSU channels. Use as a cleanup step."""
+    instruments["psu"].disable_all_channels()
+```
+
+### Why the `sys.path` insert at the top?
+
+TestStand's Python adapter loads the embedded interpreter via PATH and `python312.dll`. Depending on adapter version and machine state, it does **not** always honor the venv's `site-packages` automatically - some setups end up importing from the global interpreter's site-packages instead. Inserting the venv's `site-packages` at index 0 of `sys.path` guarantees the toolkit version installed in your venv wins. Update the `_VENV` path string to match your venv location.
+
+### Typical TestStand sequence
+
+| # | Step Type | Function | Notes |
+|---|---|---|---|
+| 1 | Action | `setup` | Discovers PSU + DMM + AWG + Scope on the bus. Runs once at sequence start. |
+| 2 | Action | `set_psu_5v` | Apply VIN. |
+| 3 | Numeric Limit Test | `measure_dc_voltage` | Limits 4.5 V .. 5.5 V. |
+| 4 | Numeric Limit Test | `measure_dc_current` | Limits 0 mA .. 100 mA. |
+| 5 | Action | `psu_off` | Cleanup. |
+
+You can write one of these per lab and reuse `setup` / `psu_off` as common bookends.
+
+---
+
+## 7. NI-VISA / NI-DCPower (System Drivers)
+
+The toolkit talks to instruments through NI-VISA. NI-VISA install requires **admin rights**, so `setup-tamu.ps1` deliberately does not attempt it. On a TAMU managed machine, NI-VISA is usually pre-installed by lab IT. If it is missing, ask your TA - they can install it.
+
+- **NI-VISA**: https://www.ni.com/en/support/downloads/drivers/download.ni-visa.html
+- **NI-DCPower** (only for PXIe-4139 SMU labs): https://www.ni.com/en/support/downloads/drivers/download.ni-dcpower.html
+
+You can confirm NI-VISA is installed by opening **NI MAX** and seeing your instruments listed under **Devices and Interfaces**.
+
+---
+
+## 8. Supported Python Versions by TestStand Release
 
 | TestStand Release | Max Python Supported |
 |---|---|
@@ -134,19 +357,54 @@ Open TestStand, then go to **Configure > Adapters > Python > Configure**
 
 To check your TestStand version: **Help > About TestStand**
 
+We standardize on **3.12** in this guide because it is the latest version supported by every TestStand release from 2024 Q4 onwards.
+
 ---
 
-## Rebuilding the Venv
+## 9. Rebuilding the Venv
 
-If you need to start over:
+If you need to start over (corrupted install, wrong Python version baked in, etc.):
 
 ```cmd
 rem Delete old venv
 rmdir /s /q H:\Documents\eset-453\.venv
 
-rem Recreate with Python 3.12
-C:\Users\<YourNetID>\AppData\Local\Python\pythoncore-3.12-64\python.exe -m venv H:\Documents\eset-453\.venv
+rem Recreate with Python 3.12 (use the path from your install Option above)
+"%LOCALAPPDATA%\Programs\Python\Python312\python.exe" -m venv H:\Documents\eset-453\.venv
 
 rem Reinstall the toolkit
 H:\Documents\eset-453\.venv\Scripts\pip.exe install scpi-instrument-toolkit
 ```
+
+---
+
+## Troubleshooting
+
+### "Unable to load specified version of python"
+
+TestStand cannot find `python312.dll`. Verify in a fresh terminal:
+
+```powershell
+where python
+python -c "import ctypes.util; print(ctypes.util.find_library('python3.12'))"
+```
+
+If `where python` returns a path inside `C:\Program Files\WindowsApps\...`, you have the Microsoft Store stub - install a real Python via one of the [two options above](#2-install-a-real-python-312-no-admin-required).
+
+If both commands succeed but TestStand still cannot load, **restart TestStand** - it caches PATH at launch.
+
+### `ModuleNotFoundError: No module named 'lab_instruments'`
+
+TestStand is running Python but not seeing your venv packages. Either:
+
+1. Confirm the **Virtual environment** field in the TestStand Python adapter config points at `H:\Documents\eset-453\.venv` (not a UNC path).
+2. Add the explicit `sys.path.insert(0, ...)` block from the [`teststand_instruments.py` example above](#6-calling-real-instruments-from-teststand) to the top of your module.
+3. Verify the package is actually in the venv: `H:\Documents\eset-453\.venv\Scripts\pip.exe show scpi-instrument-toolkit`
+
+### `find_all()` returns an empty dict
+
+NI-VISA cannot see any instruments. Open **NI MAX** and confirm your devices appear under **Devices and Interfaces**. If MAX is empty too, the issue is upstream of the toolkit - check USB/GPIB cables, instrument power, and that NI-VISA is installed.
+
+### `"\\server\share\..." is not supported`
+
+You created the venv on a UNC path. Delete it and recreate on a mapped drive letter ([section 3](#3-create-a-venv-on-a-mapped-drive)).

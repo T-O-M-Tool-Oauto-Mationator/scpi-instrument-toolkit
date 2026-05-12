@@ -136,6 +136,8 @@ Or if you have already cloned the repo:
 .\setup-tamu.ps1
 ```
 
+> If you also need to drive the toolkit from **NI TestStand**, follow [NI TestStand Setup](teststand.md) after the script finishes. It picks up where `setup-tamu.ps1` leaves off (venv on the mapped drive, adapter config, runnable example modules).
+
 ---
 
 ## `git` is not recognized on managed Windows machines

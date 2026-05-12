@@ -20,7 +20,7 @@ That's it. It installs Python, git, and the toolkit automatically. Then jump to 
 
 ## Everyone Else — Install
 
-You need Python 3.8+. Then:
+You need Python 3.10+ (use 3.12 if you plan to drive the toolkit from NI TestStand). Then:
 
 ```
 pip install "git+https://github.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit.git"
