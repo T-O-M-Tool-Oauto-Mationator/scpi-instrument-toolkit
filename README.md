@@ -6,6 +6,18 @@ Control oscilloscopes, power supplies, multimeters, and function generators from
 
 ---
 
+## What can I do with this toolkit?
+
+- **Drive a full bench from one prompt** -- PSUs, DMMs, scopes, AWGs, SMUs, and the TI EV2300 USB-to-I2C adapter, all from one REPL.
+- **Run measurement scripts** -- `for`/`while`/`if`, variables, asserts, parameter overrides, and a step debugger. ([Scripting](https://t-o-m-tool-oauto-mationator.github.io/scpi-instrument-toolkit/scripting.html))
+- **Practice without hardware** -- 14 simulated instruments via `--mock`. ([Mock Mode](https://t-o-m-tool-oauto-mationator.github.io/scpi-instrument-toolkit/mock_mode.html))
+- **Log to CSV and analyze in pandas** -- assign-style measurement syntax, `calc` for derived values, `log save` to CSV.
+- **15+ bundled examples** -- PSU+DMM sweeps, scope captures, full lab-report workflows. ([Examples](https://t-o-m-tool-oauto-mationator.github.io/scpi-instrument-toolkit/examples.html))
+
+**Learning path:** Start in [Mock Mode](https://t-o-m-tool-oauto-mationator.github.io/scpi-instrument-toolkit/mock_mode.html), skim the [Examples](https://t-o-m-tool-oauto-mationator.github.io/scpi-instrument-toolkit/examples.html), then read [Scripting](https://t-o-m-tool-oauto-mationator.github.io/scpi-instrument-toolkit/scripting.html) when you want to write your own tests. See the [Architecture overview](https://t-o-m-tool-oauto-mationator.github.io/scpi-instrument-toolkit/architecture.html) for the 5-layer system diagram.
+
+---
+
 ## TAMU Students — Start Here
 
 Run this one line in **PowerShell** (no admin required):
