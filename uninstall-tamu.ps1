@@ -21,6 +21,39 @@ Write-Host "  SCPI Toolkit - TAMU Managed Machine Uninstall"
 Write-Host ("=" * 60)
 
 # ---------------------------------------------------------------------------
+# Step 0: Remove legacy LibreOffice install (no longer used)
+# ---------------------------------------------------------------------------
+# Mirrors setup-tamu.ps1's Step 0. LibreOffice was installed by older
+# versions of the setup script and is no longer used - clean it up.
+Write-Step 0 "Removing legacy LibreOffice install (no longer used)..."
+
+$libreDir = Join-Path $env:LOCALAPPDATA "Programs\LibreOffice"
+if (Test-Path $libreDir) {
+    if (Get-Command winget -ErrorAction SilentlyContinue) {
+        winget uninstall --id TheDocumentFoundation.LibreOffice `
+            --silent --accept-source-agreements --disable-interactivity | Out-Host
+        $global:LASTEXITCODE = 0
+    }
+    if (Test-Path $libreDir) {
+        Remove-Item -Recurse -Force $libreDir -ErrorAction SilentlyContinue
+    }
+    $libreOnPath = Join-Path $libreDir "program"
+    $cur = [Environment]::GetEnvironmentVariable("Path", "User")
+    if ($cur) {
+        $filtered = ($cur -split ";") | Where-Object {
+            $_.TrimEnd("\").ToLowerInvariant() -ne $libreOnPath.TrimEnd("\").ToLowerInvariant()
+        }
+        $new = ($filtered -join ";")
+        if ($new -ne $cur) {
+            [Environment]::SetEnvironmentVariable("Path", $new, "User")
+        }
+    }
+    Write-Host "Legacy LibreOffice removed." -ForegroundColor Green
+} else {
+    Write-Host "LibreOffice not present. Skipping." -ForegroundColor Yellow
+}
+
+# ---------------------------------------------------------------------------
 # Step 1: Uninstall scpi-instrument-toolkit
 # ---------------------------------------------------------------------------
 Write-Step 1 "Uninstalling scpi-instrument-toolkit..."

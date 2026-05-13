@@ -24,6 +24,51 @@ Write-Host "  No admin rights required"
 Write-Host ("=" * 60)
 
 # ---------------------------------------------------------------------------
+# Step 0: Remove legacy LibreOffice install (no longer used)
+# ---------------------------------------------------------------------------
+# Earlier versions of this script installed LibreOffice for the long-dead
+# docx/pptx preview feature. The feature was removed in 1.0.35 and the
+# install in 1.0.36 (#102), but students who ran the old script still have
+# it on disk. Its bundled `python312.dll` shadows the real Python 3.12 in
+# PATH-order-sensitive lookups (ctypes.util.find_library, TestStand's DLL
+# search), so leaving it around causes confusing TestStand behavior. Sweep
+# it off before doing anything else.
+Write-Step 0 "Removing legacy LibreOffice install (no longer used)..."
+
+$libreDir = Join-Path $env:LOCALAPPDATA "Programs\LibreOffice"
+if (Test-Path $libreDir) {
+    if (Get-Command winget -ErrorAction SilentlyContinue) {
+        Write-Host "Found legacy LibreOffice at $libreDir - uninstalling via winget..." -ForegroundColor Yellow
+        winget uninstall --id TheDocumentFoundation.LibreOffice `
+            --silent --accept-source-agreements --disable-interactivity | Out-Host
+        # winget exits 20 when the package isn't registered (the old script
+        # used `msiexec /a`, which leaves no winget entry). The manual dir
+        # delete below handles that case; reset $LASTEXITCODE so the later
+        # winget-based steps don't see a stale non-zero from this call.
+        $global:LASTEXITCODE = 0
+    }
+    if (Test-Path $libreDir) {
+        Write-Host "winget did not remove the dir - deleting manually." -ForegroundColor Yellow
+        Remove-Item -Recurse -Force $libreDir -ErrorAction SilentlyContinue
+    }
+    $libreOnPath = Join-Path $libreDir "program"
+    $cur = [Environment]::GetEnvironmentVariable("Path", "User")
+    if ($cur) {
+        $filtered = ($cur -split ";") | Where-Object {
+            $_.TrimEnd("\").ToLowerInvariant() -ne $libreOnPath.TrimEnd("\").ToLowerInvariant()
+        }
+        $new = ($filtered -join ";")
+        if ($new -ne $cur) {
+            [Environment]::SetEnvironmentVariable("Path", $new, "User")
+            Write-Host "Removed $libreOnPath from user PATH." -ForegroundColor Green
+        }
+    }
+    Write-Host "Legacy LibreOffice removed." -ForegroundColor Green
+} else {
+    Write-Host "LibreOffice not present. Skipping." -ForegroundColor Yellow
+}
+
+# ---------------------------------------------------------------------------
 # Step 1: Install GitHub Desktop (includes bundled git) via winget
 # ---------------------------------------------------------------------------
 Write-Step 1 "Installing GitHub Desktop (includes git)..."
