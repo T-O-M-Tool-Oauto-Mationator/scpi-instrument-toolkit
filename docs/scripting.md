@@ -367,13 +367,13 @@ pk2pk = scope.measure_bnf(1, "PK2PK")
 
 ### Starting a live plot
 
-Open a live-updating chart tab in the GUI:
+Start a live plot stream. The REPL emits a `__LIVEPLOT__:` marker line that an external GUI frontend can consume to render a live window:
 
 ```python
-# Open a live plot tab — matches measurement labels by glob pattern
+# Match measurement labels by glob pattern
 repl.onecmd('liveplot dmm_* --title "Voltage Sweep" --xlabel "Time (s)" --ylabel "V"')
 
-# Then record measurements — they appear on the chart automatically
+# Then record measurements — they appear in the live stream automatically
 for v in [1.0, 2.0, 3.3, 5.0]:
     psu.set_output_channel(ch, v, 0.5)
     time.sleep(0.2)

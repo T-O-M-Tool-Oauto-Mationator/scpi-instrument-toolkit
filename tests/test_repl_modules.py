@@ -1113,7 +1113,15 @@ class TestGeneralCommands:
         gc, ctx = self._make()
         gc.do_state("list")
         out = capsys.readouterr().out
-        assert "STATE" in out
+        # No registered devices -> warning, not help banner
+        assert "No instruments connected" in out
+
+    def test_do_state_list_with_devices(self, capsys):
+        gc, ctx = self._make({"psu1": MockHP_E3631A()})
+        gc.do_state("list")
+        out = capsys.readouterr().out
+        assert "psu1" in out
+        assert "output:" in out
 
     def test_do_state_device_too_few_args(self, capsys):
         gc, ctx = self._make({"psu1": MockHP_E3631A()})

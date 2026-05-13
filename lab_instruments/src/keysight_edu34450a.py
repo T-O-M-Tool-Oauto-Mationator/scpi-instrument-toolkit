@@ -14,6 +14,8 @@ NOTE: This instrument does NOT support NPLC (Number of Power Line Cycles).
       It supports capacitance and temperature modes unlike the HP 34401A.
 """
 
+import contextlib
+
 from .device_manager import DeviceManager
 
 
@@ -61,6 +63,9 @@ class Keysight_EDU34450A(DeviceManager):
     # Modes that do NOT accept range/resolution parameters
     _NO_PARAM_MODES = {"CONT", "DIOD", "CONTinuity", "DIODe", "TEMP", "TEMPerature"}
 
+    _TRIGGER_SOURCE_ALLOWLIST = ("IMM", "IMMEDIATE", "BUS", "EXT", "EXTERNAL")
+    _TRIGGER_DELAY_KEYWORDS = ("MIN", "MAX", "DEF", "MINIMUM", "MAXIMUM", "DEFAULT")
+
     def __init__(self, resource_name):
         """Initialize the Keysight EDU34450A DMM."""
         super().__init__(resource_name)
@@ -71,8 +76,13 @@ class Keysight_EDU34450A(DeviceManager):
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        """Context manager exit: reset to known state."""
-        self.reset()
+        """Context manager exit: reset to known state.
+
+        Suppresses cleanup errors so an exception inside the `with` block is
+        not masked if the instrument is unresponsive at teardown.
+        """
+        with contextlib.suppress(Exception):
+            self.reset()
 
     # ==========================================
     # CONFIGURATION METHODS
@@ -423,9 +433,8 @@ class Keysight_EDU34450A(DeviceManager):
                 BUS - Triggers on *TRG or Group Execute Trigger.
                 EXTernal - Triggers on external trigger input.
         """
-        valid_sources = {"IMM", "IMMEDIATE", "BUS", "EXT", "EXTERNAL"}
-        if source.upper() not in valid_sources:
-            raise ValueError(f"Invalid trigger source. Must be one of: {valid_sources}")
+        if source.upper() not in self._TRIGGER_SOURCE_ALLOWLIST:
+            raise ValueError(f"Trigger source must be one of {self._TRIGGER_SOURCE_ALLOWLIST}, got '{source}'")
         self.send_command(f"TRIGger:SOURce {source}")
 
     def set_trigger_delay(self, delay="MIN"):
@@ -435,6 +444,11 @@ class Keysight_EDU34450A(DeviceManager):
         Args:
             delay (str|float): Delay in seconds (0 to 3600) or MIN, MAX, DEF.
         """
+        if isinstance(delay, str):
+            if delay.upper() not in self._TRIGGER_DELAY_KEYWORDS:
+                raise ValueError(f"Trigger delay keyword {delay!r} not in {self._TRIGGER_DELAY_KEYWORDS}")
+        elif not (0.0 <= float(delay) <= 3600.0):
+            raise ValueError(f"Trigger delay {delay} s out of range (0 to 3600 s)")
         self.send_command(f"TRIGger:DELay {delay}")
 
     def set_sample_count(self, count=1):
@@ -444,6 +458,10 @@ class Keysight_EDU34450A(DeviceManager):
         Args:
             count (int): Number of samples (1 to 50000).
         """
+        # Reject floats — int(1.9) silently truncates to 1 and would otherwise
+        # send "1.9" to the SCPI parser.
+        if not isinstance(count, int) or isinstance(count, bool) or not (1 <= count <= 50000):
+            raise ValueError(f"Sample count {count!r} must be an int in 1..50000")
         self.send_command(f"SAMPle:COUNt {count}")
 
     def trigger(self):

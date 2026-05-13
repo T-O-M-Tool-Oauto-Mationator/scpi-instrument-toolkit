@@ -1,5 +1,10 @@
 # Log & Calc
 
+> **Looking for Python-API logging?** This page documents the REPL `log` command
+> (the measurement log). To silence or enable the library's own log output
+> (`Sent command: ...`, `Connected to ...`, etc.) from Python code, see
+> [Controlling library log output](python.md#controlling-library-log-output).
+
 ---
 
 ## The measurement log -- what it is and why you need it
@@ -92,7 +97,7 @@ log save ../results/data.csv      # relative path from script dir
 !!! note "Path resolution"
     Relative paths are resolved from the **script directory** when running inside a script, or the **data directory** when used interactively. Use absolute paths to override.
 
-CSV files can be opened directly in Excel, LibreOffice Calc, or imported into Python with pandas.
+CSV files can be opened directly in Excel or imported into Python with pandas.
 
 ---
 

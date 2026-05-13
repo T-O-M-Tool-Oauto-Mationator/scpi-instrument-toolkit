@@ -4,7 +4,11 @@ Driver for the Tektronix MSO2000 Series Oscilloscope.
 Instrument Type: Mixed Signal Oscilloscope (MSO)
 """
 
+import logging
+
 from .device_manager import DeviceManager
+
+logger = logging.getLogger(__name__)
 
 
 class Tektronix_MSO2024(DeviceManager):
@@ -77,8 +81,43 @@ class Tektronix_MSO2024(DeviceManager):
         self.disable_all_channels()
 
     def get_error(self):
-        """Reads the most recent error from the system error queue."""
-        return self.query("SYSTem:ERRor?")
+        """Reads pending events from the Tek event queue.
+
+        The Tektronix 2-Series uses *ESR? + ALLEv? — `SYSTem:ERRor?` is not
+        implemented and querying it hangs the bus until VISA times out.
+        """
+        try:
+            esr = int(str(self.query("*ESR?")).strip())
+        except (ValueError, TypeError):
+            return '0,"No error"'
+        # Bits 2-5 of the SESR are the error bits (Query, Device-Dep, Execution, Command).
+        if esr & 0b00111100:
+            return self.query("ALLEv?")
+        return '0,"No error"'
+
+    def screenshot(self, filepath: str) -> None:
+        """Save a screenshot of the scope display to a file on the scope's disk.
+
+        Uses Tek's `SAVe:IMAGe` command (Programmer Manual 2-488). Supports
+        PNG, BMP, and JPEG based on the file extension in `filepath`.
+        """
+        if not isinstance(filepath, str) or not filepath:
+            raise ValueError("filepath must be a non-empty string")
+        # SCPI quoting: SAVe:IMAGe wraps the path in double quotes, so an
+        # embedded `"` would terminate the string and smuggle further
+        # SCPI tokens into the command. Reject those paths up front.
+        if '"' in filepath:
+            raise ValueError(f"filepath must not contain double-quote characters: {filepath!r}")
+        self._write(f'SAVe:IMAGe "{filepath}"')
+
+    def meas_clear(self) -> None:
+        """Delete every active measurement on the scope.
+
+        Tek 2-Series uses `MEASUrement:DELETEALL` (Programmer Manual 2-383).
+        Other vendors document `:MEASure:CLEar` (Rigol) — this driver
+        emits the Tek-specific form.
+        """
+        self._write("MEASUrement:DELETEALL")
 
     def disable_all_channels(self):
         """Disable all channels (Analog + Math)."""
@@ -147,7 +186,7 @@ class Tektronix_MSO2024(DeviceManager):
 
         scpi_name = self.CHANNEL_MAP[channel]
         self._write(f"{scpi_name}:COUPling {coupling}", **{f"ch{channel}_coupling": coupling})
-        print(f"{scpi_name} coupling: {coupling}")
+        logger.info("%s coupling: %s", scpi_name, coupling)
 
     # ==========================================
     # HORIZONTAL & ACQUISITION
@@ -205,7 +244,7 @@ class Tektronix_MSO2024(DeviceManager):
         # Clamp to valid range 0-100
         new_pos = max(0.0, min(100.0, new_pos))
         self.set_horizontal_position(new_pos)
-        print(f"Horizontal position moved to: {new_pos:.2f}%")
+        logger.info("Horizontal position moved to: %.2f%%", new_pos)
 
     def set_acquisition_mode(self, mode: str, num_averages: int = 16):
         """
@@ -224,12 +263,12 @@ class Tektronix_MSO2024(DeviceManager):
     def run(self):
         """Start/resume acquisition (run the oscilloscope)."""
         self._write("ACQuire:STATE RUN", acquisition_state="RUN")
-        print("Oscilloscope: Running")
+        logger.info("Oscilloscope: Running")
 
     def stop(self):
         """Stop/pause acquisition (stop the oscilloscope)."""
         self._write("ACQuire:STATE STOP", acquisition_state="STOP")
-        print("Oscilloscope: Stopped")
+        logger.info("Oscilloscope: Stopped")
 
     def single(self):
         """
@@ -239,7 +278,7 @@ class Tektronix_MSO2024(DeviceManager):
         """
         self._write("ACQuire:STOPAfter SEQuence", acquisition_stop_after="SEQUENCE")
         self._write("ACQuire:STATE RUN", acquisition_state="RUN")
-        print("Oscilloscope: Armed for single-shot (waiting for trigger)")
+        logger.info("Oscilloscope: Armed for single-shot (waiting for trigger)")
 
     def get_acquisition_state(self):
         """
@@ -327,7 +366,7 @@ class Tektronix_MSO2024(DeviceManager):
         current_pos = self.get_vertical_position(channel)
         new_pos = current_pos + delta
         self.set_vertical_position(channel, new_pos)
-        print(f"CH{channel} moved to vertical position: {new_pos:.2f} divs")
+        logger.info("CH%s moved to vertical position: %.2f divs", channel, new_pos)
 
     # ==========================================
     # TRIGGER
@@ -526,7 +565,7 @@ class Tektronix_MSO2024(DeviceManager):
         times, volts = self.get_waveform_scaled(channel)
 
         if not times:
-            print("No data captured.")
+            logger.warning("No data captured.")
             return
 
         # Apply windowing if specified
@@ -541,14 +580,14 @@ class Tektronix_MSO2024(DeviceManager):
             times = times[-max_points:]
             volts = volts[-max_points:]
             actual_time = times[-1] - times[0]
-            print(f"Saving {max_points} points ({actual_time:.6f} seconds) - most recent data")
+            logger.info("Saving %s points (%.6f seconds) - most recent data", max_points, actual_time)
 
         with open(filename, "w", newline="") as csvfile:
             writer = csv.writer(csvfile)
             writer.writerow(["Time (s)", f"Channel {channel} Voltage (V)"])
             for t, v in zip(times, volts, strict=True):
                 writer.writerow([t, v])
-        print(f"Waveform from Channel {channel} saved to {filename}")
+        logger.info("Waveform from Channel %s saved to %s", channel, filename)
 
     def save_waveforms_csv(self, channels, filename, max_points=None, time_window=None):
         """
@@ -571,7 +610,7 @@ class Tektronix_MSO2024(DeviceManager):
 
             t, v = self.get_waveform_scaled(channel)
             if not t:
-                print(f"No data captured from Channel {channel}.")
+                logger.warning("No data captured from Channel %s.", channel)
                 continue
 
             channel_data[channel] = v
@@ -579,7 +618,7 @@ class Tektronix_MSO2024(DeviceManager):
                 times = t  # Use time base from first valid channel
 
         if not channel_data:
-            print("No data captured from any channel.")
+            logger.warning("No data captured from any channel.")
             return
 
         # Apply windowing if specified
@@ -595,7 +634,7 @@ class Tektronix_MSO2024(DeviceManager):
             for ch in channel_data:
                 channel_data[ch] = channel_data[ch][-max_points:]
             actual_time = times[-1] - times[0]
-            print(f"Saving {max_points} points ({actual_time:.6f} seconds) - most recent data")
+            logger.info("Saving %s points (%.6f seconds) - most recent data", max_points, actual_time)
 
         # Write CSV
         with open(filename, "w", newline="") as csvfile:
@@ -613,7 +652,7 @@ class Tektronix_MSO2024(DeviceManager):
                 writer.writerow(row)
 
         channels_str = ",".join(str(ch) for ch in sorted(channels))
-        print(f"Waveforms from channels {channels_str} saved to {filename}")
+        logger.info("Waveforms from channels %s saved to %s", channels_str, filename)
 
     # Measurement Shorthands
     def measure_peak_to_peak(self, channel):

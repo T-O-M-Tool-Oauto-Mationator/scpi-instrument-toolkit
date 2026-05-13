@@ -1150,6 +1150,9 @@ class MockEV2300(MockBase):
     def probe_command(self, cmd, i2c_addr=0x08, register=0x00, data=b"", write_submit=False):
         return {"ok": True, "cmd": cmd | 0x40, "probe_cmd": cmd, "error": False}
 
+    def wait_for_bq(self, timeout_s: float = 30.0, poll_interval_s: float = 0.5) -> None:
+        self._wait_for_bq_calls = getattr(self, "_wait_for_bq_calls", 0) + 1
+
 
 def get_mock_devices(verbose=True):
     from lab_instruments import ColorPrinter

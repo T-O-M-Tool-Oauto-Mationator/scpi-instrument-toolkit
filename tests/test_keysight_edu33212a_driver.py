@@ -54,6 +54,23 @@ class TestOutputControl:
         device.disable_all_channels()
         assert mock_inst.write.call_count > 0
 
+    def test_disable_all_channels_uses_MIN_not_zero(self, awg):
+        """Regression: previously wrote FREQuency 0.0 / VOLTage 0.0 which the
+        instrument silently clipped, polluting the error queue with -222.
+        The fix uses SCPI MINimum so the parked values are documented-valid."""
+        device, mock_inst = awg
+        device.disable_all_channels()
+        cmds = [c.args[0] for c in mock_inst.write.call_args_list]
+        # Each channel must park freq and amplitude at MINimum, not 0.0
+        for ch in (1, 2):
+            assert f"SOURce{ch}:FREQuency MINimum" in cmds
+            assert f"SOURce{ch}:VOLTage MINimum" in cmds
+            # And must NOT have written the old 0.0 forms
+            assert f"SOURce{ch}:FREQuency 0.0" not in cmds
+            assert f"SOURce{ch}:VOLTage 0.0" not in cmds
+            # Output must be disabled at the end
+            assert f"OUTPut{ch} OFF" in cmds
+
     def test_set_output_load_inf(self, awg):
         device, mock_inst = awg
         device.set_output_load(1, "INF")
@@ -264,3 +281,146 @@ class TestModulation:
         device, mock_inst = awg
         device.set_fsk(1, False)
         mock_inst.write.assert_called()
+
+
+# ---------------------------------------------------------------------------
+# Numeric validation (Rule 5) — bounds taken from EDU33210 Series User's Guide
+# ---------------------------------------------------------------------------
+
+
+class TestNumericValidation:
+    def test_set_square_duty_below_min_raises(self, awg):
+        device, _ = awg
+        with pytest.raises(ValueError, match=r"out of range"):
+            device.set_square_duty(1, 0.0)
+
+    def test_set_square_duty_above_max_raises(self, awg):
+        device, _ = awg
+        with pytest.raises(ValueError):
+            device.set_square_duty(1, 100.0)
+
+    def test_set_square_duty_at_edges_passes(self, awg):
+        device, mock_inst = awg
+        device.set_square_duty(1, 0.01)
+        device.set_square_duty(1, 99.99)
+        assert mock_inst.write.call_count >= 2
+
+    def test_set_ramp_symmetry_below_min_raises(self, awg):
+        device, _ = awg
+        with pytest.raises(ValueError):
+            device.set_ramp_symmetry(1, -1.0)
+
+    def test_set_ramp_symmetry_above_max_raises(self, awg):
+        device, _ = awg
+        with pytest.raises(ValueError):
+            device.set_ramp_symmetry(1, 100.1)
+
+    def test_set_pulse_width_below_min_raises(self, awg):
+        device, _ = awg
+        with pytest.raises(ValueError, match=r">= 16 ns"):
+            device.set_pulse_width(1, 10e-9)
+
+    def test_set_pulse_width_at_min_passes(self, awg):
+        device, mock_inst = awg
+        device.set_pulse_width(1, 16e-9)
+        mock_inst.write.assert_called_with("SOURce1:FUNCtion:PULSe:WIDTh 1.6e-08")
+
+    def test_set_pulse_duty_out_of_range_raises(self, awg):
+        device, _ = awg
+        with pytest.raises(ValueError):
+            device.set_pulse_duty(1, 100.0)
+
+    def test_set_pulse_edge_leading_too_short_raises(self, awg):
+        device, _ = awg
+        with pytest.raises(ValueError, match=r"leading edge .* out of range"):
+            device.set_pulse_edge(1, leading=1e-9)
+
+    def test_set_pulse_edge_trailing_too_long_raises(self, awg):
+        device, _ = awg
+        with pytest.raises(ValueError, match=r"trailing edge .* out of range"):
+            device.set_pulse_edge(1, trailing=10e-6)
+
+    def test_set_pulse_edge_within_range_passes(self, awg):
+        device, mock_inst = awg
+        device.set_pulse_edge(1, leading=10e-9, trailing=500e-9)
+        cmds = [c.args[0] for c in mock_inst.write.call_args_list]
+        assert any("LEADing 1e-08" in c for c in cmds)
+        assert any("TRAiling 5e-07" in c for c in cmds)
+
+    def test_set_am_depth_above_120_raises(self, awg):
+        device, _ = awg
+        with pytest.raises(ValueError, match=r"AM depth"):
+            device.set_am(1, True, depth=121.0)
+
+    def test_set_am_depth_state_off_skips_validation(self, awg):
+        # When state=False, depth is unused so validation is skipped.
+        device, mock_inst = awg
+        device.set_am(1, False, depth=999.0)
+        mock_inst.write.assert_called_with("SOURce1:AM:STATe OFF")
+
+    def test_set_pm_deviation_above_360_raises(self, awg):
+        device, _ = awg
+        with pytest.raises(ValueError, match=r"PM deviation"):
+            device.set_pm(1, True, deviation=361.0)
+
+    def test_set_burst_n_cycles_zero_raises(self, awg):
+        device, _ = awg
+        with pytest.raises(ValueError, match=r"n_cycles"):
+            device.set_burst(1, True, n_cycles=0)
+
+    def test_set_burst_n_cycles_above_max_raises(self, awg):
+        device, _ = awg
+        with pytest.raises(ValueError):
+            device.set_burst(1, True, n_cycles=100_000_001)
+
+    def test_set_burst_phase_out_of_range_raises(self, awg):
+        device, _ = awg
+        with pytest.raises(ValueError, match=r"phase"):
+            device.set_burst(1, True, n_cycles=3, phase=361.0)
+
+    def test_set_burst_state_off_skips_validation(self, awg):
+        # When state=False, n_cycles/phase are unused.
+        device, mock_inst = awg
+        device.set_burst(1, False, n_cycles=99999999999, phase=999)
+        mock_inst.write.assert_called_with("SOURce1:BURSt:STATe OFF")
+
+    def test_set_pulse_period_below_min_raises(self, awg):
+        device, _ = awg
+        with pytest.raises(ValueError, match=r"out of range"):
+            device.set_pulse_period(1, 1e-9)  # 1 ns < 33 ns min
+
+    def test_set_pulse_period_at_min_passes(self, awg):
+        device, mock_inst = awg
+        device.set_pulse_period(1, 33e-9)
+        cmds = [c.args[0] for c in mock_inst.write.call_args_list]
+        assert any("PULSe:PERiod" in c for c in cmds)
+
+    def test_set_fm_zero_deviation_raises(self, awg):
+        device, _ = awg
+        with pytest.raises(ValueError, match=r"FM deviation"):
+            device.set_fm(1, True, deviation=0.0)
+
+    def test_set_fm_negative_deviation_raises(self, awg):
+        device, _ = awg
+        with pytest.raises(ValueError):
+            device.set_fm(1, True, deviation=-10.0)
+
+    def test_set_pwm_negative_deviation_raises(self, awg):
+        device, _ = awg
+        with pytest.raises(ValueError, match=r"PWM deviation"):
+            device.set_pwm(1, True, deviation=-1e-6)
+
+
+# ---------------------------------------------------------------------------
+# Context manager — Rule 7: __exit__ must not mask in-block exceptions.
+# ---------------------------------------------------------------------------
+
+
+class TestExitDoesNotMaskExceptions:
+    def test_exit_swallows_cleanup_error_so_user_exception_propagates(self, awg):
+        device, mock_inst = awg
+        # Enter normally; arm the side_effect just before user code raises so
+        # only __exit__'s cleanup writes will fail.
+        with pytest.raises(ZeroDivisionError), device:
+            mock_inst.write.side_effect = RuntimeError("instrument unresponsive")
+            _ = 1 / 0  # noqa: B018  user code raises

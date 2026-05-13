@@ -16,11 +16,13 @@ irm "https://raw.githubusercontent.com/T-O-M-Tool-Oauto-Mationator/scpi-instrume
 
 That's it. It installs Python, git, and the toolkit automatically. Then jump to [Start the REPL](#start-the-repl).
 
+**Using NI TestStand?** After the line above, also run `setup-teststand.ps1` to create a TestStand-compatible venv on your `H:` drive and have the script validate it for you. See the [NI TestStand Setup guide](https://t-o-m-tool-oauto-mationator.github.io/scpi-instrument-toolkit/teststand.html) for details.
+
 ---
 
 ## Everyone Else — Install
 
-You need Python 3.8+. Then:
+You need Python 3.10+ (use 3.12 if you plan to drive the toolkit from NI TestStand). Then:
 
 ```
 pip install "git+https://github.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit.git"

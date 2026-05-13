@@ -6,12 +6,17 @@ Protocol: SCPI over USB-TMC/VISA
 Based on InfiniiVision 1000 X-Series Programmer's Guide
 """
 
+import contextlib
+import logging
 import time
 
 import numpy as np
+import pyvisa
 
 from .device_manager import DeviceManager
 from .rigol_dho804 import WaveformData
+
+logger = logging.getLogger(__name__)
 
 
 class Keysight_DSOX1204G(DeviceManager):
@@ -28,6 +33,7 @@ class Keysight_DSOX1204G(DeviceManager):
     _ACQ_TYPE_ALLOWLIST = ("NORMAL", "AVERAGE", "HRESOLUTION", "PEAK")
     _TRIGGER_SWEEP_ALLOWLIST = ("AUTO", "NORMAL")
     _AWG_FUNC_ALLOWLIST = ("SINusoid", "SQUare", "RAMP", "PULSe", "DC", "NOISe")
+    _WAVEFORM_POINTS_MODE_ALLOWLIST = ("NORMAL", "MAXIMUM", "RAW")
     _BW_LIMIT_MAP = {"20M": "ON", "ON": "ON", "OFF": "OFF"}
 
     # Measurement type mapping for Keysight InfiniiVision 1000X
@@ -80,9 +86,15 @@ class Keysight_DSOX1204G(DeviceManager):
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        """Context manager exit: ensure safe state (fires even after exceptions)."""
-        self.disable_all_channels()
-        self.awg_set_output_enable(False)
+        """Context manager exit: ensure safe state (fires even after exceptions).
+
+        Suppresses cleanup errors so an exception inside the `with` block is
+        not masked if the instrument is unresponsive at teardown.
+        """
+        with contextlib.suppress(Exception):
+            self.disable_all_channels()
+        with contextlib.suppress(Exception):
+            self.awg_set_output_enable(False)
 
     # ========================================
     # Connection
@@ -106,6 +118,35 @@ class Keysight_DSOX1204G(DeviceManager):
         if channel not in (1, 2, 3, 4):
             raise ValueError(f"Channel must be 1-4, got {channel}")
 
+    def _safe_query(self, cmd: str) -> str:
+        # Firmware <= 02.12 occasionally returns a USB-TMC INP_PROT_VIOL on the
+        # first query after a long burst of writes (e.g. multi-section scripts).
+        # Single-shot recovery: instrument.clear() + retry. If the retry also
+        # fails we re-raise so the caller sees a real error.
+        try:
+            return self.instrument.query(cmd)
+        except pyvisa.errors.VisaIOError as e:
+            if e.error_code != pyvisa.constants.VI_ERROR_INP_PROT_VIOL:
+                raise
+            with contextlib.suppress(Exception):
+                self.instrument.clear()
+            time.sleep(0.1)
+            self.instrument.write("*CLS")
+            time.sleep(0.05)
+            return self.instrument.query(cmd)
+
+    def _require_channel_displayed(self, channel: int) -> None:
+        # Programmer's Guide p347/p623: :MEASure and :WAVeform queries only
+        # operate on a displayed source. On firmware <= 02.12 the documented
+        # 9.9E+37 sentinel is not returned for an OFF channel — instead the
+        # USB-TMC parser wedges, requiring instrument.clear() to recover.
+        response = self._safe_query(f":CHANnel{channel}:DISPlay?").strip()
+        if response not in ("1", "ON"):
+            raise RuntimeError(
+                f"CH{channel} is not displayed (DISPlay={response!r}); "
+                f"call enable_channel({channel}) before measuring or acquiring."
+            )
+
     def _resolve_meas_type(self, measurement_type: str) -> str:
         """Map a user-facing measurement name to its Keysight SCPI measurement string."""
         return self._MEAS_MAP.get(measurement_type.lower(), measurement_type)
@@ -123,27 +164,27 @@ class Keysight_DSOX1204G(DeviceManager):
     def run(self) -> None:
         """Start running the oscilloscope (continuous acquisition)."""
         self._write(":RUN", state="running")
-        print("Oscilloscope running")
+        logger.info("Oscilloscope running")
 
     def stop(self) -> None:
         """Stop the oscilloscope acquisition."""
         self._write(":STOP", state="stopped")
-        print("Oscilloscope stopped")
+        logger.info("Oscilloscope stopped")
 
     def single(self) -> None:
         """Set oscilloscope to single trigger mode and arm for one acquisition."""
         self._write(":SINGle", state="single")
-        print("Single trigger armed")
+        logger.info("Single trigger armed")
 
     def autoset(self) -> None:
         """Perform an autoscale on the oscilloscope (Keysight uses AUToscale)."""
         self._write(":AUToscale")
-        print("Autoscale executed - optimizing display settings...")
+        logger.info("Autoscale executed - optimizing display settings...")
 
     def force_trigger(self) -> None:
         """Generate a trigger signal forcefully (Keysight uses TRIGger:FORCe)."""
         self._write(":TRIGger:FORCe")
-        print("Trigger forced")
+        logger.info("Trigger forced")
 
     def digitize(self, channel: int = None) -> None:
         """
@@ -160,10 +201,10 @@ class Keysight_DSOX1204G(DeviceManager):
         try:
             if channel is not None:
                 self._write(f":DIGitize CHANnel{channel}")
-                print(f"Digitize CH{channel} complete")
+                logger.info(f"Digitize CH{channel} complete")
             else:
                 self._write(":DIGitize")
-                print("Digitize complete")
+                logger.info("Digitize complete")
         finally:
             self.instrument.timeout = saved_timeout
 
@@ -175,13 +216,13 @@ class Keysight_DSOX1204G(DeviceManager):
         """Enable a channel."""
         self._validate_channel(channel)
         self._write(f":CHANnel{channel}:DISPlay ON", **{f"ch{channel}_display": True})
-        print(f"CH{channel} enabled")
+        logger.info(f"CH{channel} enabled")
 
     def disable_channel(self, channel: int) -> None:
         """Disable a channel."""
         self._validate_channel(channel)
         self._write(f":CHANnel{channel}:DISPlay OFF", **{f"ch{channel}_display": False})
-        print(f"CH{channel} disabled")
+        logger.info(f"CH{channel} disabled")
 
     def enable_all_channels(self) -> None:
         """Enable all analog channels."""
@@ -199,13 +240,15 @@ class Keysight_DSOX1204G(DeviceManager):
 
         Args:
             channel: Channel number (1-4)
-            volts_per_div: Vertical scale in volts per division
+            volts_per_div: Vertical scale in volts per division (must be > 0)
             offset: Vertical offset in volts
         """
         self._validate_channel(channel)
+        if not (float(volts_per_div) > 0.0):
+            raise ValueError(f"Vertical scale {volts_per_div} V/div must be positive")
         self._write(f":CHANnel{channel}:SCALe {volts_per_div}", **{f"ch{channel}_scale": volts_per_div})
         self._write(f":CHANnel{channel}:OFFSet {offset}", **{f"ch{channel}_offset": offset})
-        print(f"CH{channel}: {volts_per_div} V/div, offset {offset} V")
+        logger.info(f"CH{channel}: {volts_per_div} V/div, offset {offset} V")
 
     def set_vertical_position(self, channel: int, position: float) -> None:
         """
@@ -217,7 +260,7 @@ class Keysight_DSOX1204G(DeviceManager):
         """
         self._validate_channel(channel)
         self._write(f":CHANnel{channel}:OFFSet {position}", **{f"ch{channel}_offset": position})
-        print(f"CH{channel} vertical offset: {position} V")
+        logger.info(f"CH{channel} vertical offset: {position} V")
 
     def get_vertical_position(self, channel: int) -> float:
         """
@@ -261,7 +304,7 @@ class Keysight_DSOX1204G(DeviceManager):
             raise ValueError(f"Coupling must be one of {self._COUPLING_ALLOWLIST}, got '{coupling}'")
 
         self._write(f":CHANnel{channel}:COUPling {coupling}", **{f"ch{channel}_coupling": coupling})
-        print(f"CH{channel} coupling: {coupling}")
+        logger.info(f"CH{channel} coupling: {coupling}")
 
     def set_probe_attenuation(self, channel: int, ratio: float) -> None:
         """
@@ -269,11 +312,13 @@ class Keysight_DSOX1204G(DeviceManager):
 
         Args:
             channel: Channel number (1-4)
-            ratio: Probe attenuation ratio (e.g., 1, 10, 100)
+            ratio: Probe attenuation ratio in [0.1, 10000]
         """
         self._validate_channel(channel)
+        if not (0.1 <= float(ratio) <= 10000.0):
+            raise ValueError(f"Probe attenuation {ratio} out of range (0.1 to 10000)")
         self._write(f":CHANnel{channel}:PROBe {ratio}", **{f"ch{channel}_probe": ratio})
-        print(f"CH{channel} probe ratio: {ratio}X")
+        logger.info(f"CH{channel} probe ratio: {ratio}X")
 
     def set_channel_label(self, channel: int, label: str, show: bool = True) -> None:
         """
@@ -288,7 +333,7 @@ class Keysight_DSOX1204G(DeviceManager):
         if show:
             self._write(":DISPlay:LABel ON")
         self._write(f':CHANnel{channel}:LABel "{label}"', **{f"ch{channel}_label": label})
-        print(f'CH{channel} label: "{label}"')
+        logger.info(f'CH{channel} label: "{label}"')
 
     def invert_channel(self, channel: int, enable: bool) -> None:
         """
@@ -302,7 +347,7 @@ class Keysight_DSOX1204G(DeviceManager):
         value = "ON" if enable else "OFF"
         self._write(f":CHANnel{channel}:INVert {value}", **{f"ch{channel}_inverted": enable})
         state = "inverted" if enable else "normal"
-        print(f"CH{channel} display: {state}")
+        logger.info(f"CH{channel} display: {state}")
 
     def set_bandwidth_limit(self, channel: int, limit: str) -> None:
         """
@@ -326,7 +371,7 @@ class Keysight_DSOX1204G(DeviceManager):
             f":CHANnel{channel}:BWLimit {keysight_limit}",
             **{f"ch{channel}_bwlimit": keysight_limit},
         )
-        print(f"CH{channel} bandwidth limit: {keysight_limit}")
+        logger.info(f"CH{channel} bandwidth limit: {keysight_limit}")
 
     # ========================================
     # Horizontal Control
@@ -337,10 +382,12 @@ class Keysight_DSOX1204G(DeviceManager):
         Set horizontal timebase scale.
 
         Args:
-            seconds_per_div: Time per division in seconds
+            seconds_per_div: Time per division in seconds (5 ns to 50 s)
         """
+        if not (5e-9 <= float(seconds_per_div) <= 50.0):
+            raise ValueError(f"Horizontal scale {seconds_per_div} s/div out of range (5 ns to 50 s)")
         self._write(f":TIMebase:SCALe {seconds_per_div}", timebase_scale=seconds_per_div)
-        print(f"Timebase: {seconds_per_div} s/div")
+        logger.info(f"Timebase: {seconds_per_div} s/div")
 
     def set_horizontal_offset(self, offset: float) -> None:
         """
@@ -352,7 +399,7 @@ class Keysight_DSOX1204G(DeviceManager):
             offset: Time offset in seconds
         """
         self._write(f":TIMebase:POSition {offset}", timebase_position=offset)
-        print(f"Horizontal position: {offset} s")
+        logger.info(f"Horizontal position: {offset} s")
 
     def set_horizontal_position(self, offset: float) -> None:
         """Alias for set_horizontal_offset."""
@@ -378,7 +425,7 @@ class Keysight_DSOX1204G(DeviceManager):
         current_pos = self.get_horizontal_offset()
         new_pos = current_pos + delta
         self.set_horizontal_offset(new_pos)
-        print(f"Horizontal position moved to: {new_pos:.6f} s")
+        logger.info(f"Horizontal position moved to: {new_pos:.6f} s")
 
     _TIMEBASE_MODE_ALLOWLIST = ("MAIN", "WINDOW", "XY", "ROLL")
     _TIMEBASE_REF_ALLOWLIST = ("LEFT", "CENTER", "RIGHT")
@@ -395,7 +442,7 @@ class Keysight_DSOX1204G(DeviceManager):
             raise ValueError(f"Timebase mode must be one of {self._TIMEBASE_MODE_ALLOWLIST}, got '{mode}'")
         mode_map = {"MAIN": "MAIN", "WINDOW": "WINDow", "XY": "XY", "ROLL": "ROLL"}
         self._write(f":TIMebase:MODE {mode_map[mode_upper]}", timebase_mode=mode_upper)
-        print(f"Timebase mode: {mode_upper}")
+        logger.info(f"Timebase mode: {mode_upper}")
 
     def get_timebase_mode(self) -> str:
         """Query the current timebase mode."""
@@ -414,7 +461,7 @@ class Keysight_DSOX1204G(DeviceManager):
             raise ValueError(f"Timebase reference must be one of {self._TIMEBASE_REF_ALLOWLIST}, got '{ref}'")
         ref_map = {"LEFT": "LEFT", "CENTER": "CENTer", "RIGHT": "RIGHt"}
         self._write(f":TIMebase:REFerence {ref_map[ref_upper]}", timebase_reference=ref_upper)
-        print(f"Timebase reference: {ref_upper}")
+        logger.info(f"Timebase reference: {ref_upper}")
 
     def get_timebase_reference(self) -> str:
         """Query the current timebase reference position."""
@@ -463,7 +510,7 @@ class Keysight_DSOX1204G(DeviceManager):
         if mode_upper == "SINGLE":
             self.single()
 
-        print(f"Trigger: CH{channel}, {level}V, {slope}")
+        logger.info(f"Trigger: CH{channel}, {level}V, {slope}")
 
     def set_trigger_sweep(self, sweep: str) -> None:
         """
@@ -478,7 +525,7 @@ class Keysight_DSOX1204G(DeviceManager):
 
         sweep_cmd = "NORMal" if sweep == "NORMAL" else "AUTO"
         self._write(f":TRIGger:SWEep {sweep_cmd}", trigger_sweep=sweep_cmd)
-        print(f"Trigger sweep mode: {sweep}")
+        logger.info(f"Trigger sweep mode: {sweep}")
 
     _TRIGGER_COUPLING_ALLOWLIST = ("AC", "DC", "LFREJECT")
 
@@ -492,7 +539,7 @@ class Keysight_DSOX1204G(DeviceManager):
         if holdoff < 60e-9:
             raise ValueError(f"Holdoff must be >= 60 ns, got {holdoff}")
         self._write(f":TRIGger:HOLDoff {holdoff}", trigger_holdoff=holdoff)
-        print(f"Trigger holdoff: {holdoff} s")
+        logger.info(f"Trigger holdoff: {holdoff} s")
 
     def get_trigger_holdoff(self) -> float:
         """Query the current trigger holdoff time."""
@@ -503,13 +550,13 @@ class Keysight_DSOX1204G(DeviceManager):
         """Enable or disable trigger noise reject filter."""
         val = 1 if enable else 0
         self._write(f":TRIGger:NREJect {val}", trigger_nreject=enable)
-        print(f"Trigger noise reject: {'ON' if enable else 'OFF'}")
+        logger.info(f"Trigger noise reject: {'ON' if enable else 'OFF'}")
 
     def set_trigger_hf_reject(self, enable: bool) -> None:
         """Enable or disable trigger high-frequency reject filter."""
         val = 1 if enable else 0
         self._write(f":TRIGger:HFReject {val}", trigger_hfreject=enable)
-        print(f"Trigger HF reject: {'ON' if enable else 'OFF'}")
+        logger.info(f"Trigger HF reject: {'ON' if enable else 'OFF'}")
 
     def set_trigger_coupling(self, coupling: str) -> None:
         """
@@ -526,7 +573,7 @@ class Keysight_DSOX1204G(DeviceManager):
             f":TRIGger:EDGE:COUPling {coupling_map[coupling_upper]}",
             trigger_coupling=coupling_upper,
         )
-        print(f"Trigger coupling: {coupling_upper}")
+        logger.info(f"Trigger coupling: {coupling_upper}")
 
     def get_trigger_status(self) -> str:
         """
@@ -584,10 +631,11 @@ class Keysight_DSOX1204G(DeviceManager):
             float: Measurement value
         """
         self._validate_channel(channel)
+        self._require_channel_displayed(channel)
         meas_type = self._resolve_meas_type(measurement_type)
 
         try:
-            response = self.instrument.query(f":MEASure:{meas_type}? CHANnel{channel}")
+            response = self._safe_query(f":MEASure:{meas_type}? CHANnel{channel}")
             value = float(response.strip())
             return value
         except (ValueError, TypeError):
@@ -612,19 +660,19 @@ class Keysight_DSOX1204G(DeviceManager):
     def clear_measurements(self) -> None:
         """Clear all measurement items from the display."""
         self._write(":MEASure:CLEar")
-        print("Measurement items cleared from display")
+        logger.info("Measurement items cleared from display")
 
     def set_measurement_statistics(self, enable: bool) -> None:
         """Enable or disable measurement statistics display."""
         # Keysight 1000X uses :MEASure:STATistics:DISPlay ON|OFF
         state = "ON" if enable else "OFF"
         self._write(f":MEASure:STATistics:DISPlay {state}", meas_statistics=enable)
-        print(f"Measurement statistics: {state}")
+        logger.info(f"Measurement statistics: {state}")
 
     def reset_measurement_statistics(self) -> None:
         """Reset all measurement statistics."""
         self._write(":MEASure:STATistics:RESet")
-        print("Measurement statistics reset")
+        logger.info("Measurement statistics reset")
 
     def get_measurement_results(self) -> str:
         """
@@ -659,9 +707,11 @@ class Keysight_DSOX1204G(DeviceManager):
         """
         self._validate_channel(ch1)
         self._validate_channel(ch2)
+        self._require_channel_displayed(ch1)
+        self._require_channel_displayed(ch2)
 
         try:
-            response = self.instrument.query(f":MEASure:DELay? CHANnel{ch1},CHANnel{ch2}")
+            response = self._safe_query(f":MEASure:DELay? CHANnel{ch1},CHANnel{ch2}")
             return float(response.strip())
         except (ValueError, TypeError):
             return float("nan")
@@ -740,9 +790,10 @@ class Keysight_DSOX1204G(DeviceManager):
         """
         if channel is not None:
             self._validate_channel(channel)
-            response = self.instrument.query(f":MEASure:COUNter? CHANnel{channel}")
+            self._require_channel_displayed(channel)
+            response = self._safe_query(f":MEASure:COUNter? CHANnel{channel}")
         else:
-            response = self.instrument.query(":MEASure:COUNter?")
+            response = self._safe_query(":MEASure:COUNter?")
         try:
             return float(response.strip())
         except (ValueError, TypeError):
@@ -791,7 +842,22 @@ class Keysight_DSOX1204G(DeviceManager):
             WaveformData object with time and voltage arrays
         """
         self._validate_channel(channel)
+        self._require_channel_displayed(channel)
         mode = mode.upper()
+        if mode not in self._WAVEFORM_POINTS_MODE_ALLOWLIST:
+            raise ValueError(f"Mode must be one of {self._WAVEFORM_POINTS_MODE_ALLOWLIST}, got '{mode}'")
+
+        # Programmer's Guide p624: "You should first acquire the data with the
+        # :DIGitize command, then immediately read the data with the
+        # :WAVeform:DATA? query before changing any instrument setup."
+        # Skipping :DIGitize on firmware <= 02.12 caused the binary
+        # block transfer to fail with INP_PROT_VIOL while the scope was running.
+        saved_timeout = self.instrument.timeout
+        self.instrument.timeout = 60000
+        try:
+            self.instrument.write(f":DIGitize CHANnel{channel}")
+        finally:
+            self.instrument.timeout = saved_timeout
 
         # Configure waveform acquisition
         self._write(f":WAVeform:SOURce CHANnel{channel}", waveform_source=channel)
@@ -803,7 +869,7 @@ class Keysight_DSOX1204G(DeviceManager):
         preamble = self.get_waveform_preamble()
 
         # Get waveform data
-        print(f"Acquiring waveform data ({preamble['points']} points)...")
+        logger.info(f"Acquiring waveform data ({preamble['points']} points)...")
         raw_data = self.instrument.query_binary_values(
             ":WAVeform:DATA?",
             datatype="B",  # Unsigned byte
@@ -829,7 +895,7 @@ class Keysight_DSOX1204G(DeviceManager):
             points=len(raw_data),
         )
 
-        print(f"Acquired {len(waveform)} points from CH{channel}")
+        logger.info(f"Acquired {len(waveform)} points from CH{channel}")
         return waveform
 
     def save_waveform_csv(
@@ -855,7 +921,7 @@ class Keysight_DSOX1204G(DeviceManager):
         volts = waveform.voltage
 
         if len(times) == 0:
-            print("No data captured.")
+            logger.warning("No data captured.")
             return
 
         # Apply windowing if specified
@@ -868,7 +934,7 @@ class Keysight_DSOX1204G(DeviceManager):
             times = times[-max_points:]
             volts = volts[-max_points:]
             actual_time = times[-1] - times[0]
-            print(f"Saving {max_points} points ({actual_time:.6f} seconds) - most recent data")
+            logger.info(f"Saving {max_points} points ({actual_time:.6f} seconds) - most recent data")
 
         with open(filename, "w", newline="") as csvfile:
             writer = csv.writer(csvfile)
@@ -876,7 +942,7 @@ class Keysight_DSOX1204G(DeviceManager):
             for t, v in zip(times, volts, strict=True):
                 writer.writerow([t, v])
 
-        print(f"Waveform from CH{channel} saved to {filename}")
+        logger.info(f"Waveform from CH{channel} saved to {filename}")
 
     def save_waveforms_csv(
         self,
@@ -904,7 +970,7 @@ class Keysight_DSOX1204G(DeviceManager):
             waveform = self.acquire_waveform(channel, mode="NORMAL")
 
             if len(waveform.time) == 0:
-                print(f"No data captured from CH{channel}.")
+                logger.warning(f"No data captured from CH{channel}.")
                 continue
 
             channel_data[channel] = waveform.voltage
@@ -912,7 +978,7 @@ class Keysight_DSOX1204G(DeviceManager):
                 times = waveform.time
 
         if not channel_data:
-            print("No data captured from any channel.")
+            logger.warning("No data captured from any channel.")
             return
 
         # Apply windowing if specified
@@ -926,7 +992,7 @@ class Keysight_DSOX1204G(DeviceManager):
             for ch in channel_data:
                 channel_data[ch] = channel_data[ch][-max_points:]
             actual_time = times[-1] - times[0]
-            print(f"Saving {max_points} points ({actual_time:.6f} seconds) - most recent data")
+            logger.info(f"Saving {max_points} points ({actual_time:.6f} seconds) - most recent data")
 
         with open(filename, "w", newline="") as csvfile:
             writer = csv.writer(csvfile)
@@ -940,7 +1006,7 @@ class Keysight_DSOX1204G(DeviceManager):
                 writer.writerow(row)
 
         channels_list = ",".join(str(ch) for ch in sorted(channel_data.keys()))
-        print(f"Waveforms from CH{channels_list} saved to {filename}")
+        logger.info(f"Waveforms from CH{channels_list} saved to {filename}")
 
     def get_waveform_data(self, channel: int) -> list:
         """
@@ -979,15 +1045,15 @@ class Keysight_DSOX1204G(DeviceManager):
         Returns:
             bytes: PNG image data
         """
-        print("Capturing screenshot (this may take several seconds)...")
+        logger.info("Capturing screenshot (this may take several seconds)...")
         screenshot_data = self.instrument.query_binary_values(":DISPlay:DATA? PNG,COLor", datatype="B", container=bytes)
-        print(f"Screenshot captured ({len(screenshot_data)} bytes)")
+        logger.info(f"Screenshot captured ({len(screenshot_data)} bytes)")
         return screenshot_data
 
     def clear_display(self) -> None:
         """Clear all waveforms on the screen."""
         self._write(":DISPlay:CLEar")
-        print("Display cleared")
+        logger.info("Display cleared")
 
     def set_waveform_brightness(self, brightness: int) -> None:
         """
@@ -1000,7 +1066,7 @@ class Keysight_DSOX1204G(DeviceManager):
             raise ValueError(f"Brightness must be between 1 and 100, got {brightness}")
 
         self._write(f":DISPlay:INTensity:WAVeform {brightness}", display_brightness=brightness)
-        print(f"Waveform brightness set to {brightness}%")
+        logger.info(f"Waveform brightness set to {brightness}%")
 
     _PERSISTENCE_MAP = {
         "MIN": "MINimum",
@@ -1020,7 +1086,7 @@ class Keysight_DSOX1204G(DeviceManager):
         """
         mapped = self._PERSISTENCE_MAP.get(time_val.upper(), time_val)
         self._write(f":DISPlay:PERSistence {mapped}", display_persistence=mapped)
-        print(f"Persistence set to {mapped}")
+        logger.info(f"Persistence set to {mapped}")
 
     def set_display_type(self, display_type: str) -> None:
         """
@@ -1030,7 +1096,7 @@ class Keysight_DSOX1204G(DeviceManager):
             display_type: Display type (e.g., 'VECTORS')
         """
         self._write(":DISPlay:VECTors ON", display_vectors=True)
-        print("Display type set to VECTORS")
+        logger.info("Display type set to VECTORS")
 
     # ========================================
     # Acquisition Control
@@ -1048,17 +1114,21 @@ class Keysight_DSOX1204G(DeviceManager):
             raise ValueError(f"Acquisition type must be one of {self._ACQ_TYPE_ALLOWLIST}, got '{acq_type}'")
 
         self._write(f":ACQuire:TYPE {acq_type}", acq_type=acq_type)
-        print(f"Acquisition type set to {acq_type}")
+        logger.info(f"Acquisition type set to {acq_type}")
 
     def set_average_count(self, count: int) -> None:
         """
         Set the number of averages for AVERAGE acquisition mode.
 
         Args:
-            count: Number of averages
+            count: Number of averages (2 to 65536 per Programmer's Guide)
         """
+        # Reject floats — int(2.5) silently truncates to 2 and would otherwise
+        # send "2.5" to the SCPI parser.
+        if not isinstance(count, int) or isinstance(count, bool) or not (2 <= count <= 65536):
+            raise ValueError(f"Average count {count!r} must be an int in 2..65536")
         self._write(f":ACQuire:COUNt {count}", acq_count=count)
-        print(f"Average count set to {count}")
+        logger.info(f"Average count set to {count}")
 
     def get_sample_rate(self) -> float:
         """
@@ -1069,7 +1139,7 @@ class Keysight_DSOX1204G(DeviceManager):
         """
         response = self.instrument.query(":ACQuire:SRATe?")
         sample_rate = float(response.strip())
-        print(f"Sample rate: {sample_rate:.3e} Sa/s")
+        logger.info(f"Sample rate: {sample_rate:.3e} Sa/s")
         return sample_rate
 
     _ACQ_MODE_ALLOWLIST = ("RTIM", "SEGM")
@@ -1085,7 +1155,7 @@ class Keysight_DSOX1204G(DeviceManager):
         if mode not in self._ACQ_MODE_ALLOWLIST:
             raise ValueError(f"Acquisition mode must be one of {self._ACQ_MODE_ALLOWLIST}, got '{mode}'")
         self._write(f":ACQuire:MODE {mode}", acq_mode=mode)
-        print(f"Acquisition mode: {mode}")
+        logger.info(f"Acquisition mode: {mode}")
 
     def set_segment_count(self, count: int) -> None:
         """
@@ -1097,7 +1167,7 @@ class Keysight_DSOX1204G(DeviceManager):
         if count < 2:
             raise ValueError(f"Segment count must be >= 2, got {count}")
         self._write(f":ACQuire:SEGMented:COUNt {count}", segment_count=count)
-        print(f"Segment count: {count}")
+        logger.info(f"Segment count: {count}")
 
     def get_segment_count(self) -> int:
         """Query the current segment count."""
@@ -1114,7 +1184,7 @@ class Keysight_DSOX1204G(DeviceManager):
         if index < 1:
             raise ValueError(f"Segment index must be >= 1, got {index}")
         self._write(f":ACQuire:SEGMented:INDex {index}", segment_index=index)
-        print(f"Segment index: {index}")
+        logger.info(f"Segment index: {index}")
 
     def get_segment_index(self) -> int:
         """Query the current segment index."""
@@ -1134,7 +1204,7 @@ class Keysight_DSOX1204G(DeviceManager):
         """
         state = 1 if enable else 0
         self._write(f":WGEN:OUTPut {state}", awg_output=enable)
-        print(f"AWG output {'enabled' if enable else 'disabled'}")
+        logger.info(f"AWG output {'enabled' if enable else 'disabled'}")
 
     def awg_set_function(self, function: str) -> None:
         """
@@ -1147,7 +1217,7 @@ class Keysight_DSOX1204G(DeviceManager):
             raise ValueError(f"Function must be one of {self._AWG_FUNC_ALLOWLIST}, got '{function}'")
 
         self._write(f":WGEN:FUNCtion {function}", awg_function=function)
-        print(f"AWG function set to {function}")
+        logger.info(f"AWG function set to {function}")
 
     def awg_set_frequency(self, freq: float) -> None:
         """
@@ -1157,7 +1227,7 @@ class Keysight_DSOX1204G(DeviceManager):
             freq: Frequency in Hz
         """
         self._write(f":WGEN:FREQuency {freq}", awg_frequency=freq)
-        print(f"AWG frequency set to {freq} Hz")
+        logger.info(f"AWG frequency set to {freq} Hz")
 
     def awg_set_amplitude(self, amp: float) -> None:
         """
@@ -1167,7 +1237,7 @@ class Keysight_DSOX1204G(DeviceManager):
             amp: Amplitude in volts (Vpp)
         """
         self._write(f":WGEN:VOLTage {amp}", awg_amplitude=amp)
-        print(f"AWG amplitude set to {amp} Vpp")
+        logger.info(f"AWG amplitude set to {amp} Vpp")
 
     def awg_set_offset(self, offset: float) -> None:
         """
@@ -1177,27 +1247,31 @@ class Keysight_DSOX1204G(DeviceManager):
             offset: DC offset in volts
         """
         self._write(f":WGEN:VOLTage:OFFSet {offset}", awg_offset=offset)
-        print(f"AWG offset set to {offset} V")
+        logger.info(f"AWG offset set to {offset} V")
 
     def awg_set_square_duty(self, duty: float) -> None:
         """
         Set the AWG square wave duty cycle.
 
         Args:
-            duty: Duty cycle percentage
+            duty: Duty cycle percentage (20 to 80 per Programmer's Guide p666)
         """
+        if not (20.0 <= float(duty) <= 80.0):
+            raise ValueError(f"AWG square duty {duty}% out of range (20 to 80)")
         self._write(f":WGEN:FUNCtion:SQUare:DCYCle {duty}", awg_square_duty=duty)
-        print(f"AWG square duty cycle set to {duty}%")
+        logger.info(f"AWG square duty cycle set to {duty}%")
 
     def awg_set_ramp_symmetry(self, sym: float) -> None:
         """
         Set the AWG ramp symmetry.
 
         Args:
-            sym: Symmetry percentage
+            sym: Symmetry percentage (0 to 100 per Programmer's Guide p665)
         """
+        if not (0.0 <= float(sym) <= 100.0):
+            raise ValueError(f"AWG ramp symmetry {sym}% out of range (0 to 100)")
         self._write(f":WGEN:FUNCtion:RAMP:SYMMetry {sym}", awg_ramp_symmetry=sym)
-        print(f"AWG ramp symmetry set to {sym}%")
+        logger.info(f"AWG ramp symmetry set to {sym}%")
 
     def awg_configure_simple(
         self,
@@ -1217,7 +1291,7 @@ class Keysight_DSOX1204G(DeviceManager):
             offset: DC offset in volts (default: 0.0)
             enable: Enable output after configuration (default: True)
         """
-        print(f"Configuring AWG: {func}, {freq} Hz, {amp} Vpp, {offset} V offset")
+        logger.info(f"Configuring AWG: {func}, {freq} Hz, {amp} Vpp, {offset} V offset")
 
         # Disable output first for safety
         self.awg_set_output_enable(False)
@@ -1232,7 +1306,7 @@ class Keysight_DSOX1204G(DeviceManager):
         if enable:
             self.awg_set_output_enable(True)
 
-        print("AWG configured successfully")
+        logger.info("AWG configured successfully")
 
     _WGEN_MOD_TYPE_ALLOWLIST = ("AM", "FM", "FSK")
 
@@ -1240,7 +1314,7 @@ class Keysight_DSOX1204G(DeviceManager):
         """Enable or disable AWG modulation."""
         val = 1 if enable else 0
         self._write(f":WGEN:MODulation:STATe {val}", awg_mod_enable=enable)
-        print(f"AWG modulation: {'ON' if enable else 'OFF'}")
+        logger.info(f"AWG modulation: {'ON' if enable else 'OFF'}")
 
     def awg_set_modulation_type(self, mod_type: str) -> None:
         """
@@ -1253,7 +1327,7 @@ class Keysight_DSOX1204G(DeviceManager):
         if mod_type not in self._WGEN_MOD_TYPE_ALLOWLIST:
             raise ValueError(f"Modulation type must be one of {self._WGEN_MOD_TYPE_ALLOWLIST}, got '{mod_type}'")
         self._write(f":WGEN:MODulation:TYPE {mod_type}", awg_mod_type=mod_type)
-        print(f"AWG modulation type: {mod_type}")
+        logger.info(f"AWG modulation type: {mod_type}")
 
     def awg_set_pulse_width(self, width: float) -> None:
         """
@@ -1265,7 +1339,7 @@ class Keysight_DSOX1204G(DeviceManager):
         if width <= 0:
             raise ValueError(f"Pulse width must be > 0, got {width}")
         self._write(f":WGEN:FUNCtion:PULSe:WIDTh {width}", awg_pulse_width=width)
-        print(f"AWG pulse width: {width} s")
+        logger.info(f"AWG pulse width: {width} s")
 
     # ========================================
     # DVM (Digital Voltmeter)
@@ -1280,7 +1354,7 @@ class Keysight_DSOX1204G(DeviceManager):
         """
         state = "ON" if enable else "OFF"
         self._write(f":DVM:ENABle {state}", dvm_enable=enable)
-        print(f"DVM {'enabled' if enable else 'disabled'}")
+        logger.info(f"DVM {'enabled' if enable else 'disabled'}")
 
     def get_dvm_current(self) -> float:
         """
@@ -1291,7 +1365,7 @@ class Keysight_DSOX1204G(DeviceManager):
         """
         response = self.instrument.query(":DVM:CURRent?")
         value = float(response.strip())
-        print(f"DVM current value: {value} V")
+        logger.info(f"DVM current value: {value} V")
         return value
 
     def set_dvm_source(self, source: int) -> None:
@@ -1303,7 +1377,7 @@ class Keysight_DSOX1204G(DeviceManager):
         """
         self._validate_channel(source)
         self._write(f":DVM:SOURce CHANnel{source}", dvm_source=source)
-        print(f"DVM source set to CH{source}")
+        logger.info(f"DVM source set to CH{source}")
 
     def set_dvm_mode(self, mode: str) -> None:
         """
@@ -1313,7 +1387,7 @@ class Keysight_DSOX1204G(DeviceManager):
             mode: DVM mode (e.g., 'DC', 'ACRMs', 'DCRMS')
         """
         self._write(f":DVM:MODE {mode}", dvm_mode=mode)
-        print(f"DVM mode set to {mode}")
+        logger.info(f"DVM mode set to {mode}")
 
     # ========================================
     # Math (single channel via :FUNCtion)
@@ -1331,7 +1405,7 @@ class Keysight_DSOX1204G(DeviceManager):
         """
         state = "ON" if enable else "OFF"
         self._write(f":FUNCtion:DISPlay {state}", math_display=enable)
-        print(f"Math channel {'enabled' if enable else 'disabled'}")
+        logger.info(f"Math channel {'enabled' if enable else 'disabled'}")
 
     def configure_math_operation(self, math_ch: int, operation: str, source1: str, source2: str = None) -> None:
         """
@@ -1361,7 +1435,7 @@ class Keysight_DSOX1204G(DeviceManager):
             scpi_source2 = source2.upper().replace("CHAN", "CHANnel")
             self._write(f":FUNCtion:SOURce2 {scpi_source2}", math_source2=scpi_source2)
 
-        print(f"Math configured: {source1} {operation} {source2 if source2 else ''}")
+        logger.info(f"Math configured: {source1} {operation} {source2 if source2 else ''}")
 
     def configure_math_function(self, math_ch: int, function: str, source: str) -> None:
         """
@@ -1375,7 +1449,7 @@ class Keysight_DSOX1204G(DeviceManager):
         self._write(f":FUNCtion:OPERation {function}", math_operation=function)
         scpi_source = source.upper().replace("CHAN", "CHANnel")
         self._write(f":FUNCtion:SOURce1 {scpi_source}", math_source1=scpi_source)
-        print(f"Math configured: {function}({source})")
+        logger.info(f"Math configured: {function}({source})")
 
     def configure_fft(self, math_ch: int, source: str, window: str = "RECT") -> None:
         """
@@ -1399,7 +1473,7 @@ class Keysight_DSOX1204G(DeviceManager):
         }
         scpi_window = window_map.get(window.upper(), window)
         self._write(f":FUNCtion:FFT:WINDow {scpi_window}", math_fft_window=scpi_window)
-        print(f"FFT configured: source={source}, window={window}")
+        logger.info(f"FFT configured: source={source}, window={window}")
 
     def set_math_scale(self, math_ch: int, scale: float, offset: float = None) -> None:
         """
@@ -1413,9 +1487,9 @@ class Keysight_DSOX1204G(DeviceManager):
         self._write(f":FUNCtion:SCALe {scale}", math_scale=scale)
         if offset is not None:
             self._write(f":FUNCtion:OFFSet {offset}", math_offset=offset)
-            print(f"Math scale: {scale} V/div, offset: {offset} V")
+            logger.info(f"Math scale: {scale} V/div, offset: {offset} V")
         else:
-            print(f"Math scale: {scale} V/div")
+            logger.info(f"Math scale: {scale} V/div")
 
     # ========================================
     # Mask Test (:MTESt subsystem)
@@ -1431,7 +1505,7 @@ class Keysight_DSOX1204G(DeviceManager):
         state = "ON" if enable else "OFF"
         self._write(f":MTESt:ENABle {state}", mask_enable=enable)
         status = "enabled" if enable else "disabled"
-        print(f"Mask testing {status}")
+        logger.info(f"Mask testing {status}")
 
     def get_mask_enable(self) -> bool:
         """
@@ -1453,7 +1527,7 @@ class Keysight_DSOX1204G(DeviceManager):
         """
         self._validate_channel(channel)
         self._write(f":MTESt:SOURce CHANnel{channel}", mask_source=channel)
-        print(f"Mask test source set to CH{channel}")
+        logger.info(f"Mask test source set to CH{channel}")
 
     def get_mask_source(self) -> str:
         """
@@ -1470,35 +1544,39 @@ class Keysight_DSOX1204G(DeviceManager):
         Set the horizontal tolerance for the auto mask.
 
         Args:
-            tol: Horizontal tolerance in divisions
+            tol: Horizontal tolerance in divisions (0 to 40)
         """
+        if not (0.0 <= float(tol) <= 40.0):
+            raise ValueError(f"Mask X tolerance {tol} out of range (0 to 40 div)")
         self._write(f":MTESt:AMASk:XDELta {tol}", mask_tolerance_x=tol)
-        print(f"Mask horizontal tolerance: {tol}")
+        logger.info(f"Mask horizontal tolerance: {tol}")
 
     def set_mask_tolerance_y(self, tol: float) -> None:
         """
         Set the vertical tolerance for the auto mask.
 
         Args:
-            tol: Vertical tolerance in divisions
+            tol: Vertical tolerance in divisions (0 to 40)
         """
+        if not (0.0 <= float(tol) <= 40.0):
+            raise ValueError(f"Mask Y tolerance {tol} out of range (0 to 40 div)")
         self._write(f":MTESt:AMASk:YDELta {tol}", mask_tolerance_y=tol)
-        print(f"Mask vertical tolerance: {tol}")
+        logger.info(f"Mask vertical tolerance: {tol}")
 
     def create_mask(self) -> None:
         """Create a mask from the current waveform using auto mask."""
         self._write(":MTESt:AMASk:CREate")
-        print("Mask created from current waveform")
+        logger.info("Mask created from current waveform")
 
     def start_mask_test(self) -> None:
         """Start the mask test."""
         self._write(":MTESt:ENABle ON", mask_enable=True)
-        print("Mask test started")
+        logger.info("Mask test started")
 
     def stop_mask_test(self) -> None:
         """Stop the mask test."""
         self._write(":MTESt:ENABle OFF", mask_enable=False)
-        print("Mask test stopped")
+        logger.info("Mask test stopped")
 
     def get_mask_failed_count(self) -> int:
         """
@@ -1509,7 +1587,7 @@ class Keysight_DSOX1204G(DeviceManager):
         """
         response = self.instrument.query(":MTESt:COUNt:FAILures?")
         failed = int(response.strip())
-        print(f"Failed waveforms: {failed}")
+        logger.info(f"Failed waveforms: {failed}")
         return failed
 
     def get_mask_total_count(self) -> int:
@@ -1521,7 +1599,7 @@ class Keysight_DSOX1204G(DeviceManager):
         """
         response = self.instrument.query(":MTESt:COUNt:WAVeforms?")
         total = int(response.strip())
-        print(f"Total waveforms tested: {total}")
+        logger.info(f"Total waveforms tested: {total}")
         return total
 
     def get_mask_passed_count(self) -> int:
@@ -1534,7 +1612,7 @@ class Keysight_DSOX1204G(DeviceManager):
         total = self.get_mask_total_count()
         failed = self.get_mask_failed_count()
         passed = total - failed
-        print(f"Passed waveforms: {passed}")
+        logger.info(f"Passed waveforms: {passed}")
         return passed
 
     def get_mask_statistics(self) -> dict:
@@ -1548,14 +1626,14 @@ class Keysight_DSOX1204G(DeviceManager):
         failed = int(self.instrument.query(":MTESt:COUNt:FAILures?").strip())
         passed = total - failed
 
-        print(f"Mask statistics: {passed} passed, {failed} failed, {total} total")
+        logger.info(f"Mask statistics: {passed} passed, {failed} failed, {total} total")
         return {"passed": passed, "failed": failed, "total": total}
 
     def reset_mask_statistics(self) -> None:
         """Reset the mask test statistics by toggling mask off and on."""
         self._write(":MTESt:ENABle OFF", mask_enable=False)
         self._write(":MTESt:ENABle ON", mask_enable=True)
-        print("Mask statistics reset")
+        logger.info("Mask statistics reset")
 
     def get_mask_test_status(self) -> str:
         """
@@ -1566,7 +1644,7 @@ class Keysight_DSOX1204G(DeviceManager):
         """
         enabled = self.get_mask_enable()
         status = "RUN" if enabled else "STOP"
-        print(f"Mask test status: {status}")
+        logger.info(f"Mask test status: {status}")
         return status
 
     # ========================================
@@ -1585,7 +1663,7 @@ class Keysight_DSOX1204G(DeviceManager):
         if mode not in self._CURSOR_MODE_ALLOWLIST:
             raise ValueError(f"Cursor mode must be one of {self._CURSOR_MODE_ALLOWLIST}, got '{mode}'")
         self._write(f":MARKer:MODE {mode}", cursor_mode=mode)
-        print(f"Cursor mode: {mode}")
+        logger.info(f"Cursor mode: {mode}")
 
     def set_cursor_source(self, channel: int) -> None:
         """
@@ -1673,12 +1751,12 @@ class Keysight_DSOX1204G(DeviceManager):
         self._write("*RST")
         self._write("*CLS")
         self._cache.clear()
-        print("Oscilloscope reset to factory defaults")
+        logger.info("Oscilloscope reset to factory defaults")
 
     def clear_status(self) -> None:
         """Clear status byte and error queue."""
         self._write("*CLS")
-        print("Status cleared")
+        logger.info("Status cleared")
 
     def get_error(self) -> str:
         """
@@ -1700,7 +1778,7 @@ class Keysight_DSOX1204G(DeviceManager):
         if not 0 <= slot <= 9:
             raise ValueError(f"Slot must be 0-9, got {slot}")
         self._write(f"*SAV {slot}")
-        print(f"Setup saved to slot {slot}")
+        logger.info(f"Setup saved to slot {slot}")
 
     def recall_setup(self, slot: int) -> None:
         """
@@ -1712,7 +1790,7 @@ class Keysight_DSOX1204G(DeviceManager):
         if not 0 <= slot <= 9:
             raise ValueError(f"Slot must be 0-9, got {slot}")
         self._write(f"*RCL {slot}")
-        print(f"Setup recalled from slot {slot}")
+        logger.info(f"Setup recalled from slot {slot}")
 
     def self_test(self) -> int:
         """
@@ -1721,14 +1799,21 @@ class Keysight_DSOX1204G(DeviceManager):
         Returns:
             int: 0 for pass, non-zero for fail
         """
-        response = self.instrument.query("*TST?")
+        # *TST? runs internal diagnostics that can take >10s; the connect()
+        # timeout (10s) is too short, so extend temporarily.
+        saved_timeout = self.instrument.timeout
+        self.instrument.timeout = 60000
+        try:
+            response = self.instrument.query("*TST?")
+        finally:
+            self.instrument.timeout = saved_timeout
         return int(response.strip())
 
     def set_system_lock(self, enable: bool) -> None:
         """Lock or unlock the front panel."""
         state = "ON" if enable else "OFF"
         self._write(f":SYSTem:LOCK {state}", system_lock=enable)
-        print(f"Front panel {'locked' if enable else 'unlocked'}")
+        logger.info(f"Front panel {'locked' if enable else 'unlocked'}")
 
     def set_system_message(self, message: str) -> None:
         """
@@ -1741,13 +1826,13 @@ class Keysight_DSOX1204G(DeviceManager):
             self._write(f':SYSTem:DSP "{message}"')
         else:
             self._write(':SYSTem:DSP ""')
-        print(f"System message: {message!r}")
+        logger.info(f"System message: {message!r}")
 
     def set_display_vectors(self, enable: bool) -> None:
         """Enable or disable connect-the-dots waveform display."""
         val = "ON" if enable else "OFF"
         self._write(f":DISPlay:VECtors {val}", display_vectors=enable)
-        print(f"Display vectors: {val}")
+        logger.info(f"Display vectors: {val}")
 
     def set_display_annotation(self, text: str) -> None:
         """
@@ -1758,12 +1843,12 @@ class Keysight_DSOX1204G(DeviceManager):
         """
         self._write(f':DISPlay:ANNotation:TEXT "{text}"')
         self._write(":DISPlay:ANNotation ON", display_annotation=True)
-        print(f"Annotation: {text}")
+        logger.info(f"Annotation: {text}")
 
     def clear_display_annotation(self) -> None:
         """Remove the on-screen annotation."""
         self._write(":DISPlay:ANNotation OFF", display_annotation=False)
-        print("Annotation cleared")
+        logger.info("Annotation cleared")
 
     _CHANNEL_UNITS_ALLOWLIST = ("VOLT", "AMPERE")
 
@@ -1784,7 +1869,7 @@ class Keysight_DSOX1204G(DeviceManager):
             f":CHANnel{channel}:UNITs {units_map[units_upper]}",
             **{f"ch{channel}_units": units_upper},
         )
-        print(f"CH{channel} units: {units_upper}")
+        logger.info(f"CH{channel} units: {units_upper}")
 
     def get_channel_units(self, channel: int) -> str:
         """

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "scpi-instrument-toolkit"
-version = "1.0.30"
+version = "1.0.43"
 description = "Python drivers and interactive REPL for SCPI test and measurement instruments"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -25,14 +25,10 @@ dependencies = [
     "pandas>=2.0.0",
     "scipy>=1.10.0",
     "matplotlib>=3.7.0",
-    "openpyxl>=3.1.0",
     "fpdf2>=2.7.0",
     "pyfunctional>=1.4.0",
     "requests>=2.31.0",
     "pyreadline3>=3.4.0; sys_platform == 'win32'",
-    "PySide6>=6.6.0",
-    "pyqtgraph>=0.13.0",
-    "pymupdf>=1.24.0",
     "nidcpower>=1.5.0; python_version>='3.9'",
     "nidcpower>=1.4.0; python_version<'3.9'",
 ]
@@ -46,7 +42,6 @@ lint = ["ruff>=0.4.0"]
 
 [project.scripts]
 scpi-repl = "lab_instruments.repl:main"
-scpi-gui = "lab_instruments.gui:main"
 scpi-docs = "lab_instruments.docs_server:main"
 
 [project.urls]
@@ -70,7 +65,6 @@ ignore = ["E501"]
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["E501"]
 "lab_instruments/repl/shell.py" = ["E402"]
-"lab_instruments/gui/widgets/file_viewers.py" = ["E402", "SIM102"]
 
 [tool.coverage.run]
 source = ["lab_instruments"]
@@ -78,7 +72,6 @@ omit = [
     "lab_instruments/site/*",
     "lab_instruments/site-library/*",
     "lab_instruments/docs_server.py",
-    "lab_instruments/gui/*",
     "lab_instruments/__main__.py",
     "lab_instruments/examples.py",
     "lab_instruments/src/rigol_dho804.py",
