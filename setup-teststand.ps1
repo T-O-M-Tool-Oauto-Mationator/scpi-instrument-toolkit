@@ -165,6 +165,45 @@ or install git manually, then rerun this script.
 }
 
 # ---------------------------------------------------------------------------
+# Step 4.5: Ensure the base Python dir is on user PATH
+# ---------------------------------------------------------------------------
+# TestStand loads python312.dll by searching PATH (the same lookup
+# ctypes.util.find_library('python3.12') performs). The base Python dir
+# - NOT the venv's Scripts dir - is what holds python312.dll. If a
+# previous setup-tamu.ps1 run did not persist this dir to user PATH (or
+# the user has not started a fresh shell since), validation below would
+# fail even though the venv itself works. Fix it proactively.
+Write-Step "4.5" "Ensuring base Python dir is on user PATH..."
+
+$pythonDir = Split-Path $pythonExe -Parent
+$userPath  = [Environment]::GetEnvironmentVariable("Path", "User")
+$onUserPath = $false
+if ($userPath) {
+    $onUserPath = (
+        ($userPath -split ";") |
+        ForEach-Object { $_.TrimEnd("\").ToLowerInvariant() }
+    ) -contains $pythonDir.TrimEnd("\").ToLowerInvariant()
+}
+
+if ($onUserPath) {
+    Write-Host "Already on user PATH: $pythonDir" -ForegroundColor Yellow
+} else {
+    Write-Host "Adding to user PATH: $pythonDir" -ForegroundColor Green
+    if ([string]::IsNullOrWhiteSpace($userPath)) {
+        [Environment]::SetEnvironmentVariable("Path", $pythonDir, "User")
+    } else {
+        [Environment]::SetEnvironmentVariable("Path", "$userPath;$pythonDir", "User")
+    }
+    Write-Host "NOTE: Restart TestStand (and any open terminals) after this script" -ForegroundColor Yellow
+    Write-Host "      finishes so they pick up the new user PATH." -ForegroundColor Yellow
+}
+
+# Always refresh the current session so validation in step 5 sees the dir.
+if (";$($env:Path);" -notlike "*;$pythonDir;*") {
+    $env:Path = "$env:Path;$pythonDir"
+}
+
+# ---------------------------------------------------------------------------
 # Step 5: Validate the venv works end-to-end
 # ---------------------------------------------------------------------------
 Write-Step 5 "Validating the venv..."

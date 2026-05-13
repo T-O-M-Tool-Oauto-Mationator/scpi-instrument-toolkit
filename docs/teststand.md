@@ -225,7 +225,22 @@ print('lab_instruments: OK')
 "@
 ```
 
-You should see four lines printed and no traceback. If `python3.12.dll: <not found>` or the assertion fires, TestStand will not be able to load this interpreter even though the venv works on the command line - go back to [section 2](#2-install-a-real-python-312-no-admin-required) and confirm a real Python is on PATH.
+You should see four lines printed and no traceback. If `python3.12.dll: <not found>` or the assertion fires, TestStand will not be able to load this interpreter even though the venv works on the command line.
+
+**This means the base Python dir (the one that holds `python312.dll`) is not on your user PATH.** The venv's `Scripts\` directory does not contain `python312.dll` - only the base install does, so PATH must point to the base install for TestStand to find it. Fix it by either:
+
+- Re-run `setup-teststand.ps1` - it now adds the base Python dir to user PATH automatically, then open a **new** terminal and re-run the verification.
+- Or add it yourself in PowerShell (cmd-style `%LOCALAPPDATA%` does **not** expand in PowerShell - use `$env:LOCALAPPDATA`):
+
+```powershell
+$dir = "$env:LOCALAPPDATA\Programs\Python\Python312"  # or \Python\pythoncore-3.12-64 for `py install`
+$cur = [Environment]::GetEnvironmentVariable("Path", "User")
+if (($cur -split ";") -notcontains $dir) {
+    [Environment]::SetEnvironmentVariable("Path", "$cur;$dir", "User")
+}
+```
+
+Close and reopen PowerShell after either fix - PATH changes do not affect already-open shells. Then restart TestStand for the same reason.
 
 ---
 
