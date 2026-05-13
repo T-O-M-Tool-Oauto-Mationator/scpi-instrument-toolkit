@@ -258,11 +258,27 @@ Open TestStand, then go to **Configure > Adapters > Python > Configure**.
 | Executable Path | *(greyed out on managed machines - leave blank)* |
 | Version | `3.12` |
 
-### Advanced tab — **check this box, students miss it**
+### Advanced tab — **turn on the interpreter console**
 
 - [x] **Display Console for Interpreter Sessions**
 
-Without this, every `print()` inside a Python step disappears silently — the step still runs and reports its Status, but you cannot see any of the diagnostic output the function produced. NI's own Python example bundled with TestStand lists this as a prerequisite. Issue #118 was a student concluding the smoke test was broken because this box was unchecked and they assumed Status:Done with no console meant nothing ran. (The COM property behind this checkbox is `PythonAdapter.DisplayConsoleForInterpreterSessions` — verified against TestStand 2025 Q3 64-bit.)
+Without this, every `print()` inside a Python step disappears silently — the step still runs and reports its Status, but you cannot see any of the diagnostic output the function produced. NI's own Python example bundled with TestStand lists this as a prerequisite. Issue #118 was a student concluding the smoke test was broken because this setting was off and they assumed Status:Done with no console meant nothing ran.
+
+!!! tip "If you can't find that checkbox in your UI (issue #126)"
+    The Advanced-tab label varies across TestStand point-releases — some builds tuck it behind a different navigation, some rename it. The COM property behind the checkbox is stable: `PythonAdapter.DisplayConsoleForInterpreterSessions` (a boolean). You can flip it directly from your venv without clicking through the UI:
+
+    ```powershell
+    # From the toolkit's venv (the one with pywin32 installed):
+    python scripts/teststand_check.py --fix-adapter
+    ```
+
+    The helper queries the property, reports its current value, sets it to `True`, and reminds you to restart TestStand once for the new value to take effect across runs. Verified against TestStand 2025 Q3 64-bit; the property write persists across engine sessions. If you want to do it inline instead:
+
+    ```powershell
+    python -c "import win32com.client as w; a=w.Dispatch('TestStand.Engine').GetAdapterByKeyName('Python Adapter'); a.DisplayConsoleForInterpreterSessions=True"
+    ```
+
+    Either way, restart TestStand once after the flip — the running Sequence Editor caches the adapter state at launch.
 
 ### When else you need `pywin32`
 
@@ -332,13 +348,22 @@ In TestStand, **File > New > Sequence File**, then insert three steps in the **M
 1. Right-click → **Insert Step** → **Tests** → **Numeric Limit Test**.
 2. **Step Settings** → **Module** tab:
    - **Module Path**: `teststand_hello.py`
-   - **Function Name**: **pick `get_voltage` from the dropdown** (don't type it). Selecting from the dropdown is what makes TestStand introspect the function signature and auto-add the Return Value row.
-3. **Arguments** tab: confirm a single row appears at the top — `Return Value`, **Value/Expression** = `Step.Result.Numeric`. **If this row is missing, your Measurement will read `0` and the limit check will always fail** ([fix below](#measurement-00-when-the-python-function-returns-a-non-zero-value)). Leave the row alone — `Step.Result.Numeric` is the correct binding.
+   - **Function Name**: **pick `get_voltage` from the dropdown** (don't type it). Selecting from the dropdown is what makes TestStand call the Python adapter's signature introspector and auto-add a `Return Value` row to the Arguments tab. Typing the name by hand skips that step, and the `Return Value` row never lands.
+3. **Arguments** tab: **scroll to the top**. Row 0 must be `Return Value`, **Value/Expression** = `Step.Result.Numeric`. **If this row is missing, the function still runs but its return value never reaches Measurement — every limit check will fail with Measurement `0`** ([fix below](#measurement-00-when-the-python-function-returns-a-non-zero-value)). Leave it alone — `Step.Result.Numeric` is the correct binding.
 4. **Limits** tab:
    - **Comparison Type**: `GELE (>= <=)`
    - **Low**: `4.5`
    - **High**: `5.5`
-5. Run. Status should be **Passed**, Measurement should be **5.0**. If you see Measurement `0.0` instead, the Return Value row is missing — re-pick the function from the dropdown to force re-introspection.
+5. Run. Status should be **Passed**, Measurement should be **5.0**.
+
+!!! tip "Got Measurement `0.0` instead, even after re-picking from the dropdown? (issue #126)"
+    Re-picking from the dropdown only re-introspects an *unsaved* step in some builds — once you've saved the sequence file the row can stay missing across re-picks. The deterministic recovery is to walk the file via COM and re-introspect every Python NLT step:
+
+    ```powershell
+    python scripts/teststand_check.py "C:\path\to\YourSequence.seq" --fix
+    ```
+
+    The script (1) reports every Python NLT step in the file, (2) flags any that are missing the `Return Value -> Step.Result.Numeric` row, and (3) with `--fix` calls `step.LoadModule()` on each broken step (forces fresh introspection) and saves the file. Re-run the sequence; Measurement should now read the function's actual return value.
 
 ### Step 3 — Numeric Limit Test calling `add` (with parameters)
 
@@ -361,7 +386,13 @@ In TestStand, **File > New > Sequence File**, then insert three steps in the **M
 5. Run. Status **Passed**, Measurement **7**.
 
 !!! tip "All Python Numeric Limit Test steps share the same shape"
-    Verified against NI's bundled Python example on TestStand 2025 Q3: every Python adapter Numeric Limit Test step has a `Return Value` row in its Arguments tab with `Step.Result.Numeric` as the expression. That's the channel the function's return value uses to reach Measurement. If you skip the dropdown and type the function name by hand, the row may not get added — pick from the dropdown and the Arguments table populates automatically.
+    Verified against NI's bundled Python example on TestStand 2025 Q3: every Python adapter Numeric Limit Test step has a `Return Value` row in its Arguments tab with `Step.Result.Numeric` as the expression. That's the channel the function's return value uses to reach Measurement. The fastest way to confirm this on your own sequence — **without** clicking through every step — is the audit script:
+
+    ```powershell
+    python scripts/teststand_check.py "C:\path\to\YourSequence.seq"
+    ```
+
+    It walks every Python NLT step in the file and prints `OK` for each row 0 = `Return Value -> Step.Result.Numeric`, or `FAIL` for any that's missing. Pass `--fix` to repair every broken step in place.
 
 If all three pass, the Python adapter, venv, and DLL load are all wired correctly. Move on.
 
@@ -527,7 +558,11 @@ Open the step's settings → **Arguments** tab → fill every row. Literal value
 
 For a **Numeric Limit Test** step using the Python adapter, the function's return value should populate `Step.Result.Numeric`, which is what the Limits comparison reads. If Measurement shows `0.0` even though your Python `print` shows the right value, walk through this list:
 
-1. **Confirm the Arguments tab has a `Return Value` row.** Open the step's settings, **Arguments** tab. The first row must be `Name = Return Value`, `Value/Expression = Step.Result.Numeric`. If the row is missing, TestStand never introspected the function — open the **Module** tab, **re-pick the function from the Function Name dropdown** (don't type it). The Return Value row will populate. Verified against NI's bundled Python example on TestStand 2025 Q3.
+1. **Confirm the Arguments tab has a `Return Value` row.** Fastest path is the audit script, which walks the file via COM and prints `OK`/`FAIL` for every Python NLT step:
+
+       python scripts/teststand_check.py "C:\path\to\YourSequence.seq"
+
+    Pass `--fix` and the script will call `step.LoadModule()` on every broken step to force re-introspection, then save the file. If you'd rather click through the UI: open the step's settings → **Arguments** tab → row 0 must be `Name = Return Value`, `Value/Expression = Step.Result.Numeric`. If the row is missing, open the **Module** tab and **re-pick the function from the Function Name dropdown** — that re-runs the introspector. Verified against TestStand 2025 Q3.
 2. **The function returns the value, not just prints it.** `print(voltage)` alone is not enough — the function body needs `return voltage`.
 3. **The function signature matches what TestStand calls.** TestStand passes Arguments-tab values by name; `def get_voltage()` and `def get_voltage(**kwargs)` both work, but a function with required positional args you didn't fill in fails earlier with [-17347](#run-time-error-17347-the-expression-cannot-be-empty).
 3. **The step type is Test - Numeric Limit Test, not Action.** Action steps don't have a measurement.
