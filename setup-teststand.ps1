@@ -241,21 +241,119 @@ Write-Host "Venv validated. python.exe runs, python312.dll is on PATH, and the" 
 Write-Host "toolkit imports cleanly." -ForegroundColor Green
 
 # ---------------------------------------------------------------------------
-# Done - print TestStand adapter values to copy-paste
+# Step 6: Auto-configure the TestStand Python Adapter (if TestStand installed)
+# ---------------------------------------------------------------------------
+# Talks to TestStand.Engine.1 via COM (pywin32) and sets the three adapter
+# properties students would otherwise have to flip manually in
+# Configure > Adapters > Python > Configure:
+#   * PythonVersion                          = '3.12'
+#   * DisplayConsoleForInterpreterSessions   = True   (so print() is visible)
+#   * PythonVirtualEnvironmentPath           = <this venv>
+# Verified on TestStand 2025 Q3 (64-bit): setting these via COM persists across
+# engine instances with no explicit save call required.
+Write-Step 6 "Auto-configuring TestStand Python Adapter (if TestStand installed)..."
+
+$tsInstalled = $false
+foreach ($tsRoot in @(
+    "${env:ProgramFiles}\National Instruments\TestStand 2025\Bin\SeqEdit.exe",
+    "${env:ProgramFiles}\National Instruments\TestStand 2024\Bin\SeqEdit.exe",
+    "${env:ProgramFiles}\National Instruments\TestStand 2023\Bin\SeqEdit.exe"
+)) {
+    if (Test-Path $tsRoot) { $tsInstalled = $true; break }
+}
+
+if (-not $tsInstalled) {
+    Write-Host "TestStand not detected on this machine. Skipping auto-config." -ForegroundColor Yellow
+    Write-Host "(That's fine - just means you'll configure the adapter the first time you" -ForegroundColor Yellow
+    Write-Host " run TestStand. See the printed instructions below.)" -ForegroundColor Yellow
+} else {
+    # pywin32 is needed in the venv to talk COM. It's a small wheel, ~10 MB.
+    $venvPip = Join-Path $venvPath "Scripts\pip.exe"
+    & $venvPython -m pip show pywin32 2>&1 | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "Installing pywin32 into the venv (needed to talk to TestStand COM)..." -ForegroundColor Cyan
+        & $venvPython -m pip install --quiet pywin32
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "pywin32 install failed - falling back to manual config." -ForegroundColor Yellow
+            $tsInstalled = $false
+        }
+    }
+}
+
+if ($tsInstalled) {
+    $configScript = @"
+import sys
+try:
+    import win32com.client as wc
+except ImportError:
+    print('pywin32 not importable; skipping COM configuration.')
+    sys.exit(2)
+try:
+    engine = wc.Dispatch('TestStand.Engine.1')
+except Exception as e:
+    print(f'Could not open TestStand.Engine.1: {e}')
+    sys.exit(3)
+try:
+    adapter = engine.GetAdapterByKeyName('Python Adapter')
+    before = {
+        'PythonVersion': adapter.PythonVersion,
+        'DisplayConsoleForInterpreterSessions': adapter.DisplayConsoleForInterpreterSessions,
+        'PythonVirtualEnvironmentPath': adapter.PythonVirtualEnvironmentPath,
+    }
+    print('BEFORE:', before)
+    adapter.PythonVersion = '3.12'
+    adapter.DisplayConsoleForInterpreterSessions = True
+    adapter.PythonVirtualEnvironmentPath = r'$venvPath'
+    after = {
+        'PythonVersion': adapter.PythonVersion,
+        'DisplayConsoleForInterpreterSessions': adapter.DisplayConsoleForInterpreterSessions,
+        'PythonVirtualEnvironmentPath': adapter.PythonVirtualEnvironmentPath,
+    }
+    print('AFTER: ', after)
+finally:
+    try:
+        engine.ShutDown(True)
+    except Exception:
+        pass
+"@
+    $cfgTmp = New-TemporaryFile
+    $configScript | Set-Content -Path $cfgTmp -Encoding UTF8
+    try {
+        & $venvPython $cfgTmp
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host ""
+            Write-Host "TestStand Python Adapter configured:" -ForegroundColor Green
+            Write-Host "  PythonVersion                        = 3.12" -ForegroundColor Green
+            Write-Host "  DisplayConsoleForInterpreterSessions = True" -ForegroundColor Green
+            Write-Host "  PythonVirtualEnvironmentPath         = $venvPath" -ForegroundColor Green
+            Write-Host "Restart TestStand to pick up the changes." -ForegroundColor Yellow
+        } else {
+            Write-Host "Auto-config returned exit $LASTEXITCODE - configure manually (see below)." -ForegroundColor Yellow
+        }
+    } finally {
+        Remove-Item $cfgTmp -Force -ErrorAction SilentlyContinue
+    }
+}
+
+# ---------------------------------------------------------------------------
+# Done - print TestStand adapter values (auto-config or manual fallback)
 # ---------------------------------------------------------------------------
 Write-Host ""
 Write-Host ("=" * 60)
-Write-Host "  Done - paste these values into TestStand" -ForegroundColor Green
+Write-Host "  Done - TestStand adapter values" -ForegroundColor Green
 Write-Host ("=" * 60)
 Write-Host ""
 Write-Host "Configure > Adapters > Python > Configure"
 Write-Host ""
-Write-Host ("  Interpreter to use            : Global")
-Write-Host ("  Virtual environment (optional): {0}" -f $venvPath)
-Write-Host ("  Executable Path               : (leave blank - greyed out on managed machines)")
-Write-Host ("  Version                       : 3.12")
+Write-Host ("  Interpreter to use                       : Global")
+Write-Host ("  Virtual environment (optional)           : {0}" -f $venvPath)
+Write-Host ("  Executable Path                          : (leave blank - greyed out on managed machines)")
+Write-Host ("  Version                                  : 3.12")
 Write-Host ""
-Write-Host "Then restart TestStand so it re-reads PATH."
+Write-Host "Advanced tab:"
+Write-Host ("  [x] Display Console for Interpreter Sessions  (so print() is visible)")
+Write-Host ""
+Write-Host "Then restart TestStand so it re-reads PATH and the adapter config."
 Write-Host ""
 Write-Host "Full guide: https://t-o-m-tool-oauto-mationator.github.io/scpi-instrument-toolkit/teststand.html"
 Write-Host ""

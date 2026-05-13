@@ -247,7 +247,9 @@ Close and reopen PowerShell after either fix - PATH changes do not affect alread
 
 ## 4. Configure the TestStand Python Adapter
 
-Open TestStand, then go to **Configure > Adapters > Python > Configure**
+Open TestStand, then go to **Configure > Adapters > Python > Configure**.
+
+### Main tab
 
 | Field | Value |
 |---|---|
@@ -255,6 +257,16 @@ Open TestStand, then go to **Configure > Adapters > Python > Configure**
 | Virtual environment (optional) | `H:\Documents\eset-453\.venv` |
 | Executable Path | *(greyed out on managed machines - leave blank)* |
 | Version | `3.12` |
+
+### Advanced tab — **check this box, students miss it**
+
+- [x] **Display Console for Interpreter Sessions**
+
+Without this, every `print()` inside a Python step disappears silently — the step still runs and reports its Status, but you cannot see any of the diagnostic output the function produced. NI's own Python example bundled with TestStand lists this as a prerequisite. Issue #118 was a student concluding the smoke test was broken because this box was unchecked and they assumed Status:Done with no console meant nothing ran. (The COM property behind this checkbox is `PythonAdapter.DisplayConsoleForInterpreterSessions` — verified against TestStand 2025 Q3 64-bit.)
+
+### When else you need `pywin32`
+
+The toolkit itself does **not** need `pywin32` inside the venv to run any of the smoke-test steps in [section 5](#5-smoke-test-prove-the-wiring-works) or the instrument calls in [section 6](#6-calling-real-instruments-from-teststand). You only need to `pip install pywin32` into the venv if a Python step accepts TestStand's `SequenceContext`, `Engine`, or another `IDispatch` COM object as a parameter (which gives your Python code access to the running TestStand engine itself). None of our examples do this — but if you write one that does, the adapter will fail with `-17500: Unable to pass parameter as COM object. Make sure you have installed pywin32`. The fix is `H:\Documents\<your-project>\.venv\Scripts\pip.exe install pywin32` and a restart of the TestStand interpreter session.
 
 ### Notes
 
@@ -310,8 +322,10 @@ In TestStand, **File > New > Sequence File**, then insert three steps in the **M
    - **Module Path**: browse to `teststand_hello.py`
    - **Function Name**: `check_connection`
 3. **Arguments** tab: empty (the function takes no parameters).
-4. Save the sequence, click **Execute > Run MainSequence**. The **Output** pane should show:
-   > `Python adapter is working correctly.`
+4. Save the sequence, click **Execute > Run MainSequence**. Look at the **Steps** pane — the Action row's **Status** column should read **Done** and the **Executions** pane (top-left) should show a green checkmark next to MainSequence. That is the success signal.
+
+!!! note "Why isn't `Python adapter is working correctly.` in the Output pane?"
+    TestStand's **Output** pane is a structured message log (note the `MESSAGE` column header), not a Python stdout console. The Python adapter captures `print()` output silently and does not surface it there by default. Don't worry about it — **Status: Done** means the function ran. To make `print()` output visible, check the **Display Console for Interpreter Sessions** box under [Configure > Adapters > Python > Configure > Advanced](#advanced-tab-check-this-box-students-miss-it).
 
 ### Step 2 — Numeric Limit Test calling `get_voltage`
 
