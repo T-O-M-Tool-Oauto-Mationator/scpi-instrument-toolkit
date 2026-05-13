@@ -608,9 +608,13 @@ class _DarwinBackend(_HIDBackend):
 
     def open(self, path: object) -> object:
         device = self._hid.device()
+        # enumerate_devices() normalises path to str, but hidapi's open_path()
+        # requires bytes -- coerce here so callers can pass either.
+        if isinstance(path, str):
+            path = path.encode("ascii", errors="replace")
         try:
             device.open_path(path)
-        except OSError:
+        except (OSError, TypeError):
             # open_path() fails on some macOS configurations; fall back to VID/PID
             device.open(VID, PID_FLASHED)
         return device

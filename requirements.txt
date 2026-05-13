@@ -32,6 +32,9 @@ textual-dev>=1.8.0
 #NI PXIE-1073
 nidcpower>=1.5.0
 
+# TI EV2300 USB-to-I2C adapter (macOS HID backend; harmless elsewhere)
+hidapi>=0.14.0; sys_platform == "darwin"
+
 # Documentation
 mkdocs>=1.5.3
 
