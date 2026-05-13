@@ -236,3 +236,27 @@ awg state <on|off|safe|reset>
 | `off` | Disable all outputs |
 | `safe` | Outputs off, returns to known defaults |
 | `reset` | `*RST` — factory defaults |
+
+---
+
+## Tips & Gotchas
+
+Per-model quirks that trip students up most often.
+
+### Keysight EDU33212A
+
+- **Dual channel.** Both channels can output independently. Use `awg chan 1 on` and `awg chan 2 on`.
+- **PRBS mode.** Supports pseudo-random binary sequence for BER testing. Other AWGs do not have this.
+- **High impedance vs 50 ohm.** The AWG assumes a 50 ohm load. If your circuit is high-impedance, the actual output voltage will be double the set amplitude.
+
+### JDS6600
+
+- **Serial interface.** Slower than USB instruments. Allow 200 ms between commands.
+- **17 waveform types.** Supports more waveform shapes than other AWGs.
+- **Frequency accuracy.** DDS-based, so frequency accuracy is excellent.
+
+### BK Precision 4063
+
+- **Dual channel.** Both channels can output independently. Use `awg chan 1 on` and `awg chan 2 on`. Driver maps integer 1 to wire-level `C1` and 2 to `C2` (Siglent SDG dialect).
+- **Spec ceiling.** 60 MHz max frequency, 20 Vpp max amplitude into HighZ (10 Vpp into 50 ohms), +/-10 V offset. The driver enforces these in `set_frequency` / `set_amplitude` / `set_offset` and raises `ValueError` rather than silently sending an out-of-range value.
+- **Partial-update setters.** `set_frequency`, `set_amplitude`, `set_offset` issue a single `Cn:BSWV FRQ,...` style update instead of resending the whole waveform -- preserves the other parameters.

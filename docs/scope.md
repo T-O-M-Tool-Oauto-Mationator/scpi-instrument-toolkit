@@ -1041,3 +1041,29 @@ Sends `*RST` to restore factory defaults. Works on all scope models.
 
 === "Tektronix MSO2024"
     Not supported on this model.
+
+---
+
+## Tips & Gotchas
+
+Per-model quirks that trip students up most often.
+
+### Rigol DHO804
+
+- **Autoset works well** but may choose unexpected time/voltage scales for complex signals. Always verify the display after autoset.
+- **Measurement force.** After `scope single` + `scope wait_stop`, run `scope meas_force` before reading measurements. This forces the DSP to finalize values.
+- **9.9e+37 sentinel.** If a measurement returns `9.9e+37`, the scope has not triggered yet. Use `scope wait_stop` to wait for the trigger.
+- **Built-in AWG.** The DHO804 has a built-in function generator accessible through `scope1 awg_*` commands.
+- **Counter and DVM.** Built-in frequency counter and digital voltmeter -- useful for quick checks without switching instruments.
+
+### Tektronix MSO2024
+
+- **Basic command set only.** Does not support counter, DVM, cursors, recording, or built-in AWG features.
+- **Slower autoset.** Allow 2-3 seconds for autoset to complete.
+- **`save_waveform_csv` accepts lists.** You can pass `[1, 2]` to save multiple channels in one CSV.
+
+### Keysight DSOX1204G
+
+- **Most feature-rich scope.** Supports counter, DVM, cursors, mask test, built-in AWG (WGEN), screenshot, display, acquire, math, labels, segmented acquisition, and measurement statistics.
+- **No recording support.** Cannot use the record/playback feature.
+- **Segmented memory.** Supports capturing multiple trigger events in separate memory segments.

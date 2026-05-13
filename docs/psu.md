@@ -208,3 +208,32 @@ psu state <on|off|safe|reset>
 | `off` | Disable output |
 | `safe` | Outputs off, voltage setpoints zeroed |
 | `reset` | `*RST` — factory defaults |
+
+---
+
+## Tips & Gotchas
+
+Per-model quirks that trip students up most often.
+
+### HP E3631A
+
+- **Triple output with shared ground.** Channels 1 (0 to 6 V), 2 (0 to 25 V), and 3 (0 to -25 V) share a common ground. You cannot float them independently.
+- **Tracking mode** links channels 2 and 3 for +/- supply configurations. Use `psu track on`.
+- **No current readback below ~1 mA.** Very low currents read as 0. Use an external DMM for milliamp-level measurements.
+- **Output enable is per-channel.** You must run `psu chan 1 on` before `psu set 1 5.0` produces any output.
+
+### Keysight EDU36311A
+
+- **OVP/OCP protection.** Over-voltage and over-current protection can trip and latch off the output. Check the front panel if the output unexpectedly drops to 0.
+- **5 save/recall slots.** Use `psu save 1` and `psu recall 1` to store and restore setups.
+- **USB enumeration delay.** After connecting, wait 5-10 seconds before running `scan`. The USB interface takes time to initialize.
+
+### Matrix MPS-6010H
+
+- **Serial interface with slow command response.** Allow 100-200 ms between commands. The toolkit handles this automatically, but manual `raw` commands may need `sleep 0.2` between them.
+- **Remote mode must be enabled.** The toolkit does this automatically on first command.
+
+### General PSU tips
+
+- **Always `sleep` after setting a voltage.** PSU outputs need 100-500 ms to settle. Without this delay, your DMM will read an intermediate value.
+- **Use `all off` before disconnecting.** This safely disables all outputs before you unplug anything.

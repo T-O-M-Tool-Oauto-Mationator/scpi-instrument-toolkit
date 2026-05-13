@@ -302,3 +302,35 @@ dmm state <safe|reset>
 |-------|--------|
 | `safe` | Returns to safe defaults |
 | `reset` | `*RST` — factory defaults |
+
+---
+
+## Tips & Gotchas
+
+Per-model quirks that trip students up most often.
+
+### HP 34401A
+
+- **NPLC setting matters.** Integration time (power line cycles) directly affects accuracy and speed:
+  - `nplc=0.02` -- fast but noisy (50 readings/second)
+  - `nplc=1` -- good balance (default)
+  - `nplc=10` -- high accuracy, slow (about 0.5 seconds per reading)
+  - `nplc=100` -- maximum accuracy, very slow (about 2 seconds per reading)
+- **Display blanking.** `dmm display off` speeds up measurements by ~10% on GPIB.
+- **Auto-range settling.** When auto-ranging, the first reading after a range change may be inaccurate. Take a throwaway reading first.
+- **GPIB address.** Default is usually address 22. Check the front panel under Utility > Remote Interface.
+
+### Keysight EDU34450A
+
+- **No NPLC support.** Uses SLOW/MEDIUM/FAST speed settings instead.
+- **Capacitance and temperature modes.** Supported but not on all HP models -- check before using.
+- **Dual display.** Can show two measurements simultaneously on the front panel, but the REPL reads only the primary display.
+
+### OWON XDM1041
+
+- **4.5 digits.** Lower resolution than the HP 34401A (6.5 digits). Expect more noise in readings.
+- **Limited modes.** Does not support NPLC, display text, or fetch.
+
+### General DMM tips
+
+- **Configure the DMM mode before measuring.** The most common mistake is measuring without setting the correct mode (`vdc`, `idc`, `res`, etc.).
