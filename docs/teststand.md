@@ -45,7 +45,7 @@ You can verify this yourself by running:
 
 ```python
 import ctypes.util
-print(ctypes.util.find_library('python3.12'))  # prints None for Store installs
+print(ctypes.util.find_library('python312'))  # prints None for Store installs
 ```
 
 TestStand hits the same wall - it cannot find or load the DLL, and will show:
@@ -466,7 +466,7 @@ TestStand cannot find `python312.dll`. Verify in a fresh terminal:
 
 ```powershell
 where python
-python -c "import ctypes.util; print(ctypes.util.find_library('python3.12'))"
+python -c "import ctypes.util; print(ctypes.util.find_library('python312'))"
 ```
 
 If `where python` returns a path inside `C:\Program Files\WindowsApps\...`, you have the Microsoft Store stub - install a real Python via one of the [two options above](#2-install-a-real-python-312-no-admin-required).
