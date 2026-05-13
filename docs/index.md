@@ -4,6 +4,22 @@ Python REPL for controlling lab instruments — oscilloscopes, power supplies, m
 
 ---
 
+## What can I do with this toolkit?
+
+- **Drive a full bench from one prompt** -- PSUs, DMMs, scopes, AWGs, SMUs, and the TI EV2300 USB-to-I2C adapter, all from the same REPL. See [Supported Instruments](instruments.md).
+- **Run measurement scripts** -- `for`/`while`/`if`, variables, `assert`/`check`, parameter overrides, and a step debugger. See [Scripting](scripting.md).
+- **Practice without hardware** -- 14 simulated instruments via `--mock`. See [Mock Mode](mock_mode.md).
+- **Log measurements and export to CSV** -- assign-style measurement syntax, `calc` for derived values, `log save` to CSV. See [Log & Calc](logging.md).
+- **Plot live or after the fact** -- live plotting during sweeps, static plots from saved CSVs, ready for pandas/matplotlib analysis. See [Plotting](plotting.md).
+- **Reuse 15+ bundled examples** -- PSU+DMM sweeps, scope captures, full lab-report workflows. See [Examples](examples.md).
+
+!!! tip "Learning path"
+    1. Start with [Mock Mode](mock_mode.md) -- practice safely without hardware.
+    2. Skim the [Examples](examples.md) -- find the workflow closest to your lab.
+    3. Read [Scripting](scripting.md) once you want to write your own tests.
+
+---
+
 ## Quick Start
 
 ### 1. Install
