@@ -106,5 +106,6 @@ nav:
     - REPL Command Reference: generated/repl-ref.md
     - Expression Functions: generated/evaluator-ref.md
   - LabVIEW Bridge: labview.md
+  - NI TestStand Setup: teststand.md
   - Architecture: architecture.md
   - Troubleshooting: troubleshooting.md
