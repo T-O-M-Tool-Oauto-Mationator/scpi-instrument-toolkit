@@ -150,10 +150,16 @@ Write-Host "(This can take several minutes on the TAMU network drive - be patien
 Write-Host "(The package is not on PyPI - we install directly from the GitHub repo.)" -ForegroundColor DarkGray
 
 $pkgUrl = "git+https://github.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit.git"
-$venvPip = Join-Path $venvPath "Scripts\pip.exe"
-& $venvPip install --upgrade pip 2>&1 | Out-Host
-& $venvPip install $pkgUrl 2>&1 | Out-Host
-
+# Use `python -m pip` to upgrade pip: on Windows, invoking pip.exe to upgrade
+# itself fails ("To modify pip, please run...") because pip cannot overwrite
+# its own running .exe. Also avoid `2>&1` on native commands - in PowerShell
+# 5.1 it wraps pip's stderr lines as NativeCommandError, burying the real
+# error in a wall of red and confusing users.
+& $venvPython -m pip install --upgrade pip
+if ($LASTEXITCODE -ne 0) {
+    Fail "pip self-upgrade failed. See output above."
+}
+& $venvPython -m pip install $pkgUrl
 if ($LASTEXITCODE -ne 0) {
     Fail @"
 pip install failed. See output above. The toolkit is NOT on PyPI - it installs
@@ -168,7 +174,7 @@ or install git manually, then rerun this script.
 # Step 4.5: Ensure the base Python dir is on user PATH
 # ---------------------------------------------------------------------------
 # TestStand loads python312.dll by searching PATH (the same lookup
-# ctypes.util.find_library('python3.12') performs). The base Python dir
+# ctypes.util.find_library('python312') performs). The base Python dir
 # - NOT the venv's Scripts dir - is what holds python312.dll. If a
 # previous setup-tamu.ps1 run did not persist this dir to user PATH (or
 # the user has not started a fresh shell since), validation below would
@@ -212,9 +218,9 @@ $validate = @"
 import sys, ctypes.util
 print('python:', sys.version.split()[0])
 print('exe:', sys.executable)
-dll = ctypes.util.find_library('python3.12')
-print('python3.12.dll:', dll if dll else '<not found>')
-assert dll, 'python3.12.dll not on PATH - TestStand will refuse to load this interpreter.'
+dll = ctypes.util.find_library('python312')
+print('python312.dll:', dll if dll else '<not found>')
+assert dll, 'python312.dll not on PATH - TestStand will refuse to load this interpreter.'
 from lab_instruments import find_all  # toolkit import smoke test
 print('lab_instruments: OK')
 "@
@@ -231,7 +237,7 @@ try {
 }
 
 Write-Host ""
-Write-Host "Venv validated. python.exe runs, python3.12.dll is on PATH, and the" -ForegroundColor Green
+Write-Host "Venv validated. python.exe runs, python312.dll is on PATH, and the" -ForegroundColor Green
 Write-Host "toolkit imports cleanly." -ForegroundColor Green
 
 # ---------------------------------------------------------------------------

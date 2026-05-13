@@ -45,7 +45,7 @@ You can verify this yourself by running:
 
 ```python
 import ctypes.util
-print(ctypes.util.find_library('python3.12'))  # prints None for Store installs
+print(ctypes.util.find_library('python312'))  # prints None for Store installs
 ```
 
 TestStand hits the same wall - it cannot find or load the DLL, and will show:
@@ -102,7 +102,7 @@ After either option, open a **new** terminal and run:
 
 ```powershell
 python --version
-python -c "import ctypes.util; print(ctypes.util.find_library('python3.12'))"
+python -c "import ctypes.util; print(ctypes.util.find_library('python312'))"
 ```
 
 The first should print `Python 3.12.x`. The second should print a path (not `None`). If both work, TestStand will find the DLL.
@@ -217,15 +217,15 @@ Run this in PowerShell - it confirms the three things TestStand actually depends
 import sys, ctypes.util
 print('python:', sys.version.split()[0])
 print('exe:', sys.executable)
-dll = ctypes.util.find_library('python3.12')
-print('python3.12.dll:', dll if dll else '<not found>')
-assert dll, 'python3.12.dll not on PATH - TestStand will refuse to load this interpreter.'
+dll = ctypes.util.find_library('python312')
+print('python312.dll:', dll if dll else '<not found>')
+assert dll, 'python312.dll not on PATH - TestStand will refuse to load this interpreter.'
 from lab_instruments import find_all
 print('lab_instruments: OK')
 "@
 ```
 
-You should see four lines printed and no traceback. If `python3.12.dll: <not found>` or the assertion fires, TestStand will not be able to load this interpreter even though the venv works on the command line.
+You should see four lines printed and no traceback. If `python312.dll: <not found>` or the assertion fires, TestStand will not be able to load this interpreter even though the venv works on the command line.
 
 **This means the base Python dir (the one that holds `python312.dll`) is not on your user PATH.** The venv's `Scripts\` directory does not contain `python312.dll` - only the base install does, so PATH must point to the base install for TestStand to find it. Fix it by either:
 
@@ -466,7 +466,7 @@ TestStand cannot find `python312.dll`. Verify in a fresh terminal:
 
 ```powershell
 where python
-python -c "import ctypes.util; print(ctypes.util.find_library('python3.12'))"
+python -c "import ctypes.util; print(ctypes.util.find_library('python312'))"
 ```
 
 If `where python` returns a path inside `C:\Program Files\WindowsApps\...`, you have the Microsoft Store stub - install a real Python via one of the [two options above](#2-install-a-real-python-312-no-admin-required).
