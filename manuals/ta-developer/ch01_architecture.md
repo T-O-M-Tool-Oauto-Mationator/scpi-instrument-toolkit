@@ -96,9 +96,10 @@ Base class for all SCPI instrument drivers. Provides:
 - `connect()` / `disconnect()` -- VISA session management
 - `send_command(cmd)` -- write a SCPI command
 - `query(cmd)` -- write and read response
-- `get_identity()` -- `*IDN?` query
 - `clear_status()` -- `*CLS` command
 - `reset()` -- `*RST` command
+
+`*IDN?` querying is not on the base class -- drivers that need an identity string call `self.query("*IDN?")` directly, and `InstrumentDiscovery` does the same against every detected VISA resource.
 
 ### InstrumentDiscovery (`lab_instruments/src/discovery.py`)
 

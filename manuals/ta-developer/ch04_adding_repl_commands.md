@@ -18,7 +18,9 @@ Key methods provided:
 
 ## The Command Handler Pattern
 
-Each instrument type has a command handler class. Here is the PsuCommand pattern from `lab_instruments/repl/commands/psu.py`:
+Each instrument type has a command handler class. Here is the PsuCommand pattern from `lab_instruments/repl/commands/psu.py`. Real handler files start with:
+
+    from lab_instruments.repl.commands.base import BaseCommand, ColorPrinter
 
     class PsuCommand(BaseCommand):
         def execute(self, arg, dev, dev_name):

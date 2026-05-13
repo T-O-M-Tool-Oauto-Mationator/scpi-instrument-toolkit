@@ -8,18 +8,26 @@ From the REPL, export your measurement log:
 
     log save lab_data.csv
 
-This creates a CSV file with columns: Label, Value, Unit, Source.
+This creates a CSV file with columns `label`, `value`, `unit`, `source` (all lowercase). The file lands in `~/Documents/scpi-instrument-toolkit/data/` by default; type `data dir` in the REPL to see or change the destination.
 
 ## Loading CSV with pandas
 
-    import pandas as pd
+> **Imports for the whole chapter.** Every snippet below assumes you've run:
+>
+>     import pandas as pd
+>     import matplotlib.pyplot as plt
+>     import numpy as np
+>
+> Add these once at the top of your analysis script.
+
+> **Working directory matters.** `pd.read_csv("lab_data.csv")` looks in the current working directory. Either `cd` to the data directory before launching Python, or pass an absolute path like `pd.read_csv(os.path.expanduser("~/Documents/scpi-instrument-toolkit/data/lab_data.csv"))`.
 
     df = pd.read_csv("lab_data.csv")
     print(df)
 
 Output:
 
-    Label           Value       Unit    Source
+    label           value       unit    source
     v_1.0           0.999847    V       dmm1
     v_2.0           1.999623    V       dmm1
     v_3.3           3.299814    V       dmm1
@@ -27,32 +35,33 @@ Output:
 
 ## Basic Statistics
 
-    print(f"Mean: {df['Value'].mean():.4f}")
-    print(f"Std:  {df['Value'].std():.4f}")
-    print(f"Min:  {df['Value'].min():.4f}")
-    print(f"Max:  {df['Value'].max():.4f}")
+    print(f"Mean: {df['value'].mean():.4f}")
+    print(f"Std:  {df['value'].std():.4f}")
+    print(f"Min:  {df['value'].min():.4f}")
+    print(f"Max:  {df['value'].max():.4f}")
 
 ## Filtering Data
 
-Select specific measurements by label pattern:
+Select specific measurements by label pattern. Watch out for false matches: `startswith("v_")` also picks up labels like `v_set` that aren't numeric -- use a regex to match the sweep pattern strictly.
 
-    # All voltage sweep points
-    sweep = df[df["Label"].str.startswith("v_")]
+    import re
+    sweep_re = re.compile(r"^v_\d+(?:\.\d+)?$")
+
+    # Voltage sweep points only (v_1.0, v_3.3, etc. -- not v_set / v_dmm)
+    sweep = df[df["label"].astype(str).map(lambda s: bool(sweep_re.match(s)))]
 
     # Only measurements from dmm1
-    dmm_data = df[df["Source"] == "dmm1"]
+    dmm_data = df[df["source"] == "dmm1"]
 
     # Only voltage measurements
-    volts = df[df["Unit"] == "V"]
+    volts = df[df["unit"] == "V"]
 
 ## Plotting with matplotlib
 
 ### Line Plot
 
-    import matplotlib.pyplot as plt
-
     voltages_set = [1.0, 2.0, 3.3, 5.0]
-    voltages_measured = sweep["Value"].values
+    voltages_measured = sweep["value"].values
 
     plt.figure(figsize=(8, 5))
     plt.plot(voltages_set, voltages_measured, "bo-", label="Measured")
@@ -138,7 +147,7 @@ If you ran the same test multiple times:
     all_runs = pd.concat([run1, run2, run3], keys=["Run 1", "Run 2", "Run 3"])
 
     # Group by label and compute statistics
-    grouped = all_runs.groupby("Label")["Value"]
+    grouped = all_runs.groupby("label")["value"]
     summary = grouped.agg(["mean", "std", "min", "max"])
     print(summary)
 
@@ -162,9 +171,11 @@ Always use these settings for professional-looking figures:
     df = pd.read_csv("lab_data.csv")
 
     # Extract sweep data -- skip labels we cannot parse as "v_<float>"
-    sweep = df[df["Label"].str.startswith("v_")].copy()
+    sweep = df[df["label"].str.startswith("v_")].copy()
 
     def _parse_setpoint(label):
+        # Returns the float after 'v_', or NaN for non-numeric labels
+        # like 'v_set' / 'v_dmm' that share the prefix.
         parts = label.split("_", 1)
         if len(parts) < 2:
             return np.nan
@@ -173,10 +184,10 @@ Always use these settings for professional-looking figures:
         except ValueError:
             return np.nan
 
-    sweep["set_v"] = sweep["Label"].map(_parse_setpoint)
+    sweep["set_v"] = sweep["label"].map(_parse_setpoint)
     sweep = sweep.dropna(subset=["set_v"])
     set_v = sweep["set_v"].to_numpy()
-    meas_v = sweep["Value"].to_numpy()
+    meas_v = sweep["value"].to_numpy()
 
     # Compute errors. Guard against divide-by-zero when a setpoint is 0 V.
     abs_err = np.abs(meas_v - set_v)

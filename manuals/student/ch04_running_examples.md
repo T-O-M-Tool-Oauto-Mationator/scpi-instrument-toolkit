@@ -32,11 +32,15 @@ This copies the example script into your session. You can now see its source:
 
     script show psu_dmm_test
 
-Output shows every line of the script with syntax highlighting.
+`script show` prints every line of the script to the REPL terminal with syntax highlighting (not to a separate editor window).
 
 To load all examples at once:
 
     examples load all
+
+> **`[scpi+py]` examples have two files.** Examples tagged `[scpi+py]` ship with both a `.scpi` script and a `.py` companion that does the data-analysis phase. `examples load <name>` writes both to your scripts directory (`~/Documents/scpi-instrument-toolkit/scripts/`); the SCPI side runs first with `script run <name>` and then chains into the `.py` for analysis. Examples currently tagged `[scpi+py]`: `cross_script_demo`, `complete_cross_script`, `syntax_reference`.
+
+> **`live_*` examples open a matplotlib window.** `live_voltage_sweep`, `live_multi_plot`, `live_freq_sweep`, and `live_combined_plot` need a GUI to render their live plot. If you're on a headless / SSH / managed VM session with no display, set the backend to Agg before launching the REPL: `$env:MPLBACKEND='Agg'` (PowerShell) or `set MPLBACKEND=Agg` (cmd) -- the example still runs end-to-end, it just doesn't pop a window.
 
 ## Running an Example
 
