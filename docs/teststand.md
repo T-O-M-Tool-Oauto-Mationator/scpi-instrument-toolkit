@@ -212,6 +212,7 @@ H:\Documents\eset-453\.venv\Scripts\pip.exe install -r H:\Documents\eset-453\req
 
 Run this in PowerShell - it confirms the three things TestStand actually depends on (real interpreter, loadable DLL, importable toolkit) in one shot:
 
+<!-- doc-test: skip reason="PowerShell snippet with embedded Python heredoc, not pure Python" -->
 ```powershell
 & "H:\Documents\eset-453\.venv\Scripts\python.exe" -c @"
 import sys, ctypes.util

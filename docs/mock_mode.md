@@ -45,6 +45,7 @@ Mock instruments return realistic random values (not constants), so your measure
 
 After launching with `--mock`, run:
 
+<!-- doc-test: skip reason="illustrative quick-start sequence; `scan` is not re-runnable in the doc-test harness" -->
 ```text
 scan
 psu chan 1 on

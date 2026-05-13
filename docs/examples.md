@@ -37,6 +37,7 @@ Each example declares parameters at the top (e.g. `voltage = 5.0`). Override any
 
 This is the simplest useful workflow:
 
+<!-- doc-test: skip reason="annotated REPL session transcript with `>` prompts and sample output -- not executable script syntax" -->
 ```text
 > examples load psu_dmm_test
 loaded: psu_dmm_test
