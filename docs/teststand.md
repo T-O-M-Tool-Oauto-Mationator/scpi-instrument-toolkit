@@ -212,6 +212,7 @@ H:\Documents\eset-453\.venv\Scripts\pip.exe install -r H:\Documents\eset-453\req
 
 Run this in PowerShell - it confirms the three things TestStand actually depends on (real interpreter, loadable DLL, importable toolkit) in one shot:
 
+<!-- doc-test: skip reason="PowerShell snippet with embedded Python heredoc, not pure Python" -->
 ```powershell
 & "H:\Documents\eset-453\.venv\Scripts\python.exe" -c @"
 import sys, ctypes.util
@@ -550,3 +551,24 @@ H:\Documents\eset-453\.venv\Scripts\pip.exe install "git+https://github.com/T-O-
 ```
 
 If pip then complains that `git` is missing, install git via `setup-tamu.ps1` first.
+
+---
+
+## Tips & Gotchas
+
+Things that trip students up most often when wiring TestStand to this toolkit.
+
+- **Use a real Python, not the Microsoft Store stub.** Store Python lives in `WindowsApps`, which TestStand cannot load `python3XX.dll` from. Install via `setup-tamu.ps1` (winget) or `py install 3.12` -- see [section 2](#2-install-a-real-python-312-no-admin-required).
+- **Put the venv on `H:\`, never on a UNC path.** Type `H:\Documents\eset-453\.venv`, not `\\coe-fs.engr.tamu.edu\Ugrads\<NetID>\...`. TestStand and `cmd.exe` both refuse raw UNC working directories. See [section 3](#3-create-a-venv-on-a-mapped-drive).
+- **Base Python directory must be on PATH, not just the venv `Scripts\`.** TestStand needs to load `python312.dll`, which lives in the **base install** (not in the venv's `Scripts\` folder). `setup-teststand.ps1` adds it for you. If you set things up manually, do it yourself and restart TestStand.
+- **Restart TestStand after editing PATH.** TestStand reads PATH only at launch. Editing PATH in the middle of a TestStand session has no effect.
+- **The function has to `return` the value -- not just `print` it.** For a Numeric Limit Test, the Python return value goes into `Step.Result.Numeric`. `print(voltage)` alone leaves Measurement at `0.0`.
+- **Fill in every Arguments row.** A blank parameter cell raises `Run-Time Error -17347: The expression cannot be empty`. Use literal values, `Locals.X`, or `Parameters.Y`.
+- **`pip install scpi-instrument-toolkit` does not work.** The package is not on PyPI. Always install with the `git+https://...` URL.
+- **Verify the venv before wiring TestStand.** Run the `python312.dll` + `from lab_instruments import find_all` smoke test from [section 5](#5-verify-the-venv). If that fails on the command line, TestStand will fail the same way -- save yourself the dialog-box hunting.
+
+---
+
+## Related: LabVIEW Python Node
+
+If you are also calling the toolkit from a LabVIEW VI, the **same venv** can be used. Point the LabVIEW Python Node at the same `H:\...\.venv` -- there is a worked walkthrough (including a student case study) on the [LabVIEW Bridge](labview.md) page.

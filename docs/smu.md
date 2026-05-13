@@ -278,3 +278,16 @@ calc power vout * iout unit=W
 log print
 smu1 off
 ```
+
+---
+
+## Tips & Gotchas
+
+Quirks specific to the supported SMU model.
+
+### NI PXIe-4139
+
+- **PXIe boot order matters.** The PXIe chassis must be powered on before the host PC boots. If the PC boots first, the PXIe card will not be detected. Power cycle the chassis and reboot.
+- **4-quadrant operation.** Can source and sink both voltage and current. Be careful with polarity.
+- **Compliance limits.** Always set current compliance when sourcing voltage, and voltage compliance when sourcing current. The toolkit enforces this.
+- **`nidcpower` required.** The NI-DCPower Python driver must be installed.

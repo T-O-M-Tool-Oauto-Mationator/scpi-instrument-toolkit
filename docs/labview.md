@@ -433,3 +433,29 @@ If you are using a git clone and cannot upgrade, switch the Python Node's module
 **Raw SCPI escape hatch**
 
 If the bridge doesn't have a wrapper for your specific command, use `send_scpi()` / `query_scpi()` to send any SCPI command directly to the instrument.
+
+---
+
+## Tips & Gotchas
+
+Specific quirks of the LabVIEW Python Node + this toolkit that trip students up most often.
+
+- **Use a venv, not the global Python.** A virtual environment isolates the toolkit and its dependencies from anything else on the machine. It also makes the integration reproducible on the next workstation: same `python.exe`, same `pip freeze`. See [NI TestStand Setup](teststand.md) for one way to create a TAMU-friendly venv on the `H:` drive that LabVIEW can point at.
+- **Pick "Open Venv Python Session" from the dropdown.** The default palette item is **Open Anaconda Python Session**. Right-click it and change to **Open Venv Python Session** (LabVIEW 2024+) -- otherwise the wire types do not match a plain pip venv and you will get a vague session error.
+- **Set the return type with a wire, not just the right-click menu.** Drag a data-type wire (String, Double, I32, Boolean) onto the small grey return-type box on the right of the Python Node. Without this, the node returns a Variant that LabVIEW will not auto-coerce.
+- **Expand the node by dragging the bottom edge.** Each drag-down step exposes one more positional input. The order of inputs must match the Python signature -- LabVIEW does not look at parameter names.
+- **Always wire `session refnum` through every node.** All Python Nodes that share the same session also share the bridge's module-level instrument cache. If you accidentally start a second session, `open_psu` in session A is invisible to `psu_set_voltage` in session B and you will get a `KeyError`.
+- **Read the function source.** When in doubt about argument order or types, open `labview_bridge.py` (path printed by Step 1) and look at the signature -- LabVIEW will not tell you what it expects.
+- **64-bit LabVIEW needs 64-bit Python.** A bitness mismatch fails silently. If "Open Python Session" returns no error but later nodes throw `Python not found`, this is the cause.
+
+---
+
+## Student case study: ADC parametric testing (Lab 8)
+
+Maxim Benanti and Caden Citron (ESET 453, Spring 2026) used this LabVIEW bridge for Lab 8 ADC parametric testing -- driving the EV2300 + BQ76920 from a LabVIEW VI that called `open_ev2300`, `ev2300_read_word`, and `close_instrument` through a `.venv` Python Session.
+
+Their 6-slide writeup -- including a screenshot of the actual block diagram, the venv setup steps, and a measured Expected-vs-Measured voltage sweep -- is bundled with the docs:
+
+[Download: Labview/Python Hybridization (PDF, 257 kB)](assets/labview-python-hybridization-benanti-citron.pdf)
+
+Use it as a reference layout when wiring up your own VI.

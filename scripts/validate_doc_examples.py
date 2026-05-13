@@ -9,11 +9,19 @@ Usage:
 Exit code 0 = all pass, 1 = any failure.
 """
 
+import contextlib
 import re
 import signal
 import sys
 import traceback
 from pathlib import Path
+
+# Status output contains Unicode (arrows, units) that the Windows console's
+# default cp1252 codepage can't encode; reconfiguring to UTF-8 keeps the
+# script usable on managed Windows machines.
+for _stream in (sys.stdout, sys.stderr):
+    with contextlib.suppress(AttributeError, ValueError):
+        _stream.reconfigure(encoding="utf-8")
 
 # Ensure the project root is importable
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent

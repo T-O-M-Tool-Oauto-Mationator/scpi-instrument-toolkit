@@ -67,6 +67,33 @@ reviews:
         - set -e / set +e are valid -- do not flag them as deprecated.
         - Keep scripting.md and examples.md in sync with any REPL syntax changes.
 
+    - path: "manuals/**/*.md"
+      instructions: |
+        These are the ESET 453 Student User Manual and TA Developer Guide
+        chapters that get compiled into the .docx deliverables by
+        manuals/build_student_manual.py and manuals/build_ta_guide.py.
+        - Code examples must match the real REPL syntax (no ${var}; use {var}).
+        - "amp=" in AWG examples is peak-to-peak (Vpp) -- see docs/awg.md.
+        - Images use ASCII-only alt text and relative paths resolved by the
+          builder's parse_markdown(base_dir=...) helper.
+        - Flag anything that would fail when a student copy-pastes the block
+          verbatim: missing channel numbers, unquoted strings, ambiguous
+          units, divide-by-zero risks in worked data-analysis examples.
+
+    - path: "manuals/build_*.py"
+      instructions: |
+        These are the DOCX builders. They ship no runtime code -- only build
+        tools -- so full SCPI Driver Contract checks do not apply. Still:
+        - read_text() / write_text() should pass encoding="utf-8".
+        - Image-adding helpers must handle missing files and decode errors
+          without crashing the build.
+        - Keep the two builders (student / TA) in sync when editing parse_markdown.
+
+    - path: "manuals/**/*.pptx"
+      instructions: |
+        Binary slide decks are not reviewable as text; focus on whether the
+        companion markdown / Python source matches the slide talking points.
+
 knowledge_base:
   learnings:
     scope: local

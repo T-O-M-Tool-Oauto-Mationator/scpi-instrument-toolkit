@@ -4,11 +4,65 @@ These bundled examples demonstrate common lab measurement workflows. Load any ex
 
 ![Multi-Instrument Workflow](img/terminal/11_multi_instrument.svg)
 
+## Finding and running examples
+
+The REPL ships with 15+ example scripts covering PSU+DMM sweeps, scope captures, and full lab-report workflows. All examples work in [Mock Mode](mock_mode.md), so you can practice without hardware.
+
+### 1. List what's available
+
+```text
+examples
+```
+
+Prints every bundled example with a one-line description. Use this as a menu.
+
+### 2. Load an example into your session
+
+```text
+examples load psu_dmm_test
+```
+
+`examples load <name>` saves the script under that name in your session so it can be inspected, edited, or run. To preview the source, use `script show <name>`. To pull every bundled example in at once, run `examples load all`.
+
+### 3. Run it (with optional parameter overrides)
+
+```text
+script run psu_dmm_test
+script run psu_dmm_test voltage=3.3 label=v3v3
+```
+
+Each example declares parameters at the top (e.g. `voltage = 5.0`). Override any of them from the command line with `name=value` pairs. The REPL substitutes them before execution -- nothing else changes.
+
+### 4. Walkthrough: `psu_dmm_test`
+
+This is the simplest useful workflow:
+
+<!-- doc-test: skip reason="annotated REPL session transcript with `>` prompts and sample output -- not executable script syntax" -->
+```text
+> examples load psu_dmm_test
+loaded: psu_dmm_test
+> script run psu_dmm_test voltage=5.0 label=vtest
+=== PSU/DMM Voltage Test ===
+Target: 5.0V
+psu_v = 4.998 V
+vtest = 4.997 V
+done.
+```
+
+It turns on PSU channel 1, sets the voltage, waits 500 ms for settling, records the PSU's own readback, then takes a DMM reading -- all logged for `log save`.
+
+### 5. Modify and save your own
+
+After `examples load`, the script is in your session. Edit it with `script edit <name>`, save under a new name with `script save <new_name>`, and re-run with `script run <new_name>`. Custom scripts live in your local user scripts directory and persist across sessions.
+
 ```text
 examples                        # list all bundled examples
 examples load <name>            # load a specific example
 examples load all               # load all examples at once
-script run <name> [params]      # run a loaded example
+script show <name>              # preview source
+script run <name> [k=v ...]     # run with parameter overrides
+script edit <name>              # open in $EDITOR
+script save <new_name>          # save current script under a new name
 ```
 
 ---
