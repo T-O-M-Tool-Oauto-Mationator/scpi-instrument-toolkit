@@ -42,6 +42,8 @@ pip install "git+https://github.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-
 
 > You also need [NI-VISA](https://www.ni.com/en/support/downloads/drivers/download.ni-visa.html) to talk to real instruments. Skip it and use `--mock` to try everything without hardware.
 
+For a one-page driver-install reference (NI-VISA, NI-DCPower, EV2300, vendor utilities) see [INSTALL.md](INSTALL.md); for the full guide with platform notes and troubleshooting, see [docs/install.md](docs/install.md).
+
 ---
 
 ## Start the REPL
