@@ -272,53 +272,76 @@ Before you write a single real test step, save the file below to your project fo
 **`teststand_hello.py`**:
 
 ```python
-"""
-Simple NI TestStand Python adapter smoke test.
+"""Simple NI TestStand Python adapter smoke test."""
 
-In TestStand, create steps that call these functions by name.
-No arguments needed - TestStand will call them directly.
-"""
+
+def check_connection():
+    """Action step. Takes no arguments. Returns None."""
+    print("Python adapter is working correctly.")
 
 
 def get_voltage():
-    """
-    Numeric Limit Test step: returns a fake voltage reading.
-    In TestStand, set limits (e.g. Low=4.5, High=5.5) to pass/fail.
-    """
+    """Numeric Limit Test step. Takes no arguments. Returns 5.0."""
     voltage = 5.0
     print(f"Measured voltage: {voltage} V")
     return voltage
 
 
-def check_connection():
-    """
-    Action step: prints a message to confirm the Python adapter is working.
-    """
-    print("Python adapter is working correctly.")
-
-
 def add(a, b):
-    """
-    Numeric Limit Test step: returns the sum of two numbers passed in from TestStand.
-    In TestStand, wire 'a' and 'b' to step parameters and set a limit on the result.
-    """
+    """Numeric Limit Test step. Takes two numeric arguments from TestStand. Returns a + b."""
     result = a + b
     print(f"add({a}, {b}) = {result}")
     return result
 
 
 if __name__ == "__main__":
-    # Run locally to verify the file works outside TestStand
+    # Verify the file works outside TestStand
     check_connection()
     print(get_voltage())
     print(add(3, 4))
 ```
 
-In TestStand, create a new sequence with three Python steps:
+In TestStand, **File > New > Sequence File**, then insert three steps in the **Main** group. The exact UI for each:
 
-1. **Action** step calling `check_connection` -> expect "Python adapter is working correctly." in the output.
-2. **Numeric Limit Test** step calling `get_voltage` with limits `Low=4.5`, `High=5.5` -> expect Pass.
-3. **Numeric Limit Test** step calling `add(3, 4)` with limit `== 7` -> expect Pass.
+### Step 1 — Action calling `check_connection`
+
+1. Right-click **Main** → **Insert Step** → **Action**.
+2. With the new step selected, in the **Step Settings** pane (bottom of the window):
+   - **Module Path**: browse to `teststand_hello.py`
+   - **Function Name**: `check_connection`
+3. **Arguments** tab: empty (the function takes no parameters).
+4. Save the sequence, click **Execute > Run MainSequence**. The **Output** pane should show:
+   > `Python adapter is working correctly.`
+
+### Step 2 — Numeric Limit Test calling `get_voltage`
+
+1. Right-click → **Insert Step** → **Tests** → **Numeric Limit Test**.
+2. **Step Settings** → **Module** tab:
+   - **Module Path**: `teststand_hello.py`
+   - **Function Name**: `get_voltage`
+3. **Arguments** tab: empty (no parameters).
+4. **Limits** tab:
+   - **Comparison Type**: `GELE (>= <=)`
+   - **Low**: `4.5`
+   - **High**: `5.5`
+5. Leave the **Numeric Measurement** expression at its default — the Python adapter wires the function's return value to it automatically.
+6. Run. Status should be **Passed**, Measurement should be **5.0**. If you see Measurement `0.0` instead, jump to the [Troubleshooting](#measurement-00-when-the-python-function-returns-a-non-zero-value) entry below.
+
+### Step 3 — Numeric Limit Test calling `add` (with parameters)
+
+1. Insert another **Numeric Limit Test** step.
+2. **Module** tab:
+   - **Module Path**: `teststand_hello.py`
+   - **Function Name**: `add`
+3. **Arguments** tab: TestStand introspects the function signature and shows two rows, `a` and `b`. **You must fill in the Value/Expression column for each row** — leaving them empty triggers run-time error `-17347: The expression cannot be empty`. Type:
+   - `a` → `3`
+   - `b` → `4`
+
+   Literal numbers (`3`, `4.5`, `True`) are valid expressions. To pass a TestStand variable instead, use the expression syntax (e.g. `Locals.SomeNumber`).
+4. **Limits** tab:
+   - **Comparison Type**: `EQ (==)`
+   - **Limit**: `7`
+5. Run. Status **Passed**, Measurement **7**.
 
 If all three pass, the Python adapter, venv, and DLL load are all wired correctly. Move on.
 
@@ -473,6 +496,21 @@ python -c "import ctypes.util; print(ctypes.util.find_library('python312'))"
 If `where python` returns a path inside `C:\Program Files\WindowsApps\...`, you have the Microsoft Store stub - install a real Python via one of the [two options above](#2-install-a-real-python-312-no-admin-required).
 
 If both commands succeed but TestStand still cannot load, **restart TestStand** - it caches PATH at launch.
+
+### `Run-Time Error -17347: The expression cannot be empty`
+
+You left a parameter slot blank in the **Arguments** tab of a TestStand Python step. TestStand introspects the function signature, creates a row for every parameter, and refuses to call the function until every row's **Value/Expression** column is filled in.
+
+Open the step's settings → **Arguments** tab → fill every row. Literal values (`3`, `4.5`, `True`, `"hello"`) and TestStand expressions (`Locals.MyVar`, `Parameters.Voltage`) are both valid.
+
+### Measurement = `0.0` when the Python function returns a non-zero value
+
+For a **Numeric Limit Test** step using the Python adapter, the function's return value should populate `Step.Result.Numeric`, which is what the Limits comparison reads. If Measurement shows `0.0` even though your Python `print` shows the right value, walk through this list:
+
+1. **The function returns the value, not just prints it.** `print(voltage)` alone is not enough — the function body needs `return voltage`.
+2. **The function signature matches what TestStand calls.** TestStand passes Arguments-tab values by name; `def get_voltage()` and `def get_voltage(**kwargs)` both work, but a function with required positional args you didn't fill in fails earlier with [-17347](#run-time-error--17347-the-expression-cannot-be-empty).
+3. **The step type is Test - Numeric Limit Test, not Action.** Action steps don't have a measurement.
+4. **The Numeric Measurement expression on the Limits tab is at its default.** The Python adapter wires the return value into `Step.Result.Numeric` for you; if someone edited that expression to read from somewhere else, restore the default.
 
 ### `ModuleNotFoundError: No module named 'lab_instruments'`
 
