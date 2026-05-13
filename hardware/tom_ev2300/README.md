@@ -5,11 +5,11 @@ TOM (Tool-Oauto-Mationator) battery-test rig.
 
 ## Files
 
-| File                                       | Purpose                                |
-|--------------------------------------------|----------------------------------------|
-| `tom_ev2300.stl`                           | source mesh                            |
-| `tom_ev2300.3mf`                           | OrcaSlicer project (editable)          |
-| `tom_ev2300_h2d_petg_0.20mm.gcode.3mf`     | sliced, ready to print on Bambu H2D    |
+| File                                       | Purpose                                          |
+|--------------------------------------------|--------------------------------------------------|
+| `tom_ev2300.stl`                           | source mesh                                      |
+| `tom_ev2300.3mf`                           | OrcaSlicer project (editable, targets X1 Carbon) |
+| `tom_ev2300_x1c_pla_0.20mm.gcode.3mf`      | sliced, ready to print on Bambu X1 Carbon        |
 
 ## Mesh verification
 
@@ -22,36 +22,26 @@ Verified with `trimesh` on 2026-05-05:
 - Vertices / faces: 11,092 / 22,184
 - Genus: 1 (one through-hole, expected for a mount)
 
-## Print recipe (Bambu Lab H2D, 0.4 mm nozzle)
+## Print recipe (Bambu Lab X1 Carbon, 0.4 mm hardened nozzle)
 
 | Setting        | Value                                 |
 |----------------|---------------------------------------|
-| Filament       | Generic PETG (Bambu PETG Basic also OK)|
-| Process        | 0.20mm Standard @BBL H2D              |
+| Filament       | Bambu PLA Basic                       |
+| Process        | 0.20mm Standard @BBL X1C              |
 | Layer height   | 0.20 mm                               |
-| Walls          | 3                                     |
-| Top / bottom   | 4 / 3 layers                          |
-| Infill         | 15 percent gyroid                     |
+| Walls          | 2                                     |
+| Top / bottom   | 5 / 3 layers                          |
+| Infill         | 15 percent crosshatch                 |
 | Supports       | None                                  |
-| Build plate    | Smooth PEI / Textured PEI at 70 C     |
-| Brim           | Optional, 5 mm if adhesion is iffy    |
+| Build plate    | Cool Plate at 55 C                    |
+| Nozzle temp    | 220 C                                 |
+| Brim           | Auto                                  |
 
-Auto-orient picks the +X face down (cost score 439.7 of 26 candidates) --
-zero overhang, prints flat.
+Slice stats from `tom_ev2300_x1c_pla_0.20mm.gcode.3mf`:
 
-Slice stats from `tom_ev2300_h2d_petg_0.20mm.gcode.3mf`:
-
-- Print time: 45 min 55 sec
-- Filament: 4.33 m / 13.23 g PETG
-- 96 layers
-
-### Known warning
-
-The slicer flags `bed_temperature_too_high_than_filament` (level 3) on the
-H2D process profile. The PETG filament profile recommends 70 C bed; the H2D
-process default sits higher. Open the project in OrcaSlicer and drop the bed
-temp to 70 C if you see first-layer sag, otherwise the print is fine to send
-as-is.
+- Print time: 36 min 8 sec
+- Filament: 4.48 m / 13.57 g PLA
+- 97 layers
 
 ## Reslicing from CLI
 
@@ -61,14 +51,16 @@ sliced file from the command line:
 ```sh
 /Applications/OrcaSlicer.app/Contents/MacOS/OrcaSlicer \
   --slice 0 \
-  --export-3mf "tom_ev2300_h2d_petg_0.20mm.gcode.3mf" \
+  --export-3mf "tom_ev2300_x1c_pla_0.20mm.gcode.3mf" \
   --outputdir "$(pwd)" \
   tom_ev2300.3mf
 ```
 
 Passing the project `.3mf` (not the raw STL) avoids the `--load-settings`
 inheritance segfault that OrcaSlicer 2.3.2 has on macOS when vendor profiles
-are referenced by absolute path.
+are referenced by absolute path. Cross-machine swaps (e.g. retargeting the
+project from H2D to X1C) still segfault in CLI even with flattened profiles;
+do those in the GUI.
 
 ## Reslicing from GUI
 

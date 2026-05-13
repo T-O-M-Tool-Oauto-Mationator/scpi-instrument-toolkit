@@ -99,7 +99,6 @@ def main():
             "matplotlib",
             "requests",
             "pyserial-asyncio",
-            "openpyxl",
         ]
         if not run_command([str(pip_exe), "install"] + packages, "Installing basic packages"):
             print("\n❌ Failed to install packages")

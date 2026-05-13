@@ -501,3 +501,55 @@ class TestWaitForBq:
         monkeypatch.setattr("time.monotonic", lambda: next(_seq))
         with pytest.raises(TimeoutError, match="BQ76920 did not respond"):
             dev.wait_for_bq(timeout_s=30.0)
+
+
+# =========================================================================
+# _DarwinBackend.open() path-coercion tests
+#
+# enumerate_devices() normalises the HID path to str, but hidapi's
+# device.open_path() requires bytes. _DarwinBackend.open() must accept either.
+# =========================================================================
+
+
+class TestDarwinBackendOpen:
+    def _make_backend(self, fake_device):
+        from lab_instruments.src.ev2300 import _DarwinBackend
+
+        be = _DarwinBackend.__new__(_DarwinBackend)  # bypass __init__ (avoids hidapi import)
+        be._hid = MagicMock()
+        be._hid.device = MagicMock(return_value=fake_device)
+        return be
+
+    def test_open_coerces_str_path_to_bytes(self):
+        """A str path from enumerate_devices() must be encoded before open_path()."""
+        fake_device = MagicMock()
+        be = self._make_backend(fake_device)
+        be.open("DevSrvsID:4294981387")
+        fake_device.open_path.assert_called_once_with(b"DevSrvsID:4294981387")
+
+    def test_open_passes_bytes_path_through(self):
+        """A bytes path must reach open_path() unchanged."""
+        fake_device = MagicMock()
+        be = self._make_backend(fake_device)
+        be.open(b"DevSrvsID:4294981387")
+        fake_device.open_path.assert_called_once_with(b"DevSrvsID:4294981387")
+
+    def test_open_falls_back_to_vid_pid_on_typeerror(self):
+        """If open_path() raises TypeError (legacy hidapi), fall back to VID/PID."""
+        from lab_instruments.src.ev2300 import PID_FLASHED, VID
+
+        fake_device = MagicMock()
+        fake_device.open_path.side_effect = TypeError("expected bytes")
+        be = self._make_backend(fake_device)
+        be.open(b"DevSrvsID:4294981387")
+        fake_device.open.assert_called_once_with(VID, PID_FLASHED)
+
+    def test_open_falls_back_to_vid_pid_on_oserror(self):
+        """Existing fallback for OSError configurations is preserved."""
+        from lab_instruments.src.ev2300 import PID_FLASHED, VID
+
+        fake_device = MagicMock()
+        fake_device.open_path.side_effect = OSError("permission denied")
+        be = self._make_backend(fake_device)
+        be.open(b"DevSrvsID:4294981387")
+        fake_device.open.assert_called_once_with(VID, PID_FLASHED)

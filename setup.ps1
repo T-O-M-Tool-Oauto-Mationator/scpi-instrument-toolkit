@@ -56,7 +56,7 @@ if (Test-Path $requirementsFile) {
 } else {
     Write-Host "`n⚠ Warning: requirements.txt not found" -ForegroundColor Yellow
     Write-Host "Installing basic packages..." -ForegroundColor Cyan
-    pip install pyserial pandas pyfunctional numpy scipy matplotlib requests pyserial-asyncio openpyxl
+    pip install pyserial pandas pyfunctional numpy scipy matplotlib requests pyserial-asyncio
 }
 
 # Print success message
