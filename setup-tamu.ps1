@@ -414,6 +414,34 @@ if ($claudeDir) {
 }
 
 # ---------------------------------------------------------------------------
+# Step 9: Chain setup-teststand.ps1 (closes #113)
+# ---------------------------------------------------------------------------
+# Builds the TestStand-compatible venv on H:\, installs the toolkit into
+# it, and auto-configures the TestStand Python Adapter (Display Console,
+# venv path) if TestStand is installed. Refreshes the session PATH first
+# so the venv tools and python are findable.
+Write-Step 9 "Chaining setup-teststand.ps1 to build the TestStand venv..."
+
+$machinePath2 = [Environment]::GetEnvironmentVariable("Path", "Machine")
+$userPath3    = [Environment]::GetEnvironmentVariable("Path", "User")
+$env:Path     = "$machinePath2;$userPath3"
+
+try {
+    $tsScript = Invoke-RestMethod "https://raw.githubusercontent.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit/main/setup-teststand.ps1"
+    $tsTmp = New-TemporaryFile
+    $tsScript | Set-Content -Path $tsTmp -Encoding UTF8
+    # Invoke with -NoPause so a single Enter at the end of setup-tamu still
+    # closes both. The -ProjectName default ("scpi-workspace") is fine.
+    & $tsTmp -NoPause
+    Remove-Item $tsTmp -Force -ErrorAction SilentlyContinue
+    Write-Host "TestStand venv setup complete." -ForegroundColor Green
+} catch {
+    Write-Host "setup-teststand.ps1 failed to run: $_" -ForegroundColor Yellow
+    Write-Host "You can run it manually later:" -ForegroundColor Yellow
+    Write-Host "  irm `"https://raw.githubusercontent.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit/main/setup-teststand.ps1`" | iex" -ForegroundColor Yellow
+}
+
+# ---------------------------------------------------------------------------
 # Done
 # ---------------------------------------------------------------------------
 Write-Host ""
