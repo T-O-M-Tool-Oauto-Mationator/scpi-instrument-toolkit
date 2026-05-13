@@ -309,8 +309,10 @@ In TestStand, **File > New > Sequence File**, then insert three steps in the **M
    - **Module Path**: browse to `teststand_hello.py`
    - **Function Name**: `check_connection`
 3. **Arguments** tab: empty (the function takes no parameters).
-4. Save the sequence, click **Execute > Run MainSequence**. The **Output** pane should show:
-   > `Python adapter is working correctly.`
+4. Save the sequence, click **Execute > Run MainSequence**. Look at the **Steps** pane — the Action row's **Status** column should read **Done** and the **Executions** pane (top-left) should show a green checkmark next to MainSequence. That is the success signal.
+
+!!! note "Why isn't `Python adapter is working correctly.` in the Output pane?"
+    TestStand's **Output** pane is a structured message log (note the `MESSAGE` column header), not a Python stdout console. The Python adapter captures `print()` output silently and does not surface it there by default. Don't worry about it — **Status: Done** means the function ran. If you really want to see the print, enable **Configure > Adapters > Python > Configure > Advanced > Display Output of Each Module** before running, or check the Report tab.
 
 ### Step 2 — Numeric Limit Test calling `get_voltage`
 
