@@ -332,30 +332,36 @@ In TestStand, **File > New > Sequence File**, then insert three steps in the **M
 1. Right-click → **Insert Step** → **Tests** → **Numeric Limit Test**.
 2. **Step Settings** → **Module** tab:
    - **Module Path**: `teststand_hello.py`
-   - **Function Name**: `get_voltage`
-3. **Arguments** tab: empty (no parameters).
+   - **Function Name**: **pick `get_voltage` from the dropdown** (don't type it). Selecting from the dropdown is what makes TestStand introspect the function signature and auto-add the Return Value row.
+3. **Arguments** tab: confirm a single row appears at the top — `Return Value`, **Value/Expression** = `Step.Result.Numeric`. **If this row is missing, your Measurement will read `0` and the limit check will always fail** ([fix below](#measurement-00-when-the-python-function-returns-a-non-zero-value)). Leave the row alone — `Step.Result.Numeric` is the correct binding.
 4. **Limits** tab:
    - **Comparison Type**: `GELE (>= <=)`
    - **Low**: `4.5`
    - **High**: `5.5`
-5. Leave the **Numeric Measurement** expression at its default — the Python adapter wires the function's return value to it automatically.
-6. Run. Status should be **Passed**, Measurement should be **5.0**. If you see Measurement `0.0` instead, jump to the [Troubleshooting](#measurement-00-when-the-python-function-returns-a-non-zero-value) entry below.
+5. Run. Status should be **Passed**, Measurement should be **5.0**. If you see Measurement `0.0` instead, the Return Value row is missing — re-pick the function from the dropdown to force re-introspection.
 
 ### Step 3 — Numeric Limit Test calling `add` (with parameters)
 
 1. Insert another **Numeric Limit Test** step.
 2. **Module** tab:
    - **Module Path**: `teststand_hello.py`
-   - **Function Name**: `add`
-3. **Arguments** tab: TestStand introspects the function signature and shows two rows, `a` and `b`. **You must fill in the Value/Expression column for each row** — leaving them empty triggers run-time error `-17347: The expression cannot be empty`. Type:
-   - `a` → `3`
-   - `b` → `4`
+   - **Function Name**: **pick `add` from the dropdown** (don't type it).
+3. **Arguments** tab: TestStand introspects the function signature and shows **three rows**:
 
-   Literal numbers (`3`, `4.5`, `True`) are valid expressions. To pass a TestStand variable instead, use the expression syntax (e.g. `Locals.SomeNumber`).
+   | # | Name | Value/Expression | What to do |
+   |---|---|---|---|
+   | 0 | `Return Value` | `Step.Result.Numeric` | Leave alone (this is how the function's return value reaches Measurement). |
+   | 1 | `a` | *(empty)* | **Fill in:** `3` |
+   | 2 | `b` | *(empty)* | **Fill in:** `4` |
+
+   **You must fill in `a` and `b`** — leaving them empty triggers run-time error `-17347: The expression cannot be empty`. Literal numbers (`3`, `4.5`, `True`) are valid expressions; TestStand variables also work (e.g. `Locals.SomeNumber`).
 4. **Limits** tab:
    - **Comparison Type**: `EQ (==)`
    - **Limit**: `7`
 5. Run. Status **Passed**, Measurement **7**.
+
+!!! tip "All Python Numeric Limit Test steps share the same shape"
+    Verified against NI's bundled Python example on TestStand 2025 Q3: every Python adapter Numeric Limit Test step has a `Return Value` row in its Arguments tab with `Step.Result.Numeric` as the expression. That's the channel the function's return value uses to reach Measurement. If you skip the dropdown and type the function name by hand, the row may not get added — pick from the dropdown and the Arguments table populates automatically.
 
 If all three pass, the Python adapter, venv, and DLL load are all wired correctly. Move on.
 
@@ -521,8 +527,9 @@ Open the step's settings → **Arguments** tab → fill every row. Literal value
 
 For a **Numeric Limit Test** step using the Python adapter, the function's return value should populate `Step.Result.Numeric`, which is what the Limits comparison reads. If Measurement shows `0.0` even though your Python `print` shows the right value, walk through this list:
 
-1. **The function returns the value, not just prints it.** `print(voltage)` alone is not enough — the function body needs `return voltage`.
-2. **The function signature matches what TestStand calls.** TestStand passes Arguments-tab values by name; `def get_voltage()` and `def get_voltage(**kwargs)` both work, but a function with required positional args you didn't fill in fails earlier with [-17347](#run-time-error-17347-the-expression-cannot-be-empty).
+1. **Confirm the Arguments tab has a `Return Value` row.** Open the step's settings, **Arguments** tab. The first row must be `Name = Return Value`, `Value/Expression = Step.Result.Numeric`. If the row is missing, TestStand never introspected the function — open the **Module** tab, **re-pick the function from the Function Name dropdown** (don't type it). The Return Value row will populate. Verified against NI's bundled Python example on TestStand 2025 Q3.
+2. **The function returns the value, not just prints it.** `print(voltage)` alone is not enough — the function body needs `return voltage`.
+3. **The function signature matches what TestStand calls.** TestStand passes Arguments-tab values by name; `def get_voltage()` and `def get_voltage(**kwargs)` both work, but a function with required positional args you didn't fill in fails earlier with [-17347](#run-time-error-17347-the-expression-cannot-be-empty).
 3. **The step type is Test - Numeric Limit Test, not Action.** Action steps don't have a measurement.
 4. **The Numeric Measurement expression on the Limits tab is at its default.** The Python adapter wires the return value into `Step.Result.Numeric` for you; if someone edited that expression to read from somewhere else, restore the default.
 
