@@ -27,6 +27,21 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
+
+def _safe_stdout_write(text: str) -> None:
+    """Write to stdout without crashing on cp1252 console codepages.
+
+    Doc examples may print Unicode like ``→`` or ``Ω`` that the Windows
+    console codepage cannot encode. Replace unencodable chars instead of
+    propagating ``UnicodeEncodeError`` up into pytest / the CLI.
+    """
+    try:
+        sys.stdout.write(text)
+    except UnicodeEncodeError:
+        encoding = getattr(sys.stdout, "encoding", "ascii") or "ascii"
+        sys.stdout.write(text.encode(encoding, "replace").decode(encoding))
+
+
 __all__ = [
     "DocBlock",
     "iter_doc_files",
@@ -829,6 +844,12 @@ def run_block(block: DocBlock, repl=None) -> tuple[RunResult, str]:
     owns_repl = repl is None
     if owns_repl:
         repl = _build_mock_repl()
+    # Swap stdin to an empty buffer so interactive directives (``pause``,
+    # ``input``, ``script debug``) hit EOF immediately and unwind cleanly
+    # instead of raising ``OSError: pytest: reading from stdin while output
+    # is captured`` under pytest, or blocking forever under the CLI.
+    _saved_stdin = sys.stdin
+    sys.stdin = io.StringIO("")
     try:
         ctx = repl.ctx
         ctx.command_had_error = False
@@ -851,10 +872,18 @@ def run_block(block: DocBlock, repl=None) -> tuple[RunResult, str]:
                     repl.onecmd(raw)
                 except (KeyboardInterrupt, SystemExit):
                     raise
+                except EOFError:
+                    # Hitting EOF inside an interactive directive (pause /
+                    # input / script debug) is expected when running under
+                    # the non-interactive doc-test harness. Treat the
+                    # directive as if the operator pressed Enter and move
+                    # to the next line.
+                    _safe_stdout_write(buf.getvalue())
+                    continue
                 except Exception as exc:  # pragma: no cover -- last-line safety net
                     # Forward any output captured before the crash so pytest /
                     # the CLI see everything that printed prior to the fault.
-                    sys.stdout.write(buf.getvalue())
+                    _safe_stdout_write(buf.getvalue())
                     return (
                         "fail",
                         f"{block.short_id}:L{line_no}: uncaught {type(exc).__name__}: {exc}",
@@ -870,9 +899,10 @@ def run_block(block: DocBlock, repl=None) -> tuple[RunResult, str]:
                     f"{block.short_id}:L{line_no}: {captured}",
                 )
             # Forward stdout captured this iteration (print output, etc.)
-            sys.stdout.write(buf.getvalue())
+            _safe_stdout_write(buf.getvalue())
         return "pass", ""
     finally:
+        sys.stdin = _saved_stdin
         if owns_repl:
             with contextlib.suppress(Exception):
                 repl.close()

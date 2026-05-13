@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "scpi-instrument-toolkit"
-version = "1.0.51"
+version = "1.0.52"
 description = "Python drivers and interactive REPL for SCPI test and measurement instruments"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -39,6 +39,7 @@ hid = ["hidapi>=0.14.0"]
 docs = ["mkdocs-material", "mkdocstrings[python]>=0.25.0", "mkdocs-gen-files"]
 test = ["pytest>=7.0", "pytest-cov>=4.0"]
 lint = ["ruff>=0.4.0"]
+dev = ["pytest>=7.0", "pytest-cov>=4.0", "ruff>=0.4.0", "mkdocs-material", "mkdocstrings[python]>=0.25.0", "mkdocs-gen-files"]
 
 [project.scripts]
 scpi-repl = "lab_instruments.repl:main"

@@ -25,6 +25,13 @@ import contextlib
 import sys
 from pathlib import Path
 
+# Doc examples often print Unicode (arrows, units) that Windows' default
+# cp1252 console codepage can't encode; reconfigure to UTF-8 so the
+# validator runs on managed Windows machines without crashing.
+for _stream in (sys.stdout, sys.stderr):
+    with contextlib.suppress(AttributeError, ValueError):
+        _stream.reconfigure(encoding="utf-8")
+
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
