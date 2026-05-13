@@ -1,5 +1,7 @@
 # Chapter 12: The STM32 Bridge (EV2300 Replacement)
 
+> **You cannot complete this chapter without hardware.** It documents an in-house USB-to-I2C adapter and walks through assembly, soldering, firmware flashing, and bench verification. You need: an Adafruit Feather STM32F405 + FeatherWing proto PCB + JST-PH connector + headers + hookup wire + a soldering iron + a BQ76920 EVM to test against (~$25 in parts; ~30 minutes to assemble). Skip this chapter if you're only working on the software side of the toolkit; reading it without the kit is fine for context, but the assembly, soldering, and DFU-flashing steps below all assume you have a unit in front of you.
+
 ## Why we built it
 
 The TI EV2300A USB-to-SMBus bridge is the original "TAMU bench standard" adapter students use to talk to the BQ76920 battery-monitor IC on its EVM board. It is discontinued, and replacement units on the secondary market are expensive and inconsistent. To keep ESET 453 lab kits running past the current supply, we built a drop-in replacement out of an Adafruit Feather STM32F405 + a FeatherWing protoboard.
@@ -75,7 +77,7 @@ The build goes in five stages. Take continuity measurements between stages 3 and
 
 Flash the Feather with the STM32 bridge firmware before handing the unit out.
 
-- **Firmware source:** [`github.com/CesMag/BQ76920_Bridge`](https://github.com/CesMag/BQ76920_Bridge) (public). Build artifacts (`BQ76920_Bridge.bin` / `.elf`) are produced by the repo's CI on every PR and uploaded as workflow artifacts.
+- **Firmware source:** [`github.com/CesMag/BQ76920_Bridge`](https://github.com/CesMag/BQ76920_Bridge) (public). Build artifacts (`BQ76920_Bridge.bin` / `.elf`) are produced by the repo's CI on every PR and uploaded as workflow artifacts. *(Note: this is the single GitHub URL in the project that lives under a personal account instead of the `T-O-M-Tool-Oauto-Mationator` org. The firmware repo predates the org rename and stays where it is so the existing DFU bootloader and CI artifact links keep working; if the org policy in CLAUDE.md changes, plan to migrate it.)*
 - **Flash path:** USB DFU into the STM32F405 ROM bootloader. Move the `B0` jumper on the Feather to `3V3`, press `RESET`, then either run `dfu-util -a 0 --dfuse-address 0x08000000:leave -D BQ76920_Bridge.bin` or use the Adafruit WebDFU page. Move `B0` back to `GND` and press `RESET` to boot the new firmware.
 
 ### USB VID/PID: lab-only reuse
@@ -88,7 +90,9 @@ This reuse is acceptable **only** on closed lab benches and unit-under-test kits
     - Obtain explicit written authorization from TI for the continued use of their VID/PID on this replacement, **or**
     - Rebuild the firmware with a project-owned VID/PID (Adafruit's test-bench range or a pid.codes sublicense are both reasonable options), and update the driver's match table in `lab_instruments/src/ev2300.py` to add the new descriptor alongside the existing TI one.
 
-Record whichever decision was made in this chapter and in `docs/ev2300.md` before any external release.
+Record whichever decision was made in this chapter and in `docs/ev2300.md` before any external release. Use this template so the record is self-explanatory:
+
+> Decision: lab-only VID/PID reuse approved on YYYY-MM-DD by `<TA / instructor name>` for the ESET 453 course only. Not for external distribution. Re-review before any release outside the VOAL lab.
 
 If the bridge comes up in DFU mode (no I2C traffic, `scan` shows a "bootloader" descriptor), reflash. There is no recovery path from the REPL.
 

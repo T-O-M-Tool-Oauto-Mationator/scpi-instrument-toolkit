@@ -66,22 +66,26 @@ Export to CSV:
 
     log save lab3_data.csv
 
-The CSV file contains columns: Label, Value, Unit, Source. You can open it in Excel or Python.
+The CSV file contains columns: `label`, `value`, `unit`, `source` (all lowercase). You can open it in Excel or Python. `log save` writes to `~/Documents/scpi-instrument-toolkit/data/` by default; type `data dir` in the REPL to see or change the destination.
 
 ## Step 6: Plot in Python
 
-Create a Python script (e.g., `plot_lab3.py`) to generate figures:
+Create a Python script (e.g., `plot_lab3.py`) in the same directory as your CSV (or pass an absolute path to `read_csv`):
 
+    import os, re
     import pandas as pd
     import matplotlib.pyplot as plt
 
-    # Load the CSV
-    df = pd.read_csv("lab3_data.csv")
+    # Load the CSV (use the same path that 'log save' reported, or pass an absolute path)
+    csv_path = os.path.expanduser("~/Documents/scpi-instrument-toolkit/data/lab3_data.csv")
+    df = pd.read_csv(csv_path)
 
-    # Filter voltage sweep data
-    sweep = df[df["Label"].str.startswith("v_")]
-    voltages = [float(label.split("_")[1]) for label in sweep["Label"]]
-    measured = sweep["Value"].values
+    # Keep only sweep rows of the form v_<number> (e.g. v_1.0, v_3.3) so we
+    # don't accidentally include labels like v_set / v_dmm that share the prefix.
+    sweep_re = re.compile(r"^v_\d+(?:\.\d+)?$")
+    sweep = df[df["label"].astype(str).map(lambda s: bool(sweep_re.match(s)))]
+    voltages = [float(label.split("_", 1)[1]) for label in sweep["label"]]
+    measured = sweep["value"].values
 
     # Plot
     plt.figure(figsize=(8, 5))
@@ -100,7 +104,7 @@ Run the script:
 
     python plot_lab3.py
 
-This generates `voltage_accuracy.png` -- a publication-ready figure for your report.
+This generates `voltage_accuracy.png` next to the script.
 
 ## Step 7: Include in Your Report
 

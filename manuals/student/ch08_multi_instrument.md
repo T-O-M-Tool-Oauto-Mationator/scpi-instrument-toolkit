@@ -111,6 +111,8 @@ Sweep the PSU through a range of voltages and record DMM readings at each step.
 
 Characterize frequency response by sweeping the AWG and measuring on the scope.
 
+Note: `{f}` inside both **arguments** (`awg1 freq 1 {f}`) and **label names** (`freq_{f} = ...`) is replaced with the current loop value -- so the run produces rows labelled `freq_100`, `freq_500`, etc., which makes the sweep easy to filter later.
+
     awg1 chan 1 on
     awg1 wave 1 sine amp=2.0 offset=0
 

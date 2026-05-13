@@ -211,21 +211,52 @@ class ScriptingCommands(BaseCommand):
             name = args[1] if len(args) >= 2 else None
             if name == "all":
                 loaded = 0
+                py_written = 0
                 for ename, info in EXAMPLES.items():
                     lines = info.get("lines", [])
                     if lines:
                         self.ctx.scripts[ename] = lines
                         loaded += 1
-                ColorPrinter.success(f"Loaded {loaded} SCPI example scripts.")
+                    if info.get("code") and self._materialize_example_py(ename, info["code"]):
+                        py_written += 1
+                suffix = f" (plus {py_written} .py companion files)" if py_written else ""
+                ColorPrinter.success(f"Loaded {loaded} SCPI example scripts{suffix}.")
             elif name and name in EXAMPLES:
-                lines = EXAMPLES[name].get("lines", [])
+                info = EXAMPLES[name]
+                lines = info.get("lines", [])
+                py_written = False
+                if info.get("code"):
+                    py_written = self._materialize_example_py(name, info["code"])
                 if lines:
                     self.ctx.scripts[name] = lines
-                    ColorPrinter.success(f"Loaded example '{name}'.")
+                    suffix = " (+ Python companion)" if py_written else ""
+                    ColorPrinter.success(f"Loaded example '{name}'{suffix}.")
+                elif py_written:
+                    ColorPrinter.success(f"Loaded Python-only example '{name}'. Run with: python {name}.py")
                 else:
                     ColorPrinter.warning(f"'{name}' has no SCPI version. Use the .py file directly.")
             else:
                 ColorPrinter.warning(f"Example '{name}' not found.")
+
+    def _materialize_example_py(self, name: str, code: str) -> bool:
+        """Write the Python companion of an EXAMPLES entry to the scripts dir.
+
+        Returns True on success. ``[scpi+py]`` examples (e.g. cross_script_demo)
+        contain a SCPI line like ``python cross_script_demo.py``; for that to
+        resolve, the .py has to actually live on disk somewhere the ``python``
+        command can find it. The scripts dir is the same place ``script new``
+        writes ``.scpi`` files.
+        """
+        try:
+            scripts_dir = self.ctx.get_scripts_dir()
+            os.makedirs(scripts_dir, exist_ok=True)
+            path = os.path.join(scripts_dir, f"{name}.py")
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(code)
+            return True
+        except OSError as exc:
+            ColorPrinter.warning(f"Could not write Python companion for '{name}': {exc}")
+            return False
 
     def do_python(self, arg: str) -> None:
         args = self.parse_args(arg)
@@ -249,8 +280,15 @@ class ScriptingCommands(BaseCommand):
             return
         filename = args[0]
         if not os.path.exists(filename):
-            ColorPrinter.error(f"File not found: {filename}")
-            return
+            # Bare filename (no path separator) -- try the scripts dir, where
+            # ``examples load`` writes the .py companions of [scpi+py] examples.
+            if os.sep not in filename and "/" not in filename:
+                candidate = os.path.join(self.ctx.get_scripts_dir(), filename)
+                if os.path.exists(candidate):
+                    filename = candidate
+            if not os.path.exists(filename):
+                ColorPrinter.error(f"File not found: {filename}")
+                return
         try:
             with open(filename) as f:
                 script_code = f.read()

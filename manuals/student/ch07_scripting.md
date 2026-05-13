@@ -189,11 +189,17 @@ Runs `other_script` from within the current script. Variables are shared between
 
 ## The Debugger
 
-Step through a script one command at a time:
+Step through a script one command at a time.
 
-    script debug my_test
+**Entering the debugger from the REPL:** first record (or load) a script, then launch it under the debugger:
 
-Debugger commands:
+    record start my_test          # or: examples load <name>
+    psu1 chan 1 on
+    v = dmm1 meas unit=V
+    record stop
+    script debug my_test          # prompt changes to (dbg)
+
+Once you see the `(dbg)` prompt, use these single-letter commands to drive execution:
 
 | Command  | Action                        |
 |----------|-------------------------------|

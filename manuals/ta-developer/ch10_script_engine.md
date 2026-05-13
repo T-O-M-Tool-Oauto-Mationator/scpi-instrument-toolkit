@@ -21,11 +21,15 @@ File: `lab_instruments/repl/script_engine/expander.py`
         variables: dict[str, str],
         ctx: Any,
         depth: int = 0,
+        parent_vars: dict[str, str] | None = None,
+        exports: dict[str, str] | None = None,
+        _loop_ctx: str = "",
     ) -> list[tuple[str, str]]:
 
 - `lines` -- raw script lines
 - `variables` -- current variable values (for substitution)
 - `depth` -- recursion depth (for nested `call` directives)
+- `parent_vars`, `exports`, `_loop_ctx` -- internal bookkeeping for nested call frames, exported names, and the surrounding loop annotation; pass `None` / `""` from external callers
 - Returns a list of `(command, source_annotation)` tuples
 
 ### For-loop expansion

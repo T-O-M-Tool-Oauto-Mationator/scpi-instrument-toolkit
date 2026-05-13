@@ -522,7 +522,7 @@ Open the step's settings → **Arguments** tab → fill every row. Literal value
 For a **Numeric Limit Test** step using the Python adapter, the function's return value should populate `Step.Result.Numeric`, which is what the Limits comparison reads. If Measurement shows `0.0` even though your Python `print` shows the right value, walk through this list:
 
 1. **The function returns the value, not just prints it.** `print(voltage)` alone is not enough — the function body needs `return voltage`.
-2. **The function signature matches what TestStand calls.** TestStand passes Arguments-tab values by name; `def get_voltage()` and `def get_voltage(**kwargs)` both work, but a function with required positional args you didn't fill in fails earlier with [-17347](#run-time-error--17347-the-expression-cannot-be-empty).
+2. **The function signature matches what TestStand calls.** TestStand passes Arguments-tab values by name; `def get_voltage()` and `def get_voltage(**kwargs)` both work, but a function with required positional args you didn't fill in fails earlier with [-17347](#run-time-error-17347-the-expression-cannot-be-empty).
 3. **The step type is Test - Numeric Limit Test, not Action.** Action steps don't have a measurement.
 4. **The Numeric Measurement expression on the Limits tab is at its default.** The Python adapter wires the return value into `Step.Result.Numeric` for you; if someone edited that expression to read from somewhere else, restore the default.
 
@@ -565,7 +565,7 @@ Things that trip students up most often when wiring TestStand to this toolkit.
 - **The function has to `return` the value -- not just `print` it.** For a Numeric Limit Test, the Python return value goes into `Step.Result.Numeric`. `print(voltage)` alone leaves Measurement at `0.0`.
 - **Fill in every Arguments row.** A blank parameter cell raises `Run-Time Error -17347: The expression cannot be empty`. Use literal values, `Locals.X`, or `Parameters.Y`.
 - **`pip install scpi-instrument-toolkit` does not work.** The package is not on PyPI. Always install with the `git+https://...` URL.
-- **Verify the venv before wiring TestStand.** Run the `python312.dll` + `from lab_instruments import find_all` smoke test from [section 5](#5-verify-the-venv). If that fails on the command line, TestStand will fail the same way -- save yourself the dialog-box hunting.
+- **Verify the venv before wiring TestStand.** Run the `python312.dll` + `from lab_instruments import find_all` smoke test from [section 3](#verify-the-venv). If that fails on the command line, TestStand will fail the same way -- save yourself the dialog-box hunting.
 
 ---
 

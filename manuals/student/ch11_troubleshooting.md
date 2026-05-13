@@ -42,15 +42,15 @@ Another program is already connected to the instrument. Close it first:
 - Vendor software (BQStudio, Keysight Connection Expert, NI MAX, etc.)
 - A previous REPL session that crashed without disconnecting
 
-If a previous session crashed:
+If a previous session crashed, find the stuck Python process and terminate it. On TAMU-managed Windows machines, `tasklist` and `taskkill` work without admin rights.
 
-    # On macOS/Linux -- find and kill stuck processes
-    ps aux | grep scpi
-    kill <pid>
-
-    # On Windows
+    # On Windows (TAMU lab machines)
     tasklist | findstr python
     taskkill /PID <pid> /F
+
+    # On macOS / Linux (personal machines only)
+    ps aux | grep scpi
+    kill <pid>
 
 ## Measurements return "9.9e+37"
 
@@ -78,16 +78,15 @@ Install the NI-VISA runtime:
 
     https://www.ni.com/en/support/downloads/drivers/download.ni-visa.html
 
-On Linux, install from the .deb or .rpm package. On macOS, install from the .dmg.
-
-After installing, restart your terminal.
+Installation requires admin rights and takes 5-10 minutes. Restart your terminal afterwards so the new PATH entries take effect. On Linux install from the `.deb` / `.rpm` package; on macOS install from the `.dmg`.
 
 ## NI PXIe-4139 not detected
 
-1. Power cycle the PXIe chassis FIRST
-2. Then reboot the host PC
-3. The chassis must be on before the PC boots -- boot order matters
-4. Verify with NI MAX that the device appears
+The PXIe chassis must be powered on **before** the host PC boots -- if the PC boots first, Windows never enumerates the card and the chassis stays invisible until the next reboot.
+
+1. Power cycle the PXIe chassis FIRST.
+2. Then reboot the host PC.
+3. Verify with NI MAX that the device appears.
 
 ## Serial port permission denied (Linux)
 
@@ -112,7 +111,7 @@ Install Git for Windows from https://git-scm.com/download/win or use the toolkit
 ## REPL crashes or freezes
 
 - Check if an instrument disconnected during a measurement. Reconnect and run `scan`.
-- If the REPL is frozen, press Ctrl+C to interrupt, then Ctrl+D to exit.
+- If the REPL is frozen, press Ctrl+C to interrupt, then type `exit`. On Windows you can also press Ctrl+Z then Enter (Ctrl+D is the POSIX EOF; it does not work in cmd.exe / PowerShell).
 - If Ctrl+C does not work, close the terminal window.
 
 ## Update errors

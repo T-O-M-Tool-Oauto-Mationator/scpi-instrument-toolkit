@@ -4,14 +4,16 @@
 
 The SCPI Instrument Toolkit is a Python-based command-line tool for controlling lab instruments -- oscilloscopes, power supplies, multimeters, function generators, source measure units, and USB-to-I2C adapters -- directly from your terminal. Instead of clicking through vendor GUIs or writing full Python programs, you type short commands and get instant results.
 
-The toolkit was built for ESET 453 (Validation and Verification) at Texas A&M University. It supports the instruments in the VOAL lab and works on both personal and managed TAMU machines.
+The toolkit was built for ESET 453 (Validation and Verification) at Texas A&M University. It supports the instruments in the VOAL (Validation and Observation Automation Lab) and works on both personal and managed TAMU machines.
+
+> **Two manuals, one toolkit.** This Student User Manual covers using the toolkit. The companion **TA Developer Guide** (a separate document distributed to TAs) covers adding drivers, REPL commands, examples, and shipping releases. Forward references in this manual that say "see the TA Developer Guide" point to that companion doc, not to a later chapter here.
 
 ## What You Need
 
 Before installing, make sure you have:
 
-- **Python 3.10 or newer** -- Check by running `python --version` in your terminal.
-- **NI-VISA runtime** -- Required for USB and GPIB communication with instruments. Download from https://www.ni.com/en/support/downloads/drivers/download.ni-visa.html
+- **Python 3.10 or newer** -- Check by running `python --version` in your terminal. If you have 3.9 or older, upgrade before installing.
+- **NI-VISA runtime** -- Required for USB and GPIB communication with **real** instruments. Skip this if you only intend to use `--mock` mode. Download from https://www.ni.com/en/support/downloads/drivers/download.ni-visa.html (installation requires admin rights and 5-10 minutes; restart your terminal afterwards).
 
 ## Installation
 
@@ -23,7 +25,7 @@ Open a terminal (PowerShell on Windows, Terminal on Mac/Linux) and run:
 
 ### TAMU managed machines (VOAL lab)
 
-On TAMU-managed Windows machines where admin access is restricted, use the installer script `setup-tamu.ps1` from this repo. It handles PATH issues and installs the toolkit into your user Python directory.
+On TAMU-managed Windows machines where admin access is restricted, use the installer script `setup-tamu.ps1` from this repo. It installs the toolkit into `%APPDATA%\Python` (your user profile) instead of `C:\Program Files`, which sidesteps the admin requirement that blocks a normal `pip install` on managed images. It also adds the user `Scripts` directory to your PATH so `scpi-repl` is callable from any terminal.
 
 **Recommended (safer): download, review, then run**
 
@@ -45,7 +47,7 @@ After installing, verify it works:
 
     scpi-repl --version
 
-You should see something like `scpi-instrument-toolkit v1.0.30`.
+You should see something like `scpi-instrument-toolkit v1.0.x` -- the exact patch number tracks releases on GitHub.
 
 If `scpi-repl` is not recognized, use the module form instead:
 
@@ -77,7 +79,7 @@ This simulates 14 instruments so you can practice commands without being in the 
 When you start the REPL, it automatically scans for connected instruments:
 
     $ scpi-repl --mock
-    ESET Instrument REPL v1.0.30. Type 'help' for commands.
+    ESET Instrument REPL v1.0.x. Type 'help' for commands.
     [INFO] Scanning for instruments in background...
     [SUCCESS] Scan complete: found 14 device(s).
     eset>
