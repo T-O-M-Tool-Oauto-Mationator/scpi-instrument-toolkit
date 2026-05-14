@@ -138,14 +138,24 @@ Open LabVIEW and create a new blank VI (**File > New VI**). Switch to the **Bloc
 
         Workaround used in the steps below: place a constant of the correct type from the Functions palette (**Programming > String > String Constant**, **Programming > Numeric > Numeric Constant**, or **Programming > Boolean > True/False Constant**), type the value into it, then wire it into the parameter terminal.
 
-6. Wire the first parameter:
+    !!! warning "Parameter order is top-to-bottom — the wire's destination terminal is what counts"
+        LabVIEW maps the expanded parameter slots onto your Python function's positional arguments **top-to-bottom**. For `open_psu(visa_address, driver_name)`:
+
+        - **Topmost** expanded slot → `visa_address` (1st positional arg)
+        - **Next slot down** → `driver_name` (2nd positional arg)
+
+        What matters is **which terminal on the Python Node the wire lands on**, not where you placed the String Constant on the diagram. If you swap them, `open_psu` will throw `VI_ERROR_RSRC_NFOUND` (PyVISA tries to open `"HP_E3631A"` as a resource and fails to parse it) or `ValueError: Unknown driver` (depending on which way they're swapped).
+
+        Also: **no leading or trailing whitespace** in your String Constants. `" GPIB0::4::INSTR"` (with a leading space) is not the same string as `"GPIB0::4::INSTR"` and will fail validation with a confusing error.
+
+6. Wire the first parameter (the **topmost** expanded slot — this becomes `visa_address`):
     - From the Functions palette, place a **String Constant** (**Programming > String**) on the diagram
-    - Type: `GPIB0::1::INSTR`
-    - Wire it into the first parameter terminal
-7. Wire the second parameter:
+    - Type your PSU's actual address (e.g. `GPIB0::1::INSTR` or `GPIB0::4::INSTR` — see the warning at the top of §3)
+    - Wire it into the **top** expanded parameter terminal on the Python Node
+7. Wire the second parameter (the **next slot down** — this becomes `driver_name`):
     - Place another **String Constant** from **Programming > String**
     - Type: `HP_E3631A`
-    - Wire it into the second parameter terminal
+    - Wire it into the **second-from-top** expanded parameter terminal
 8. **Set the output type** — right-click the output terminal on the right side, select the return type as **String**
     - This output will contain the instrument ID (e.g. `"psu_1"`)
 
