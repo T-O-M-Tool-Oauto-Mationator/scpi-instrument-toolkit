@@ -91,8 +91,23 @@ LabVIEW's Python integration uses a **"railroad track" pattern** with three pale
 
 This tutorial uses instruments from the ESET-453 lab bench:
 
-- **HP E3631A** PSU on `GPIB0::1::INSTR`
-- **HP 34401A** DMM on `GPIB0::22::INSTR`
+- **HP E3631A** PSU — typically on `GPIB0::1::INSTR` but **the actual address varies by bench**
+- **HP 34401A** DMM — typically on `GPIB0::22::INSTR`
+
+!!! warning "Discover your bench's actual GPIB addresses before wiring constants"
+    GPIB primary addresses are set per-instrument on each bench and may not match the values above. Before you build the VI, find the real addresses with the toolkit's discovery helper:
+
+    ```powershell
+    python -c "from lab_instruments.src import labview_bridge; print(labview_bridge.list_visa_resources())"
+    ```
+
+    You should see something like:
+
+    ```text
+    ["GPIB0::4::INSTR", "GPIB0::22::INSTR", ...]
+    ```
+
+    Then pair each address with its instrument by querying the IDN string (NI MAX > Devices and Interfaces > GPIB0 > Scan for Instruments works too). Use **those** addresses in the String Constants in the steps below — if you hardcode `GPIB0::1::INSTR` and your PSU is actually at address 4, `open_psu` will throw `VI_ERROR_NLISTENERS` on the first SCPI write.
 
 ### 3.1 Create a New VI
 
@@ -427,6 +442,14 @@ If you are using a git clone and cannot upgrade, switch the Python Node's module
 - Verify Python is on your system PATH: open a terminal and type `python --version`
 - Verify bitness matches: 64-bit LabVIEW needs 64-bit Python
 - Try setting the version input on Open Python Session to `3` (not `3.10` or `3.12`)
+
+**`VI_ERROR_NLISTENERS (-1073807265)` / "No listeners condition is detected"**
+
+- The VISA resource opened, but no device on the bus acknowledged the first SCPI write (`*CLS` during `open_psu`)
+- Almost always means the **GPIB primary address is wrong for your bench** — the doc's `GPIB0::1::INSTR` is a typical value, not a universal one
+- Discover the real address: `python -c "from lab_instruments.src import labview_bridge; print(labview_bridge.list_visa_resources())"` (or use NI MAX > Scan for Instruments)
+- Once you know the address, update the String Constant feeding `open_psu` / `open_dmm` to match
+- Also verify: instrument is powered on, GPIB cable is seated, and you're not on a second controller (`GPIB1` vs `GPIB0`)
 
 **Instrument not found / KeyError on second node**
 
