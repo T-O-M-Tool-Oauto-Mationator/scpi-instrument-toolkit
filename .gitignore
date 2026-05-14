@@ -36,6 +36,7 @@ devices.py
 *.csv
 *.png
 *.xlsx
+!docs/assets/*.png
 
 # MkDocs generated site — built by mkdocs build, deployed by mkdocs gh-deploy.
 # These are build artifacts; the canonical site lives on the gh-pages branch.

@@ -172,11 +172,38 @@ Open LabVIEW and create a new blank VI (**File > New VI**). Switch to the **Bloc
 3. Wire the same **module path** (you can branch the wire or create another constant)
 4. Set **function name** to: `psu_set_voltage`
 5. Drag the bottom edge down to expose **3 input terminals**
-6. Wire the inputs in order (for the constants, place them from the Functions palette and wire them in — see the tip in Step 3.3 step 5):
-    - **instrument_id** (String) — wire from the output of the `open_psu` node
-    - **channel** (I32) — place a **Numeric Constant** from **Programming > Numeric**, set to `2` (the +25V channel)
-    - **voltage** (Double) — place a **Numeric Constant** from **Programming > Numeric**, set to `5.0`
+
+    !!! warning "Read the constant's COLOR to confirm its type"
+        LabVIEW color-codes constants by data type. Picking the wrong type is the most common source of confusing Python Node errors.
+
+        | Color | Type | Use for |
+        |---|---|---|
+        | Pink / magenta | **String** | `instrument_id`, VISA addresses, driver names, function names |
+        | Blue | **I32** (integer) | `channel`, register addresses, byte values |
+        | Orange | **DBL** (double-precision float) | `voltage`, `current`, frequencies, measurements |
+        | Green | **Boolean** | enable/disable flags |
+
+        If you place a constant via **Programming > String > String Constant**, you get a **pink** constant — even if you type a number into it, Python receives the string `"2"`, not the integer `2`. The bridge's `psu_set_voltage` validator will then raise `ValueError: HP_E3631A channel must be 1, 2, or 3. Got '2' (type: str).` — note the **quotes around `'2'`** and the `(type: str)` tag, which is your diagnostic tell that you placed a String Constant by mistake.
+
+        For numeric inputs, place a **Numeric Constant** via **Programming > Numeric > Numeric Constant**. To force I32 specifically, right-click the constant and select **Representation > I32**.
+
+6. Wire the inputs in order. The constants go in expanded slots top-to-bottom (see the slot-order warning in Step 3.3 step 5):
+    - **instrument_id** (String) — wire from the output of the `open_psu` node (top slot)
+    - **channel** (I32) — place a **Numeric Constant** from **Programming > Numeric**, right-click and set **Representation > I32**, type `2` (the +25V channel) — the constant should appear **blue**
+    - **voltage** (DBL) — place another **Numeric Constant**, leave at the default DBL representation, type `5.0` — the constant should appear **orange**
 7. Set output type to **String** (returns `"OK"`)
+
+!!! example "Reference layout — verified working open_psu + psu_set_voltage chain"
+    Block diagram showing the correct wiring for opening the HP E3631A PSU on `GPIB0::4::INSTR` and setting the +25V channel to 10V. Notice the **blue** I32 constants on the `channel` and `voltage` inputs (this VI uses 10V; the tutorial uses 5V — same shape).
+
+    ![open_psu + psu_set_voltage block diagram](assets/labview-psu-set-voltage-block-diagram.png)
+
+    What to look at:
+
+    - Pink String Constants for the VISA address (`GPIB0::4::INSTR`) and driver name (`HP_E3631A`) flowing into `open_psu`'s top two parameter slots.
+    - The session refnum (teal wire) threading across **both** Python Nodes.
+    - The `open_psu` output wire branching down to a String Indicator (the small grey box under the node — optional, for debugging) AND continuing right into `psu_set_voltage`'s top parameter slot (`instrument_id`).
+    - Blue I32 Numeric Constants `2` and `10` (channel and voltage) wired into the lower two parameter slots of `psu_set_voltage`.
 
 ### 3.5 Place Python Node — Enable PSU Output
 
@@ -280,6 +307,27 @@ Complex data (instrument lists, device info) is returned as **JSON strings**. Pa
 ---
 
 ## Function Reference
+
+The tables below list every bridge function with its **positional argument order**. This order is what determines how to wire your Python Node — the top expanded parameter slot is argument #1, the next slot down is argument #2, and so on. LabVIEW does **not** look at Python parameter names; only position matters.
+
+### How to look up a function's signature on your own
+
+You will encounter functions in your own labs that are not in this exact tutorial. Three reliable ways to confirm argument order without guessing:
+
+1. **This page** — every function is documented below with its full Python-style signature: `function_name(arg1: type, arg2: type, ...) -> return_type`. Wire the arguments into Python Node parameter slots in the same order they appear in the parentheses.
+
+2. **Built-in Python help** — from any terminal where the toolkit is installed:
+
+    ```powershell
+    python -c "from lab_instruments.src import labview_bridge; help(labview_bridge.psu_set_voltage)"
+    ```
+
+    Replace `psu_set_voltage` with whichever function you care about. You get the canonical signature plus the docstring including parameter descriptions and return type. This is the most authoritative source because it reads directly from the source file LabVIEW is actually calling.
+
+3. **The source file itself** — open `labview_bridge.py` at the path printed by Step 1. Search for `def psu_set_voltage` (or whatever function) to see the exact signature. This is also useful when an error message references a line number — you can jump straight to the validation that fired.
+
+!!! tip "Why argument order matters more than names in LabVIEW"
+    Python is forgiving about keyword arguments (`psu_set_voltage(channel=2, voltage=5.0, instrument_id="psu_1")` works in plain Python). The LabVIEW Python Node is **not** — it only passes positional arguments in the order you wire them. Wire `voltage` into the slot where `channel` is expected and the call will silently do the wrong thing (`set_voltage(channel=5.0)` would then fail validation, but with a more confusing error than you would expect).
 
 ### Discovery
 

@@ -154,7 +154,7 @@ def _get(instrument_id: str) -> object:
     try:
         return _instruments[instrument_id]
     except KeyError:
-        available = list(_instruments.keys()) or ["(none — open an instrument first)"]
+        available = list(_instruments.keys()) or ["(none - open an instrument first)"]
         raise KeyError(f"No instrument with ID '{instrument_id}'. Open instruments: {available}") from None
 
 
@@ -365,12 +365,12 @@ def psu_set_voltage(instrument_id: str, channel: int, voltage: float) -> str:
     if isinstance(dev, HP_E3631A):
         ch = _HP_CHANNEL_MAP.get(channel)
         if ch is None:
-            raise ValueError(f"HP_E3631A channel must be 1, 2, or 3. Got {channel}.")
+            raise ValueError(f"HP_E3631A channel must be 1, 2, or 3. Got {channel!r} (type: {type(channel).__name__}).")
         dev.set_voltage(ch, voltage)
     elif isinstance(dev, Keysight_EDU36311A):
         ch_key = _EDU_CHANNEL_MAP.get(channel)
         if ch_key is None:
-            raise ValueError(f"EDU36311A channel must be 1, 2, or 3. Got {channel}.")
+            raise ValueError(f"EDU36311A channel must be 1, 2, or 3. Got {channel!r} (type: {type(channel).__name__}).")
         dev.set_voltage(ch_key, voltage)
     elif isinstance(dev, MATRIX_MPS6010H) or NI_PXIe_4139 is not None and isinstance(dev, NI_PXIe_4139):
         dev.set_voltage(voltage)
@@ -387,12 +387,12 @@ def psu_set_current_limit(instrument_id: str, channel: int, current: float) -> s
     if isinstance(dev, HP_E3631A):
         ch = _HP_CHANNEL_MAP.get(channel)
         if ch is None:
-            raise ValueError(f"HP_E3631A channel must be 1, 2, or 3. Got {channel}.")
+            raise ValueError(f"HP_E3631A channel must be 1, 2, or 3. Got {channel!r} (type: {type(channel).__name__}).")
         dev.set_current_limit(ch, current)
     elif isinstance(dev, Keysight_EDU36311A):
         ch_key = _EDU_CHANNEL_MAP.get(channel)
         if ch_key is None:
-            raise ValueError(f"EDU36311A channel must be 1, 2, or 3. Got {channel}.")
+            raise ValueError(f"EDU36311A channel must be 1, 2, or 3. Got {channel!r} (type: {type(channel).__name__}).")
         dev.set_current_limit(ch_key, current)
     elif isinstance(dev, MATRIX_MPS6010H) or NI_PXIe_4139 is not None and isinstance(dev, NI_PXIe_4139):
         dev.set_current_limit(current)
@@ -409,12 +409,12 @@ def psu_set_output_channel(instrument_id: str, channel: int, voltage: float, cur
     if isinstance(dev, HP_E3631A):
         ch = _HP_CHANNEL_MAP.get(channel)
         if ch is None:
-            raise ValueError(f"HP_E3631A channel must be 1, 2, or 3. Got {channel}.")
+            raise ValueError(f"HP_E3631A channel must be 1, 2, or 3. Got {channel!r} (type: {type(channel).__name__}).")
         dev.set_output_channel(ch, voltage, current_limit)
     elif isinstance(dev, Keysight_EDU36311A):
         ch_key = _EDU_CHANNEL_MAP.get(channel)
         if ch_key is None:
-            raise ValueError(f"EDU36311A channel must be 1, 2, or 3. Got {channel}.")
+            raise ValueError(f"EDU36311A channel must be 1, 2, or 3. Got {channel!r} (type: {type(channel).__name__}).")
         dev.set_output_channel(ch_key, voltage, current_limit)
     elif isinstance(dev, MATRIX_MPS6010H) or NI_PXIe_4139 is not None and isinstance(dev, NI_PXIe_4139):
         dev.set_output_channel(channel, voltage, current_limit)
@@ -442,12 +442,12 @@ def psu_measure_voltage(instrument_id: str, channel: int) -> float:
     if isinstance(dev, HP_E3631A):
         ch = _HP_CHANNEL_MAP.get(channel)
         if ch is None:
-            raise ValueError(f"HP_E3631A channel must be 1, 2, or 3. Got {channel}.")
+            raise ValueError(f"HP_E3631A channel must be 1, 2, or 3. Got {channel!r} (type: {type(channel).__name__}).")
         return dev.measure_voltage(ch)
     elif isinstance(dev, Keysight_EDU36311A):
         ch_key = _EDU_CHANNEL_MAP.get(channel)
         if ch_key is None:
-            raise ValueError(f"EDU36311A channel must be 1, 2, or 3. Got {channel}.")
+            raise ValueError(f"EDU36311A channel must be 1, 2, or 3. Got {channel!r} (type: {type(channel).__name__}).")
         return dev.measure_voltage(ch_key)
     elif isinstance(dev, MATRIX_MPS6010H) or NI_PXIe_4139 is not None and isinstance(dev, NI_PXIe_4139):
         return dev.measure_voltage()
@@ -464,12 +464,12 @@ def psu_measure_current(instrument_id: str, channel: int) -> float:
     if isinstance(dev, HP_E3631A):
         ch = _HP_CHANNEL_MAP.get(channel)
         if ch is None:
-            raise ValueError(f"HP_E3631A channel must be 1, 2, or 3. Got {channel}.")
+            raise ValueError(f"HP_E3631A channel must be 1, 2, or 3. Got {channel!r} (type: {type(channel).__name__}).")
         return dev.measure_current(ch)
     elif isinstance(dev, Keysight_EDU36311A):
         ch_key = _EDU_CHANNEL_MAP.get(channel)
         if ch_key is None:
-            raise ValueError(f"EDU36311A channel must be 1, 2, or 3. Got {channel}.")
+            raise ValueError(f"EDU36311A channel must be 1, 2, or 3. Got {channel!r} (type: {type(channel).__name__}).")
         return dev.measure_current(ch_key)
     elif isinstance(dev, MATRIX_MPS6010H) or NI_PXIe_4139 is not None and isinstance(dev, NI_PXIe_4139):
         return dev.measure_current()
