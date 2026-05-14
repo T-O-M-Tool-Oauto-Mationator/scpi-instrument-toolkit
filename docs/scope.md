@@ -456,7 +456,7 @@ Remove all measurement items from the on-screen results panel.
     scope meas_clear
     ```
 
-    Sends `MEASUrement:DELETEALL` per the 2-Series Programmer Manual (§2-383). Removes every active measurement instance configured on the scope.
+    Sends `MEASUrement:DELETEALL` per the 2-Series Programmer Manual (Section 2-383). Removes every active measurement instance configured on the scope.
 
 ### scope meas_loop
 
@@ -722,7 +722,7 @@ Capture the scope display and save as PNG.
     scope screenshot capture.png        # saves to the scope's local disk
     ```
 
-    Screenshots are saved on the scope's internal disk (or attached USB) via `SAVe:IMAGe "<filepath>"` per the 2-Series Programmer Manual (§2-488). Supported formats are PNG, BMP, and JPEG, selected by the file extension. Note: the file is written to the scope's filesystem, not the host PC — retrieve it via the scope's USB or network share.
+    Screenshots are saved on the scope's internal disk (or attached USB) via `SAVe:IMAGe "<filepath>"` per the 2-Series Programmer Manual (Section 2-488). Supported formats are PNG, BMP, and JPEG, selected by the file extension. Note: the file is written to the scope's filesystem, not the host PC — retrieve it via the scope's USB or network share.
 
 ### scope label / invert / bwlimit
 

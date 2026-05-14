@@ -150,14 +150,20 @@ Open LabVIEW and create a new blank VI (**File > New VI**). Switch to the **Bloc
 
 6. Wire the first parameter (the **topmost** expanded slot — this becomes `visa_address`):
     - From the Functions palette, place a **String Constant** (**Programming > String**) on the diagram
-    - Type your PSU's actual address (e.g. `GPIB0::1::INSTR` or `GPIB0::4::INSTR` — see the warning at the top of §3)
+    - Type your PSU's actual address (e.g. `GPIB0::1::INSTR` or `GPIB0::4::INSTR` — see the warning at the top of Step 3)
     - Wire it into the **top** expanded parameter terminal on the Python Node
 7. Wire the second parameter (the **next slot down** — this becomes `driver_name`):
     - Place another **String Constant** from **Programming > String**
     - Type: `HP_E3631A`
     - Wire it into the **second-from-top** expanded parameter terminal
 8. **Set the output type** — right-click the output terminal on the right side, select the return type as **String**
-    - This output will contain the instrument ID (e.g. `"psu_1"`)
+    - At runtime, this output **wire** will carry the instrument ID string (e.g. `"psu_1"`). The output itself isn't stored anywhere — the value only exists on the wire while the VI runs.
+    - **What to do with the output:** you have two choices, and you'll typically do both:
+        - **Wire it forward** into the next Python Node's `instrument_id` input. That's how `psu_set_voltage` in Step 3.4 receives the ID. The wire *is* the variable — no String Constant in between.
+        - **Optional debug indicator:** right-click the output terminal and select **Create > Indicator** to put a String Indicator on the front panel that displays the ID after each run. Useful while learning. You can delete it once the chain is working.
+
+    !!! warning "A String Constant cannot receive an output"
+        If you placed an empty String Constant near the output terminal expecting it to "fill in" with `"psu_1"`, delete it — String Constants only feed values **into** nodes, they don't capture outputs. Use an **Indicator** (or just wire the output directly into the next node).
 
 ### 3.4 Place Python Node — Set Voltage to 5V on Channel 2
 
@@ -166,7 +172,7 @@ Open LabVIEW and create a new blank VI (**File > New VI**). Switch to the **Bloc
 3. Wire the same **module path** (you can branch the wire or create another constant)
 4. Set **function name** to: `psu_set_voltage`
 5. Drag the bottom edge down to expose **3 input terminals**
-6. Wire the inputs in order (for the constants, place them from the Functions palette and wire them in — see the tip in §3.3 step 5):
+6. Wire the inputs in order (for the constants, place them from the Functions palette and wire them in — see the tip in Step 3.3 step 5):
     - **instrument_id** (String) — wire from the output of the `open_psu` node
     - **channel** (I32) — place a **Numeric Constant** from **Programming > Numeric**, set to `2` (the +25V channel)
     - **voltage** (Double) — place a **Numeric Constant** from **Programming > Numeric**, set to `5.0`
