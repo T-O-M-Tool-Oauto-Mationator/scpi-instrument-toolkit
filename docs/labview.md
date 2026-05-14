@@ -58,13 +58,14 @@ This file re-exports every function from the real bridge and is the recommended 
 
 LabVIEW's Python integration uses a **"railroad track" pattern** with three palette items found under **Connectivity > Python** in the Functions palette:
 
-```text
-┌──────────────┐     ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
-│ Open Python  │────>│ Python Node  │────>│ Python Node  │────>│ Close Python │
-│   Session    │     │ (open_psu)   │     │ (set_voltage) │     │   Session    │
-└──────────────┘     └──────────────┘     └──────────────┘     └──────────────┘
-     session refnum passes through ALL nodes like a railroad track
+```mermaid
+flowchart LR
+    A([Open Python<br/>Session]) -->|session refnum| B[Python Node<br/>open_psu]
+    B -->|session refnum| C[Python Node<br/>set_voltage]
+    C -->|session refnum| D([Close Python<br/>Session])
 ```
+
+The **session refnum** wire passes through every Python Node like a railroad track — that's how they all share the bridge's instrument cache.
 
 ### The Three Palette Items
 
@@ -261,16 +262,32 @@ This ensures that if any node fails (e.g. instrument not found), subsequent node
 
 ### Complete Block Diagram Layout
 
-```text
-┌─────────┐   ┌───────────┐   ┌──────────────┐   ┌──────────────┐   ┌───────────┐   ┌──────────────┐   ┌─────────┐   ┌─────────┐   ┌─────────┐
-│  Open   │──>│ open_psu  │──>│psu_set_voltage│──>│psu_enable_   │──>│ open_dmm  │──>│dmm_measure_  │──>│ close   │──>│ close   │──>│ Close   │
-│ Python  │   │           │   │              │   │  output      │   │           │   │ dc_voltage   │   │ PSU     │   │ DMM     │   │ Python  │
-│ Session │   │GPIB0::1   │   │ id, 2, 5.0  │   │ id, True     │   │GPIB0::22  │   │     id       │   │         │   │         │   │ Session │
-│  v=3    │   │HP_E3631A  │   │   -> "OK"    │   │  -> "OK"     │   │HP_34401A  │   │  -> 5.003    │   │ -> "OK" │   │ -> "OK" │   │         │
-└─────────┘   └───────────┘   └──────────────┘   └──────────────┘   └───────────┘   └──────────────┘   └─────────┘   └─────────┘   └─────────┘
-session refnum ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════>
-error cluster  ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────>
+```mermaid
+flowchart LR
+    A([Open Python Session<br/>version = 3])
+    B[open_psu<br/>GPIB0::1::INSTR<br/>HP_E3631A]
+    C[psu_set_voltage<br/>id, 2, 5.0<br/>→ OK]
+    D[psu_enable_output<br/>id, True<br/>→ OK]
+    E[open_dmm<br/>GPIB0::22::INSTR<br/>HP_34401A]
+    F[dmm_measure_dc_voltage<br/>id<br/>→ 5.003]
+    G[close_instrument<br/>PSU id<br/>→ OK]
+    H[close_instrument<br/>DMM id<br/>→ OK]
+    I([Close Python Session])
+
+    A --> B
+    B -->|psu_1| C
+    C --> D
+    D --> E
+    E -->|dmm_2| F
+    F --> G
+    G --> H
+    H --> I
+
+    classDef session fill:#e0f2fe,stroke:#0284c7,color:#0c4a6e
+    class A,I session
 ```
+
+The **session refnum** (teal wire in LabVIEW) threads through every node from `Open Python Session` to `Close Python Session`. The **error cluster** wires in parallel along the bottom of every Python Node so that a failure in any node short-circuits the rest and surfaces the message at the end of the chain.
 
 ---
 
