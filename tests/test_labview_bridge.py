@@ -187,6 +187,34 @@ class TestPSU:
         result = psu_enable_output(inst_id, True)
         assert result == "OK"
 
+    def test_enable_output_rejects_non_bool(self, hp_e3631a):
+        """Regression: LabVIEW Python Node silently passes a falsy default
+        (None / 0 / "" / Variant) when the Boolean parameter terminal is
+        unwired or wired to the wrong constant type. Without validation the
+        bridge accepted that and quietly disabled the PSU output, which is
+        the worst possible failure mode for a safety-relevant call. The
+        bridge must now reject any non-bool with a TypeError that names the
+        likely cause."""
+        from lab_instruments.src.labview_bridge import psu_enable_output
+
+        psu, _ = hp_e3631a
+        inst_id = _inject(psu, "psu")
+        for bogus in (None, 0, 1, "True", "False"):
+            with pytest.raises(TypeError, match="must be a Boolean"):
+                psu_enable_output(inst_id, bogus)
+
+    def test_enable_output_rejects_bad_instrument_id(self, hp_e3631a):
+        """Regression: when LabVIEW's first parameter slot is unwired, the
+        Python Node passes the empty string "". The bridge must reject this
+        with a clear ValueError naming the wiring fix, rather than letting
+        it cascade to a generic KeyError from _get_typed which students
+        misread as a bridge bug."""
+        from lab_instruments.src.labview_bridge import psu_enable_output
+
+        for bogus in ("", None, 0, b"psu_1"):
+            with pytest.raises(ValueError, match="instrument_id"):
+                psu_enable_output(bogus, True)
+
     def test_measure_voltage_hp(self, hp_e3631a):
         from lab_instruments.src.labview_bridge import psu_measure_voltage
 
@@ -478,6 +506,34 @@ class TestEV2300:
         inst_id = _inject(dev, "ev2300")
         result = ev2300_read_byte(inst_id, 0x08, 0x00)
         assert result == 0xAB
+
+    def test_wait_for_bq(self, ev2300):
+        """ev2300_wait_for_bq forwards to the driver's wait_for_bq method.
+
+        Bench motivation: students hit Device error (0x46) because the
+        BQ76920 was still in SHIP mode when ev2300_read_byte fired. The
+        intended LabVIEW pattern is open_ev2300 -> ev2300_wait_for_bq
+        (block while the human presses BOOT) -> ev2300_read_byte."""
+        from lab_instruments.src.labview_bridge import ev2300_wait_for_bq
+
+        dev, _ = ev2300
+        dev.wait_for_bq = MagicMock(return_value=None)
+        inst_id = _inject(dev, "ev2300")
+        result = ev2300_wait_for_bq(inst_id, timeout_s=5.0)
+        assert result == "OK"
+        dev.wait_for_bq.assert_called_once_with(timeout_s=5.0)
+
+    def test_wait_for_bq_propagates_timeout(self, ev2300):
+        """If the BQ never responds, wait_for_bq raises TimeoutError; the
+        bridge passes it through unchanged so LabVIEW sees a clear error
+        instead of a silent hang."""
+        from lab_instruments.src.labview_bridge import ev2300_wait_for_bq
+
+        dev, _ = ev2300
+        dev.wait_for_bq = MagicMock(side_effect=TimeoutError("BQ did not ACK"))
+        inst_id = _inject(dev, "ev2300")
+        with pytest.raises(TimeoutError, match="BQ did not ACK"):
+            ev2300_wait_for_bq(inst_id, timeout_s=1.0)
 
     def test_write_byte(self, ev2300):
         from lab_instruments.src.labview_bridge import ev2300_write_byte

@@ -112,6 +112,41 @@ The `docs/` folder is built by MkDocs and served to users. Keep it in sync with 
 - `print` examples must use quoted strings: `print "message {var}"`
 - `set -e` / `set +e` are NOT deprecated -- keep them as-is in docs
 
+## LabVIEW bridge install layout (read this BEFORE editing the bridge for a LabVIEW user)
+
+The LabVIEW Python Node loads modules by **import-by-name**, not by file path: it takes the basename of the module path constant (e.g. `labview_bridge`) and runs `import labview_bridge`. The file path is essentially advisory — Python's import machinery has to be able to resolve the bare name. This means **two things have to be true** for a LabVIEW user to pick up bridge edits:
+
+1. `import labview_bridge` must succeed in the same Python interpreter LabVIEW launches. This requires the shim `labview_bridge.py` (the top-level file at the repo root) to live somewhere on that interpreter's `sys.path` — typically `site-packages/labview_bridge.py`.
+2. The shim must re-export every function the user's VI calls. The shim does `from lab_instruments.src.labview_bridge import (...)` and lists each function explicitly, so adding a new bridge function means **also** adding it to the shim's import block AND `__all__`.
+
+### Recommended setup for any LabVIEW dev machine
+
+```powershell
+cd C:\path\to\scpi-instrument-toolkit
+pip install -e .
+copy labview_bridge.py "$($(python -c 'import site; print(site.getsitepackages()[0])'))\labview_bridge.py"
+```
+
+- `pip install -e .` installs the `lab_instruments` package as editable. Edits under `lab_instruments/src/` flow through to LabVIEW automatically (no re-copy needed).
+- `copy ... labview_bridge.py` puts the shim at site-packages so `import labview_bridge` works for LabVIEW. Only re-copy this file if you change the shim's export list (added a new bridge function name).
+
+### Symptoms that mean the install is broken
+
+- `Hex 0x683 / ModuleNotFoundError: No module named 'labview_bridge'` — shim missing from site-packages. Re-copy.
+- `Hex 0x687 / AttributeError: module has no attribute '<new_function>'` — shim's import list is out of sync with the bridge. Add the new function to the shim and re-copy.
+- LabVIEW silently runs old code with no validation errors despite repo edits — `pip show scpi-instrument-toolkit` returns "not found", meaning the install was wiped. Reinstall editable.
+- After a successful run, edits don't take effect — Python Session has the module cached in memory. Restart LabVIEW (File > Exit, reopen). The bridge file change alone is not enough; the running interpreter has to be killed.
+
+### When you add a new bridge function in this codebase
+
+Three places must update together (otherwise LabVIEW users hit `AttributeError`):
+
+1. `lab_instruments/src/labview_bridge.py` — the actual function
+2. `labview_bridge.py` (repo root shim) — add to the import block AND `__all__`
+3. `docs/labview.md` Function Reference — add a row so students can discover it
+
+After committing, re-copy the shim to any active dev machine's site-packages so LabVIEW sees the new export. The site-packages copy is NOT auto-synced by the editable install (because the shim isn't part of the package; it's a top-level convenience file).
+
 ## Official Docs Site
 - URL: https://t-o-m-tool-oauto-mationator.github.io/scpi-instrument-toolkit/
 - When the user says "official docs" or "the docs", this site is what they mean

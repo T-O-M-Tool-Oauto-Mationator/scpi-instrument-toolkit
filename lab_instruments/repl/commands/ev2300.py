@@ -60,6 +60,8 @@ class Ev2300Command(BaseCommand):
                 self._handle_i2c_power(args, dev)
             elif cmd_name == "fix":
                 self._handle_fix()
+            elif cmd_name == "cycle":
+                self._handle_cycle(dev)
             elif cmd_name == "state":
                 if len(args) < 2:
                     self._show_help()
@@ -106,6 +108,9 @@ class Ev2300Command(BaseCommand):
                 "  - silent command: bridge sends no HID response, success is implicit",
                 "ev2300 fix",
                 "  - step-by-step recovery for communication errors",
+                "ev2300 cycle",
+                "  - disconnect, prompt for BOOT-button press on BQ EVM, then reconnect",
+                "  - PSU is left untouched so the BQ stays powered throughout",
             ]
         )
 
@@ -324,6 +329,45 @@ class Ev2300Command(BaseCommand):
         dev.wait_for_bq(timeout_s=timeout_s)
         ColorPrinter.success("BQ76920 is live -- ready for I2C commands")
 
+    def _handle_cycle(self, dev: Any) -> None:
+        """Disconnect, prompt for BQ EVM BOOT press, then reconnect.
+
+        Leaves the PSU untouched so the BQ76920 EVM stays powered through the
+        cycle. Most "Write failed" / wedged-state errors are cleared by closing
+        the host-side HID handle and reopening it, because TI's firmware clears
+        its internal USB-to-I2C state machine when the host releases the device.
+        """
+        ColorPrinter.info("Disconnecting EV2300 (PSU untouched -- BQ EVM stays powered)...")
+        try:
+            dev.disconnect()
+        except Exception as exc:
+            ColorPrinter.warning(f"Disconnect raised {type(exc).__name__}: {exc} -- continuing anyway")
+
+        ColorPrinter.warning("")
+        ColorPrinter.warning("ACTION REQUIRED -- press the BOOT button on the BQ76920 EVM now.")
+        ColorPrinter.warning("This hard-resets the BQ chip so it wakes from SHIP mode.")
+        ColorPrinter.warning("")
+
+        try:
+            input("Press Enter to reconnect the EV2300... ")
+        except (EOFError, KeyboardInterrupt):
+            ColorPrinter.warning("")
+            ColorPrinter.warning("Cycle cancelled. EV2300 is disconnected -- run 'scan' to reopen.")
+            self.ctx.command_had_error = True
+            return
+
+        ColorPrinter.info("Reconnecting EV2300...")
+        try:
+            dev.connect()
+        except Exception as exc:
+            ColorPrinter.error(f"Reconnect failed: {type(exc).__name__}: {exc}")
+            ColorPrinter.info("Try unplugging the EV2300 USB cable and running 'scan'.")
+            self.ctx.command_had_error = True
+            return
+
+        ColorPrinter.success("EV2300 reconnected. Try your read/write commands again.")
+        ColorPrinter.info("Tip: 'ev2300 wait_for_bq' will block until BQ76920 ACKs on I2C.")
+
     def _handle_fix(self) -> None:
         self.print_colored_usage(
             [
@@ -352,9 +396,11 @@ class Ev2300Command(BaseCommand):
                 "     bridge's I2C bus power rail (cmd 0x18). Most builds enable",
                 "     it at startup, but if reads still NACK after BOOT, try this.",
                 "",
-                "  5. If still failing, disconnect and re-scan:",
-                "       disconnect ev2300",
-                "       scan",
+                "  5. If still failing, disconnect and re-scan. The shortcut",
+                "     'ev2300 cycle' bundles this with a BOOT-press prompt so",
+                "     the BQ stays powered (PSU is never touched):",
+                "       ev2300 cycle      # (recommended)",
+                "       disconnect ev2300; scan      # (manual equivalent)",
                 "",
                 "  6. Last resort: unplug the EV2300 USB cable, replug, then",
                 "     'disconnect ev2300' and 'scan' again.",

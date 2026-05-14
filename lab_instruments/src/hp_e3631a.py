@@ -59,10 +59,20 @@ class HP_E3631A(DeviceManager):
         self.disable_all_channels()
 
     def disable_all_channels(self):
-        """Disable output and zero all channel setpoints."""
+        """Disable output and reset all channel setpoints to a safe state.
+
+        Voltage is reset to 0.0 V on every channel; current limit is reset to
+        the channel's DEFAULT_CURRENT_LIMIT (NOT zero). Zeroing the current
+        limit is silently broken — a subsequent psu_set_voltage + enable_output
+        cycle leaves the PSU in CC mode at 0 A and unable to deliver power,
+        which historically tripped LabVIEW Python Node users whose chains
+        called psu_set_voltage (voltage only) without also resetting the
+        current limit. The REPL's psu_set_output_channel path was unaffected
+        because it always re-sends APPLY with both setpoints.
+        """
         self.enable_output(False)
         for ch in HP_E3631A.Channel:
-            self.send_command(f"APPLY {ch.value}, 0.0, 0.0")
+            self.send_command(f"APPLY {ch.value}, 0.0, {self.DEFAULT_CURRENT_LIMIT[ch]}")
 
     def enable_output(self, enabled: bool = True):
         """Enable or disable the power supply output."""

@@ -130,14 +130,20 @@ class TestHPE3631A_SaveRecall:
 
 
 class TestHPE3631A_DisableAllChannels:
-    def test_output_off_and_zero_all(self, hp_e3631a):
+    def test_output_off_and_zero_voltage_default_current_limit(self, hp_e3631a):
+        """Regression: disable_all_channels used to issue APPLY ch, 0.0, 0.0
+        which left the current limit at zero. A subsequent set_voltage +
+        enable_output cycle (the LabVIEW Python Node default path)
+        consequently produced CC mode at 0 A and zero deliverable power.
+        The safe state must reset voltage to 0 V but preserve a usable
+        current limit (DEFAULT_CURRENT_LIMIT per channel)."""
         psu, mi = hp_e3631a
         psu.disable_all_channels()
         cmds = _writes(mi)
         assert "OUTPUT:STATE OFF" in cmds
-        assert "APPLY P6V, 0.0, 0.0" in cmds
-        assert "APPLY P25V, 0.0, 0.0" in cmds
-        assert "APPLY N25V, 0.0, 0.0" in cmds
+        assert "APPLY P6V, 0.0, 1.0" in cmds  # DEFAULT_CURRENT_LIMIT[POSITIVE_6V]
+        assert "APPLY P25V, 0.0, 0.5" in cmds  # DEFAULT_CURRENT_LIMIT[POSITIVE_25V]
+        assert "APPLY N25V, 0.0, 0.5" in cmds  # DEFAULT_CURRENT_LIMIT[NEGATIVE_25V]
 
 
 class TestHPE3631A_SetTracking:
@@ -166,7 +172,7 @@ class TestHPE3631A_ContextManager:
         psu.__enter__()
         cmds = _writes(mi)
         assert "OUTPUT:STATE OFF" in cmds
-        assert "APPLY P6V, 0.0, 0.0" in cmds
+        assert "APPLY P6V, 0.0, 1.0" in cmds  # DEFAULT_CURRENT_LIMIT[POSITIVE_6V]
 
     def test_exit_disables_all(self, hp_e3631a):
         psu, mi = hp_e3631a
@@ -183,7 +189,7 @@ class TestHPE3631A_ContextManager:
             pass
         cmds = _writes(mi)
         assert "OUTPUT:STATE OFF" in cmds
-        assert "APPLY P6V, 0.0, 0.0" in cmds
+        assert "APPLY P6V, 0.0, 1.0" in cmds  # DEFAULT_CURRENT_LIMIT[POSITIVE_6V]
 
 
 # ===========================================================================

@@ -106,6 +106,49 @@ class TestEv2300Help:
         assert boot_pos < disconnect_pos, "BOOT recovery step must precede disconnect/rescan"
 
 
+class TestEv2300Cycle:
+    """`ev2300 cycle` bundles disconnect + BOOT-press prompt + reconnect."""
+
+    def test_cycle_runs_through_disconnect_reconnect(self, ev2300_repl, capsys, monkeypatch):
+        monkeypatch.setattr("builtins.input", lambda *a, **kw: "")
+        ev2300_repl.onecmd("ev2300 cycle")
+        out = capsys.readouterr().out
+        assert "Disconnecting" in out
+        assert "BOOT" in out
+        assert "Reconnecting" in out
+        assert "reconnected" in out.lower()
+
+    def test_cycle_reminds_about_psu(self, ev2300_repl, capsys, monkeypatch):
+        """The whole point of `cycle` (vs. unplugging USB) is that the PSU
+        stays on so the BQ EVM remains powered. The reminder has to be in
+        the output."""
+        monkeypatch.setattr("builtins.input", lambda *a, **kw: "")
+        ev2300_repl.onecmd("ev2300 cycle")
+        out = capsys.readouterr().out
+        assert "PSU" in out
+
+    def test_cycle_cancel_via_keyboard_interrupt(self, ev2300_repl, capsys, monkeypatch):
+        def raise_kbd(*a, **kw):
+            raise KeyboardInterrupt
+
+        monkeypatch.setattr("builtins.input", raise_kbd)
+        ev2300_repl.onecmd("ev2300 cycle")
+        out = capsys.readouterr().out
+        assert "cancelled" in out.lower()
+
+    def test_cycle_listed_in_help(self, ev2300_repl, capsys):
+        ev2300_repl.onecmd("ev2300")
+        out = capsys.readouterr().out
+        assert "cycle" in out
+
+    def test_fix_text_mentions_cycle(self, ev2300_repl, capsys):
+        """The fix recovery text should point students at `ev2300 cycle` as
+        the recommended bundle for steps 5-6."""
+        ev2300_repl.onecmd("ev2300 fix")
+        out = capsys.readouterr().out
+        assert "ev2300 cycle" in out
+
+
 class TestEv2300I2CPower:
     """Regression: i2c_power was previously only callable via the Python API.
     Bench debugging of the BQ76920 EVM motivated exposing it interactively."""

@@ -70,7 +70,7 @@ The **session refnum** wire passes through every Python Node like a railroad tra
 ### The Three Palette Items
 
 1. **Open Python Session** — Creates a Python interpreter session
-    - Input: Python version number (use **3** for Python 3.x)
+    - Input: Python version number — use your installed Python's **major.minor** (e.g. `3.12` for Python 3.12.x). Older LabVIEW versions accept the bare `3`; LabVIEW 2024+ generally requires the explicit minor. Check what's installed with `python --version` and feed that to the constant.
     - Output: A **session refnum** (reference wire) — thread this through all your Python Nodes
 
 2. **Python Node** — Calls one Python function
@@ -120,7 +120,9 @@ Open LabVIEW and create a new blank VI (**File > New VI**). Switch to the **Bloc
 2. Navigate to **Connectivity > Python**
 3. Place **Open Python Session** on the left side of your diagram
 4. Right-click the **version** input terminal and select **Create > Constant**
-5. Set the constant value to **3** (for Python 3.x)
+5. Set the constant value to your installed Python's **major.minor** version (e.g. `3.12` for Python 3.12.x).
+    - Run `python --version` in a terminal to confirm what's installed.
+    - LabVIEW 2024+ generally requires the explicit minor (`3.12`, `3.11`). Older LabVIEW versions accept the bare `3`. If `3.12` errors out on your install, fall back to `3`.
 
 ### 3.3 Place the First Python Node — Open the PSU
 
@@ -172,6 +174,14 @@ Open LabVIEW and create a new blank VI (**File > New VI**). Switch to the **Bloc
 2. Wire the **session refnum** through from the previous node
 3. Wire the same **module path** (you can branch the wire or create another constant)
 4. Set **function name** to: `psu_set_voltage`
+
+    !!! tip "First-time chains: prefer `psu_set_output_channel` over `psu_set_voltage`"
+        `psu_set_voltage(id, channel, voltage)` only programs the voltage setpoint — it does not touch the channel's current limit. If you have not previously set the current limit on this channel, the PSU may have it at 0 A (or whatever the previous user left it at), and `psu_enable_output(True)` will land in CC mode at 0 A with no deliverable power.
+
+        For a fresh chain, use `psu_set_output_channel(id, channel, voltage, current_limit)` instead — it sends `APPLY ch, V, I` which sets both setpoints in one call and matches what `psu set` does in the REPL. Use 0.1-0.5 A for a typical low-current load like the BQ76920 EVM.
+
+        As of v1.0.63, `open_psu`'s safe-state init sets the current limit to the channel's `DEFAULT_CURRENT_LIMIT` (1.0 A on +6V, 0.5 A on each ±25V) instead of zero, so a stand-alone `psu_set_voltage` call is now safe on freshly-opened PSUs. The tip still applies if your chain reuses a session that may have explicitly zeroed the limit.
+
 5. Drag the bottom edge down to expose **3 input terminals**
 
     !!! warning "Read the constant's COLOR to confirm its type"
@@ -193,6 +203,13 @@ Open LabVIEW and create a new blank VI (**File > New VI**). Switch to the **Bloc
     - **channel** (I32) — place a **Numeric Constant** from **Programming > Numeric**, right-click and set **Representation > I32**, type `2` (the +25V channel) — the constant should appear **blue**
     - **voltage** (DBL) — place another **Numeric Constant**, leave at the default DBL representation, type `5.0` — the constant should appear **orange**
 7. Set output type to **String** (returns `"OK"`)
+
+!!! failure "Anti-example — pink String Constants where Numeric Constants belong"
+    The diagram below produces the confusing-looking error `HP_E3631A channel must be 1, 2, or 3. Got '2' (type: str).` even though `2` is clearly in the allowed set. The reason is that `2` and `5` are **String Constants** (pink), so Python receives them as `"2"` and `"5"` — strings, not integers.
+
+    ![Broken: pink String Constants on channel/voltage inputs](assets/labview-psu-set-voltage-string-constants-broken.png)
+
+    The fix is to delete the two pink constants, place **Numeric Constants** from **Programming > Numeric** instead (blue for I32, orange for DBL), type the same numbers, and wire them into the same slots. The next admonition shows the result.
 
 !!! example "Reference layout — verified working open_psu + psu_set_voltage chain"
     Block diagram showing the correct wiring for opening the HP E3631A PSU on `GPIB0::4::INSTR` and setting the +25V channel to 10V. Notice the **blue** I32 constants on the `channel` and `voltage` inputs (this VI uses 10V; the tutorial uses 5V — same shape).
@@ -295,18 +312,53 @@ The **session refnum** (teal wire in LabVIEW) threads through every node from `O
 
 This example opens the EV2300 and reads the SYS_STAT register (0x00) from a BQ76920 at I2C address 0x08.
 
+!!! warning "BQ76920 hardware prerequisites"
+    The BQ76920 cannot respond to I2C until two conditions are met:
+
+    1. **The EVM is powered** at 9-21V on BATT+/-. If the EVM shares your PSU, run a `psu_set_voltage` + `psu_enable_output(True)` chain (Step 3 above) first and confirm the PSU's Output LED is lit.
+    2. **The BOOT button on the EVM has been pressed** since the last power-on. The BQ defaults to SHIP mode and only a hardware BOOT pulse wakes it.
+
+    If either condition is missing, `ev2300_read_byte` fails with `RuntimeError: Device error (0x46)`. See Troubleshooting for the full recovery flow.
+
 ### Block Diagram
 
-1. **Open Python Session** (version = 3)
+1. **Open Python Session** (version = your installed Python's major.minor, e.g. `3.12`)
 2. **Python Node** — `open_ev2300`
     - 1 input: `""` (empty string = auto-detect)
     - Output type: String (returns `"ev2300_1"`)
-3. **Python Node** — `ev2300_read_byte`
+3. **One Button Dialog** (Programming > Dialog & User Interface) — message: `Press BOOT on BQ EVM, then click OK`. Blocks the VI so the human can press the BOOT button before the read fires. Alternative: use `ev2300_wait_for_bq` instead (next step) and press BOOT during the poll window.
+4. **Python Node** — `ev2300_wait_for_bq` *(recommended)*
+    - 2 inputs: instrument_id (String), `30.0` (DBL = timeout seconds)
+    - Output type: String (returns `"OK"` once the BQ ACKs; raises `TimeoutError` if it doesn't)
+    - Polls CC_CFG every 0.5 s, so it returns the moment you press BOOT. Removes the manual-timing race.
+5. **Python Node** — `ev2300_read_byte`
     - 3 inputs: instrument_id (String), `8` (I32 = I2C address 0x08), `0` (I32 = register 0x00)
     - Output type: **I32** (returns the register value, e.g. `0`)
     - Create an Indicator on the output to display the value
-4. **Python Node** — `close_instrument`
-5. **Close Python Session**
+6. **Python Node** — `close_instrument`
+7. **Close Python Session**
+
+!!! tip "Coordinated PSU + EV2300 workflow"
+    When the same VI both powers the BQ EVM (via PSU) and reads from it (via EV2300), order matters. Use a **Flat Sequence Structure** (Programming > Structures > Flat Sequence Structure) with three frames:
+
+    - **Frame 1**: PSU chain — `open_psu` → `psu_set_output_channel(id, 2, 18.0, 0.5)` → `psu_enable_output(id, True)`. After this frame the PSU's Output LED is lit and 18V is on the EVM with a 0.5 A current limit. Use `psu_set_output_channel` (not `psu_set_voltage`) to set both voltage AND current limit in one call — see the tip in Step 3.4.
+    - **Frame 2**: `One Button Dialog` saying "Press Boot on BQ EVM" — blocks until the human presses BOOT and clicks OK. *Or* `ev2300_wait_for_bq` in Frame 3 with a generous timeout.
+    - **Frame 3**: EV2300 chain — `open_ev2300` → (optional `ev2300_wait_for_bq`) → `ev2300_read_byte` → close nodes.
+
+    Frames execute strictly left-to-right, eliminating the race where `ev2300_read_byte` could fire before `psu_enable_output` finished.
+
+!!! example "Working reference VI: `examples/labview/ev2300_hybrid.vi`"
+    A complete, verified version of this chain ships in the repo at [`examples/labview/ev2300_hybrid.vi`](https://github.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit/blob/main/examples/labview/ev2300_hybrid.vi). Open it in LabVIEW to see the exact wiring. The screenshots below are taken from this VI running on the ESET-453 bench.
+
+    **Block diagram** (note the Flat Sequence with 3 frames, the orange `0.5` DBL constant feeding `psu_set_output_channel`'s current_limit slot, the green `T` Boolean for `psu_enable_output`, and the I32 indicator on `ev2300_read_byte`'s output):
+
+    ![ev2300_hybrid block diagram](assets/labview-ev2300-hybrid-block-diagram.png)
+
+    **Front panel** (the I32 indicator displays `128` = `0x80` = the BQ76920's CC_READY flag, which is the typical idle SYS_STAT value):
+
+    ![ev2300_hybrid front panel showing return value 128](assets/labview-ev2300-hybrid-front-panel.png)
+
+    To decode the byte: SYS_STAT bit 7 (`0x80`) is **CC_READY** — a Coulomb Counter conversion just completed. Other typical bits: `0x40` = DEVICE_XREADY (internal fault), `0x20` = OVRD_ALERT, `0x10`/`0x08`/`0x04`/`0x02`/`0x01` = various protection flags. See BQ76920 datasheet [SLUSBK2I](https://www.ti.com/lit/ds/symlink/bq76920.pdf) Section 8.5.1 for the full bitmap.
 
 ---
 
@@ -421,6 +473,7 @@ You will encounter functions in your own labs that are not in this exact tutoria
 
 | Function | Signature | Returns |
 |---|---|---|
+| `ev2300_wait_for_bq` | `(id: str, timeout_s: float = 30.0) -> str` | `"OK"` once BQ ACKs; raises `TimeoutError` |
 | `ev2300_read_byte` | `(id: str, i2c_addr: int, register: int) -> int` | Byte value (0-255) |
 | `ev2300_write_byte` | `(id: str, i2c_addr: int, register: int, value: int) -> str` | `"OK"` |
 | `ev2300_read_word` | `(id: str, i2c_addr: int, register: int) -> int` | 16-bit value |
@@ -428,6 +481,8 @@ You will encounter functions in your own labs that are not in this exact tutoria
 | `ev2300_read_block` | `(id: str, i2c_addr: int, register: int) -> str` | JSON list of ints |
 | `ev2300_write_block` | `(id: str, i2c_addr: int, register: int, data_json: str) -> str` | `"OK"` |
 | `ev2300_get_device_info` | `(id: str) -> str` | JSON device info |
+
+Call `ev2300_wait_for_bq` between `open_ev2300` and the first `ev2300_read_*` call when the BQ EVM is being powered up alongside the VI. The function polls CC_CFG until the BQ ACKs, so it returns the moment you press the BOOT button (no manual timing race).
 
 ### SMU (Source Measure Unit)
 
@@ -522,7 +577,33 @@ If you are using a git clone and cannot upgrade, switch the Python Node's module
 
 - Verify Python is on your system PATH: open a terminal and type `python --version`
 - Verify bitness matches: 64-bit LabVIEW needs 64-bit Python
-- Try setting the version input on Open Python Session to `3` (not `3.10` or `3.12`)
+- Try setting the version input on Open Python Session to your installed Python's **major.minor** (e.g. `3.12`). LabVIEW 2024+ generally rejects the bare `3` and demands an explicit minor; older LabVIEW versions accept either. Run `python --version` to confirm which is installed.
+
+**Error 1672 at Open Python Session / "Hex 0x688 unknown Python error"**
+
+- Open Python Session is failing before any Python code runs. `python312.dll` is never loaded into LabVIEW. Two common causes:
+- **A stray Python process is holding the runtime.** A previous `pytest` run, REPL session, or aborted VI can leave a `python.exe` alive that locks the interpreter against new sessions. Kill it: in PowerShell, `Get-Process python | Stop-Process -Force`, then retry.
+- **`niPythonInterface.dll` cached a previous failure.** Once Open Python Session fails in a LabVIEW process, the result is cached and every subsequent attempt fails without re-checking. Fix: close the VI, quit LabVIEW entirely, reopen and try again.
+
+**`RuntimeError: Device error (0x46)` from any `ev2300_*` function**
+
+- The EV2300 sent an I2C request but the BQ76920 slave did not ACK. Three common causes:
+- **BQ76920 is in SHIP mode.** The BQ defaults to SHIP after every power-on and only a hardware BOOT pulse wakes it. Press the BOOT button on the EVM. In LabVIEW, prefer `ev2300_wait_for_bq` (or a One Button Dialog between `open_ev2300` and `ev2300_read_byte`) so the human has time to press BOOT before the read fires.
+- **No power on the BQ EVM.** Confirm the PSU is at 18V on the +25V channel AND the Output LED is lit (programmed voltage alone is not enough — `psu_enable_output(True)` must have fired). If the LED is off, see the next entry.
+- **EV2300 firmware in a wedged state from a prior failed transaction.** In the REPL run `ev2300 cycle` to disconnect, prompt for BOOT, and reconnect cleanly. In LabVIEW, `close_instrument` the EV2300, prompt for BOOT, then `open_ev2300` again.
+
+**PSU is in CC mode at 0 A even though voltage was set and output is enabled**
+
+- The PSU programmed voltage is showing 18 V, the Output LED is lit (or you wired `psu_enable_output(True)`), but the PSU display shows **CC** (Constant Current) and the current reads **0 A** under any real load.
+- Cause: the channel's current limit is set to 0.0 A. The PSU is correctly current-limiting at 0 A, which collapses the output voltage the instant any load draws current.
+- Pre-1.0.63 bug: `open_psu`'s safe-state init zeroed the current limit. As of v1.0.63 this is fixed (defaults preserved). If you are on an older bridge or the limit was explicitly zeroed by another call, work around with `psu_set_output_channel(id, channel, voltage, current_limit)` which sends `APPLY` and sets both setpoints. 0.1-0.5 A is plenty for a low-current load like a BQ76920 EVM.
+- Sanity check from the REPL: `psu meas <ch> i` reads measured current. `psu set <ch> <V> <A>` resets both setpoints (this is what the REPL `psu set` does internally — it always passes both values).
+
+**PSU display shows the programmed voltage but Output LED is off**
+
+- The PSU front panel can display a programmed setpoint without the output stage being energized. The LED is the authoritative state.
+- **Most common cause: `psu_enable_output` was called with `False`.** Verify the Boolean Constant wired into the second parameter slot reads **T** (green). A pink String Constant, an unwired terminal, or a False Constant all produce this symptom. The bridge now raises `TypeError: psu_enable_output: 'enabled' must be a Boolean...` if anything other than a real `bool` is passed.
+- **Sanity check:** with the VI stopped, press the physical Output On/Off button on the E3631A — the LED should toggle. If it does, the PSU is fine and the VI is the problem; if not, there's a PSU fault (look for OVP/OCP/error on the display).
 
 **`VI_ERROR_NLISTENERS (-1073807265)` / "No listeners condition is detected"**
 

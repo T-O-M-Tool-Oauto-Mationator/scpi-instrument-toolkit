@@ -427,6 +427,24 @@ def psu_enable_output(instrument_id: str, enabled: bool) -> str:
     Returns:
         str: "OK"
     """
+    if not isinstance(instrument_id, str) or not instrument_id:
+        raise ValueError(
+            f"psu_enable_output: 'instrument_id' must be a non-empty string "
+            f"returned by open_psu, got {instrument_id!r} (type: "
+            f"{type(instrument_id).__name__}). In LabVIEW: branch the output "
+            f"wire of open_psu into the first (top) parameter slot of this "
+            f"Python Node. An unwired String terminal arrives as the empty "
+            f"string, which matches no open instrument."
+        )
+    if not isinstance(enabled, bool):
+        raise TypeError(
+            f"psu_enable_output: 'enabled' must be a Boolean (True/False), "
+            f"got {enabled!r} (type: {type(enabled).__name__}). "
+            f"In LabVIEW: place a True/False Constant from "
+            f"Programming > Boolean and wire it into the second parameter "
+            f"slot of the Python Node. An unwired Boolean terminal silently "
+            f"defaults to False, which disables the PSU output."
+        )
     dev = _get_typed(instrument_id, _PSU_CLASSES)
     dev.enable_output(enabled)
     return "OK"
@@ -723,6 +741,30 @@ def scope_measure_vrms(instrument_id: str, channel: int) -> float:
 # =========================================================================
 # EV2300 operations
 # =========================================================================
+
+
+def ev2300_wait_for_bq(instrument_id: str, timeout_s: float = 30.0) -> str:
+    """Poll the BQ76920 over I2C until it acknowledges, or timeout.
+
+    Blocks the calling thread until a read of CC_CFG (reg 0x0B) succeeds
+    at either possible BQ address (0x08 or 0x18), or ``timeout_s`` seconds
+    elapse. Use this after ``open_ev2300`` if the EVM may have been
+    BOOT-pressed during the open call -- the function returns as soon as
+    the chip wakes up.
+
+    Args:
+        instrument_id: ID returned by open_ev2300.
+        timeout_s: Maximum seconds to wait (default 30).
+
+    Returns:
+        str: "OK" once the BQ ACKs.
+
+    Raises:
+        TimeoutError: If the BQ does not respond within timeout_s.
+    """
+    dev = _get_typed(instrument_id, _EV2300_CLASSES)
+    dev.wait_for_bq(timeout_s=timeout_s)
+    return "OK"
 
 
 def ev2300_read_byte(instrument_id: str, i2c_addr: int, register: int) -> int:
