@@ -461,6 +461,13 @@ If you are using a git clone and cannot upgrade, switch the Python Node's module
 - Once you know the address, update the String Constant feeding `open_psu` / `open_dmm` to match
 - Also verify: instrument is powered on, GPIB cable is seated, and you're not on a second controller (`GPIB1` vs `GPIB0`)
 
+**`ValueError: Unknown driver '<something>'.`**
+
+- The driver name being passed to `open_psu` / `open_dmm` does not match any entry in the bridge's `_DRIVER_MAP`
+- **Check for leading or trailing whitespace** in the String Constant feeding the `driver_name` parameter. `" HP_E3631A"` (leading space) is not the same string as `"HP_E3631A"` and will fail the allowlist check. Double-click into the constant and confirm there are no stray spaces before or after the text
+- **Check the parameter slot order**: the topmost expanded parameter slot is `visa_address`, the next slot down is `driver_name`. If your wires are swapped, `GPIB0::4::INSTR` ends up as `driver_name` and you get `Unknown driver ' GPIB0::4::INSTR'` (the error message even prints the leading space inside the quotes — that's your tell)
+- Confirm the driver string matches the **Supported Drivers** table exactly (case-sensitive): `HP_E3631A`, `EDU36311A`, `HP_34401A`, etc.
+
 **Instrument not found / KeyError on second node**
 
 - Make sure all Python Nodes share the **same session refnum wire** from Open Python Session
