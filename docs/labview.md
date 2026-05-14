@@ -117,12 +117,20 @@ Open LabVIEW and create a new blank VI (**File > New VI**). Switch to the **Bloc
     - Right-click it and select **Create > Constant**
     - Type: `open_psu`
 5. **Add function parameters** — drag the bottom edge of the Python Node down to expose **2 additional input terminals**
+
+    !!! tip "Parameter terminals: drop constants from the palette"
+        Right-click > Create > Constant works on the built-in **module path** and **function name** terminals, but is **unreliable on the expanded parameter terminals** you expose by dragging the node down. Those terminals are Variant until a wire is attached, so the menu often refuses to create a constant of the correct type.
+
+        Workaround used in the steps below: place a constant of the correct type from the Functions palette (**Programming > String > String Constant**, **Programming > Numeric > Numeric Constant**, or **Programming > Boolean > True/False Constant**), type the value into it, then wire it into the parameter terminal.
+
 6. Wire the first parameter:
-    - Right-click the terminal and select **Create > Constant**
-    - This creates a String constant — type: `GPIB0::1::INSTR`
+    - From the Functions palette, place a **String Constant** (**Programming > String**) on the diagram
+    - Type: `GPIB0::1::INSTR`
+    - Wire it into the first parameter terminal
 7. Wire the second parameter:
-    - Right-click > Create > Constant
+    - Place another **String Constant** from **Programming > String**
     - Type: `HP_E3631A`
+    - Wire it into the second parameter terminal
 8. **Set the output type** — right-click the output terminal on the right side, select the return type as **String**
     - This output will contain the instrument ID (e.g. `"psu_1"`)
 
@@ -133,10 +141,10 @@ Open LabVIEW and create a new blank VI (**File > New VI**). Switch to the **Bloc
 3. Wire the same **module path** (you can branch the wire or create another constant)
 4. Set **function name** to: `psu_set_voltage`
 5. Drag the bottom edge down to expose **3 input terminals**
-6. Wire the inputs in order:
+6. Wire the inputs in order (for the constants, place them from the Functions palette and wire them in — see the tip in §3.3 step 5):
     - **instrument_id** (String) — wire from the output of the `open_psu` node
-    - **channel** (I32) — create a Numeric Constant, set to `2` (the +25V channel)
-    - **voltage** (Double) — create a Numeric Constant, set to `5.0`
+    - **channel** (I32) — place a **Numeric Constant** from **Programming > Numeric**, set to `2` (the +25V channel)
+    - **voltage** (Double) — place a **Numeric Constant** from **Programming > Numeric**, set to `5.0`
 7. Set output type to **String** (returns `"OK"`)
 
 ### 3.5 Place Python Node — Enable PSU Output
@@ -146,7 +154,7 @@ Open LabVIEW and create a new blank VI (**File > New VI**). Switch to the **Bloc
 3. Set function name to: `psu_enable_output`
 4. Expand to **2 input terminals**:
     - **instrument_id** (String) — wire from the `open_psu` output
-    - **enabled** (Boolean) — create a Boolean Constant, set to **True**
+    - **enabled** (Boolean) — place a **True Constant** from **Programming > Boolean** and wire it in (or use a False Constant to disable)
 5. Set output type to String
 
 ### 3.6 Place Python Node — Open the DMM
@@ -154,9 +162,9 @@ Open LabVIEW and create a new blank VI (**File > New VI**). Switch to the **Bloc
 1. Place another Python Node
 2. Wire session refnum and module path
 3. Set function name to: `open_dmm`
-4. Expand to **2 input terminals**:
-    - `GPIB0::22::INSTR` (String constant)
-    - `HP_34401A` (String constant)
+4. Expand to **2 input terminals** — for each, place a **String Constant** from **Programming > String**, type the value, and wire it in:
+    - `GPIB0::22::INSTR`
+    - `HP_34401A`
 5. Set output type to **String** (returns DMM instrument ID like `"dmm_2"`)
 
 ### 3.7 Place Python Node — Measure DC Voltage
