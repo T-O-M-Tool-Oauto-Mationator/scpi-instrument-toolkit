@@ -1,0 +1,3271 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Python REPL for controlling lab instruments over VISA">
+      
+      
+      
+      
+        <link rel="prev" href="labview.html">
+      
+      
+        <link rel="next" href="architecture.html">
+      
+      
+        
+      
+      
+      <link rel="icon" href="assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>NI TestStand Setup - SCPI Instrument Toolkit</title>
+      
+    
+    
+      <link rel="stylesheet" href="assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="stylesheets/accessibility.css">
+    
+    <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="cyan">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#ni-teststand-setup" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="index.html" title="SCPI Instrument Toolkit" class="md-header__button md-logo" aria-label="SCPI Instrument Toolkit" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            SCPI Instrument Toolkit
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              NI TestStand Setup
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="cyan"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="cyan"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="index.html" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="install.html" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Installation
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="mock_mode.html" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Mock Mode (Practice Without Hardware)
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="instruments.html" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Supported Instruments
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="general.html" class="md-tabs__link">
+          
+  
+  
+  REPL
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="python.html" class="md-tabs__link">
+          
+  
+  
+  Python API
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="generated/instruments.html" class="md-tabs__link">
+          
+  
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="labview.html" class="md-tabs__link">
+        
+  
+  
+    
+  
+  LabVIEW Bridge
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="teststand.html" class="md-tabs__link">
+        
+  
+  
+    
+  
+  NI TestStand Setup
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="architecture.html" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Architecture
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="troubleshooting.html" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Troubleshooting
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="index.html" title="SCPI Instrument Toolkit" class="md-nav__button md-logo" aria-label="SCPI Instrument Toolkit" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    SCPI Instrument Toolkit
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="install.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="mock_mode.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Mock Mode (Practice Without Hardware)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="instruments.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Supported Instruments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    REPL
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    REPL
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="general.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    General Commands
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="psu.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Power Supply (PSU)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="awg.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Function Generator (AWG)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="dmm.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Multimeter (DMM)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="scope.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Oscilloscope (Scope)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="smu.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Source Measure Unit (SMU)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="ev2300.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    USB-to-I2C Adapter (EV2300)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="ni_pxie.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    NI PXIe-4139 Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="scripting.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Scripting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Example Workflows
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="logging.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Log & Calc
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="plotting.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plotting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Python API
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Python API
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="python.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quickstart
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="api/enums.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Enumerations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="api/psu.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Power Supplies
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="api/dmm.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Multimeters
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="api/awg.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Function Generators
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="api/scope.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Oscilloscopes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="api/smu.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Source Measure Unit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="api/ev2300.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    USB-to-I2C (EV2300)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="api/base.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Base Class
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="generated/instruments.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Instruments & Capabilities
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="generated/repl-ref.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    REPL Command Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="generated/evaluator-ref.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Expression Functions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="labview.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LabVIEW Bridge
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    NI TestStand Setup
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="teststand.html" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    NI TestStand Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#how-much-of-this-is-already-done-for-you" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How much of this is already done for you?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-why-microsoft-store-python-does-not-work" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Why Microsoft Store Python Does Not Work
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-install-a-real-python-312-no-admin-required" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Install a Real Python 3.12 (No Admin Required)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Install a Real Python 3.12 (No Admin Required)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#option-a-use-setup-tamups1-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option A: Use setup-tamu.ps1 (recommended)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#option-b-use-the-python-install-manager-py-install" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option B: Use the Python Install Manager (py install)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#verify-python-is-on-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verify Python is on PATH
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-create-a-venv-on-a-mapped-drive" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Create a Venv on a Mapped Drive
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Create a Venv on a Mapped Drive">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#why-a-venv-and-not-just-the-global-python" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why a venv (and not just the global Python)?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-a-mapped-drive-not-a-raw-unc-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why a mapped drive (not a raw UNC path)?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#option-1-use-setup-teststandps1-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option 1: Use setup-teststand.ps1 (recommended)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#option-2-manual-setup-if-the-script-does-not-fit-your-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option 2: Manual setup (if the script does not fit your workflow)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Option 2: Manual setup (if the script does not fit your workflow)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#create-the-venv" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Create the venv
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#install-the-toolkit-into-the-venv" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Install the toolkit into the venv
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#verify-the-venv" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verify the venv
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-configure-the-teststand-python-adapter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Configure the TestStand Python Adapter
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Configure the TestStand Python Adapter">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#main-tab" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Main tab
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#advanced-tab-turn-on-the-interpreter-console" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Advanced tab — turn on the interpreter console
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#when-else-you-need-pywin32" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        When else you need pywin32
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Notes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-smoke-test-prove-the-wiring-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Smoke Test - Prove the Wiring Works
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Smoke Test - Prove the Wiring Works">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-1-action-calling-check_connection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 1 — Action calling check_connection
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-2-numeric-limit-test-calling-get_voltage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 2 — Numeric Limit Test calling get_voltage
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-3-numeric-limit-test-calling-add-with-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 3 — Numeric Limit Test calling add (with parameters)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-calling-real-instruments-from-teststand" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Calling Real Instruments from TestStand
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Calling Real Instruments from TestStand">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#why-the-syspath-insert-at-the-top" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why the sys.path insert at the top?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#typical-teststand-sequence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Typical TestStand sequence
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-ni-visa-ni-dcpower-system-drivers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. NI-VISA / NI-DCPower (System Drivers)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-supported-python-versions-by-teststand-release" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Supported Python Versions by TestStand Release
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-rebuilding-the-venv" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Rebuilding the Venv
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#unable-to-load-specified-version-of-python" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "Unable to load specified version of python"
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#run-time-error-17347-the-expression-cannot-be-empty" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run-Time Error -17347: The expression cannot be empty
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#measurement-00-when-the-python-function-returns-a-non-zero-value" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Measurement = 0.0 when the Python function returns a non-zero value
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#modulenotfounderror-no-module-named-lab_instruments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ModuleNotFoundError: No module named 'lab_instruments'
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#find_all-returns-an-empty-dict" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        find_all() returns an empty dict
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#servershare-is-not-supported" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "\\server\share\..." is not supported
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#error-could-not-find-a-version-that-satisfies-the-requirement-scpi-instrument-toolkit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ERROR: Could not find a version that satisfies the requirement scpi-instrument-toolkit
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tips-gotchas" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tips &amp; Gotchas
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related-labview-python-node" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Related: LabVIEW Python Node
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="architecture.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="troubleshooting.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#how-much-of-this-is-already-done-for-you" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How much of this is already done for you?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-why-microsoft-store-python-does-not-work" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Why Microsoft Store Python Does Not Work
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-install-a-real-python-312-no-admin-required" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Install a Real Python 3.12 (No Admin Required)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Install a Real Python 3.12 (No Admin Required)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#option-a-use-setup-tamups1-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option A: Use setup-tamu.ps1 (recommended)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#option-b-use-the-python-install-manager-py-install" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option B: Use the Python Install Manager (py install)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#verify-python-is-on-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verify Python is on PATH
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-create-a-venv-on-a-mapped-drive" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Create a Venv on a Mapped Drive
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Create a Venv on a Mapped Drive">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#why-a-venv-and-not-just-the-global-python" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why a venv (and not just the global Python)?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-a-mapped-drive-not-a-raw-unc-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why a mapped drive (not a raw UNC path)?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#option-1-use-setup-teststandps1-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option 1: Use setup-teststand.ps1 (recommended)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#option-2-manual-setup-if-the-script-does-not-fit-your-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option 2: Manual setup (if the script does not fit your workflow)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Option 2: Manual setup (if the script does not fit your workflow)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#create-the-venv" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Create the venv
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#install-the-toolkit-into-the-venv" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Install the toolkit into the venv
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#verify-the-venv" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verify the venv
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-configure-the-teststand-python-adapter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Configure the TestStand Python Adapter
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Configure the TestStand Python Adapter">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#main-tab" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Main tab
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#advanced-tab-turn-on-the-interpreter-console" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Advanced tab — turn on the interpreter console
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#when-else-you-need-pywin32" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        When else you need pywin32
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Notes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-smoke-test-prove-the-wiring-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Smoke Test - Prove the Wiring Works
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Smoke Test - Prove the Wiring Works">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-1-action-calling-check_connection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 1 — Action calling check_connection
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-2-numeric-limit-test-calling-get_voltage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 2 — Numeric Limit Test calling get_voltage
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-3-numeric-limit-test-calling-add-with-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 3 — Numeric Limit Test calling add (with parameters)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-calling-real-instruments-from-teststand" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Calling Real Instruments from TestStand
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Calling Real Instruments from TestStand">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#why-the-syspath-insert-at-the-top" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why the sys.path insert at the top?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#typical-teststand-sequence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Typical TestStand sequence
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-ni-visa-ni-dcpower-system-drivers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. NI-VISA / NI-DCPower (System Drivers)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-supported-python-versions-by-teststand-release" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Supported Python Versions by TestStand Release
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-rebuilding-the-venv" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Rebuilding the Venv
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#unable-to-load-specified-version-of-python" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "Unable to load specified version of python"
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#run-time-error-17347-the-expression-cannot-be-empty" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run-Time Error -17347: The expression cannot be empty
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#measurement-00-when-the-python-function-returns-a-non-zero-value" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Measurement = 0.0 when the Python function returns a non-zero value
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#modulenotfounderror-no-module-named-lab_instruments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ModuleNotFoundError: No module named 'lab_instruments'
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#find_all-returns-an-empty-dict" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        find_all() returns an empty dict
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#servershare-is-not-supported" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "\\server\share\..." is not supported
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#error-could-not-find-a-version-that-satisfies-the-requirement-scpi-instrument-toolkit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ERROR: Could not find a version that satisfies the requirement scpi-instrument-toolkit
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tips-gotchas" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tips &amp; Gotchas
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related-labview-python-node" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Related: LabVIEW Python Node
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="ni-teststand-setup">NI TestStand Setup<a class="headerlink" href="#ni-teststand-setup" title="Permanent link">&para;</a></h1>
+<p>This guide walks you through driving the toolkit from <strong>NI TestStand</strong> on a TAMU managed Windows machine (or any Windows machine without admin rights). By the end you will have:</p>
+<ul>
+<li>A real Python 3.12 install that TestStand can load</li>
+<li>A virtual environment with the toolkit installed inside it</li>
+<li>A working TestStand Python adapter configuration</li>
+<li>A smoke-test sequence that proves the wiring end-to-end</li>
+<li>Example step modules that drive real instruments from TestStand</li>
+</ul>
+<p>If you are only using the REPL or the Python API directly, you do not need any of this. See <a href="install.html">Installation</a>.</p>
+<hr />
+<h2 id="how-much-of-this-is-already-done-for-you">How much of this is already done for you?<a class="headerlink" href="#how-much-of-this-is-already-done-for-you" title="Permanent link">&para;</a></h2>
+<p>If you ran the all-in-one TAMU setup (see <a href="troubleshooting.html#first-time-setup-on-tamu-managed-windows-machines">Troubleshooting &gt; First-time setup</a>):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nb">irm </span><span class="s2">&quot;https://raw.githubusercontent.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit/main/setup-tamu.ps1&quot;</span> <span class="p">|</span> <span class="nb">iex</span>
+</code></pre></div>
+<p>then the script has already done these steps for you:</p>
+<table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Done by <code>setup-tamu.ps1</code>?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Install git + GitHub Desktop + GitHub CLI</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Install Python 3.12 (user scope, no admin)</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Add Python and Scripts dirs to user PATH</td>
+<td>Yes (winget package handles this)</td>
+</tr>
+<tr>
+<td><code>pip install</code> toolkit from GitHub (global)</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Install Claude Code</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><strong>Create a TestStand-compatible venv</strong></td>
+<td><strong>No - run <code>setup-teststand.ps1</code> (see <a href="#3-create-a-venv-on-a-mapped-drive">section 3</a>)</strong></td>
+</tr>
+<tr>
+<td><strong>Configure TestStand Python adapter</strong></td>
+<td><strong>No - do this below</strong></td>
+</tr>
+<tr>
+<td>Install NI-VISA / NI-DCPower system drivers</td>
+<td>No - needs admin, install separately</td>
+</tr>
+</tbody>
+</table>
+<p>So if you already ran the setup script, skip ahead to <a href="#3-create-a-venv-on-a-mapped-drive">Create the venv</a> and use <code>setup-teststand.ps1</code> to finish the job. The first two sections only matter if you are setting up Python manually.</p>
+<hr />
+<h2 id="1-why-microsoft-store-python-does-not-work">1. Why Microsoft Store Python Does Not Work<a class="headerlink" href="#1-why-microsoft-store-python-does-not-work" title="Permanent link">&para;</a></h2>
+<p>The Microsoft Store versions of Python (3.12, 3.13, etc.) use <strong>app execution aliases</strong> - stub launchers that redirect to the real installation in <code>C:\Program Files\WindowsApps\...</code>, which is a protected directory. TestStand's Python adapter needs to load <code>python3XX.dll</code> directly, and that DLL is not accessible when Python is installed from the Store.</p>
+<p>You can verify this yourself by running:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">ctypes.util</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="nb">print</span><span class="p">(</span><span class="n">ctypes</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">find_library</span><span class="p">(</span><span class="s1">&#39;python312&#39;</span><span class="p">))</span>  <span class="c1"># prints None for Store installs</span>
+</code></pre></div>
+<p>TestStand hits the same wall - it cannot find or load the DLL, and will show:</p>
+<blockquote>
+<p>Unable to load specified version of python. Make sure python of proper bitness is installed and added to PATH environment variable.</p>
+</blockquote>
+<p>The fix is to install a <strong>real</strong> Python (not the Store stub). You have two options.</p>
+<hr />
+<h2 id="2-install-a-real-python-312-no-admin-required">2. Install a Real Python 3.12 (No Admin Required)<a class="headerlink" href="#2-install-a-real-python-312-no-admin-required" title="Permanent link">&para;</a></h2>
+<p>You only need to do this once. Pick <strong>one</strong> of the two options below.</p>
+<h3 id="option-a-use-setup-tamups1-recommended">Option A: Use <code>setup-tamu.ps1</code> (recommended)<a class="headerlink" href="#option-a-use-setup-tamups1-recommended" title="Permanent link">&para;</a></h3>
+<p>The setup script installs Python 3.12 via winget into your user profile:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>%LOCALAPPDATA%\Programs\Python\Python312\python.exe
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>%LOCALAPPDATA%\Programs\Python\Python312\python312.dll
+</code></pre></div>
+<p>That directory is added to your <strong>user PATH</strong> automatically, so TestStand can find the DLL on launch. No further PATH edits needed.</p>
+<h3 id="option-b-use-the-python-install-manager-py-install">Option B: Use the Python Install Manager (<code>py install</code>)<a class="headerlink" href="#option-b-use-the-python-install-manager-py-install" title="Permanent link">&para;</a></h3>
+<p>The Python install manager (<code>py</code> command, pre-installed on TAMU lab machines as a Windows app alias) can also install a real Python without admin rights. Open a terminal and run:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>py install 3.12
+</code></pre></div>
+<p>This installs Python 3.12 to:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>%LOCALAPPDATA%\Python\pythoncore-3.12-64\python.exe
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>%LOCALAPPDATA%\Python\pythoncore-3.12-64\python312.dll
+</code></pre></div>
+<p>Note: this is a <strong>different directory</strong> than Option A. Unlike Option A, <code>py install</code> does <strong>not</strong> add the directory to PATH automatically, so TestStand will not find the DLL unless you add it yourself:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nv">$currentPath</span> <span class="p">=</span> <span class="no">[System.Environment]</span><span class="p">::</span><span class="n">GetEnvironmentVariable</span><span class="p">(</span><span class="s1">&#39;PATH&#39;</span><span class="p">,</span> <span class="s1">&#39;User&#39;</span><span class="p">)</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="nv">$newDir</span> <span class="p">=</span> <span class="s2">&quot;$env:LOCALAPPDATA\Python\pythoncore-3.12-64&quot;</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="no">[System.Environment]</span><span class="p">::</span><span class="n">SetEnvironmentVariable</span><span class="p">(</span><span class="s1">&#39;PATH&#39;</span><span class="p">,</span> <span class="nv">$newDir</span> <span class="p">+</span> <span class="s1">&#39;;&#39;</span> <span class="p">+</span> <span class="nv">$currentPath</span><span class="p">,</span> <span class="s1">&#39;User&#39;</span><span class="p">)</span>
+</code></pre></div>
+<p><strong>Restart TestStand after editing PATH</strong> - TestStand reads PATH only at launch.</p>
+<h3 id="verify-python-is-on-path">Verify Python is on PATH<a class="headerlink" href="#verify-python-is-on-path" title="Permanent link">&para;</a></h3>
+<p>After either option, open a <strong>new</strong> terminal and run:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="n">python</span> <span class="p">-</span><span class="n">-version</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="n">python</span> <span class="n">-c</span> <span class="s2">&quot;import ctypes.util; print(ctypes.util.find_library(&#39;python312&#39;))&quot;</span>
+</code></pre></div>
+<p>The first should print <code>Python 3.12.x</code>. The second should print a path (not <code>None</code>). If both work, TestStand will find the DLL.</p>
+<hr />
+<h2 id="3-create-a-venv-on-a-mapped-drive">3. Create a Venv on a Mapped Drive<a class="headerlink" href="#3-create-a-venv-on-a-mapped-drive" title="Permanent link">&para;</a></h2>
+<h3 id="why-a-venv-and-not-just-the-global-python">Why a venv (and not just the global Python)?<a class="headerlink" href="#why-a-venv-and-not-just-the-global-python" title="Permanent link">&para;</a></h3>
+<p>Even though <code>setup-tamu.ps1</code> already installs the toolkit globally, the TestStand adapter expects you to point it at a <strong>virtual environment</strong> so that:</p>
+<ul>
+<li>Your environment survives roaming-profile resets on TAMU lab machines</li>
+<li>Per-project package versions do not collide with other classes</li>
+<li>The TestStand Python adapter has a stable, known location to load packages from</li>
+</ul>
+<h3 id="why-a-mapped-drive-not-a-raw-unc-path">Why a mapped drive (not a raw UNC path)?<a class="headerlink" href="#why-a-mapped-drive-not-a-raw-unc-path" title="Permanent link">&para;</a></h3>
+<p>On TAMU lab machines, <code>H:\</code> is a <strong>junction to your network home directory</strong> (a <code>\\coe-fs.engr.tamu.edu\Ugrads\&lt;NetID&gt;\...</code> UNC share). You should always type the <code>H:\</code> path - tools like cmd.exe refuse to use raw UNC paths as a working directory ("UNC paths are not supported"), but they handle the <code>H:\</code> junction fine.</p>
+<ul>
+<li><strong>DO NOT</strong> type: <code>\\coe-fs.engr.tamu.edu\Ugrads\&lt;NetID&gt;\Documents\eset-453\.venv</code></li>
+<li><strong>USE</strong> instead: <code>H:\Documents\eset-453\.venv</code></li>
+</ul>
+<blockquote>
+<p>Replace <code>H:\Documents\eset-453\</code> with your own mapped drive letter and project path throughout this guide.</p>
+</blockquote>
+<div class="admonition note">
+<p class="admonition-title">Heads-up: Python's 'redirects, links or junctions' warning is harmless here</p>
+<p>When you create the venv, Python 3.12 will print:</p>
+<blockquote>
+<p>Actual environment location may have moved due to redirects, links or junctions.
+Requested location: "H:\Documents\eset-453\.venv\Scripts\python.exe"
+Actual location:    "\\coe-fs.engr.tamu.edu\Ugrads\<NetID>\Documents\eset-453\.venv\Scripts\python.exe"</p>
+</blockquote>
+<p>This is <strong>expected</strong> because <code>H:\</code> resolves to that UNC share. It is informational only - the venv works correctly, <code>Activate.ps1</code> works, and TestStand can use the <code>H:\...\.venv</code> path without issue. See <a href="https://github.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit/issues/104">issue #104</a>.</p>
+</div>
+<h3 id="option-1-use-setup-teststandps1-recommended">Option 1: Use <code>setup-teststand.ps1</code> (recommended)<a class="headerlink" href="#option-1-use-setup-teststandps1-recommended" title="Permanent link">&para;</a></h3>
+<p>After <code>setup-tamu.ps1</code> has installed Python 3.12, run the helper script from the toolkit repo:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="p">.\</span><span class="n">setup-teststand</span><span class="p">.</span><span class="n">ps1</span>
+</code></pre></div>
+<p>Or, if you have not cloned the repo:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="nb">irm </span><span class="s2">&quot;https://raw.githubusercontent.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit/main/setup-teststand.ps1&quot;</span> <span class="p">|</span> <span class="nb">iex</span>
+</code></pre></div>
+<p>What it does:</p>
+<ul>
+<li>Picks <code>H:\Documents\scpi-workspace\</code> as the project root (or falls back to <code>%USERPROFILE%</code> if <code>H:\</code> is not mapped, with a warning)</li>
+<li>Finds a real Python 3.12 from <code>setup-tamu.ps1</code> <strong>or</strong> <code>py install 3.12</code></li>
+<li>Creates <code>&lt;project-root&gt;\.venv</code> (or skips if one is already there)</li>
+<li>Installs <code>scpi-instrument-toolkit</code> into the venv</li>
+<li><strong>Validates</strong> end-to-end: confirms <code>python312.dll</code> is loadable (the thing TestStand needs), confirms <code>lab_instruments</code> imports cleanly</li>
+<li>Prints the exact TestStand adapter values to copy-paste</li>
+</ul>
+<p>Useful flags:</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-ProjectName eset-453</code></td>
+<td>Use <code>H:\Documents\eset-453\</code> instead of <code>scpi-workspace</code>.</td>
+</tr>
+<tr>
+<td><code>-Drive G</code></td>
+<td>Use a different drive letter (defaults to <code>H</code>).</td>
+</tr>
+<tr>
+<td><code>-Recreate</code></td>
+<td>Wipe and rebuild the venv from scratch.</td>
+</tr>
+<tr>
+<td><code>-NoPause</code></td>
+<td>Skip the "Press Enter to close" prompt. Useful when chaining scripts.</td>
+</tr>
+</tbody>
+</table>
+<p>Skip ahead to <a href="#4-configure-the-teststand-python-adapter">Configure the TestStand Python Adapter</a> if the script ran clean.</p>
+<h3 id="option-2-manual-setup-if-the-script-does-not-fit-your-workflow">Option 2: Manual setup (if the script does not fit your workflow)<a class="headerlink" href="#option-2-manual-setup-if-the-script-does-not-fit-your-workflow" title="Permanent link">&para;</a></h3>
+<h4 id="create-the-venv">Create the venv<a class="headerlink" href="#create-the-venv" title="Permanent link">&para;</a></h4>
+<p>If you used Option A (<code>setup-tamu.ps1</code>):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>&quot;%LOCALAPPDATA%\Programs\Python\Python312\python.exe&quot; -m venv H:\Documents\eset-453\.venv
+</code></pre></div>
+<p>If you used Option B (<code>py install 3.12</code>):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>&quot;%LOCALAPPDATA%\Python\pythoncore-3.12-64\python.exe&quot; -m venv H:\Documents\eset-453\.venv
+</code></pre></div>
+<h4 id="install-the-toolkit-into-the-venv">Install the toolkit into the venv<a class="headerlink" href="#install-the-toolkit-into-the-venv" title="Permanent link">&para;</a></h4>
+<p>The toolkit is <strong>not on PyPI</strong> - it installs from the GitHub repo:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>H:\Documents\eset-453\.venv\Scripts\pip.exe install &quot;git+https://github.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit.git&quot;
+</code></pre></div>
+<div class="admonition warning">
+<p class="admonition-title"><code>pip install scpi-instrument-toolkit</code> will fail</p>
+<p>You will see <code>ERROR: Could not find a version that satisfies the requirement scpi-instrument-toolkit</code> if you drop the <code>git+https://...</code> URL. The package is not published on PyPI - always use the URL form. See <a href="https://github.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit/issues/106">issue #106</a>.</p>
+</div>
+<p>If your lab has its own <code>requirements.txt</code>, install that instead:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>H:\Documents\eset-453\.venv\Scripts\pip.exe install -r H:\Documents\eset-453\requirements.txt
+</code></pre></div>
+<blockquote>
+<p><strong>Note:</strong> Both commands write to the TAMU network drive, which is slow. The venv creation
+takes 30-60 seconds and the pip install can take several minutes depending on network
+conditions. This is normal - do not cancel. Wait for the prompt to return before continuing.</p>
+</blockquote>
+<h4 id="verify-the-venv">Verify the venv<a class="headerlink" href="#verify-the-venv" title="Permanent link">&para;</a></h4>
+<p>Run this in PowerShell - it confirms the three things TestStand actually depends on (real interpreter, loadable DLL, importable toolkit) in one shot:</p>
+<!-- doc-test: skip reason="PowerShell snippet with embedded Python heredoc, not pure Python" -->
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="p">&amp;</span> <span class="s2">&quot;H:\Documents\eset-453\.venv\Scripts\python.exe&quot;</span> <span class="n">-c</span> <span class="sh">@&quot;</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="sh">import sys, ctypes.util</span>
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="sh">print(&#39;python:&#39;, sys.version.split()[0])</span>
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a><span class="sh">print(&#39;exe:&#39;, sys.executable)</span>
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a><span class="sh">dll = ctypes.util.find_library(&#39;python312&#39;)</span>
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a><span class="sh">print(&#39;python312.dll:&#39;, dll if dll else &#39;&lt;not found&gt;&#39;)</span>
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a><span class="sh">assert dll, &#39;python312.dll not on PATH - TestStand will refuse to load this interpreter.&#39;</span>
+<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a><span class="sh">from lab_instruments import find_all</span>
+<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a><span class="sh">print(&#39;lab_instruments: OK&#39;)</span>
+<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a><span class="sh">&quot;@</span>
+</code></pre></div>
+<p>You should see four lines printed and no traceback. If <code>python312.dll: &lt;not found&gt;</code> or the assertion fires, TestStand will not be able to load this interpreter even though the venv works on the command line.</p>
+<p><strong>This means the base Python dir (the one that holds <code>python312.dll</code>) is not on your user PATH.</strong> The venv's <code>Scripts\</code> directory does not contain <code>python312.dll</code> - only the base install does, so PATH must point to the base install for TestStand to find it. Fix it by either:</p>
+<ul>
+<li>Re-run <code>setup-teststand.ps1</code> - it now adds the base Python dir to user PATH automatically, then open a <strong>new</strong> terminal and re-run the verification.</li>
+<li>Or add it yourself in PowerShell (cmd-style <code>%LOCALAPPDATA%</code> does <strong>not</strong> expand in PowerShell - use <code>$env:LOCALAPPDATA</code>):</li>
+</ul>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="nv">$dir</span> <span class="p">=</span> <span class="s2">&quot;$env:LOCALAPPDATA\Programs\Python\Python312&quot;</span>  <span class="c"># or \Python\pythoncore-3.12-64 for `py install`</span>
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="nv">$cur</span> <span class="p">=</span> <span class="no">[Environment]</span><span class="p">::</span><span class="n">GetEnvironmentVariable</span><span class="p">(</span><span class="s2">&quot;Path&quot;</span><span class="p">,</span> <span class="s2">&quot;User&quot;</span><span class="p">)</span>
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="k">if</span> <span class="p">((</span><span class="nv">$cur</span> <span class="n">-split</span> <span class="s2">&quot;;&quot;</span><span class="p">)</span> <span class="o">-notcontains</span> <span class="nv">$dir</span><span class="p">)</span> <span class="p">{</span>
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>    <span class="no">[Environment]</span><span class="p">::</span><span class="n">SetEnvironmentVariable</span><span class="p">(</span><span class="s2">&quot;Path&quot;</span><span class="p">,</span> <span class="s2">&quot;$cur;$dir&quot;</span><span class="p">,</span> <span class="s2">&quot;User&quot;</span><span class="p">)</span>
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a><span class="p">}</span>
+</code></pre></div>
+<p>Close and reopen PowerShell after either fix - PATH changes do not affect already-open shells. Then restart TestStand for the same reason.</p>
+<hr />
+<h2 id="4-configure-the-teststand-python-adapter">4. Configure the TestStand Python Adapter<a class="headerlink" href="#4-configure-the-teststand-python-adapter" title="Permanent link">&para;</a></h2>
+<p>Open TestStand, then go to <strong>Configure &gt; Adapters &gt; Python &gt; Configure</strong>.</p>
+<h3 id="main-tab">Main tab<a class="headerlink" href="#main-tab" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Interpreter to use</td>
+<td>Global</td>
+</tr>
+<tr>
+<td>Virtual environment (optional)</td>
+<td><code>H:\Documents\eset-453\.venv</code></td>
+</tr>
+<tr>
+<td>Executable Path</td>
+<td><em>(greyed out on managed machines - leave blank)</em></td>
+</tr>
+<tr>
+<td>Version</td>
+<td><code>3.12</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="advanced-tab-turn-on-the-interpreter-console">Advanced tab — <strong>turn on the interpreter console</strong><a class="headerlink" href="#advanced-tab-turn-on-the-interpreter-console" title="Permanent link">&para;</a></h3>
+<ul>
+<li>[x] <strong>Display Console for Interpreter Sessions</strong></li>
+</ul>
+<p>Without this, every <code>print()</code> inside a Python step disappears silently — the step still runs and reports its Status, but you cannot see any of the diagnostic output the function produced. NI's own Python example bundled with TestStand lists this as a prerequisite. Issue #118 was a student concluding the smoke test was broken because this setting was off and they assumed Status:Done with no console meant nothing ran.</p>
+<div class="admonition tip">
+<p class="admonition-title">If you can't find that checkbox in your UI (issue #126)</p>
+<p>The Advanced-tab label varies across TestStand point-releases — some builds tuck it behind a different navigation, some rename it. The COM property behind the checkbox is stable: <code>PythonAdapter.DisplayConsoleForInterpreterSessions</code> (a boolean). You can flip it directly from your venv without clicking through the UI:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="c"># From the toolkit&#39;s venv (the one with pywin32 installed):</span>
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="n">python</span> <span class="n">scripts</span><span class="p">/</span><span class="n">teststand_check</span><span class="p">.</span><span class="n">py</span> <span class="p">-</span><span class="n">-fix-adapter</span>
+</code></pre></div>
+<p>The helper queries the property, reports its current value, sets it to <code>True</code>, and reminds you to restart TestStand once for the new value to take effect across runs. Verified against TestStand 2025 Q3 64-bit; the property write persists across engine sessions. If you want to do it inline instead:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="n">python</span> <span class="n">-c</span> <span class="s2">&quot;import win32com.client as w; a=w.Dispatch(&#39;TestStand.Engine&#39;).GetAdapterByKeyName(&#39;Python Adapter&#39;); a.DisplayConsoleForInterpreterSessions=True&quot;</span>
+</code></pre></div>
+<p>Either way, restart TestStand once after the flip — the running Sequence Editor caches the adapter state at launch.</p>
+</div>
+<h3 id="when-else-you-need-pywin32">When else you need <code>pywin32</code><a class="headerlink" href="#when-else-you-need-pywin32" title="Permanent link">&para;</a></h3>
+<p>The toolkit itself does <strong>not</strong> need <code>pywin32</code> inside the venv to run any of the smoke-test steps in <a href="#5-smoke-test-prove-the-wiring-works">section 5</a> or the instrument calls in <a href="#6-calling-real-instruments-from-teststand">section 6</a>. You only need to <code>pip install pywin32</code> into the venv if a Python step accepts TestStand's <code>SequenceContext</code>, <code>Engine</code>, or another <code>IDispatch</code> COM object as a parameter (which gives your Python code access to the running TestStand engine itself). None of our examples do this — but if you write one that does, the adapter will fail with <code>-17500: Unable to pass parameter as COM object. Make sure you have installed pywin32</code>. The fix is <code>H:\Documents\&lt;your-project&gt;\.venv\Scripts\pip.exe install pywin32</code> and a restart of the TestStand interpreter session.</p>
+<h3 id="notes">Notes<a class="headerlink" href="#notes" title="Permanent link">&para;</a></h3>
+<ul>
+<li>The <strong>Version</strong> dropdown is editable - click it and type <code>3.12</code> directly if it does not appear in the list.</li>
+<li>The <strong>Executable Path</strong> field is locked on TAMU managed machines. This is only used for step-into debugging anyway, not for normal test execution.</li>
+<li>TestStand embeds the Python DLL at runtime via PATH - it does <strong>not</strong> invoke <code>python.exe</code> directly to run code modules. That is why steps 1 and 2 above matter even when a venv is provided.</li>
+<li>The venv path must use a mapped drive letter (<code>H:\...</code>), not a UNC path. See above.</li>
+</ul>
+<hr />
+<h2 id="5-smoke-test-prove-the-wiring-works">5. Smoke Test - Prove the Wiring Works<a class="headerlink" href="#5-smoke-test-prove-the-wiring-works" title="Permanent link">&para;</a></h2>
+<p>Before you write a single real test step, save the file below to your project folder. It uses no instruments, just a fake reading.</p>
+<p><strong><code>teststand_hello.py</code></strong>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="sd">&quot;&quot;&quot;Simple NI TestStand Python adapter smoke test.&quot;&quot;&quot;</span>
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>
+<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a><span class="k">def</span><span class="w"> </span><span class="nf">check_connection</span><span class="p">():</span>
+<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Action step. Takes no arguments. Returns None.&quot;&quot;&quot;</span>
+<a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a>    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Python adapter is working correctly.&quot;</span><span class="p">)</span>
+<a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a>
+<a id="__codelineno-17-8" name="__codelineno-17-8" href="#__codelineno-17-8"></a>
+<a id="__codelineno-17-9" name="__codelineno-17-9" href="#__codelineno-17-9"></a><span class="k">def</span><span class="w"> </span><span class="nf">get_voltage</span><span class="p">():</span>
+<a id="__codelineno-17-10" name="__codelineno-17-10" href="#__codelineno-17-10"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Numeric Limit Test step. Takes no arguments. Returns 5.0.&quot;&quot;&quot;</span>
+<a id="__codelineno-17-11" name="__codelineno-17-11" href="#__codelineno-17-11"></a>    <span class="n">voltage</span> <span class="o">=</span> <span class="mf">5.0</span>
+<a id="__codelineno-17-12" name="__codelineno-17-12" href="#__codelineno-17-12"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Measured voltage: </span><span class="si">{</span><span class="n">voltage</span><span class="si">}</span><span class="s2"> V&quot;</span><span class="p">)</span>
+<a id="__codelineno-17-13" name="__codelineno-17-13" href="#__codelineno-17-13"></a>    <span class="k">return</span> <span class="n">voltage</span>
+<a id="__codelineno-17-14" name="__codelineno-17-14" href="#__codelineno-17-14"></a>
+<a id="__codelineno-17-15" name="__codelineno-17-15" href="#__codelineno-17-15"></a>
+<a id="__codelineno-17-16" name="__codelineno-17-16" href="#__codelineno-17-16"></a><span class="k">def</span><span class="w"> </span><span class="nf">add</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+<a id="__codelineno-17-17" name="__codelineno-17-17" href="#__codelineno-17-17"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Numeric Limit Test step. Takes two numeric arguments from TestStand. Returns a + b.&quot;&quot;&quot;</span>
+<a id="__codelineno-17-18" name="__codelineno-17-18" href="#__codelineno-17-18"></a>    <span class="n">result</span> <span class="o">=</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span>
+<a id="__codelineno-17-19" name="__codelineno-17-19" href="#__codelineno-17-19"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;add(</span><span class="si">{</span><span class="n">a</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2">) = </span><span class="si">{</span><span class="n">result</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-17-20" name="__codelineno-17-20" href="#__codelineno-17-20"></a>    <span class="k">return</span> <span class="n">result</span>
+<a id="__codelineno-17-21" name="__codelineno-17-21" href="#__codelineno-17-21"></a>
+<a id="__codelineno-17-22" name="__codelineno-17-22" href="#__codelineno-17-22"></a>
+<a id="__codelineno-17-23" name="__codelineno-17-23" href="#__codelineno-17-23"></a><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+<a id="__codelineno-17-24" name="__codelineno-17-24" href="#__codelineno-17-24"></a>    <span class="c1"># Verify the file works outside TestStand</span>
+<a id="__codelineno-17-25" name="__codelineno-17-25" href="#__codelineno-17-25"></a>    <span class="n">check_connection</span><span class="p">()</span>
+<a id="__codelineno-17-26" name="__codelineno-17-26" href="#__codelineno-17-26"></a>    <span class="nb">print</span><span class="p">(</span><span class="n">get_voltage</span><span class="p">())</span>
+<a id="__codelineno-17-27" name="__codelineno-17-27" href="#__codelineno-17-27"></a>    <span class="nb">print</span><span class="p">(</span><span class="n">add</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span>
+</code></pre></div>
+<p>In TestStand, <strong>File &gt; New &gt; Sequence File</strong>, then insert three steps in the <strong>Main</strong> group. The exact UI for each:</p>
+<h3 id="step-1-action-calling-check_connection">Step 1 — Action calling <code>check_connection</code><a class="headerlink" href="#step-1-action-calling-check_connection" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Right-click <strong>Main</strong> → <strong>Insert Step</strong> → <strong>Action</strong>.</li>
+<li>With the new step selected, in the <strong>Step Settings</strong> pane (bottom of the window):</li>
+<li><strong>Module Path</strong>: browse to <code>teststand_hello.py</code></li>
+<li><strong>Function Name</strong>: <code>check_connection</code></li>
+<li><strong>Arguments</strong> tab: empty (the function takes no parameters).</li>
+<li>Save the sequence, click <strong>Execute &gt; Run MainSequence</strong>. Look at the <strong>Steps</strong> pane — the Action row's <strong>Status</strong> column should read <strong>Done</strong> and the <strong>Executions</strong> pane (top-left) should show a green checkmark next to MainSequence. That is the success signal.</li>
+</ol>
+<div class="admonition note">
+<p class="admonition-title">Why isn't <code>Python adapter is working correctly.</code> in the Output pane?</p>
+<p>TestStand's <strong>Output</strong> pane is a structured message log (note the <code>MESSAGE</code> column header), not a Python stdout console. The Python adapter captures <code>print()</code> output silently and does not surface it there by default. Don't worry about it — <strong>Status: Done</strong> means the function ran. To make <code>print()</code> output visible, check the <strong>Display Console for Interpreter Sessions</strong> box under <a href="#advanced-tab-check-this-box-students-miss-it">Configure &gt; Adapters &gt; Python &gt; Configure &gt; Advanced</a>.</p>
+</div>
+<h3 id="step-2-numeric-limit-test-calling-get_voltage">Step 2 — Numeric Limit Test calling <code>get_voltage</code><a class="headerlink" href="#step-2-numeric-limit-test-calling-get_voltage" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Right-click → <strong>Insert Step</strong> → <strong>Tests</strong> → <strong>Numeric Limit Test</strong>.</li>
+<li><strong>Step Settings</strong> → <strong>Module</strong> tab:</li>
+<li><strong>Module Path</strong>: <code>teststand_hello.py</code></li>
+<li><strong>Function Name</strong>: <strong>pick <code>get_voltage</code> from the dropdown</strong> (don't type it). Selecting from the dropdown is what makes TestStand call the Python adapter's signature introspector and auto-add a <code>Return Value</code> row to the Arguments tab. Typing the name by hand skips that step, and the <code>Return Value</code> row never lands.</li>
+<li><strong>Arguments</strong> tab: <strong>scroll to the top</strong>. Row 0 must be <code>Return Value</code>, <strong>Value/Expression</strong> = <code>Step.Result.Numeric</code>. <strong>If this row is missing, the function still runs but its return value never reaches Measurement — every limit check will fail with Measurement <code>0</code></strong> (<a href="#measurement-00-when-the-python-function-returns-a-non-zero-value">fix below</a>). Leave it alone — <code>Step.Result.Numeric</code> is the correct binding.</li>
+<li><strong>Limits</strong> tab:</li>
+<li><strong>Comparison Type</strong>: <code>GELE (&gt;= &lt;=)</code></li>
+<li><strong>Low</strong>: <code>4.5</code></li>
+<li><strong>High</strong>: <code>5.5</code></li>
+<li>Run. Status should be <strong>Passed</strong>, Measurement should be <strong>5.0</strong>.</li>
+</ol>
+<div class="admonition tip">
+<p class="admonition-title">Got Measurement <code>0.0</code> instead, even after re-picking from the dropdown? (issue #126)</p>
+<p>Re-picking from the dropdown only re-introspects an <em>unsaved</em> step in some builds — once you've saved the sequence file the row can stay missing across re-picks. The deterministic recovery is to walk the file via COM and re-introspect every Python NLT step:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="n">python</span> <span class="n">scripts</span><span class="p">/</span><span class="n">teststand_check</span><span class="p">.</span><span class="n">py</span> <span class="s2">&quot;C:\path\to\YourSequence.seq&quot;</span> <span class="p">-</span><span class="n">-fix</span>
+</code></pre></div>
+<p>The script (1) reports every Python NLT step in the file, (2) flags any that are missing the <code>Return Value -&gt; Step.Result.Numeric</code> row, and (3) with <code>--fix</code> calls <code>step.LoadModule()</code> on each broken step (forces fresh introspection) and saves the file. Re-run the sequence; Measurement should now read the function's actual return value.</p>
+</div>
+<h3 id="step-3-numeric-limit-test-calling-add-with-parameters">Step 3 — Numeric Limit Test calling <code>add</code> (with parameters)<a class="headerlink" href="#step-3-numeric-limit-test-calling-add-with-parameters" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Insert another <strong>Numeric Limit Test</strong> step.</li>
+<li><strong>Module</strong> tab:</li>
+<li><strong>Module Path</strong>: <code>teststand_hello.py</code></li>
+<li><strong>Function Name</strong>: <strong>pick <code>add</code> from the dropdown</strong> (don't type it).</li>
+<li><strong>Arguments</strong> tab: TestStand introspects the function signature and shows <strong>three rows</strong>:</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Name</th>
+<th>Value/Expression</th>
+<th>What to do</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td><code>Return Value</code></td>
+<td><code>Step.Result.Numeric</code></td>
+<td>Leave alone (this is how the function's return value reaches Measurement).</td>
+</tr>
+<tr>
+<td>1</td>
+<td><code>a</code></td>
+<td><em>(empty)</em></td>
+<td><strong>Fill in:</strong> <code>3</code></td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>b</code></td>
+<td><em>(empty)</em></td>
+<td><strong>Fill in:</strong> <code>4</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>You must fill in <code>a</code> and <code>b</code></strong> — leaving them empty triggers run-time error <code>-17347: The expression cannot be empty</code>. Literal numbers (<code>3</code>, <code>4.5</code>, <code>True</code>) are valid expressions; TestStand variables also work (e.g. <code>Locals.SomeNumber</code>).
+4. <strong>Limits</strong> tab:
+   - <strong>Comparison Type</strong>: <code>EQ (==)</code>
+   - <strong>Limit</strong>: <code>7</code>
+5. Run. Status <strong>Passed</strong>, Measurement <strong>7</strong>.</p>
+<div class="admonition tip">
+<p class="admonition-title">All Python Numeric Limit Test steps share the same shape</p>
+<p>Verified against NI's bundled Python example on TestStand 2025 Q3: every Python adapter Numeric Limit Test step has a <code>Return Value</code> row in its Arguments tab with <code>Step.Result.Numeric</code> as the expression. That's the channel the function's return value uses to reach Measurement. The fastest way to confirm this on your own sequence — <strong>without</strong> clicking through every step — is the audit script:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="n">python</span> <span class="n">scripts</span><span class="p">/</span><span class="n">teststand_check</span><span class="p">.</span><span class="n">py</span> <span class="s2">&quot;C:\path\to\YourSequence.seq&quot;</span>
+</code></pre></div>
+<p>It walks every Python NLT step in the file and prints <code>OK</code> for each row 0 = <code>Return Value -&gt; Step.Result.Numeric</code>, or <code>FAIL</code> for any that's missing. Pass <code>--fix</code> to repair every broken step in place.</p>
+</div>
+<p>If all three pass, the Python adapter, venv, and DLL load are all wired correctly. Move on.</p>
+<hr />
+<h2 id="6-calling-real-instruments-from-teststand">6. Calling Real Instruments from TestStand<a class="headerlink" href="#6-calling-real-instruments-from-teststand" title="Permanent link">&para;</a></h2>
+<p>Once the smoke test passes, you can call the toolkit drivers from TestStand. The example below mirrors <code>lab4/scripts/teststand_instruments.py</code> in the eset-453 reference repo - it uses <code>find_all()</code> to auto-discover instruments on the VISA bus (the same call <code>scpi-repl</code> makes).</p>
+<p><strong><code>teststand_instruments.py</code></strong>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="sd">&quot;&quot;&quot;</span>
+<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a><span class="sd">TestStand Python module - uses lab_instruments directly.</span>
+<a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a>
+<a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a><span class="sd">Instruments are auto-discovered via find_all() the same way scpi-repl does it.</span>
+<a id="__codelineno-20-5" name="__codelineno-20-5" href="#__codelineno-20-5"></a><span class="sd">Each function below is a TestStand step (Action or Numeric Limit Test).</span>
+<a id="__codelineno-20-6" name="__codelineno-20-6" href="#__codelineno-20-6"></a><span class="sd">&quot;&quot;&quot;</span>
+<a id="__codelineno-20-7" name="__codelineno-20-7" href="#__codelineno-20-7"></a>
+<a id="__codelineno-20-8" name="__codelineno-20-8" href="#__codelineno-20-8"></a><span class="kn">import</span><span class="w"> </span><span class="nn">sys</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">_sys</span>
+<a id="__codelineno-20-9" name="__codelineno-20-9" href="#__codelineno-20-9"></a>
+<a id="__codelineno-20-10" name="__codelineno-20-10" href="#__codelineno-20-10"></a><span class="c1"># Insert the venv site-packages first on sys.path so TestStand can resolve</span>
+<a id="__codelineno-20-11" name="__codelineno-20-11" href="#__codelineno-20-11"></a><span class="c1"># `lab_instruments` even when its embedded Python falls back to the global</span>
+<a id="__codelineno-20-12" name="__codelineno-20-12" href="#__codelineno-20-12"></a><span class="c1"># interpreter&#39;s site-packages.</span>
+<a id="__codelineno-20-13" name="__codelineno-20-13" href="#__codelineno-20-13"></a><span class="n">_VENV</span> <span class="o">=</span> <span class="sa">r</span><span class="s1">&#39;H:\Documents\eset-453\.venv\Lib\site-packages&#39;</span>
+<a id="__codelineno-20-14" name="__codelineno-20-14" href="#__codelineno-20-14"></a><span class="k">if</span> <span class="n">_VENV</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">_sys</span><span class="o">.</span><span class="n">path</span><span class="p">:</span>
+<a id="__codelineno-20-15" name="__codelineno-20-15" href="#__codelineno-20-15"></a>    <span class="n">_sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">_VENV</span><span class="p">)</span>
+<a id="__codelineno-20-16" name="__codelineno-20-16" href="#__codelineno-20-16"></a>
+<a id="__codelineno-20-17" name="__codelineno-20-17" href="#__codelineno-20-17"></a><span class="kn">from</span><span class="w"> </span><span class="nn">lab_instruments</span><span class="w"> </span><span class="kn">import</span> <span class="n">find_all</span>
+<a id="__codelineno-20-18" name="__codelineno-20-18" href="#__codelineno-20-18"></a>
+<a id="__codelineno-20-19" name="__codelineno-20-19" href="#__codelineno-20-19"></a><span class="c1"># Populated by setup() - do not call find_all() at module load so TestStand</span>
+<a id="__codelineno-20-20" name="__codelineno-20-20" href="#__codelineno-20-20"></a><span class="c1"># controls when discovery runs (instruments must be powered on before setup).</span>
+<a id="__codelineno-20-21" name="__codelineno-20-21" href="#__codelineno-20-21"></a><span class="n">instruments</span> <span class="o">=</span> <span class="p">{}</span>
+<a id="__codelineno-20-22" name="__codelineno-20-22" href="#__codelineno-20-22"></a>
+<a id="__codelineno-20-23" name="__codelineno-20-23" href="#__codelineno-20-23"></a>
+<a id="__codelineno-20-24" name="__codelineno-20-24" href="#__codelineno-20-24"></a><span class="k">def</span><span class="w"> </span><span class="nf">setup</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<a id="__codelineno-20-25" name="__codelineno-20-25" href="#__codelineno-20-25"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<a id="__codelineno-20-26" name="__codelineno-20-26" href="#__codelineno-20-26"></a><span class="sd">    Setup step - call this as the first step in your TestStand sequence.</span>
+<a id="__codelineno-20-27" name="__codelineno-20-27" href="#__codelineno-20-27"></a><span class="sd">    Scans the VISA bus and connects to all recognized instruments.</span>
+<a id="__codelineno-20-28" name="__codelineno-20-28" href="#__codelineno-20-28"></a><span class="sd">    All other functions in this module depend on this running first.</span>
+<a id="__codelineno-20-29" name="__codelineno-20-29" href="#__codelineno-20-29"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-20-30" name="__codelineno-20-30" href="#__codelineno-20-30"></a>    <span class="k">global</span> <span class="n">instruments</span>
+<a id="__codelineno-20-31" name="__codelineno-20-31" href="#__codelineno-20-31"></a>    <span class="n">instruments</span> <span class="o">=</span> <span class="n">find_all</span><span class="p">()</span>
+<a id="__codelineno-20-32" name="__codelineno-20-32" href="#__codelineno-20-32"></a>    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Instruments found:&quot;</span><span class="p">,</span> <span class="nb">list</span><span class="p">(</span><span class="n">instruments</span><span class="o">.</span><span class="n">keys</span><span class="p">()))</span>
+<a id="__codelineno-20-33" name="__codelineno-20-33" href="#__codelineno-20-33"></a>
+<a id="__codelineno-20-34" name="__codelineno-20-34" href="#__codelineno-20-34"></a>
+<a id="__codelineno-20-35" name="__codelineno-20-35" href="#__codelineno-20-35"></a><span class="k">def</span><span class="w"> </span><span class="nf">measure_dc_voltage</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<a id="__codelineno-20-36" name="__codelineno-20-36" href="#__codelineno-20-36"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Numeric Limit Test - returns DMM DC voltage reading in volts.&quot;&quot;&quot;</span>
+<a id="__codelineno-20-37" name="__codelineno-20-37" href="#__codelineno-20-37"></a>    <span class="k">return</span> <span class="n">instruments</span><span class="p">[</span><span class="s2">&quot;dmm&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">measure_dc_voltage</span><span class="p">()</span>
+<a id="__codelineno-20-38" name="__codelineno-20-38" href="#__codelineno-20-38"></a>
+<a id="__codelineno-20-39" name="__codelineno-20-39" href="#__codelineno-20-39"></a>
+<a id="__codelineno-20-40" name="__codelineno-20-40" href="#__codelineno-20-40"></a><span class="k">def</span><span class="w"> </span><span class="nf">measure_dc_current</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<a id="__codelineno-20-41" name="__codelineno-20-41" href="#__codelineno-20-41"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Numeric Limit Test - returns DMM DC current reading in amps.&quot;&quot;&quot;</span>
+<a id="__codelineno-20-42" name="__codelineno-20-42" href="#__codelineno-20-42"></a>    <span class="k">return</span> <span class="n">instruments</span><span class="p">[</span><span class="s2">&quot;dmm&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">measure_dc_current</span><span class="p">()</span>
+<a id="__codelineno-20-43" name="__codelineno-20-43" href="#__codelineno-20-43"></a>
+<a id="__codelineno-20-44" name="__codelineno-20-44" href="#__codelineno-20-44"></a>
+<a id="__codelineno-20-45" name="__codelineno-20-45" href="#__codelineno-20-45"></a><span class="k">def</span><span class="w"> </span><span class="nf">measure_resistance</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<a id="__codelineno-20-46" name="__codelineno-20-46" href="#__codelineno-20-46"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Numeric Limit Test - returns DMM 2-wire resistance in ohms.&quot;&quot;&quot;</span>
+<a id="__codelineno-20-47" name="__codelineno-20-47" href="#__codelineno-20-47"></a>    <span class="k">return</span> <span class="n">instruments</span><span class="p">[</span><span class="s2">&quot;dmm&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">measure_resistance_2wire</span><span class="p">()</span>
+<a id="__codelineno-20-48" name="__codelineno-20-48" href="#__codelineno-20-48"></a>
+<a id="__codelineno-20-49" name="__codelineno-20-49" href="#__codelineno-20-49"></a>
+<a id="__codelineno-20-50" name="__codelineno-20-50" href="#__codelineno-20-50"></a><span class="k">def</span><span class="w"> </span><span class="nf">set_psu_5v</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<a id="__codelineno-20-51" name="__codelineno-20-51" href="#__codelineno-20-51"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Action - sets PSU channel 1 to 5 V, 0.5 A limit, output on.&quot;&quot;&quot;</span>
+<a id="__codelineno-20-52" name="__codelineno-20-52" href="#__codelineno-20-52"></a>    <span class="n">instruments</span><span class="p">[</span><span class="s2">&quot;psu&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">set_output_channel</span><span class="p">(</span><span class="s2">&quot;positive_6_volts_channel&quot;</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">)</span>
+<a id="__codelineno-20-53" name="__codelineno-20-53" href="#__codelineno-20-53"></a>    <span class="n">instruments</span><span class="p">[</span><span class="s2">&quot;psu&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">enable_output</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+<a id="__codelineno-20-54" name="__codelineno-20-54" href="#__codelineno-20-54"></a>
+<a id="__codelineno-20-55" name="__codelineno-20-55" href="#__codelineno-20-55"></a>
+<a id="__codelineno-20-56" name="__codelineno-20-56" href="#__codelineno-20-56"></a><span class="k">def</span><span class="w"> </span><span class="nf">psu_off</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<a id="__codelineno-20-57" name="__codelineno-20-57" href="#__codelineno-20-57"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Action - disables all PSU channels. Use as a cleanup step.&quot;&quot;&quot;</span>
+<a id="__codelineno-20-58" name="__codelineno-20-58" href="#__codelineno-20-58"></a>    <span class="n">instruments</span><span class="p">[</span><span class="s2">&quot;psu&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">disable_all_channels</span><span class="p">()</span>
+</code></pre></div>
+<h3 id="why-the-syspath-insert-at-the-top">Why the <code>sys.path</code> insert at the top?<a class="headerlink" href="#why-the-syspath-insert-at-the-top" title="Permanent link">&para;</a></h3>
+<p>TestStand's Python adapter loads the embedded interpreter via PATH and <code>python312.dll</code>. Depending on adapter version and machine state, it does <strong>not</strong> always honor the venv's <code>site-packages</code> automatically - some setups end up importing from the global interpreter's site-packages instead. Inserting the venv's <code>site-packages</code> at index 0 of <code>sys.path</code> guarantees the toolkit version installed in your venv wins. Update the <code>_VENV</code> path string to match your venv location.</p>
+<h3 id="typical-teststand-sequence">Typical TestStand sequence<a class="headerlink" href="#typical-teststand-sequence" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Step Type</th>
+<th>Function</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Action</td>
+<td><code>setup</code></td>
+<td>Discovers PSU + DMM + AWG + Scope on the bus. Runs once at sequence start.</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Action</td>
+<td><code>set_psu_5v</code></td>
+<td>Apply VIN.</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Numeric Limit Test</td>
+<td><code>measure_dc_voltage</code></td>
+<td>Limits 4.5 V .. 5.5 V.</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Numeric Limit Test</td>
+<td><code>measure_dc_current</code></td>
+<td>Limits 0 mA .. 100 mA.</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Action</td>
+<td><code>psu_off</code></td>
+<td>Cleanup.</td>
+</tr>
+</tbody>
+</table>
+<p>You can write one of these per lab and reuse <code>setup</code> / <code>psu_off</code> as common bookends.</p>
+<hr />
+<h2 id="7-ni-visa-ni-dcpower-system-drivers">7. NI-VISA / NI-DCPower (System Drivers)<a class="headerlink" href="#7-ni-visa-ni-dcpower-system-drivers" title="Permanent link">&para;</a></h2>
+<p>The toolkit talks to instruments through NI-VISA. NI-VISA install requires <strong>admin rights</strong>, so <code>setup-tamu.ps1</code> deliberately does not attempt it. On a TAMU managed machine, NI-VISA is usually pre-installed by lab IT. If it is missing, ask your TA - they can install it.</p>
+<ul>
+<li><strong>NI-VISA</strong>: https://www.ni.com/en/support/downloads/drivers/download.ni-visa.html</li>
+<li><strong>NI-DCPower</strong> (only for PXIe-4139 SMU labs): https://www.ni.com/en/support/downloads/drivers/download.ni-dcpower.html</li>
+</ul>
+<p>You can confirm NI-VISA is installed by opening <strong>NI MAX</strong> and seeing your instruments listed under <strong>Devices and Interfaces</strong>.</p>
+<hr />
+<h2 id="8-supported-python-versions-by-teststand-release">8. Supported Python Versions by TestStand Release<a class="headerlink" href="#8-supported-python-versions-by-teststand-release" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>TestStand Release</th>
+<th>Max Python Supported</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2025 Q3</td>
+<td>3.13</td>
+</tr>
+<tr>
+<td>2025 Q2</td>
+<td>3.12</td>
+</tr>
+<tr>
+<td>2025 Q1</td>
+<td>3.12</td>
+</tr>
+<tr>
+<td>2024 Q4</td>
+<td>3.12</td>
+</tr>
+<tr>
+<td>2023 Q4</td>
+<td>3.11</td>
+</tr>
+</tbody>
+</table>
+<p>To check your TestStand version: <strong>Help &gt; About TestStand</strong></p>
+<p>We standardize on <strong>3.12</strong> in this guide because it is the latest version supported by every TestStand release from 2024 Q4 onwards.</p>
+<hr />
+<h2 id="9-rebuilding-the-venv">9. Rebuilding the Venv<a class="headerlink" href="#9-rebuilding-the-venv" title="Permanent link">&para;</a></h2>
+<p>If you need to start over (corrupted install, wrong Python version baked in, etc.), the script handles this with the <code>-Recreate</code> flag:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="p">.\</span><span class="n">setup-teststand</span><span class="p">.</span><span class="n">ps1</span> <span class="n">-Recreate</span>
+</code></pre></div>
+<p>Or do it manually:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a>rem Delete old venv
+<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a>rmdir /s /q H:\Documents\eset-453\.venv
+<a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a>
+<a id="__codelineno-22-4" name="__codelineno-22-4" href="#__codelineno-22-4"></a>rem Recreate with Python 3.12 (use the path from your install Option above)
+<a id="__codelineno-22-5" name="__codelineno-22-5" href="#__codelineno-22-5"></a>&quot;%LOCALAPPDATA%\Programs\Python\Python312\python.exe&quot; -m venv H:\Documents\eset-453\.venv
+<a id="__codelineno-22-6" name="__codelineno-22-6" href="#__codelineno-22-6"></a>
+<a id="__codelineno-22-7" name="__codelineno-22-7" href="#__codelineno-22-7"></a>rem Reinstall the toolkit (note: not on PyPI - install from GitHub)
+<a id="__codelineno-22-8" name="__codelineno-22-8" href="#__codelineno-22-8"></a>H:\Documents\eset-453\.venv\Scripts\pip.exe install &quot;git+https://github.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit.git&quot;
+</code></pre></div>
+<hr />
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
+<h3 id="unable-to-load-specified-version-of-python">"Unable to load specified version of python"<a class="headerlink" href="#unable-to-load-specified-version-of-python" title="Permanent link">&para;</a></h3>
+<p>TestStand cannot find <code>python312.dll</code>. Verify in a fresh terminal:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a><span class="nb">where </span><span class="n">python</span>
+<a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a><span class="n">python</span> <span class="n">-c</span> <span class="s2">&quot;import ctypes.util; print(ctypes.util.find_library(&#39;python312&#39;))&quot;</span>
+</code></pre></div>
+<p>If <code>where python</code> returns a path inside <code>C:\Program Files\WindowsApps\...</code>, you have the Microsoft Store stub - install a real Python via one of the <a href="#2-install-a-real-python-312-no-admin-required">two options above</a>.</p>
+<p>If both commands succeed but TestStand still cannot load, <strong>restart TestStand</strong> - it caches PATH at launch.</p>
+<h3 id="run-time-error-17347-the-expression-cannot-be-empty"><code>Run-Time Error -17347: The expression cannot be empty</code><a class="headerlink" href="#run-time-error-17347-the-expression-cannot-be-empty" title="Permanent link">&para;</a></h3>
+<p>You left a parameter slot blank in the <strong>Arguments</strong> tab of a TestStand Python step. TestStand introspects the function signature, creates a row for every parameter, and refuses to call the function until every row's <strong>Value/Expression</strong> column is filled in.</p>
+<p>Open the step's settings → <strong>Arguments</strong> tab → fill every row. Literal values (<code>3</code>, <code>4.5</code>, <code>True</code>, <code>"hello"</code>) and TestStand expressions (<code>Locals.MyVar</code>, <code>Parameters.Voltage</code>) are both valid.</p>
+<h3 id="measurement-00-when-the-python-function-returns-a-non-zero-value">Measurement = <code>0.0</code> when the Python function returns a non-zero value<a class="headerlink" href="#measurement-00-when-the-python-function-returns-a-non-zero-value" title="Permanent link">&para;</a></h3>
+<p>For a <strong>Numeric Limit Test</strong> step using the Python adapter, the function's return value should populate <code>Step.Result.Numeric</code>, which is what the Limits comparison reads. If Measurement shows <code>0.0</code> even though your Python <code>print</code> shows the right value, walk through this list:</p>
+<ol>
+<li>
+<p><strong>Confirm the Arguments tab has a <code>Return Value</code> row.</strong> Fastest path is the audit script, which walks the file via COM and prints <code>OK</code>/<code>FAIL</code> for every Python NLT step:</p>
+<p>python scripts/teststand_check.py "C:\path\to\YourSequence.seq"</p>
+<p>Pass <code>--fix</code> and the script will call <code>step.LoadModule()</code> on every broken step to force re-introspection, then save the file. If you'd rather click through the UI: open the step's settings → <strong>Arguments</strong> tab → row 0 must be <code>Name = Return Value</code>, <code>Value/Expression = Step.Result.Numeric</code>. If the row is missing, open the <strong>Module</strong> tab and <strong>re-pick the function from the Function Name dropdown</strong> — that re-runs the introspector. Verified against TestStand 2025 Q3.
+2. <strong>The function returns the value, not just prints it.</strong> <code>print(voltage)</code> alone is not enough — the function body needs <code>return voltage</code>.
+3. <strong>The function signature matches what TestStand calls.</strong> TestStand passes Arguments-tab values by name; <code>def get_voltage()</code> and <code>def get_voltage(**kwargs)</code> both work, but a function with required positional args you didn't fill in fails earlier with <a href="#run-time-error-17347-the-expression-cannot-be-empty">-17347</a>.
+3. <strong>The step type is Test - Numeric Limit Test, not Action.</strong> Action steps don't have a measurement.
+4. <strong>The Numeric Measurement expression on the Limits tab is at its default.</strong> The Python adapter wires the return value into <code>Step.Result.Numeric</code> for you; if someone edited that expression to read from somewhere else, restore the default.</p>
+</li>
+</ol>
+<h3 id="modulenotfounderror-no-module-named-lab_instruments"><code>ModuleNotFoundError: No module named 'lab_instruments'</code><a class="headerlink" href="#modulenotfounderror-no-module-named-lab_instruments" title="Permanent link">&para;</a></h3>
+<p>TestStand is running Python but not seeing your venv packages. Either:</p>
+<ol>
+<li>Confirm the <strong>Virtual environment</strong> field in the TestStand Python adapter config points at <code>H:\Documents\eset-453\.venv</code> (not a UNC path).</li>
+<li>Add the explicit <code>sys.path.insert(0, ...)</code> block from the <a href="#6-calling-real-instruments-from-teststand"><code>teststand_instruments.py</code> example above</a> to the top of your module.</li>
+<li>Verify the package is actually in the venv: <code>H:\Documents\eset-453\.venv\Scripts\pip.exe show scpi-instrument-toolkit</code></li>
+</ol>
+<h3 id="find_all-returns-an-empty-dict"><code>find_all()</code> returns an empty dict<a class="headerlink" href="#find_all-returns-an-empty-dict" title="Permanent link">&para;</a></h3>
+<p>NI-VISA cannot see any instruments. Open <strong>NI MAX</strong> and confirm your devices appear under <strong>Devices and Interfaces</strong>. If MAX is empty too, the issue is upstream of the toolkit - check USB/GPIB cables, instrument power, and that NI-VISA is installed.</p>
+<h3 id="servershare-is-not-supported"><code>"\\server\share\..." is not supported</code><a class="headerlink" href="#servershare-is-not-supported" title="Permanent link">&para;</a></h3>
+<p>You created the venv on a UNC path. Delete it and recreate on a mapped drive letter (<a href="#3-create-a-venv-on-a-mapped-drive">section 3</a>).</p>
+<h3 id="error-could-not-find-a-version-that-satisfies-the-requirement-scpi-instrument-toolkit"><code>ERROR: Could not find a version that satisfies the requirement scpi-instrument-toolkit</code><a class="headerlink" href="#error-could-not-find-a-version-that-satisfies-the-requirement-scpi-instrument-toolkit" title="Permanent link">&para;</a></h3>
+<p>You typed <code>pip install scpi-instrument-toolkit</code> (or any variant ending in just the bare name). The package is <strong>not on PyPI</strong>; pip is searching the index, finding nothing, and giving up. Install from the GitHub repo instead:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a>H:\Documents\eset-453\.venv\Scripts\pip.exe install &quot;git+https://github.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit.git&quot;
+</code></pre></div>
+<p>If pip then complains that <code>git</code> is missing, install git via <code>setup-tamu.ps1</code> first.</p>
+<hr />
+<h2 id="tips-gotchas">Tips &amp; Gotchas<a class="headerlink" href="#tips-gotchas" title="Permanent link">&para;</a></h2>
+<p>Things that trip students up most often when wiring TestStand to this toolkit.</p>
+<ul>
+<li><strong>Use a real Python, not the Microsoft Store stub.</strong> Store Python lives in <code>WindowsApps</code>, which TestStand cannot load <code>python3XX.dll</code> from. Install via <code>setup-tamu.ps1</code> (winget) or <code>py install 3.12</code> -- see <a href="#2-install-a-real-python-312-no-admin-required">section 2</a>.</li>
+<li><strong>Put the venv on <code>H:\</code>, never on a UNC path.</strong> Type <code>H:\Documents\eset-453\.venv</code>, not <code>\\coe-fs.engr.tamu.edu\Ugrads\&lt;NetID&gt;\...</code>. TestStand and <code>cmd.exe</code> both refuse raw UNC working directories. See <a href="#3-create-a-venv-on-a-mapped-drive">section 3</a>.</li>
+<li><strong>Base Python directory must be on PATH, not just the venv <code>Scripts\</code>.</strong> TestStand needs to load <code>python312.dll</code>, which lives in the <strong>base install</strong> (not in the venv's <code>Scripts\</code> folder). <code>setup-teststand.ps1</code> adds it for you. If you set things up manually, do it yourself and restart TestStand.</li>
+<li><strong>Restart TestStand after editing PATH.</strong> TestStand reads PATH only at launch. Editing PATH in the middle of a TestStand session has no effect.</li>
+<li><strong>The function has to <code>return</code> the value -- not just <code>print</code> it.</strong> For a Numeric Limit Test, the Python return value goes into <code>Step.Result.Numeric</code>. <code>print(voltage)</code> alone leaves Measurement at <code>0.0</code>.</li>
+<li><strong>Fill in every Arguments row.</strong> A blank parameter cell raises <code>Run-Time Error -17347: The expression cannot be empty</code>. Use literal values, <code>Locals.X</code>, or <code>Parameters.Y</code>.</li>
+<li><strong><code>pip install scpi-instrument-toolkit</code> does not work.</strong> The package is not on PyPI. Always install with the <code>git+https://...</code> URL.</li>
+<li><strong>Verify the venv before wiring TestStand.</strong> Run the <code>python312.dll</code> + <code>from lab_instruments import find_all</code> smoke test from <a href="#verify-the-venv">section 3</a>. If that fails on the command line, TestStand will fail the same way -- save yourself the dialog-box hunting.</li>
+</ul>
+<hr />
+<h2 id="related-labview-python-node">Related: LabVIEW Python Node<a class="headerlink" href="#related-labview-python-node" title="Permanent link">&para;</a></h2>
+<p>If you are also calling the toolkit from a LabVIEW VI, the <strong>same venv</strong> can be used. Point the LabVIEW Python Node at the same <code>H:\...\.venv</code> -- there is a worked walkthrough (including a student case study) on the <a href="labview.html">LabVIEW Bridge</a> page.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": ".", "features": ["navigation.tabs", "navigation.sections", "navigation.expand", "navigation.top", "search.highlight", "search.suggest", "content.code.copy", "toc.follow"], "search": "assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="js/accessibility.js"></script>
+      
+    
+  </body>
+</html>

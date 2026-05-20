@@ -1,0 +1,3819 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Python REPL for controlling lab instruments over VISA">
+      
+      
+      
+      
+        <link rel="prev" href="generated/evaluator-ref.html">
+      
+      
+        <link rel="next" href="teststand.html">
+      
+      
+        
+      
+      
+      <link rel="icon" href="assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>LabVIEW Bridge - SCPI Instrument Toolkit</title>
+      
+    
+    
+      <link rel="stylesheet" href="assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="stylesheets/accessibility.css">
+    
+    <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="cyan">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#labview-bridge" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="index.html" title="SCPI Instrument Toolkit" class="md-header__button md-logo" aria-label="SCPI Instrument Toolkit" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            SCPI Instrument Toolkit
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              LabVIEW Bridge
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="cyan"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="cyan"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="index.html" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="install.html" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Installation
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="mock_mode.html" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Mock Mode (Practice Without Hardware)
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="instruments.html" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Supported Instruments
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="general.html" class="md-tabs__link">
+          
+  
+  
+  REPL
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="python.html" class="md-tabs__link">
+          
+  
+  
+  Python API
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="generated/instruments.html" class="md-tabs__link">
+          
+  
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="labview.html" class="md-tabs__link">
+        
+  
+  
+    
+  
+  LabVIEW Bridge
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="teststand.html" class="md-tabs__link">
+        
+  
+  
+    
+  
+  NI TestStand Setup
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="architecture.html" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Architecture
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="troubleshooting.html" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Troubleshooting
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="index.html" title="SCPI Instrument Toolkit" class="md-nav__button md-logo" aria-label="SCPI Instrument Toolkit" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    SCPI Instrument Toolkit
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="install.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="mock_mode.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Mock Mode (Practice Without Hardware)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="instruments.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Supported Instruments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    REPL
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    REPL
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="general.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    General Commands
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="psu.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Power Supply (PSU)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="awg.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Function Generator (AWG)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="dmm.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Multimeter (DMM)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="scope.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Oscilloscope (Scope)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="smu.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Source Measure Unit (SMU)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="ev2300.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    USB-to-I2C Adapter (EV2300)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="ni_pxie.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    NI PXIe-4139 Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="scripting.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Scripting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Example Workflows
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="logging.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Log & Calc
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="plotting.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plotting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Python API
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Python API
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="python.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quickstart
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="api/enums.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Enumerations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="api/psu.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Power Supplies
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="api/dmm.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Multimeters
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="api/awg.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Function Generators
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="api/scope.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Oscilloscopes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="api/smu.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Source Measure Unit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="api/ev2300.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    USB-to-I2C (EV2300)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="api/base.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Base Class
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="generated/instruments.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Instruments & Capabilities
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="generated/repl-ref.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    REPL Command Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="generated/evaluator-ref.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Expression Functions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LabVIEW Bridge
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="labview.html" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LabVIEW Bridge
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-1-find-the-bridge-module-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 1: Find the Bridge Module Path
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Step 1: Find the Bridge Module Path">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#option-a-pip-install-installed-from-pypi-or-git" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option A: pip install (installed from PyPI or git)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#option-b-git-clone-repo-on-disk" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option B: git clone (repo on disk)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-2-understand-the-python-node-pattern" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 2: Understand the Python Node Pattern
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Step 2: Understand the Python Node Pattern">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-three-palette-items" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Three Palette Items
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-3-tutorial-set-psu-to-5v-and-read-dmm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 3: Tutorial — Set PSU to 5V and Read DMM
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Step 3: Tutorial — Set PSU to 5V and Read DMM">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-create-a-new-vi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Create a New VI
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-place-open-python-session" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 Place Open Python Session
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-place-the-first-python-node-open-the-psu" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 Place the First Python Node — Open the PSU
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#34-place-python-node-set-voltage-to-5v-on-channel-2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4 Place Python Node — Set Voltage to 5V on Channel 2
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#35-place-python-node-enable-psu-output" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.5 Place Python Node — Enable PSU Output
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#36-place-python-node-open-the-dmm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.6 Place Python Node — Open the DMM
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#37-place-python-node-measure-dc-voltage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.7 Place Python Node — Measure DC Voltage
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#38-clean-up-close-instruments-and-session" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.8 Clean Up — Close Instruments and Session
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#39-wire-error-clusters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.9 Wire Error Clusters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#310-run-the-vi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.10 Run the VI
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#complete-block-diagram-layout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Complete Block Diagram Layout
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-4-tutorial-ev2300-i2c-register-read" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 4: Tutorial — EV2300 I2C Register Read
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Step 4: Tutorial — EV2300 I2C Register Read">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#block-diagram" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Block Diagram
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#data-type-mapping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data Type Mapping
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#function-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Function Reference
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Function Reference">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#how-to-look-up-a-functions-signature-on-your-own" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How to look up a function's signature on your own
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#discovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Discovery
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#connection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Connection
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#power-supply-psu" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Power Supply (PSU)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#digital-multimeter-dmm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Digital Multimeter (DMM)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#function-generator-awg" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Function Generator (AWG)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#oscilloscope" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Oscilloscope
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ev2300-i2c-bridge" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        EV2300 (I2C Bridge)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#smu-source-measure-unit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SMU (Source Measure Unit)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#generic-utility" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Generic / Utility
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#psu-channel-mapping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PSU Channel Mapping
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#supported-drivers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Supported Drivers
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#error-handling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Error Handling
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tips-gotchas" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tips &amp; Gotchas
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#student-case-study-adc-parametric-testing-lab-8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Student case study: ADC parametric testing (Lab 8)
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="teststand.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    NI TestStand Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="architecture.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="troubleshooting.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-1-find-the-bridge-module-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 1: Find the Bridge Module Path
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Step 1: Find the Bridge Module Path">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#option-a-pip-install-installed-from-pypi-or-git" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option A: pip install (installed from PyPI or git)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#option-b-git-clone-repo-on-disk" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option B: git clone (repo on disk)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-2-understand-the-python-node-pattern" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 2: Understand the Python Node Pattern
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Step 2: Understand the Python Node Pattern">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-three-palette-items" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Three Palette Items
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-3-tutorial-set-psu-to-5v-and-read-dmm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 3: Tutorial — Set PSU to 5V and Read DMM
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Step 3: Tutorial — Set PSU to 5V and Read DMM">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-create-a-new-vi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Create a New VI
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-place-open-python-session" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 Place Open Python Session
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-place-the-first-python-node-open-the-psu" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 Place the First Python Node — Open the PSU
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#34-place-python-node-set-voltage-to-5v-on-channel-2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4 Place Python Node — Set Voltage to 5V on Channel 2
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#35-place-python-node-enable-psu-output" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.5 Place Python Node — Enable PSU Output
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#36-place-python-node-open-the-dmm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.6 Place Python Node — Open the DMM
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#37-place-python-node-measure-dc-voltage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.7 Place Python Node — Measure DC Voltage
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#38-clean-up-close-instruments-and-session" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.8 Clean Up — Close Instruments and Session
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#39-wire-error-clusters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.9 Wire Error Clusters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#310-run-the-vi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.10 Run the VI
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#complete-block-diagram-layout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Complete Block Diagram Layout
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-4-tutorial-ev2300-i2c-register-read" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 4: Tutorial — EV2300 I2C Register Read
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Step 4: Tutorial — EV2300 I2C Register Read">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#block-diagram" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Block Diagram
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#data-type-mapping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data Type Mapping
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#function-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Function Reference
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Function Reference">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#how-to-look-up-a-functions-signature-on-your-own" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How to look up a function's signature on your own
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#discovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Discovery
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#connection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Connection
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#power-supply-psu" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Power Supply (PSU)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#digital-multimeter-dmm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Digital Multimeter (DMM)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#function-generator-awg" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Function Generator (AWG)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#oscilloscope" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Oscilloscope
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ev2300-i2c-bridge" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        EV2300 (I2C Bridge)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#smu-source-measure-unit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SMU (Source Measure Unit)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#generic-utility" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Generic / Utility
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#psu-channel-mapping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PSU Channel Mapping
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#supported-drivers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Supported Drivers
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#error-handling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Error Handling
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tips-gotchas" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tips &amp; Gotchas
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#student-case-study-adc-parametric-testing-lab-8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Student case study: ADC parametric testing (Lab 8)
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="labview-bridge">LabVIEW Bridge<a class="headerlink" href="#labview-bridge" title="Permanent link">&para;</a></h1>
+<p>Call the toolkit's Python instrument drivers from LabVIEW using the built-in <strong>Python Node</strong> (LabVIEW 2018+).</p>
+<hr />
+<h2 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Requirement</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>LabVIEW 2018+</strong></td>
+<td>Python Node was introduced in LabVIEW 2018</td>
+</tr>
+<tr>
+<td><strong>Python 3.10+</strong></td>
+<td>Must match LabVIEW bitness (64-bit LabVIEW needs 64-bit Python)</td>
+</tr>
+<tr>
+<td><strong>scpi-instrument-toolkit</strong></td>
+<td><code>pip install git+https://github.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit.git</code></td>
+</tr>
+<tr>
+<td><strong>NI-VISA</strong></td>
+<td>For USB/GPIB/LAN instruments</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition warning">
+<p class="admonition-title">Python must be on your PATH</p>
+<p>When installing Python, check the box <strong>"Add Python to PATH"</strong>. LabVIEW uses the system PATH to find the Python interpreter. If Python is not on PATH, the Python Node will fail silently.</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Bitness must match</p>
+<p>64-bit LabVIEW requires 64-bit Python. 32-bit LabVIEW requires 32-bit Python. A mismatch will cause the Python Node to fail with no useful error message.</p>
+</div>
+<hr />
+<h2 id="step-1-find-the-bridge-module-path">Step 1: Find the Bridge Module Path<a class="headerlink" href="#step-1-find-the-bridge-module-path" title="Permanent link">&para;</a></h2>
+<p>There are two ways to get the path, depending on how you installed the toolkit.</p>
+<h3 id="option-a-pip-install-installed-from-pypi-or-git">Option A: pip install (installed from PyPI or git)<a class="headerlink" href="#option-a-pip-install-installed-from-pypi-or-git" title="Permanent link">&para;</a></h3>
+<p>Open a terminal and run:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;from lab_instruments.src import labview_bridge; print(labview_bridge.__file__)&quot;</span>
+</code></pre></div>
+<p>Copy the full path. Example:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>C:\Users\you\AppData\Local\Programs\Python\Python312\Lib\site-packages\lab_instruments\src\labview_bridge.py
+</code></pre></div>
+<h3 id="option-b-git-clone-repo-on-disk">Option B: git clone (repo on disk)<a class="headerlink" href="#option-b-git-clone-repo-on-disk" title="Permanent link">&para;</a></h3>
+<p>Use the top-level shim at the repository root instead:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>C:\path\to\scpi-instrument-toolkit\labview_bridge.py
+</code></pre></div>
+<p>This file re-exports every function from the real bridge and is the recommended target for git-clone setups.</p>
+<div class="admonition note">
+<p class="admonition-title">Either path works</p>
+<p>Both files expose identical function names. The only difference is the path you paste into the Python Node's module path terminal.</p>
+</div>
+<hr />
+<h2 id="step-2-understand-the-python-node-pattern">Step 2: Understand the Python Node Pattern<a class="headerlink" href="#step-2-understand-the-python-node-pattern" title="Permanent link">&para;</a></h2>
+<p>LabVIEW's Python integration uses a <strong>"railroad track" pattern</strong> with three palette items found under <strong>Connectivity &gt; Python</strong> in the Functions palette:</p>
+<pre class="mermaid"><code>flowchart LR
+    A([Open Python&lt;br/&gt;Session]) --&gt;|session refnum| B[Python Node&lt;br/&gt;open_psu]
+    B --&gt;|session refnum| C[Python Node&lt;br/&gt;set_voltage]
+    C --&gt;|session refnum| D([Close Python&lt;br/&gt;Session])</code></pre>
+<p>The <strong>session refnum</strong> wire passes through every Python Node like a railroad track — that's how they all share the bridge's instrument cache.</p>
+<h3 id="the-three-palette-items">The Three Palette Items<a class="headerlink" href="#the-three-palette-items" title="Permanent link">&para;</a></h3>
+<ol>
+<li>
+<p><strong>Open Python Session</strong> — Creates a Python interpreter session</p>
+<ul>
+<li>Input: Python version number — use your installed Python's <strong>major.minor</strong> (e.g. <code>3.12</code> for Python 3.12.x). Older LabVIEW versions accept the bare <code>3</code>; LabVIEW 2024+ generally requires the explicit minor. Check what's installed with <code>python --version</code> and feed that to the constant.</li>
+<li>Output: A <strong>session refnum</strong> (reference wire) — thread this through all your Python Nodes</li>
+</ul>
+</li>
+<li>
+<p><strong>Python Node</strong> — Calls one Python function</p>
+<ul>
+<li>Has built-in terminals for: <strong>session refnum</strong>, <strong>module path</strong> (Path type), and <strong>function name</strong> (String)</li>
+<li><strong>Resize the node</strong> (drag the bottom edge down) to add input terminals for the function's parameters</li>
+<li>Parameters are <strong>positional</strong> — the order you wire them must match the Python function signature</li>
+<li>Has <strong>one output terminal</strong> on the right — right-click it to set the expected return type</li>
+<li>Has <strong>error in/out</strong> terminals along the bottom</li>
+</ul>
+</li>
+<li>
+<p><strong>Close Python Session</strong> — Shuts down the Python interpreter</p>
+<ul>
+<li>Always close the session when your VI is done</li>
+</ul>
+</li>
+</ol>
+<div class="admonition tip">
+<p class="admonition-title">Session persistence is critical</p>
+<p>The bridge stores instrument connections in a Python module-level cache. All Python Nodes that share the same session refnum share the same cache. This means <code>open_psu()</code> in one node and <code>psu_set_voltage()</code> in the next node can find each other's data — <strong>as long as they share the same session wire</strong>.</p>
+</div>
+<hr />
+<h2 id="step-3-tutorial-set-psu-to-5v-and-read-dmm">Step 3: Tutorial — Set PSU to 5V and Read DMM<a class="headerlink" href="#step-3-tutorial-set-psu-to-5v-and-read-dmm" title="Permanent link">&para;</a></h2>
+<p>This tutorial uses instruments from the ESET-453 lab bench:</p>
+<ul>
+<li><strong>HP E3631A</strong> PSU — typically on <code>GPIB0::1::INSTR</code> but <strong>the actual address varies by bench</strong></li>
+<li><strong>HP 34401A</strong> DMM — typically on <code>GPIB0::22::INSTR</code></li>
+</ul>
+<div class="admonition warning">
+<p class="admonition-title">Discover your bench's actual GPIB addresses before wiring constants</p>
+<p>GPIB primary addresses are set per-instrument on each bench and may not match the values above. Before you build the VI, find the real addresses with the toolkit's discovery helper:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">python</span> <span class="n">-c</span> <span class="s2">&quot;from lab_instruments.src import labview_bridge; print(labview_bridge.list_visa_resources())&quot;</span>
+</code></pre></div>
+<p>You should see something like:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>[&quot;GPIB0::4::INSTR&quot;, &quot;GPIB0::22::INSTR&quot;, ...]
+</code></pre></div>
+<p>Then pair each address with its instrument by querying the IDN string (NI MAX &gt; Devices and Interfaces &gt; GPIB0 &gt; Scan for Instruments works too). Use <strong>those</strong> addresses in the String Constants in the steps below — if you hardcode <code>GPIB0::1::INSTR</code> and your PSU is actually at address 4, <code>open_psu</code> will throw <code>VI_ERROR_NLISTENERS</code> on the first SCPI write.</p>
+</div>
+<h3 id="31-create-a-new-vi">3.1 Create a New VI<a class="headerlink" href="#31-create-a-new-vi" title="Permanent link">&para;</a></h3>
+<p>Open LabVIEW and create a new blank VI (<strong>File &gt; New VI</strong>). Switch to the <strong>Block Diagram</strong> window (Ctrl+E).</p>
+<h3 id="32-place-open-python-session">3.2 Place Open Python Session<a class="headerlink" href="#32-place-open-python-session" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Right-click the block diagram to open the <strong>Functions palette</strong></li>
+<li>Navigate to <strong>Connectivity &gt; Python</strong></li>
+<li>Place <strong>Open Python Session</strong> on the left side of your diagram</li>
+<li>Right-click the <strong>version</strong> input terminal and select <strong>Create &gt; Constant</strong></li>
+<li>Set the constant value to your installed Python's <strong>major.minor</strong> version (e.g. <code>3.12</code> for Python 3.12.x).<ul>
+<li>Run <code>python --version</code> in a terminal to confirm what's installed.</li>
+<li>LabVIEW 2024+ generally requires the explicit minor (<code>3.12</code>, <code>3.11</code>). Older LabVIEW versions accept the bare <code>3</code>. If <code>3.12</code> errors out on your install, fall back to <code>3</code>.</li>
+</ul>
+</li>
+</ol>
+<h3 id="33-place-the-first-python-node-open-the-psu">3.3 Place the First Python Node — Open the PSU<a class="headerlink" href="#33-place-the-first-python-node-open-the-psu" title="Permanent link">&para;</a></h3>
+<ol>
+<li>From the same <strong>Connectivity &gt; Python</strong> palette, place a <strong>Python Node</strong> to the right of Open Python Session</li>
+<li>Wire the <strong>session refnum</strong> output from Open Python Session into the Python Node's session input (top-left terminal)</li>
+<li>Wire the <strong>module path</strong> terminal:<ul>
+<li>Right-click it and select <strong>Create &gt; Constant</strong></li>
+<li>This creates a <strong>Path</strong> constant — paste your module path from Step 1</li>
+</ul>
+</li>
+<li>Wire the <strong>function name</strong> terminal:<ul>
+<li>Right-click it and select <strong>Create &gt; Constant</strong></li>
+<li>Type: <code>open_psu</code></li>
+</ul>
+</li>
+<li>
+<p><strong>Add function parameters</strong> — drag the bottom edge of the Python Node down to expose <strong>2 additional input terminals</strong></p>
+<div class="admonition tip">
+<p class="admonition-title">Parameter terminals: drop constants from the palette</p>
+<p>Right-click &gt; Create &gt; Constant works on the built-in <strong>module path</strong> and <strong>function name</strong> terminals, but is <strong>unreliable on the expanded parameter terminals</strong> you expose by dragging the node down. Those terminals are Variant until a wire is attached, so the menu often refuses to create a constant of the correct type.</p>
+<p>Workaround used in the steps below: place a constant of the correct type from the Functions palette (<strong>Programming &gt; String &gt; String Constant</strong>, <strong>Programming &gt; Numeric &gt; Numeric Constant</strong>, or <strong>Programming &gt; Boolean &gt; True/False Constant</strong>), type the value into it, then wire it into the parameter terminal.</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Parameter order is top-to-bottom — the wire's destination terminal is what counts</p>
+<p>LabVIEW maps the expanded parameter slots onto your Python function's positional arguments <strong>top-to-bottom</strong>. For <code>open_psu(visa_address, driver_name)</code>:</p>
+<ul>
+<li><strong>Topmost</strong> expanded slot → <code>visa_address</code> (1st positional arg)</li>
+<li><strong>Next slot down</strong> → <code>driver_name</code> (2nd positional arg)</li>
+</ul>
+<p>What matters is <strong>which terminal on the Python Node the wire lands on</strong>, not where you placed the String Constant on the diagram. If you swap them, <code>open_psu</code> will throw <code>VI_ERROR_RSRC_NFOUND</code> (PyVISA tries to open <code>"HP_E3631A"</code> as a resource and fails to parse it) or <code>ValueError: Unknown driver</code> (depending on which way they're swapped).</p>
+<p>Also: <strong>no leading or trailing whitespace</strong> in your String Constants. <code>" GPIB0::4::INSTR"</code> (with a leading space) is not the same string as <code>"GPIB0::4::INSTR"</code> and will fail validation with a confusing error.</p>
+</div>
+</li>
+<li>
+<p>Wire the first parameter (the <strong>topmost</strong> expanded slot — this becomes <code>visa_address</code>):</p>
+<ul>
+<li>From the Functions palette, place a <strong>String Constant</strong> (<strong>Programming &gt; String</strong>) on the diagram</li>
+<li>Type your PSU's actual address (e.g. <code>GPIB0::1::INSTR</code> or <code>GPIB0::4::INSTR</code> — see the warning at the top of Step 3)</li>
+<li>Wire it into the <strong>top</strong> expanded parameter terminal on the Python Node</li>
+</ul>
+</li>
+<li>Wire the second parameter (the <strong>next slot down</strong> — this becomes <code>driver_name</code>):<ul>
+<li>Place another <strong>String Constant</strong> from <strong>Programming &gt; String</strong></li>
+<li>Type: <code>HP_E3631A</code></li>
+<li>Wire it into the <strong>second-from-top</strong> expanded parameter terminal</li>
+</ul>
+</li>
+<li>
+<p><strong>Set the output type</strong> — right-click the output terminal on the right side, select the return type as <strong>String</strong></p>
+<ul>
+<li>At runtime, this output <strong>wire</strong> will carry the instrument ID string (e.g. <code>"psu_1"</code>). The output itself isn't stored anywhere — the value only exists on the wire while the VI runs.</li>
+<li><strong>What to do with the output:</strong> you have two choices, and you'll typically do both:<ul>
+<li><strong>Wire it forward</strong> into the next Python Node's <code>instrument_id</code> input. That's how <code>psu_set_voltage</code> in Step 3.4 receives the ID. The wire <em>is</em> the variable — no String Constant in between.</li>
+<li><strong>Optional debug indicator:</strong> right-click the output terminal and select <strong>Create &gt; Indicator</strong> to put a String Indicator on the front panel that displays the ID after each run. Useful while learning. You can delete it once the chain is working.</li>
+</ul>
+</li>
+</ul>
+<div class="admonition warning">
+<p class="admonition-title">A String Constant cannot receive an output</p>
+<p>If you placed an empty String Constant near the output terminal expecting it to "fill in" with <code>"psu_1"</code>, delete it — String Constants only feed values <strong>into</strong> nodes, they don't capture outputs. Use an <strong>Indicator</strong> (or just wire the output directly into the next node).</p>
+</div>
+</li>
+</ol>
+<h3 id="34-place-python-node-set-voltage-to-5v-on-channel-2">3.4 Place Python Node — Set Voltage to 5V on Channel 2<a class="headerlink" href="#34-place-python-node-set-voltage-to-5v-on-channel-2" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Place another <strong>Python Node</strong> to the right</li>
+<li>Wire the <strong>session refnum</strong> through from the previous node</li>
+<li>Wire the same <strong>module path</strong> (you can branch the wire or create another constant)</li>
+<li>
+<p>Set <strong>function name</strong> to: <code>psu_set_voltage</code></p>
+<div class="admonition tip">
+<p class="admonition-title">First-time chains: prefer <code>psu_set_output_channel</code> over <code>psu_set_voltage</code></p>
+<p><code>psu_set_voltage(id, channel, voltage)</code> only programs the voltage setpoint — it does not touch the channel's current limit. If you have not previously set the current limit on this channel, the PSU may have it at 0 A (or whatever the previous user left it at), and <code>psu_enable_output(True)</code> will land in CC mode at 0 A with no deliverable power.</p>
+<p>For a fresh chain, use <code>psu_set_output_channel(id, channel, voltage, current_limit)</code> instead — it sends <code>APPLY ch, V, I</code> which sets both setpoints in one call and matches what <code>psu set</code> does in the REPL. Use 0.1-0.5 A for a typical low-current load like the BQ76920 EVM.</p>
+<p>As of v1.0.63, <code>open_psu</code>'s safe-state init sets the current limit to the channel's <code>DEFAULT_CURRENT_LIMIT</code> (1.0 A on +6V, 0.5 A on each ±25V) instead of zero, so a stand-alone <code>psu_set_voltage</code> call is now safe on freshly-opened PSUs. The tip still applies if your chain reuses a session that may have explicitly zeroed the limit.</p>
+</div>
+</li>
+<li>
+<p>Drag the bottom edge down to expose <strong>3 input terminals</strong></p>
+<div class="admonition warning">
+<p class="admonition-title">Read the constant's COLOR to confirm its type</p>
+<p>LabVIEW color-codes constants by data type. Picking the wrong type is the most common source of confusing Python Node errors.</p>
+<table>
+<thead>
+<tr>
+<th>Color</th>
+<th>Type</th>
+<th>Use for</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Pink / magenta</td>
+<td><strong>String</strong></td>
+<td><code>instrument_id</code>, VISA addresses, driver names, function names</td>
+</tr>
+<tr>
+<td>Blue</td>
+<td><strong>I32</strong> (integer)</td>
+<td><code>channel</code>, register addresses, byte values</td>
+</tr>
+<tr>
+<td>Orange</td>
+<td><strong>DBL</strong> (double-precision float)</td>
+<td><code>voltage</code>, <code>current</code>, frequencies, measurements</td>
+</tr>
+<tr>
+<td>Green</td>
+<td><strong>Boolean</strong></td>
+<td>enable/disable flags</td>
+</tr>
+</tbody>
+</table>
+<p>If you place a constant via <strong>Programming &gt; String &gt; String Constant</strong>, you get a <strong>pink</strong> constant — even if you type a number into it, Python receives the string <code>"2"</code>, not the integer <code>2</code>. The bridge's <code>psu_set_voltage</code> validator will then raise <code>ValueError: HP_E3631A channel must be 1, 2, or 3. Got '2' (type: str).</code> — note the <strong>quotes around <code>'2'</code></strong> and the <code>(type: str)</code> tag, which is your diagnostic tell that you placed a String Constant by mistake.</p>
+<p>For numeric inputs, place a <strong>Numeric Constant</strong> via <strong>Programming &gt; Numeric &gt; Numeric Constant</strong>. To force I32 specifically, right-click the constant and select <strong>Representation &gt; I32</strong>.</p>
+</div>
+</li>
+<li>
+<p>Wire the inputs in order. The constants go in expanded slots top-to-bottom (see the slot-order warning in Step 3.3 step 5):</p>
+<ul>
+<li><strong>instrument_id</strong> (String) — wire from the output of the <code>open_psu</code> node (top slot)</li>
+<li><strong>channel</strong> (I32) — place a <strong>Numeric Constant</strong> from <strong>Programming &gt; Numeric</strong>, right-click and set <strong>Representation &gt; I32</strong>, type <code>2</code> (the +25V channel) — the constant should appear <strong>blue</strong></li>
+<li><strong>voltage</strong> (DBL) — place another <strong>Numeric Constant</strong>, leave at the default DBL representation, type <code>5.0</code> — the constant should appear <strong>orange</strong></li>
+</ul>
+</li>
+<li>Set output type to <strong>String</strong> (returns <code>"OK"</code>)</li>
+</ol>
+<div class="admonition failure">
+<p class="admonition-title">Anti-example — pink String Constants where Numeric Constants belong</p>
+<p>The diagram below produces the confusing-looking error <code>HP_E3631A channel must be 1, 2, or 3. Got '2' (type: str).</code> even though <code>2</code> is clearly in the allowed set. The reason is that <code>2</code> and <code>5</code> are <strong>String Constants</strong> (pink), so Python receives them as <code>"2"</code> and <code>"5"</code> — strings, not integers.</p>
+<p><img alt="Broken: pink String Constants on channel/voltage inputs" src="assets/labview-psu-set-voltage-string-constants-broken.png" /></p>
+<p>The fix is to delete the two pink constants, place <strong>Numeric Constants</strong> from <strong>Programming &gt; Numeric</strong> instead (blue for I32, orange for DBL), type the same numbers, and wire them into the same slots. The next admonition shows the result.</p>
+</div>
+<div class="admonition example">
+<p class="admonition-title">Reference layout — verified working open_psu + psu_set_voltage chain</p>
+<p>Block diagram showing the correct wiring for opening the HP E3631A PSU on <code>GPIB0::4::INSTR</code> and setting the +25V channel to 10V. Notice the <strong>blue</strong> I32 constants on the <code>channel</code> and <code>voltage</code> inputs (this VI uses 10V; the tutorial uses 5V — same shape).</p>
+<p><img alt="open_psu + psu_set_voltage block diagram" src="assets/labview-psu-set-voltage-block-diagram.png" /></p>
+<p>What to look at:</p>
+<ul>
+<li>Pink String Constants for the VISA address (<code>GPIB0::4::INSTR</code>) and driver name (<code>HP_E3631A</code>) flowing into <code>open_psu</code>'s top two parameter slots.</li>
+<li>The session refnum (teal wire) threading across <strong>both</strong> Python Nodes.</li>
+<li>The <code>open_psu</code> output wire branching down to a String Indicator (the small grey box under the node — optional, for debugging) AND continuing right into <code>psu_set_voltage</code>'s top parameter slot (<code>instrument_id</code>).</li>
+<li>Blue I32 Numeric Constants <code>2</code> and <code>10</code> (channel and voltage) wired into the lower two parameter slots of <code>psu_set_voltage</code>.</li>
+</ul>
+</div>
+<h3 id="35-place-python-node-enable-psu-output">3.5 Place Python Node — Enable PSU Output<a class="headerlink" href="#35-place-python-node-enable-psu-output" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Place another Python Node</li>
+<li>Wire session refnum and module path</li>
+<li>Set function name to: <code>psu_enable_output</code></li>
+<li>Expand to <strong>2 input terminals</strong>:<ul>
+<li><strong>instrument_id</strong> (String) — wire from the <code>open_psu</code> output</li>
+<li><strong>enabled</strong> (Boolean) — place a <strong>True Constant</strong> from <strong>Programming &gt; Boolean</strong> and wire it in (or use a False Constant to disable)</li>
+</ul>
+</li>
+<li>Set output type to String</li>
+</ol>
+<h3 id="36-place-python-node-open-the-dmm">3.6 Place Python Node — Open the DMM<a class="headerlink" href="#36-place-python-node-open-the-dmm" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Place another Python Node</li>
+<li>Wire session refnum and module path</li>
+<li>Set function name to: <code>open_dmm</code></li>
+<li>Expand to <strong>2 input terminals</strong> — for each, place a <strong>String Constant</strong> from <strong>Programming &gt; String</strong>, type the value, and wire it in:<ul>
+<li><code>GPIB0::22::INSTR</code></li>
+<li><code>HP_34401A</code></li>
+</ul>
+</li>
+<li>Set output type to <strong>String</strong> (returns DMM instrument ID like <code>"dmm_2"</code>)</li>
+</ol>
+<h3 id="37-place-python-node-measure-dc-voltage">3.7 Place Python Node — Measure DC Voltage<a class="headerlink" href="#37-place-python-node-measure-dc-voltage" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Place another Python Node</li>
+<li>Wire session refnum and module path</li>
+<li>Set function name to: <code>dmm_measure_dc_voltage</code></li>
+<li>Expand to <strong>1 input terminal</strong>:<ul>
+<li><strong>instrument_id</strong> (String) — wire from the <code>open_dmm</code> output</li>
+</ul>
+</li>
+<li>Set output type to <strong>Double</strong> (returns the measured voltage)</li>
+<li>Right-click the output terminal and select <strong>Create &gt; Indicator</strong> — this puts a numeric indicator on the front panel to display the reading</li>
+</ol>
+<h3 id="38-clean-up-close-instruments-and-session">3.8 Clean Up — Close Instruments and Session<a class="headerlink" href="#38-clean-up-close-instruments-and-session" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Place a Python Node for <code>close_instrument</code> with the PSU's instrument_id</li>
+<li>Place another Python Node for <code>close_instrument</code> with the DMM's instrument_id</li>
+<li>Place <strong>Close Python Session</strong> (from the Connectivity &gt; Python palette) at the end</li>
+<li>Wire the session refnum through to Close Python Session</li>
+</ol>
+<h3 id="39-wire-error-clusters">3.9 Wire Error Clusters<a class="headerlink" href="#39-wire-error-clusters" title="Permanent link">&para;</a></h3>
+<p>Every Python Node has <strong>error in</strong> (bottom-left) and <strong>error out</strong> (bottom-right) terminals. Wire them in series through all your nodes:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>Open Session → Node 1 → Node 2 → ... → Close Session
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>  error out ──&gt; error in ──&gt; error in ──&gt; error in
+</code></pre></div>
+<p>This ensures that if any node fails (e.g. instrument not found), subsequent nodes are skipped and you get the error message.</p>
+<h3 id="310-run-the-vi">3.10 Run the VI<a class="headerlink" href="#310-run-the-vi" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Switch to the <strong>Front Panel</strong> (Ctrl+E)</li>
+<li>Click <strong>Run</strong> (the arrow button) or press Ctrl+R</li>
+<li>The numeric indicator should show the voltage reading from your DMM</li>
+</ol>
+<h3 id="complete-block-diagram-layout">Complete Block Diagram Layout<a class="headerlink" href="#complete-block-diagram-layout" title="Permanent link">&para;</a></h3>
+<pre class="mermaid"><code>flowchart LR
+    A([Open Python Session&lt;br/&gt;version = 3])
+    B[open_psu&lt;br/&gt;GPIB0::1::INSTR&lt;br/&gt;HP_E3631A]
+    C[psu_set_voltage&lt;br/&gt;id, 2, 5.0&lt;br/&gt;→ OK]
+    D[psu_enable_output&lt;br/&gt;id, True&lt;br/&gt;→ OK]
+    E[open_dmm&lt;br/&gt;GPIB0::22::INSTR&lt;br/&gt;HP_34401A]
+    F[dmm_measure_dc_voltage&lt;br/&gt;id&lt;br/&gt;→ 5.003]
+    G[close_instrument&lt;br/&gt;PSU id&lt;br/&gt;→ OK]
+    H[close_instrument&lt;br/&gt;DMM id&lt;br/&gt;→ OK]
+    I([Close Python Session])
+
+    A --&gt; B
+    B --&gt;|psu_1| C
+    C --&gt; D
+    D --&gt; E
+    E --&gt;|dmm_2| F
+    F --&gt; G
+    G --&gt; H
+    H --&gt; I
+
+    classDef session fill:#e0f2fe,stroke:#0284c7,color:#0c4a6e
+    class A,I session</code></pre>
+<p>The <strong>session refnum</strong> (teal wire in LabVIEW) threads through every node from <code>Open Python Session</code> to <code>Close Python Session</code>. The <strong>error cluster</strong> wires in parallel along the bottom of every Python Node so that a failure in any node short-circuits the rest and surfaces the message at the end of the chain.</p>
+<hr />
+<h2 id="step-4-tutorial-ev2300-i2c-register-read">Step 4: Tutorial — EV2300 I2C Register Read<a class="headerlink" href="#step-4-tutorial-ev2300-i2c-register-read" title="Permanent link">&para;</a></h2>
+<p>This example opens the EV2300 and reads the SYS_STAT register (0x00) from a BQ76920 at I2C address 0x08.</p>
+<div class="admonition warning">
+<p class="admonition-title">BQ76920 hardware prerequisites</p>
+<p>The BQ76920 cannot respond to I2C until two conditions are met:</p>
+<ol>
+<li><strong>The EVM is powered</strong> at 9-21V on BATT+/-. If the EVM shares your PSU, run a <code>psu_set_voltage</code> + <code>psu_enable_output(True)</code> chain (Step 3 above) first and confirm the PSU's Output LED is lit.</li>
+<li><strong>The BOOT button on the EVM has been pressed</strong> since the last power-on. The BQ defaults to SHIP mode and only a hardware BOOT pulse wakes it.</li>
+</ol>
+<p>If either condition is missing, <code>ev2300_read_byte</code> fails with <code>RuntimeError: Device error (0x46)</code>. See Troubleshooting for the full recovery flow.</p>
+</div>
+<h3 id="block-diagram">Block Diagram<a class="headerlink" href="#block-diagram" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>Open Python Session</strong> (version = your installed Python's major.minor, e.g. <code>3.12</code>)</li>
+<li><strong>Python Node</strong> — <code>open_ev2300</code><ul>
+<li>1 input: <code>""</code> (empty string = auto-detect)</li>
+<li>Output type: String (returns <code>"ev2300_1"</code>)</li>
+</ul>
+</li>
+<li><strong>One Button Dialog</strong> (Programming &gt; Dialog &amp; User Interface) — message: <code>Press BOOT on BQ EVM, then click OK</code>. Blocks the VI so the human can press the BOOT button before the read fires. Alternative: use <code>ev2300_wait_for_bq</code> instead (next step) and press BOOT during the poll window.</li>
+<li><strong>Python Node</strong> — <code>ev2300_wait_for_bq</code> <em>(recommended)</em><ul>
+<li>2 inputs: instrument_id (String), <code>30.0</code> (DBL = timeout seconds)</li>
+<li>Output type: String (returns <code>"OK"</code> once the BQ ACKs; raises <code>TimeoutError</code> if it doesn't)</li>
+<li>Polls CC_CFG every 0.5 s, so it returns the moment you press BOOT. Removes the manual-timing race.</li>
+</ul>
+</li>
+<li><strong>Python Node</strong> — <code>ev2300_read_byte</code><ul>
+<li>3 inputs: instrument_id (String), <code>8</code> (I32 = I2C address 0x08), <code>0</code> (I32 = register 0x00)</li>
+<li>Output type: <strong>I32</strong> (returns the register value, e.g. <code>0</code>)</li>
+<li>Create an Indicator on the output to display the value</li>
+</ul>
+</li>
+<li><strong>Python Node</strong> — <code>close_instrument</code></li>
+<li><strong>Close Python Session</strong></li>
+</ol>
+<div class="admonition tip">
+<p class="admonition-title">Coordinated PSU + EV2300 workflow</p>
+<p>When the same VI both powers the BQ EVM (via PSU) and reads from it (via EV2300), order matters. Use a <strong>Flat Sequence Structure</strong> (Programming &gt; Structures &gt; Flat Sequence Structure) with three frames:</p>
+<ul>
+<li><strong>Frame 1</strong>: PSU chain — <code>open_psu</code> → <code>psu_set_output_channel(id, 2, 18.0, 0.5)</code> → <code>psu_enable_output(id, True)</code>. After this frame the PSU's Output LED is lit and 18V is on the EVM with a 0.5 A current limit. Use <code>psu_set_output_channel</code> (not <code>psu_set_voltage</code>) to set both voltage AND current limit in one call — see the tip in Step 3.4.</li>
+<li><strong>Frame 2</strong>: <code>One Button Dialog</code> saying "Press Boot on BQ EVM" — blocks until the human presses BOOT and clicks OK. <em>Or</em> <code>ev2300_wait_for_bq</code> in Frame 3 with a generous timeout.</li>
+<li><strong>Frame 3</strong>: EV2300 chain — <code>open_ev2300</code> → (optional <code>ev2300_wait_for_bq</code>) → <code>ev2300_read_byte</code> → close nodes.</li>
+</ul>
+<p>Frames execute strictly left-to-right, eliminating the race where <code>ev2300_read_byte</code> could fire before <code>psu_enable_output</code> finished.</p>
+</div>
+<div class="admonition example">
+<p class="admonition-title">Working reference VI: <code>examples/labview/ev2300_hybrid.vi</code></p>
+<p>A complete, verified version of this chain ships in the repo at <a href="https://github.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit/blob/main/examples/labview/ev2300_hybrid.vi"><code>examples/labview/ev2300_hybrid.vi</code></a>. Open it in LabVIEW to see the exact wiring. The screenshots below are taken from this VI running on the ESET-453 bench.</p>
+<p><strong>Block diagram</strong> (note the Flat Sequence with 3 frames, the orange <code>0.5</code> DBL constant feeding <code>psu_set_output_channel</code>'s current_limit slot, the green <code>T</code> Boolean for <code>psu_enable_output</code>, and the I32 indicator on <code>ev2300_read_byte</code>'s output):</p>
+<p><img alt="ev2300_hybrid block diagram" src="assets/labview-ev2300-hybrid-block-diagram.png" /></p>
+<p><strong>Front panel</strong> (the I32 indicator displays <code>128</code> = <code>0x80</code> = the BQ76920's CC_READY flag, which is the typical idle SYS_STAT value):</p>
+<p><img alt="ev2300_hybrid front panel showing return value 128" src="assets/labview-ev2300-hybrid-front-panel.png" /></p>
+<p>To decode the byte: SYS_STAT bit 7 (<code>0x80</code>) is <strong>CC_READY</strong> — a Coulomb Counter conversion just completed. Other typical bits: <code>0x40</code> = DEVICE_XREADY (internal fault), <code>0x20</code> = OVRD_ALERT, <code>0x10</code>/<code>0x08</code>/<code>0x04</code>/<code>0x02</code>/<code>0x01</code> = various protection flags. See BQ76920 datasheet <a href="https://www.ti.com/lit/ds/symlink/bq76920.pdf">SLUSBK2I</a> Section 8.5.1 for the full bitmap.</p>
+</div>
+<hr />
+<h2 id="data-type-mapping">Data Type Mapping<a class="headerlink" href="#data-type-mapping" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Python Type</th>
+<th>LabVIEW Type</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>str</code></td>
+<td>String</td>
+<td>Instrument IDs, JSON results, <code>"OK"</code></td>
+</tr>
+<tr>
+<td><code>int</code></td>
+<td>I32</td>
+<td>Channel numbers, register addresses, byte values</td>
+</tr>
+<tr>
+<td><code>float</code></td>
+<td>Double</td>
+<td>Voltages, currents, measurements</td>
+</tr>
+<tr>
+<td><code>bool</code></td>
+<td>Boolean</td>
+<td>Enable/disable flags</td>
+</tr>
+</tbody>
+</table>
+<p>Complex data (instrument lists, device info) is returned as <strong>JSON strings</strong>. Parse them in LabVIEW using the Flatten/Unflatten from JSON functions or a string parser.</p>
+<hr />
+<h2 id="function-reference">Function Reference<a class="headerlink" href="#function-reference" title="Permanent link">&para;</a></h2>
+<p>The tables below list every bridge function with its <strong>positional argument order</strong>. This order is what determines how to wire your Python Node — the top expanded parameter slot is argument #1, the next slot down is argument #2, and so on. LabVIEW does <strong>not</strong> look at Python parameter names; only position matters.</p>
+<h3 id="how-to-look-up-a-functions-signature-on-your-own">How to look up a function's signature on your own<a class="headerlink" href="#how-to-look-up-a-functions-signature-on-your-own" title="Permanent link">&para;</a></h3>
+<p>You will encounter functions in your own labs that are not in this exact tutorial. Three reliable ways to confirm argument order without guessing:</p>
+<ol>
+<li>
+<p><strong>This page</strong> — every function is documented below with its full Python-style signature: <code>function_name(arg1: type, arg2: type, ...) -&gt; return_type</code>. Wire the arguments into Python Node parameter slots in the same order they appear in the parentheses.</p>
+</li>
+<li>
+<p><strong>Built-in Python help</strong> — from any terminal where the toolkit is installed:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="n">python</span> <span class="n">-c</span> <span class="s2">&quot;from lab_instruments.src import labview_bridge; help(labview_bridge.psu_set_voltage)&quot;</span>
+</code></pre></div>
+<p>Replace <code>psu_set_voltage</code> with whichever function you care about. You get the canonical signature plus the docstring including parameter descriptions and return type. This is the most authoritative source because it reads directly from the source file LabVIEW is actually calling.</p>
+</li>
+<li>
+<p><strong>The source file itself</strong> — open <code>labview_bridge.py</code> at the path printed by Step 1. Search for <code>def psu_set_voltage</code> (or whatever function) to see the exact signature. This is also useful when an error message references a line number — you can jump straight to the validation that fired.</p>
+</li>
+</ol>
+<div class="admonition tip">
+<p class="admonition-title">Why argument order matters more than names in LabVIEW</p>
+<p>Python is forgiving about keyword arguments (<code>psu_set_voltage(channel=2, voltage=5.0, instrument_id="psu_1")</code> works in plain Python). The LabVIEW Python Node is <strong>not</strong> — it only passes positional arguments in the order you wire them. Wire <code>voltage</code> into the slot where <code>channel</code> is expected and the call will silently do the wrong thing (<code>set_voltage(channel=5.0)</code> would then fail validation, but with a more confusing error than you would expect).</p>
+</div>
+<h3 id="discovery">Discovery<a class="headerlink" href="#discovery" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Signature</th>
+<th>Returns</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>discover_instruments</code></td>
+<td><code>() -&gt; str</code></td>
+<td>JSON: <code>{"psu": "HP_E3631A", ...}</code></td>
+</tr>
+<tr>
+<td><code>list_available_drivers</code></td>
+<td><code>() -&gt; str</code></td>
+<td>JSON list of driver name strings</td>
+</tr>
+<tr>
+<td><code>list_open_instruments</code></td>
+<td><code>() -&gt; str</code></td>
+<td>JSON: <code>{"psu_1": "HP_E3631A", ...}</code></td>
+</tr>
+<tr>
+<td><code>list_visa_resources</code></td>
+<td><code>() -&gt; str</code></td>
+<td>JSON list of VISA resource strings</td>
+</tr>
+</tbody>
+</table>
+<h3 id="connection">Connection<a class="headerlink" href="#connection" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Signature</th>
+<th>Returns</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>open_instrument</code></td>
+<td><code>(visa_address: str, driver_name: str) -&gt; str</code></td>
+<td>instrument ID</td>
+</tr>
+<tr>
+<td><code>open_psu</code></td>
+<td><code>(visa_address: str, driver_name: str) -&gt; str</code></td>
+<td>instrument ID (validates PSU)</td>
+</tr>
+<tr>
+<td><code>open_dmm</code></td>
+<td><code>(visa_address: str, driver_name: str) -&gt; str</code></td>
+<td>instrument ID (validates DMM)</td>
+</tr>
+<tr>
+<td><code>open_awg</code></td>
+<td><code>(visa_address: str, driver_name: str) -&gt; str</code></td>
+<td>instrument ID (validates AWG)</td>
+</tr>
+<tr>
+<td><code>open_scope</code></td>
+<td><code>(visa_address: str, driver_name: str) -&gt; str</code></td>
+<td>instrument ID (validates Scope)</td>
+</tr>
+<tr>
+<td><code>open_smu</code></td>
+<td><code>(visa_address: str, driver_name: str) -&gt; str</code></td>
+<td>instrument ID (validates SMU)</td>
+</tr>
+<tr>
+<td><code>open_ev2300</code></td>
+<td><code>(resource_name: str) -&gt; str</code></td>
+<td>instrument ID (pass <code>""</code> to auto-detect)</td>
+</tr>
+<tr>
+<td><code>close_instrument</code></td>
+<td><code>(instrument_id: str) -&gt; str</code></td>
+<td><code>"OK"</code></td>
+</tr>
+<tr>
+<td><code>close_all</code></td>
+<td><code>() -&gt; str</code></td>
+<td><code>"OK"</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="power-supply-psu">Power Supply (PSU)<a class="headerlink" href="#power-supply-psu" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Signature</th>
+<th>Returns</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>psu_set_voltage</code></td>
+<td><code>(id: str, channel: int, voltage: float) -&gt; str</code></td>
+<td><code>"OK"</code></td>
+</tr>
+<tr>
+<td><code>psu_set_current_limit</code></td>
+<td><code>(id: str, channel: int, current: float) -&gt; str</code></td>
+<td><code>"OK"</code></td>
+</tr>
+<tr>
+<td><code>psu_set_output_channel</code></td>
+<td><code>(id: str, channel: int, voltage: float, current_limit: float) -&gt; str</code></td>
+<td><code>"OK"</code></td>
+</tr>
+<tr>
+<td><code>psu_enable_output</code></td>
+<td><code>(id: str, enabled: bool) -&gt; str</code></td>
+<td><code>"OK"</code></td>
+</tr>
+<tr>
+<td><code>psu_measure_voltage</code></td>
+<td><code>(id: str, channel: int) -&gt; float</code></td>
+<td>Measured volts</td>
+</tr>
+<tr>
+<td><code>psu_measure_current</code></td>
+<td><code>(id: str, channel: int) -&gt; float</code></td>
+<td>Measured amps</td>
+</tr>
+<tr>
+<td><code>psu_disable_all</code></td>
+<td><code>(id: str) -&gt; str</code></td>
+<td><code>"OK"</code></td>
+</tr>
+<tr>
+<td><code>psu_get_voltage_setpoint</code></td>
+<td><code>(id: str, channel: int) -&gt; float</code></td>
+<td>Configured volts</td>
+</tr>
+<tr>
+<td><code>psu_get_current_limit</code></td>
+<td><code>(id: str, channel: int) -&gt; float</code></td>
+<td>Configured amps</td>
+</tr>
+<tr>
+<td><code>psu_get_output_state</code></td>
+<td><code>(id: str) -&gt; bool</code></td>
+<td>True if output enabled</td>
+</tr>
+<tr>
+<td><code>psu_get_error</code></td>
+<td><code>(id: str) -&gt; str</code></td>
+<td>SCPI error queue line</td>
+</tr>
+</tbody>
+</table>
+<h3 id="digital-multimeter-dmm">Digital Multimeter (DMM)<a class="headerlink" href="#digital-multimeter-dmm" title="Permanent link">&para;</a></h3>
+<p>The <code>dmm_configure_*</code> family configures a measurement mode without triggering a read. Pair with <code>dmm_read</code> (or one of the <code>dmm_measure_*</code> convenience functions) to take an actual measurement. <strong>Pass <code>-1.0</code> for any of <code>range_val</code> / <code>resolution</code> / <code>nplc</code></strong> to request the instrument's default; an explicit <code>0.0</code> means "set the range to 0" and will likely produce an out-of-range SCPI error. The <code>nplc</code> argument is only honored by HP_34401A (others ignore it silently).</p>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Signature</th>
+<th>Returns</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>dmm_configure_dc_voltage</code></td>
+<td><code>(id: str, range_val: float = -1.0, resolution: float = -1.0, nplc: float = -1.0) -&gt; str</code></td>
+<td><code>"OK"</code></td>
+</tr>
+<tr>
+<td><code>dmm_configure_ac_voltage</code></td>
+<td><code>(id: str, range_val: float = -1.0, resolution: float = -1.0) -&gt; str</code></td>
+<td><code>"OK"</code></td>
+</tr>
+<tr>
+<td><code>dmm_configure_dc_current</code></td>
+<td><code>(id: str, range_val: float = -1.0, resolution: float = -1.0, nplc: float = -1.0) -&gt; str</code></td>
+<td><code>"OK"</code></td>
+</tr>
+<tr>
+<td><code>dmm_configure_ac_current</code></td>
+<td><code>(id: str, range_val: float = -1.0, resolution: float = -1.0) -&gt; str</code></td>
+<td><code>"OK"</code></td>
+</tr>
+<tr>
+<td><code>dmm_configure_resistance_2w</code></td>
+<td><code>(id: str, range_val: float = -1.0, resolution: float = -1.0, nplc: float = -1.0) -&gt; str</code></td>
+<td><code>"OK"</code></td>
+</tr>
+<tr>
+<td><code>dmm_configure_resistance_4w</code></td>
+<td><code>(id: str, range_val: float = -1.0, resolution: float = -1.0, nplc: float = -1.0) -&gt; str</code></td>
+<td><code>"OK"</code></td>
+</tr>
+<tr>
+<td><code>dmm_read</code></td>
+<td><code>(id: str) -&gt; float</code></td>
+<td>Trigger + read using current config</td>
+</tr>
+<tr>
+<td><code>dmm_fetch</code></td>
+<td><code>(id: str) -&gt; float</code></td>
+<td>Last reading (no new trigger; HP/EDU only)</td>
+</tr>
+<tr>
+<td><code>dmm_measure_dc_voltage</code></td>
+<td><code>(id: str) -&gt; float</code></td>
+<td>Volts DC (auto-config)</td>
+</tr>
+<tr>
+<td><code>dmm_measure_ac_voltage</code></td>
+<td><code>(id: str) -&gt; float</code></td>
+<td>Volts AC</td>
+</tr>
+<tr>
+<td><code>dmm_measure_dc_current</code></td>
+<td><code>(id: str) -&gt; float</code></td>
+<td>Amps DC</td>
+</tr>
+<tr>
+<td><code>dmm_measure_resistance_2w</code></td>
+<td><code>(id: str) -&gt; float</code></td>
+<td>Ohms (2-wire)</td>
+</tr>
+<tr>
+<td><code>dmm_measure_resistance_4w</code></td>
+<td><code>(id: str) -&gt; float</code></td>
+<td>Ohms (4-wire)</td>
+</tr>
+<tr>
+<td><code>dmm_measure_frequency</code></td>
+<td><code>(id: str) -&gt; float</code></td>
+<td>Hz</td>
+</tr>
+<tr>
+<td><code>dmm_measure_diode</code></td>
+<td><code>(id: str) -&gt; float</code></td>
+<td>Volts (forward)</td>
+</tr>
+<tr>
+<td><code>dmm_get_error</code></td>
+<td><code>(id: str) -&gt; str</code></td>
+<td>SCPI error queue line</td>
+</tr>
+</tbody>
+</table>
+<h3 id="function-generator-awg">Function Generator (AWG)<a class="headerlink" href="#function-generator-awg" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Signature</th>
+<th>Returns</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>awg_set_waveform</code></td>
+<td><code>(id: str, channel: int, wave_type: str, frequency: float, amplitude: float, offset: float) -&gt; str</code></td>
+<td><code>"OK"</code></td>
+</tr>
+<tr>
+<td><code>awg_set_frequency</code></td>
+<td><code>(id: str, channel: int, frequency: float) -&gt; str</code></td>
+<td><code>"OK"</code></td>
+</tr>
+<tr>
+<td><code>awg_set_amplitude</code></td>
+<td><code>(id: str, channel: int, amplitude: float) -&gt; str</code></td>
+<td><code>"OK"</code></td>
+</tr>
+<tr>
+<td><code>awg_set_offset</code></td>
+<td><code>(id: str, channel: int, offset: float) -&gt; str</code></td>
+<td><code>"OK"</code></td>
+</tr>
+<tr>
+<td><code>awg_set_dc_output</code></td>
+<td><code>(id: str, channel: int, voltage: float) -&gt; str</code></td>
+<td><code>"OK"</code></td>
+</tr>
+<tr>
+<td><code>awg_enable_output</code></td>
+<td><code>(id: str, channel: int, enabled: bool) -&gt; str</code></td>
+<td><code>"OK"</code></td>
+</tr>
+<tr>
+<td><code>awg_disable_all</code></td>
+<td><code>(id: str) -&gt; str</code></td>
+<td><code>"OK"</code></td>
+</tr>
+<tr>
+<td><code>awg_get_amplitude</code></td>
+<td><code>(id: str, channel: int) -&gt; float</code></td>
+<td>Vpp</td>
+</tr>
+<tr>
+<td><code>awg_get_offset</code></td>
+<td><code>(id: str, channel: int) -&gt; float</code></td>
+<td>DC offset volts</td>
+</tr>
+<tr>
+<td><code>awg_get_frequency</code></td>
+<td><code>(id: str, channel: int) -&gt; float</code></td>
+<td>Hz</td>
+</tr>
+<tr>
+<td><code>awg_get_output_state</code></td>
+<td><code>(id: str, channel: int) -&gt; bool</code></td>
+<td>True if output enabled</td>
+</tr>
+<tr>
+<td><code>awg_get_error</code></td>
+<td><code>(id: str) -&gt; str</code></td>
+<td>SCPI error queue line (<code>"not supported on JDS6600_Generator"</code> for JDS)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="oscilloscope">Oscilloscope<a class="headerlink" href="#oscilloscope" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Signature</th>
+<th>Returns</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>scope_run</code></td>
+<td><code>(id: str) -&gt; str</code></td>
+<td><code>"OK"</code></td>
+</tr>
+<tr>
+<td><code>scope_stop</code></td>
+<td><code>(id: str) -&gt; str</code></td>
+<td><code>"OK"</code></td>
+</tr>
+<tr>
+<td><code>scope_single</code></td>
+<td><code>(id: str) -&gt; str</code></td>
+<td><code>"OK"</code></td>
+</tr>
+<tr>
+<td><code>scope_set_vertical_scale</code></td>
+<td><code>(id: str, channel: int, volts_per_div: float) -&gt; str</code></td>
+<td><code>"OK"</code></td>
+</tr>
+<tr>
+<td><code>scope_set_timebase</code></td>
+<td><code>(id: str, time_per_div: float) -&gt; str</code></td>
+<td><code>"OK"</code></td>
+</tr>
+<tr>
+<td><code>scope_measure_vpp</code></td>
+<td><code>(id: str, channel: int) -&gt; float</code></td>
+<td>Volts peak-to-peak</td>
+</tr>
+<tr>
+<td><code>scope_measure_frequency</code></td>
+<td><code>(id: str, channel: int) -&gt; float</code></td>
+<td>Hz</td>
+</tr>
+<tr>
+<td><code>scope_measure_vrms</code></td>
+<td><code>(id: str, channel: int) -&gt; float</code></td>
+<td>Volts RMS</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ev2300-i2c-bridge">EV2300 (I2C Bridge)<a class="headerlink" href="#ev2300-i2c-bridge" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Signature</th>
+<th>Returns</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ev2300_wait_for_bq</code></td>
+<td><code>(id: str, timeout_s: float = 30.0) -&gt; str</code></td>
+<td><code>"OK"</code> once BQ ACKs; raises <code>TimeoutError</code></td>
+</tr>
+<tr>
+<td><code>ev2300_read_byte</code></td>
+<td><code>(id: str, i2c_addr: int, register: int) -&gt; int</code></td>
+<td>Byte value (0-255)</td>
+</tr>
+<tr>
+<td><code>ev2300_write_byte</code></td>
+<td><code>(id: str, i2c_addr: int, register: int, value: int) -&gt; str</code></td>
+<td><code>"OK"</code></td>
+</tr>
+<tr>
+<td><code>ev2300_read_word</code></td>
+<td><code>(id: str, i2c_addr: int, register: int) -&gt; int</code></td>
+<td>16-bit value</td>
+</tr>
+<tr>
+<td><code>ev2300_write_word</code></td>
+<td><code>(id: str, i2c_addr: int, register: int, value: int) -&gt; str</code></td>
+<td><code>"OK"</code></td>
+</tr>
+<tr>
+<td><code>ev2300_read_block</code></td>
+<td><code>(id: str, i2c_addr: int, register: int) -&gt; str</code></td>
+<td>JSON list of ints</td>
+</tr>
+<tr>
+<td><code>ev2300_write_block</code></td>
+<td><code>(id: str, i2c_addr: int, register: int, data_json: str) -&gt; str</code></td>
+<td><code>"OK"</code></td>
+</tr>
+<tr>
+<td><code>ev2300_get_device_info</code></td>
+<td><code>(id: str) -&gt; str</code></td>
+<td>JSON device info</td>
+</tr>
+<tr>
+<td><code>ev2300_read_sys_stat</code></td>
+<td><code>(id: str, i2c_addr: int = 0x08) -&gt; str</code></td>
+<td>JSON: <code>{raw, bits, active_faults}</code></td>
+</tr>
+<tr>
+<td><code>ev2300_clear_bq_faults</code></td>
+<td><code>(id: str, i2c_addr: int = 0x08, mask: int = 0xFF) -&gt; str</code></td>
+<td><code>"OK"</code> (W1C clear of SYS_STAT)</td>
+</tr>
+</tbody>
+</table>
+<p>Call <code>ev2300_wait_for_bq</code> between <code>open_ev2300</code> and the first <code>ev2300_read_*</code> call when the BQ EVM is being powered up alongside the VI. The function polls CC_CFG until the BQ ACKs, so it returns the moment you press the BOOT button (no manual timing race).</p>
+<h3 id="smu-source-measure-unit">SMU (Source Measure Unit)<a class="headerlink" href="#smu-source-measure-unit" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Signature</th>
+<th>Returns</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>smu_set_voltage_mode</code></td>
+<td><code>(id: str, voltage: float, current_limit: float) -&gt; str</code></td>
+<td><code>"OK"</code></td>
+</tr>
+<tr>
+<td><code>smu_set_current_mode</code></td>
+<td><code>(id: str, current: float, voltage_limit: float) -&gt; str</code></td>
+<td><code>"OK"</code></td>
+</tr>
+<tr>
+<td><code>smu_enable_output</code></td>
+<td><code>(id: str, enabled: bool) -&gt; str</code></td>
+<td><code>"OK"</code></td>
+</tr>
+<tr>
+<td><code>smu_measure_voltage</code></td>
+<td><code>(id: str) -&gt; float</code></td>
+<td>Volts</td>
+</tr>
+<tr>
+<td><code>smu_measure_current</code></td>
+<td><code>(id: str) -&gt; float</code></td>
+<td>Amps</td>
+</tr>
+</tbody>
+</table>
+<h3 id="generic-utility">Generic / Utility<a class="headerlink" href="#generic-utility" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Signature</th>
+<th>Returns</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>send_scpi</code></td>
+<td><code>(id: str, command: str) -&gt; str</code></td>
+<td><code>"OK"</code></td>
+</tr>
+<tr>
+<td><code>query_scpi</code></td>
+<td><code>(id: str, command: str) -&gt; str</code></td>
+<td>Response string</td>
+</tr>
+<tr>
+<td><code>reset_instrument</code></td>
+<td><code>(id: str) -&gt; str</code></td>
+<td><code>"OK"</code></td>
+</tr>
+<tr>
+<td><code>get_instrument_type</code></td>
+<td><code>(id: str) -&gt; str</code></td>
+<td><code>"psu"</code>, <code>"dmm"</code>, <code>"awg"</code>, <code>"scope"</code>, <code>"smu"</code>, <code>"ev2300"</code></td>
+</tr>
+<tr>
+<td><code>get_version</code></td>
+<td><code>() -&gt; str</code></td>
+<td>Package version string</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="psu-channel-mapping">PSU Channel Mapping<a class="headerlink" href="#psu-channel-mapping" title="Permanent link">&para;</a></h2>
+<p>The bridge normalizes channel numbers (1, 2, 3) across all PSU drivers:</p>
+<table>
+<thead>
+<tr>
+<th>Channel</th>
+<th>HP E3631A</th>
+<th>EDU36311A</th>
+<th>MPS-6010H</th>
+<th>PXIe-4139</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>+6V (P6V)</td>
+<td>+6V (P6V)</td>
+<td><em>(single channel)</em></td>
+<td><em>(single channel)</em></td>
+</tr>
+<tr>
+<td>2</td>
+<td>+25V (P25V)</td>
+<td>+30V (P30V)</td>
+<td>---</td>
+<td>---</td>
+</tr>
+<tr>
+<td>3</td>
+<td>-25V (N25V)</td>
+<td>-30V (N30V)</td>
+<td>---</td>
+<td>---</td>
+</tr>
+</tbody>
+</table>
+<p>Single-channel PSUs (MPS-6010H, PXIe-4139) ignore the channel argument.</p>
+<hr />
+<h2 id="supported-drivers">Supported Drivers<a class="headerlink" href="#supported-drivers" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Driver Name</th>
+<th>Instrument</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>HP_E3631A</code></td>
+<td>HP E3631A Triple Output PSU</td>
+<td>PSU</td>
+</tr>
+<tr>
+<td><code>EDU36311A</code></td>
+<td>Keysight EDU36311A Triple Output PSU</td>
+<td>PSU</td>
+</tr>
+<tr>
+<td><code>MPS6010H</code></td>
+<td>MATRIX MPS-6010H-1C (60V/10A)</td>
+<td>PSU</td>
+</tr>
+<tr>
+<td><code>HP_34401A</code></td>
+<td>HP/Agilent 34401A DMM</td>
+<td>DMM</td>
+</tr>
+<tr>
+<td><code>EDU34450A</code></td>
+<td>Keysight EDU34450A DMM</td>
+<td>DMM</td>
+</tr>
+<tr>
+<td><code>XDM1041</code></td>
+<td>Owon XDM1041 DMM</td>
+<td>DMM</td>
+</tr>
+<tr>
+<td><code>EDU33212A</code></td>
+<td>Keysight EDU33212A AWG</td>
+<td>AWG</td>
+</tr>
+<tr>
+<td><code>BK_4063</code></td>
+<td>BK Precision 4063 AWG</td>
+<td>AWG</td>
+</tr>
+<tr>
+<td><code>JDS6600</code></td>
+<td>JDS6600/Seesii DDS Generator</td>
+<td>AWG</td>
+</tr>
+<tr>
+<td><code>MSO2024</code></td>
+<td>Tektronix MSO2024 Oscilloscope</td>
+<td>Scope</td>
+</tr>
+<tr>
+<td><code>DHO804</code></td>
+<td>Rigol DHO804 Oscilloscope</td>
+<td>Scope</td>
+</tr>
+<tr>
+<td><code>DSOX1204G</code></td>
+<td>Keysight DSOX1204G Oscilloscope</td>
+<td>Scope</td>
+</tr>
+<tr>
+<td><code>PXIe_4139</code></td>
+<td>NI PXIe-4139 SMU</td>
+<td>SMU</td>
+</tr>
+<tr>
+<td><code>EV2300</code></td>
+<td>TI EV2300 USB-to-I2C Adapter</td>
+<td>EV2300</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="error-handling">Error Handling<a class="headerlink" href="#error-handling" title="Permanent link">&para;</a></h2>
+<p>Python exceptions automatically become LabVIEW error clusters when you wire the error terminals. Common errors:</p>
+<table>
+<thead>
+<tr>
+<th>Python Exception</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>KeyError</code></td>
+<td>Invalid instrument ID (not open or already closed)</td>
+</tr>
+<tr>
+<td><code>TypeError</code></td>
+<td>Wrong instrument type (e.g. calling <code>psu_set_voltage</code> on a DMM)</td>
+</tr>
+<tr>
+<td><code>ValueError</code></td>
+<td>Invalid parameter (bad channel number, out-of-range voltage)</td>
+</tr>
+<tr>
+<td><code>RuntimeError</code></td>
+<td>EV2300 I2C communication failure</td>
+</tr>
+<tr>
+<td><code>ConnectionError</code></td>
+<td>Instrument not connected</td>
+</tr>
+</tbody>
+</table>
+<p>Wire the <strong>error in/out</strong> clusters through all your Python Nodes in series. If any node throws an exception, subsequent nodes are skipped and the error propagates to the end of your chain.</p>
+<hr />
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
+<p><strong>ImportError: attempted relative import with no known parent package</strong></p>
+<p>This error means LabVIEW loaded <code>labview_bridge.py</code> as a standalone script instead of as part of the <code>lab_instruments</code> package, causing all <code>from .xyz import</code> statements to fail.</p>
+<p>Fix: make sure the version of the toolkit installed is <strong>1.0.5 or later</strong> (the file was patched to handle standalone loads). Upgrade with:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="n">pip</span> <span class="n">install</span> <span class="p">-</span><span class="n">-upgrade</span> <span class="n">git</span><span class="p">+</span><span class="n">https</span><span class="p">://</span><span class="n">github</span><span class="p">.</span><span class="n">com</span><span class="p">/</span><span class="n">T-O-M-Tool-Oauto-Mationator</span><span class="p">/</span><span class="n">scpi-instrument-toolkit</span><span class="p">.</span><span class="n">git</span>
+</code></pre></div>
+<p>If you are using a git clone and cannot upgrade, switch the Python Node's module path to the top-level shim at the repository root (<code>labview_bridge.py</code>) instead of the buried path in <code>lab_instruments/src/</code>.</p>
+<hr />
+<p><strong>Python Node shows "Python not found" or fails silently</strong></p>
+<ul>
+<li>Verify Python is on your system PATH: open a terminal and type <code>python --version</code></li>
+<li>Verify bitness matches: 64-bit LabVIEW needs 64-bit Python</li>
+<li>Try setting the version input on Open Python Session to your installed Python's <strong>major.minor</strong> (e.g. <code>3.12</code>). LabVIEW 2024+ generally rejects the bare <code>3</code> and demands an explicit minor; older LabVIEW versions accept either. Run <code>python --version</code> to confirm which is installed.</li>
+</ul>
+<p><strong>Error 1672 at Open Python Session / "Hex 0x688 unknown Python error"</strong></p>
+<ul>
+<li>Open Python Session is failing before any Python code runs. <code>python312.dll</code> is never loaded into LabVIEW. Two common causes:</li>
+<li><strong>A stray Python process is holding the runtime.</strong> A previous <code>pytest</code> run, REPL session, or aborted VI can leave a <code>python.exe</code> alive that locks the interpreter against new sessions. Kill it: in PowerShell, <code>Get-Process python | Stop-Process -Force</code>, then retry.</li>
+<li><strong><code>niPythonInterface.dll</code> cached a previous failure.</strong> Once Open Python Session fails in a LabVIEW process, the result is cached and every subsequent attempt fails without re-checking. Fix: close the VI, quit LabVIEW entirely, reopen and try again.</li>
+</ul>
+<p><strong><code>RuntimeError: Device error (0x46)</code> from any <code>ev2300_*</code> function</strong></p>
+<ul>
+<li>The EV2300 sent an I2C request but the BQ76920 slave did not ACK. Three common causes:</li>
+<li><strong>BQ76920 is in SHIP mode.</strong> The BQ defaults to SHIP after every power-on and only a hardware BOOT pulse wakes it. Press the BOOT button on the EVM. In LabVIEW, prefer <code>ev2300_wait_for_bq</code> (or a One Button Dialog between <code>open_ev2300</code> and <code>ev2300_read_byte</code>) so the human has time to press BOOT before the read fires.</li>
+<li><strong>No power on the BQ EVM.</strong> Confirm the PSU is at 18V on the +25V channel AND the Output LED is lit (programmed voltage alone is not enough — <code>psu_enable_output(True)</code> must have fired). If the LED is off, see the next entry.</li>
+<li><strong>EV2300 firmware in a wedged state from a prior failed transaction.</strong> In the REPL run <code>ev2300 cycle</code> to disconnect, prompt for BOOT, and reconnect cleanly. In LabVIEW, <code>close_instrument</code> the EV2300, prompt for BOOT, then <code>open_ev2300</code> again.</li>
+</ul>
+<p><strong>PSU is in CC mode at 0 A even though voltage was set and output is enabled</strong></p>
+<ul>
+<li>The PSU programmed voltage is showing 18 V, the Output LED is lit (or you wired <code>psu_enable_output(True)</code>), but the PSU display shows <strong>CC</strong> (Constant Current) and the current reads <strong>0 A</strong> under any real load.</li>
+<li>Cause: the channel's current limit is set to 0.0 A. The PSU is correctly current-limiting at 0 A, which collapses the output voltage the instant any load draws current.</li>
+<li>Pre-1.0.63 bug: <code>open_psu</code>'s safe-state init zeroed the current limit. As of v1.0.63 this is fixed (defaults preserved). If you are on an older bridge or the limit was explicitly zeroed by another call, work around with <code>psu_set_output_channel(id, channel, voltage, current_limit)</code> which sends <code>APPLY</code> and sets both setpoints. 0.1-0.5 A is plenty for a low-current load like a BQ76920 EVM.</li>
+<li>Sanity check from the REPL: <code>psu meas &lt;ch&gt; i</code> reads measured current. <code>psu set &lt;ch&gt; &lt;V&gt; &lt;A&gt;</code> resets both setpoints (this is what the REPL <code>psu set</code> does internally — it always passes both values).</li>
+</ul>
+<p><strong>PSU display shows the programmed voltage but Output LED is off</strong></p>
+<ul>
+<li>The PSU front panel can display a programmed setpoint without the output stage being energized. The LED is the authoritative state.</li>
+<li><strong>Most common cause: <code>psu_enable_output</code> was called with <code>False</code>.</strong> Verify the Boolean Constant wired into the second parameter slot reads <strong>T</strong> (green). A pink String Constant, an unwired terminal, or a False Constant all produce this symptom. The bridge now raises <code>TypeError: psu_enable_output: 'enabled' must be a Boolean...</code> if anything other than a real <code>bool</code> is passed.</li>
+<li><strong>Sanity check:</strong> with the VI stopped, press the physical Output On/Off button on the E3631A — the LED should toggle. If it does, the PSU is fine and the VI is the problem; if not, there's a PSU fault (look for OVP/OCP/error on the display).</li>
+</ul>
+<p><strong><code>VI_ERROR_NLISTENERS (-1073807265)</code> / "No listeners condition is detected"</strong></p>
+<ul>
+<li>The VISA resource opened, but no device on the bus acknowledged the first SCPI write (<code>*CLS</code> during <code>open_psu</code>)</li>
+<li>Almost always means the <strong>GPIB primary address is wrong for your bench</strong> — the doc's <code>GPIB0::1::INSTR</code> is a typical value, not a universal one</li>
+<li>Discover the real address: <code>python -c "from lab_instruments.src import labview_bridge; print(labview_bridge.list_visa_resources())"</code> (or use NI MAX &gt; Scan for Instruments)</li>
+<li>Once you know the address, update the String Constant feeding <code>open_psu</code> / <code>open_dmm</code> to match</li>
+<li>Also verify: instrument is powered on, GPIB cable is seated, and you're not on a second controller (<code>GPIB1</code> vs <code>GPIB0</code>)</li>
+</ul>
+<p><strong><code>ValueError: Unknown driver '&lt;something&gt;'.</code></strong></p>
+<ul>
+<li>The driver name being passed to <code>open_psu</code> / <code>open_dmm</code> does not match any entry in the bridge's <code>_DRIVER_MAP</code></li>
+<li><strong>Check for leading or trailing whitespace</strong> in the String Constant feeding the <code>driver_name</code> parameter. <code>" HP_E3631A"</code> (leading space) is not the same string as <code>"HP_E3631A"</code> and will fail the allowlist check. Double-click into the constant and confirm there are no stray spaces before or after the text</li>
+<li><strong>Check the parameter slot order</strong>: the topmost expanded parameter slot is <code>visa_address</code>, the next slot down is <code>driver_name</code>. If your wires are swapped, <code>GPIB0::4::INSTR</code> ends up as <code>driver_name</code> and you get <code>Unknown driver ' GPIB0::4::INSTR'</code> (the error message even prints the leading space inside the quotes — that's your tell)</li>
+<li>Confirm the driver string matches the <strong>Supported Drivers</strong> table exactly (case-sensitive): <code>HP_E3631A</code>, <code>EDU36311A</code>, <code>HP_34401A</code>, etc.</li>
+</ul>
+<p><strong>Instrument not found / KeyError on second node</strong></p>
+<ul>
+<li>Make sure all Python Nodes share the <strong>same session refnum wire</strong> from Open Python Session</li>
+<li>If each node opens its own session, the module cache is separate and <code>psu_set_voltage</code> can't find the instrument opened by <code>open_psu</code></li>
+</ul>
+<p><strong>"No module named lab_instruments"</strong></p>
+<ul>
+<li>The toolkit is not installed in the Python that LabVIEW is using</li>
+<li>Run <code>pip install git+https://github.com/T-O-M-Tool-Oauto-Mationator/scpi-instrument-toolkit.git</code> in the same Python installation</li>
+</ul>
+<p><strong>Raw SCPI escape hatch</strong></p>
+<p>If the bridge doesn't have a wrapper for your specific command, use <code>send_scpi()</code> / <code>query_scpi()</code> to send any SCPI command directly to the instrument.</p>
+<hr />
+<h2 id="tips-gotchas">Tips &amp; Gotchas<a class="headerlink" href="#tips-gotchas" title="Permanent link">&para;</a></h2>
+<p>Specific quirks of the LabVIEW Python Node + this toolkit that trip students up most often.</p>
+<ul>
+<li><strong>Use a venv, not the global Python.</strong> A virtual environment isolates the toolkit and its dependencies from anything else on the machine. It also makes the integration reproducible on the next workstation: same <code>python.exe</code>, same <code>pip freeze</code>. See <a href="teststand.html">NI TestStand Setup</a> for one way to create a TAMU-friendly venv on the <code>H:</code> drive that LabVIEW can point at.</li>
+<li><strong>Pick "Open Venv Python Session" from the dropdown.</strong> The default palette item is <strong>Open Anaconda Python Session</strong>. Right-click it and change to <strong>Open Venv Python Session</strong> (LabVIEW 2024+) -- otherwise the wire types do not match a plain pip venv and you will get a vague session error.</li>
+<li><strong>Set the return type with a wire, not just the right-click menu.</strong> Drag a data-type wire (String, Double, I32, Boolean) onto the small grey return-type box on the right of the Python Node. Without this, the node returns a Variant that LabVIEW will not auto-coerce.</li>
+<li><strong>Expand the node by dragging the bottom edge.</strong> Each drag-down step exposes one more positional input. The order of inputs must match the Python signature -- LabVIEW does not look at parameter names.</li>
+<li><strong>Always wire <code>session refnum</code> through every node.</strong> All Python Nodes that share the same session also share the bridge's module-level instrument cache. If you accidentally start a second session, <code>open_psu</code> in session A is invisible to <code>psu_set_voltage</code> in session B and you will get a <code>KeyError</code>.</li>
+<li><strong>Read the function source.</strong> When in doubt about argument order or types, open <code>labview_bridge.py</code> (path printed by Step 1) and look at the signature -- LabVIEW will not tell you what it expects.</li>
+<li><strong>64-bit LabVIEW needs 64-bit Python.</strong> A bitness mismatch fails silently. If "Open Python Session" returns no error but later nodes throw <code>Python not found</code>, this is the cause.</li>
+</ul>
+<hr />
+<h2 id="student-case-study-adc-parametric-testing-lab-8">Student case study: ADC parametric testing (Lab 8)<a class="headerlink" href="#student-case-study-adc-parametric-testing-lab-8" title="Permanent link">&para;</a></h2>
+<p>Maxim Benanti and Caden Citron (ESET 453, Spring 2026) used this LabVIEW bridge for Lab 8 ADC parametric testing -- driving the EV2300 + BQ76920 from a LabVIEW VI that called <code>open_ev2300</code>, <code>ev2300_read_word</code>, and <code>close_instrument</code> through a <code>.venv</code> Python Session.</p>
+<p>Their 6-slide writeup -- including a screenshot of the actual block diagram, the venv setup steps, and a measured Expected-vs-Measured voltage sweep -- is bundled with the docs:</p>
+<p><a href="assets/labview-python-hybridization-benanti-citron.pdf">Download: Labview/Python Hybridization (PDF, 257 kB)</a></p>
+<p>Use it as a reference layout when wiring up your own VI.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": ".", "features": ["navigation.tabs", "navigation.sections", "navigation.expand", "navigation.top", "search.highlight", "search.suggest", "content.code.copy", "toc.follow"], "search": "assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="js/accessibility.js"></script>
+      
+    
+  </body>
+</html>
