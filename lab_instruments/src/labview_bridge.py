@@ -150,12 +150,18 @@ def _next_id(driver_class: type) -> str:
 
 
 def _get(instrument_id: str) -> object:
-    """Retrieve a cached instrument or raise KeyError."""
-    try:
-        return _instruments[instrument_id]
-    except KeyError:
+    """Retrieve a cached instrument or raise KeyError.
+
+    Acquires _lock so a concurrent close_instrument cannot mutate the dict
+    mid-read. The available-IDs snapshot used in the error message is
+    captured under the same lock.
+    """
+    with _lock:
+        dev = _instruments.get(instrument_id)
+        if dev is not None:
+            return dev
         available = list(_instruments.keys()) or ["(none - open an instrument first)"]
-        raise KeyError(f"No instrument with ID '{instrument_id}'. Open instruments: {available}") from None
+    raise KeyError(f"No instrument with ID '{instrument_id}'. Open instruments: {available}") from None
 
 
 def _get_typed(instrument_id: str, valid_types: tuple) -> object:
@@ -165,6 +171,128 @@ def _get_typed(instrument_id: str, valid_types: tuple) -> object:
         expected = [c.__name__ for c in valid_types]
         raise TypeError(f"Instrument '{instrument_id}' is {type(dev).__name__}, expected one of {expected}")
     return dev
+
+
+# ---------------------------------------------------------------------------
+# Parameter validation helpers
+# ---------------------------------------------------------------------------
+#
+# LabVIEW's Python Node defaults unwired terminals to type-specific zero
+# values: String -> "", I32 -> 0, DBL -> 0.0, Boolean -> False. None of those
+# raise on the LabVIEW side, so cryptic Python errors (KeyError, AttributeError,
+# silent disable) used to fall through to the user. These helpers translate
+# the LabVIEW defaults into actionable error messages naming the parameter
+# slot and what the user likely forgot to wire.
+
+
+def _require_id(op: str, instrument_id) -> None:
+    """Reject empty/non-string instrument_id.
+
+    Unwired LabVIEW String terminal arrives as "" which matches no open
+    instrument; raising here keeps the failure at the boundary instead of
+    deep inside _get.
+    """
+    if not isinstance(instrument_id, str) or not instrument_id:
+        raise ValueError(
+            f"{op}: 'instrument_id' must be a non-empty string returned by "
+            f"open_psu/open_dmm/open_awg/open_scope/open_smu/open_ev2300, got "
+            f"{instrument_id!r} (type: {type(instrument_id).__name__}). "
+            f"In LabVIEW: wire the output of the open_* Python Node into the "
+            f"first (top) parameter slot of this Python Node. An unwired "
+            f"String terminal arrives as the empty string."
+        )
+
+
+def _require_bool(op: str, param: str, value, *, lab_hint: str = "") -> None:
+    """Reject non-bool. Unwired LabVIEW Boolean defaults to False which can
+    silently disable an output - prefer a loud error."""
+    if not isinstance(value, bool):
+        hint = lab_hint or (
+            f"In LabVIEW: place a True/False Constant from Programming > Boolean and wire it into the '{param}' slot."
+        )
+        raise TypeError(
+            f"{op}: '{param}' must be a Boolean (True/False), got {value!r} (type: {type(value).__name__}). {hint}"
+        )
+
+
+def _require_number(op: str, param: str, value, *, lab_hint: str = "") -> None:
+    """Reject non-numeric (also rejects bool because bool subclasses int and a
+    True wired into a voltage slot is almost certainly a wiring mistake)."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        hint = lab_hint or (
+            f"In LabVIEW: place a Numeric Constant (DBL, orange) from "
+            f"Programming > Numeric and wire it into the '{param}' slot."
+        )
+        raise TypeError(
+            f"{op}: '{param}' must be a number (int or float), got {value!r} (type: {type(value).__name__}). {hint}"
+        )
+
+
+def _require_channel(op: str, value, *, valid: tuple = (), max_ch: int = 0) -> None:
+    """Reject non-int channel or out-of-range channel.
+
+    Pass `valid=(1, 2, 3)` for explicit allowlist, or `max_ch=N` for 1..N.
+    LabVIEW I32 unwired terminal arrives as 0 which is not a valid channel.
+    """
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise TypeError(
+            f"{op}: 'channel' must be an integer, got {value!r} "
+            f"(type: {type(value).__name__}). In LabVIEW: place a Numeric "
+            f"Constant set to I32 representation and wire it into the "
+            f"'channel' slot. An unwired terminal arrives as 0 which is "
+            f"not a valid channel number."
+        )
+    if valid and value not in valid:
+        raise ValueError(f"{op}: 'channel' must be one of {list(valid)}, got {value}.")
+    if max_ch and not (1 <= value <= max_ch):
+        raise ValueError(f"{op}: 'channel' must be 1..{max_ch}, got {value}.")
+
+
+def _require_str(op: str, param: str, value, *, nonempty: bool = True) -> None:
+    """Reject non-string (or empty-string when nonempty=True)."""
+    if not isinstance(value, str):
+        raise TypeError(f"{op}: '{param}' must be a string, got {value!r} (type: {type(value).__name__}).")
+    if nonempty and not value:
+        raise ValueError(
+            f"{op}: '{param}' must be a non-empty string. In LabVIEW: an "
+            f"unwired String terminal arrives as the empty string - make "
+            f"sure a String Constant is connected to the '{param}' slot."
+        )
+
+
+def _require_byte(op: str, param: str, value) -> None:
+    """Reject non-int or out-of-range [0, 255]."""
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise TypeError(f"{op}: '{param}' must be an integer 0..255, got {value!r} (type: {type(value).__name__}).")
+    if not (0 <= value <= 0xFF):
+        raise ValueError(f"{op}: '{param}' must be 0..255, got {value}.")
+
+
+def _require_word(op: str, param: str, value) -> None:
+    """Reject non-int or out-of-range [0, 65535]."""
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise TypeError(f"{op}: '{param}' must be an integer 0..65535, got {value!r} (type: {type(value).__name__}).")
+    if not (0 <= value <= 0xFFFF):
+        raise ValueError(f"{op}: '{param}' must be 0..65535, got {value}.")
+
+
+def _require_i2c_addr(op: str, value) -> None:
+    """Reject non-int or out-of-range 7-bit I2C address (0..127)."""
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise TypeError(
+            f"{op}: 'i2c_addr' must be an integer 7-bit I2C address (0..127), "
+            f"got {value!r} (type: {type(value).__name__})."
+        )
+    if not (0 <= value <= 0x7F):
+        raise ValueError(f"{op}: 'i2c_addr' must be a 7-bit I2C address (0..127), got 0x{value:X}.")
+
+
+def _require_positive(op: str, param: str, value) -> None:
+    """Reject value <= 0 (use after _require_number)."""
+    if value <= 0:
+        raise ValueError(
+            f"{op}: '{param}' must be > 0, got {value}. In LabVIEW: an unwired Numeric terminal arrives as 0.0."
+        )
 
 
 # =========================================================================
@@ -233,6 +361,8 @@ def open_instrument(visa_address: str, driver_name: str) -> str:
     Returns:
         str: Instrument ID (e.g. "psu_1") to use in subsequent calls.
     """
+    _require_str("open_instrument", "visa_address", visa_address)
+    _require_str("open_instrument", "driver_name", driver_name)
     if driver_name not in _DRIVER_MAP:
         raise ValueError(f"Unknown driver '{driver_name}'. Available: {sorted(_DRIVER_MAP.keys())}")
     driver_class = _DRIVER_MAP[driver_name]
@@ -246,8 +376,10 @@ def open_instrument(visa_address: str, driver_name: str) -> str:
 
 def open_psu(visa_address: str, driver_name: str) -> str:
     """Open a power supply (validates driver is a PSU type)."""
+    _require_str("open_psu", "visa_address", visa_address)
+    _require_str("open_psu", "driver_name", driver_name)
     if driver_name not in _DRIVER_MAP:
-        raise ValueError(f"Unknown driver '{driver_name}'.")
+        raise ValueError(f"Unknown driver '{driver_name}'. Available: {sorted(_DRIVER_MAP.keys())}")
     if not issubclass(_DRIVER_MAP[driver_name], _PSU_CLASSES):
         raise TypeError(f"'{driver_name}' is not a PSU driver.")
     return open_instrument(visa_address, driver_name)
@@ -255,8 +387,10 @@ def open_psu(visa_address: str, driver_name: str) -> str:
 
 def open_dmm(visa_address: str, driver_name: str) -> str:
     """Open a digital multimeter (validates driver is a DMM type)."""
+    _require_str("open_dmm", "visa_address", visa_address)
+    _require_str("open_dmm", "driver_name", driver_name)
     if driver_name not in _DRIVER_MAP:
-        raise ValueError(f"Unknown driver '{driver_name}'.")
+        raise ValueError(f"Unknown driver '{driver_name}'. Available: {sorted(_DRIVER_MAP.keys())}")
     if not issubclass(_DRIVER_MAP[driver_name], _DMM_CLASSES):
         raise TypeError(f"'{driver_name}' is not a DMM driver.")
     return open_instrument(visa_address, driver_name)
@@ -264,8 +398,10 @@ def open_dmm(visa_address: str, driver_name: str) -> str:
 
 def open_awg(visa_address: str, driver_name: str) -> str:
     """Open a function generator (validates driver is an AWG type)."""
+    _require_str("open_awg", "visa_address", visa_address)
+    _require_str("open_awg", "driver_name", driver_name)
     if driver_name not in _DRIVER_MAP:
-        raise ValueError(f"Unknown driver '{driver_name}'.")
+        raise ValueError(f"Unknown driver '{driver_name}'. Available: {sorted(_DRIVER_MAP.keys())}")
     if not issubclass(_DRIVER_MAP[driver_name], _AWG_CLASSES):
         raise TypeError(f"'{driver_name}' is not an AWG driver.")
     return open_instrument(visa_address, driver_name)
@@ -273,8 +409,10 @@ def open_awg(visa_address: str, driver_name: str) -> str:
 
 def open_scope(visa_address: str, driver_name: str) -> str:
     """Open an oscilloscope (validates driver is a scope type)."""
+    _require_str("open_scope", "visa_address", visa_address)
+    _require_str("open_scope", "driver_name", driver_name)
     if driver_name not in _DRIVER_MAP:
-        raise ValueError(f"Unknown driver '{driver_name}'.")
+        raise ValueError(f"Unknown driver '{driver_name}'. Available: {sorted(_DRIVER_MAP.keys())}")
     if not issubclass(_DRIVER_MAP[driver_name], _SCOPE_CLASSES):
         raise TypeError(f"'{driver_name}' is not a scope driver.")
     return open_instrument(visa_address, driver_name)
@@ -284,8 +422,10 @@ def open_smu(visa_address: str, driver_name: str) -> str:
     """Open a source measure unit (validates driver is an SMU type)."""
     if not _SMU_CLASSES:
         raise ImportError("SMU support not available (nidcpower not installed).")
+    _require_str("open_smu", "visa_address", visa_address)
+    _require_str("open_smu", "driver_name", driver_name)
     if driver_name not in _DRIVER_MAP:
-        raise ValueError(f"Unknown driver '{driver_name}'.")
+        raise ValueError(f"Unknown driver '{driver_name}'. Available: {sorted(_DRIVER_MAP.keys())}")
     if not issubclass(_DRIVER_MAP[driver_name], _SMU_CLASSES):
         raise TypeError(f"'{driver_name}' is not an SMU driver.")
     return open_instrument(visa_address, driver_name)
@@ -302,6 +442,13 @@ def open_ev2300(resource_name: str = "") -> str:
     """
     if TI_EV2300 is None:
         raise ImportError("EV2300 driver not available. Install hidapi: pip install hidapi")
+    # resource_name is intentionally allowed to be "" (auto-detect path),
+    # but a non-str rejects loudly.
+    if not isinstance(resource_name, str):
+        raise TypeError(
+            f"open_ev2300: 'resource_name' must be a string (empty for "
+            f"auto-detect), got {resource_name!r} (type: {type(resource_name).__name__})."
+        )
     if resource_name:
         dev = TI_EV2300(resource_name)
     else:
@@ -322,6 +469,7 @@ def close_instrument(instrument_id: str) -> str:
     Returns:
         str: "OK"
     """
+    _require_id("close_instrument", instrument_id)
     with _lock:
         dev = _instruments.pop(instrument_id, None)
     if dev is None:
@@ -361,6 +509,9 @@ def psu_set_voltage(instrument_id: str, channel: int, voltage: float) -> str:
     Returns:
         str: "OK"
     """
+    _require_id("psu_set_voltage", instrument_id)
+    _require_channel("psu_set_voltage", channel)
+    _require_number("psu_set_voltage", "voltage", voltage)
     dev = _get_typed(instrument_id, _PSU_CLASSES)
     if isinstance(dev, HP_E3631A):
         ch = _HP_CHANNEL_MAP.get(channel)
@@ -372,8 +523,10 @@ def psu_set_voltage(instrument_id: str, channel: int, voltage: float) -> str:
         if ch_key is None:
             raise ValueError(f"EDU36311A channel must be 1, 2, or 3. Got {channel!r} (type: {type(channel).__name__}).")
         dev.set_voltage(ch_key, voltage)
-    elif isinstance(dev, MATRIX_MPS6010H) or NI_PXIe_4139 is not None and isinstance(dev, NI_PXIe_4139):
+    elif isinstance(dev, MATRIX_MPS6010H) or (NI_PXIe_4139 is not None and isinstance(dev, NI_PXIe_4139)):
         dev.set_voltage(voltage)
+    else:
+        raise TypeError(f"Unsupported PSU type: {type(dev).__name__}")
     return "OK"
 
 
@@ -383,6 +536,9 @@ def psu_set_current_limit(instrument_id: str, channel: int, current: float) -> s
     Returns:
         str: "OK"
     """
+    _require_id("psu_set_current_limit", instrument_id)
+    _require_channel("psu_set_current_limit", channel)
+    _require_number("psu_set_current_limit", "current", current)
     dev = _get_typed(instrument_id, _PSU_CLASSES)
     if isinstance(dev, HP_E3631A):
         ch = _HP_CHANNEL_MAP.get(channel)
@@ -394,8 +550,10 @@ def psu_set_current_limit(instrument_id: str, channel: int, current: float) -> s
         if ch_key is None:
             raise ValueError(f"EDU36311A channel must be 1, 2, or 3. Got {channel!r} (type: {type(channel).__name__}).")
         dev.set_current_limit(ch_key, current)
-    elif isinstance(dev, MATRIX_MPS6010H) or NI_PXIe_4139 is not None and isinstance(dev, NI_PXIe_4139):
+    elif isinstance(dev, MATRIX_MPS6010H) or (NI_PXIe_4139 is not None and isinstance(dev, NI_PXIe_4139)):
         dev.set_current_limit(current)
+    else:
+        raise TypeError(f"Unsupported PSU type: {type(dev).__name__}")
     return "OK"
 
 
@@ -405,6 +563,10 @@ def psu_set_output_channel(instrument_id: str, channel: int, voltage: float, cur
     Returns:
         str: "OK"
     """
+    _require_id("psu_set_output_channel", instrument_id)
+    _require_channel("psu_set_output_channel", channel)
+    _require_number("psu_set_output_channel", "voltage", voltage)
+    _require_number("psu_set_output_channel", "current_limit", current_limit)
     dev = _get_typed(instrument_id, _PSU_CLASSES)
     if isinstance(dev, HP_E3631A):
         ch = _HP_CHANNEL_MAP.get(channel)
@@ -416,8 +578,10 @@ def psu_set_output_channel(instrument_id: str, channel: int, voltage: float, cur
         if ch_key is None:
             raise ValueError(f"EDU36311A channel must be 1, 2, or 3. Got {channel!r} (type: {type(channel).__name__}).")
         dev.set_output_channel(ch_key, voltage, current_limit)
-    elif isinstance(dev, MATRIX_MPS6010H) or NI_PXIe_4139 is not None and isinstance(dev, NI_PXIe_4139):
+    elif isinstance(dev, MATRIX_MPS6010H) or (NI_PXIe_4139 is not None and isinstance(dev, NI_PXIe_4139)):
         dev.set_output_channel(channel, voltage, current_limit)
+    else:
+        raise TypeError(f"Unsupported PSU type: {type(dev).__name__}")
     return "OK"
 
 
@@ -427,24 +591,18 @@ def psu_enable_output(instrument_id: str, enabled: bool) -> str:
     Returns:
         str: "OK"
     """
-    if not isinstance(instrument_id, str) or not instrument_id:
-        raise ValueError(
-            f"psu_enable_output: 'instrument_id' must be a non-empty string "
-            f"returned by open_psu, got {instrument_id!r} (type: "
-            f"{type(instrument_id).__name__}). In LabVIEW: branch the output "
-            f"wire of open_psu into the first (top) parameter slot of this "
-            f"Python Node. An unwired String terminal arrives as the empty "
-            f"string, which matches no open instrument."
-        )
-    if not isinstance(enabled, bool):
-        raise TypeError(
-            f"psu_enable_output: 'enabled' must be a Boolean (True/False), "
-            f"got {enabled!r} (type: {type(enabled).__name__}). "
-            f"In LabVIEW: place a True/False Constant from "
-            f"Programming > Boolean and wire it into the second parameter "
-            f"slot of the Python Node. An unwired Boolean terminal silently "
-            f"defaults to False, which disables the PSU output."
-        )
+    _require_id("psu_enable_output", instrument_id)
+    _require_bool(
+        "psu_enable_output",
+        "enabled",
+        enabled,
+        lab_hint=(
+            "In LabVIEW: place a True/False Constant from Programming > "
+            "Boolean and wire it into the second parameter slot of the "
+            "Python Node. An unwired Boolean terminal silently defaults to "
+            "False, which disables the PSU output."
+        ),
+    )
     dev = _get_typed(instrument_id, _PSU_CLASSES)
     dev.enable_output(enabled)
     return "OK"
@@ -456,6 +614,8 @@ def psu_measure_voltage(instrument_id: str, channel: int) -> float:
     Returns:
         float: Measured voltage in volts.
     """
+    _require_id("psu_measure_voltage", instrument_id)
+    _require_channel("psu_measure_voltage", channel)
     dev = _get_typed(instrument_id, _PSU_CLASSES)
     if isinstance(dev, HP_E3631A):
         ch = _HP_CHANNEL_MAP.get(channel)
@@ -467,7 +627,7 @@ def psu_measure_voltage(instrument_id: str, channel: int) -> float:
         if ch_key is None:
             raise ValueError(f"EDU36311A channel must be 1, 2, or 3. Got {channel!r} (type: {type(channel).__name__}).")
         return dev.measure_voltage(ch_key)
-    elif isinstance(dev, MATRIX_MPS6010H) or NI_PXIe_4139 is not None and isinstance(dev, NI_PXIe_4139):
+    elif isinstance(dev, MATRIX_MPS6010H) or (NI_PXIe_4139 is not None and isinstance(dev, NI_PXIe_4139)):
         return dev.measure_voltage()
     raise TypeError(f"Unsupported PSU type: {type(dev).__name__}")
 
@@ -478,6 +638,8 @@ def psu_measure_current(instrument_id: str, channel: int) -> float:
     Returns:
         float: Measured current in amps.
     """
+    _require_id("psu_measure_current", instrument_id)
+    _require_channel("psu_measure_current", channel)
     dev = _get_typed(instrument_id, _PSU_CLASSES)
     if isinstance(dev, HP_E3631A):
         ch = _HP_CHANNEL_MAP.get(channel)
@@ -489,7 +651,7 @@ def psu_measure_current(instrument_id: str, channel: int) -> float:
         if ch_key is None:
             raise ValueError(f"EDU36311A channel must be 1, 2, or 3. Got {channel!r} (type: {type(channel).__name__}).")
         return dev.measure_current(ch_key)
-    elif isinstance(dev, MATRIX_MPS6010H) or NI_PXIe_4139 is not None and isinstance(dev, NI_PXIe_4139):
+    elif isinstance(dev, MATRIX_MPS6010H) or (NI_PXIe_4139 is not None and isinstance(dev, NI_PXIe_4139)):
         return dev.measure_current()
     raise TypeError(f"Unsupported PSU type: {type(dev).__name__}")
 
@@ -500,6 +662,7 @@ def psu_disable_all(instrument_id: str) -> str:
     Returns:
         str: "OK"
     """
+    _require_id("psu_disable_all", instrument_id)
     dev = _get_typed(instrument_id, _PSU_CLASSES)
     dev.disable_all_channels()
     return "OK"
@@ -512,42 +675,49 @@ def psu_disable_all(instrument_id: str) -> str:
 
 def dmm_measure_dc_voltage(instrument_id: str) -> float:
     """Measure DC voltage."""
+    _require_id("dmm_measure_dc_voltage", instrument_id)
     dev = _get_typed(instrument_id, _DMM_CLASSES)
     return dev.measure_dc_voltage()
 
 
 def dmm_measure_ac_voltage(instrument_id: str) -> float:
     """Measure AC voltage."""
+    _require_id("dmm_measure_ac_voltage", instrument_id)
     dev = _get_typed(instrument_id, _DMM_CLASSES)
     return dev.measure_ac_voltage()
 
 
 def dmm_measure_dc_current(instrument_id: str) -> float:
     """Measure DC current."""
+    _require_id("dmm_measure_dc_current", instrument_id)
     dev = _get_typed(instrument_id, _DMM_CLASSES)
     return dev.measure_dc_current()
 
 
 def dmm_measure_resistance_2w(instrument_id: str) -> float:
     """Measure 2-wire resistance."""
+    _require_id("dmm_measure_resistance_2w", instrument_id)
     dev = _get_typed(instrument_id, _DMM_CLASSES)
     return dev.measure_resistance_2wire()
 
 
 def dmm_measure_resistance_4w(instrument_id: str) -> float:
     """Measure 4-wire resistance."""
+    _require_id("dmm_measure_resistance_4w", instrument_id)
     dev = _get_typed(instrument_id, _DMM_CLASSES)
     return dev.measure_resistance_4wire()
 
 
 def dmm_measure_frequency(instrument_id: str) -> float:
     """Measure frequency."""
+    _require_id("dmm_measure_frequency", instrument_id)
     dev = _get_typed(instrument_id, _DMM_CLASSES)
     return dev.measure_frequency()
 
 
 def dmm_measure_diode(instrument_id: str) -> float:
     """Measure diode forward voltage."""
+    _require_id("dmm_measure_diode", instrument_id)
     dev = _get_typed(instrument_id, _DMM_CLASSES)
     return dev.measure_diode()
 
@@ -575,6 +745,12 @@ def awg_set_waveform(
     Returns:
         str: "OK"
     """
+    _require_id("awg_set_waveform", instrument_id)
+    _require_channel("awg_set_waveform", channel, valid=(1, 2))
+    _require_str("awg_set_waveform", "wave_type", wave_type)
+    _require_number("awg_set_waveform", "frequency", frequency)
+    _require_number("awg_set_waveform", "amplitude", amplitude)
+    _require_number("awg_set_waveform", "offset", offset)
     dev = _get_typed(instrument_id, _AWG_CLASSES)
     if isinstance(dev, JDS6600_Generator):
         dev.set_waveform(channel, wave_type)
@@ -592,6 +768,9 @@ def awg_set_frequency(instrument_id: str, channel: int, frequency: float) -> str
     Returns:
         str: "OK"
     """
+    _require_id("awg_set_frequency", instrument_id)
+    _require_channel("awg_set_frequency", channel, valid=(1, 2))
+    _require_number("awg_set_frequency", "frequency", frequency)
     dev = _get_typed(instrument_id, _AWG_CLASSES)
     dev.set_frequency(channel, frequency)
     return "OK"
@@ -603,6 +782,9 @@ def awg_set_amplitude(instrument_id: str, channel: int, amplitude: float) -> str
     Returns:
         str: "OK"
     """
+    _require_id("awg_set_amplitude", instrument_id)
+    _require_channel("awg_set_amplitude", channel, valid=(1, 2))
+    _require_number("awg_set_amplitude", "amplitude", amplitude)
     dev = _get_typed(instrument_id, _AWG_CLASSES)
     dev.set_amplitude(channel, amplitude)
     return "OK"
@@ -614,6 +796,9 @@ def awg_set_dc_output(instrument_id: str, channel: int, voltage: float) -> str:
     Returns:
         str: "OK"
     """
+    _require_id("awg_set_dc_output", instrument_id)
+    _require_channel("awg_set_dc_output", channel, valid=(1, 2))
+    _require_number("awg_set_dc_output", "voltage", voltage)
     dev = _get_typed(instrument_id, _AWG_CLASSES)
     if isinstance(dev, JDS6600_Generator):
         dev.set_waveform(channel, "dc")
@@ -629,6 +814,9 @@ def awg_enable_output(instrument_id: str, channel: int, enabled: bool) -> str:
     Returns:
         str: "OK"
     """
+    _require_id("awg_enable_output", instrument_id)
+    _require_channel("awg_enable_output", channel, valid=(1, 2))
+    _require_bool("awg_enable_output", "enabled", enabled)
     dev = _get_typed(instrument_id, _AWG_CLASSES)
     if isinstance(dev, JDS6600_Generator):
         if channel == 1:
@@ -646,6 +834,7 @@ def awg_disable_all(instrument_id: str) -> str:
     Returns:
         str: "OK"
     """
+    _require_id("awg_disable_all", instrument_id)
     dev = _get_typed(instrument_id, _AWG_CLASSES)
     if isinstance(dev, JDS6600_Generator):
         dev.disable_output()
@@ -665,6 +854,7 @@ def scope_run(instrument_id: str) -> str:
     Returns:
         str: "OK"
     """
+    _require_id("scope_run", instrument_id)
     dev = _get_typed(instrument_id, _SCOPE_CLASSES)
     dev.run()
     return "OK"
@@ -676,6 +866,7 @@ def scope_stop(instrument_id: str) -> str:
     Returns:
         str: "OK"
     """
+    _require_id("scope_stop", instrument_id)
     dev = _get_typed(instrument_id, _SCOPE_CLASSES)
     dev.stop()
     return "OK"
@@ -687,6 +878,7 @@ def scope_single(instrument_id: str) -> str:
     Returns:
         str: "OK"
     """
+    _require_id("scope_single", instrument_id)
     dev = _get_typed(instrument_id, _SCOPE_CLASSES)
     dev.single()
     return "OK"
@@ -698,6 +890,10 @@ def scope_set_vertical_scale(instrument_id: str, channel: int, volts_per_div: fl
     Returns:
         str: "OK"
     """
+    _require_id("scope_set_vertical_scale", instrument_id)
+    _require_channel("scope_set_vertical_scale", channel, max_ch=4)
+    _require_number("scope_set_vertical_scale", "volts_per_div", volts_per_div)
+    _require_positive("scope_set_vertical_scale", "volts_per_div", volts_per_div)
     dev = _get_typed(instrument_id, _SCOPE_CLASSES)
     dev.set_vertical_scale(channel, volts_per_div)
     return "OK"
@@ -709,6 +905,9 @@ def scope_set_timebase(instrument_id: str, time_per_div: float) -> str:
     Returns:
         str: "OK"
     """
+    _require_id("scope_set_timebase", instrument_id)
+    _require_number("scope_set_timebase", "time_per_div", time_per_div)
+    _require_positive("scope_set_timebase", "time_per_div", time_per_div)
     dev = _get_typed(instrument_id, _SCOPE_CLASSES)
     dev.set_horizontal_scale(time_per_div)
     return "OK"
@@ -716,6 +915,8 @@ def scope_set_timebase(instrument_id: str, time_per_div: float) -> str:
 
 def scope_measure_vpp(instrument_id: str, channel: int) -> float:
     """Measure peak-to-peak voltage on a scope channel."""
+    _require_id("scope_measure_vpp", instrument_id)
+    _require_channel("scope_measure_vpp", channel, max_ch=4)
     dev = _get_typed(instrument_id, _SCOPE_CLASSES)
     if isinstance(dev, Tektronix_MSO2024):
         return dev.measure_peak_to_peak(channel)
@@ -725,12 +926,16 @@ def scope_measure_vpp(instrument_id: str, channel: int) -> float:
 
 def scope_measure_frequency(instrument_id: str, channel: int) -> float:
     """Measure frequency on a scope channel."""
+    _require_id("scope_measure_frequency", instrument_id)
+    _require_channel("scope_measure_frequency", channel, max_ch=4)
     dev = _get_typed(instrument_id, _SCOPE_CLASSES)
     return dev.measure_frequency(channel)
 
 
 def scope_measure_vrms(instrument_id: str, channel: int) -> float:
     """Measure RMS voltage on a scope channel."""
+    _require_id("scope_measure_vrms", instrument_id)
+    _require_channel("scope_measure_vrms", channel, max_ch=4)
     dev = _get_typed(instrument_id, _SCOPE_CLASSES)
     if isinstance(dev, Tektronix_MSO2024):
         return dev.measure_rms(channel)
@@ -762,6 +967,9 @@ def ev2300_wait_for_bq(instrument_id: str, timeout_s: float = 30.0) -> str:
     Raises:
         TimeoutError: If the BQ does not respond within timeout_s.
     """
+    _require_id("ev2300_wait_for_bq", instrument_id)
+    _require_number("ev2300_wait_for_bq", "timeout_s", timeout_s)
+    _require_positive("ev2300_wait_for_bq", "timeout_s", timeout_s)
     dev = _get_typed(instrument_id, _EV2300_CLASSES)
     dev.wait_for_bq(timeout_s=timeout_s)
     return "OK"
@@ -773,6 +981,9 @@ def ev2300_read_byte(instrument_id: str, i2c_addr: int, register: int) -> int:
     Returns:
         int: The byte value (0-255).
     """
+    _require_id("ev2300_read_byte", instrument_id)
+    _require_i2c_addr("ev2300_read_byte", i2c_addr)
+    _require_byte("ev2300_read_byte", "register", register)
     dev = _get_typed(instrument_id, _EV2300_CLASSES)
     result = dev.read_byte(i2c_addr, register)
     if not result.get("ok"):
@@ -786,6 +997,10 @@ def ev2300_write_byte(instrument_id: str, i2c_addr: int, register: int, value: i
     Returns:
         str: "OK"
     """
+    _require_id("ev2300_write_byte", instrument_id)
+    _require_i2c_addr("ev2300_write_byte", i2c_addr)
+    _require_byte("ev2300_write_byte", "register", register)
+    _require_byte("ev2300_write_byte", "value", value)
     dev = _get_typed(instrument_id, _EV2300_CLASSES)
     result = dev.write_byte(i2c_addr, register, value)
     if not result.get("ok"):
@@ -799,6 +1014,9 @@ def ev2300_read_word(instrument_id: str, i2c_addr: int, register: int) -> int:
     Returns:
         int: The 16-bit value (0-65535).
     """
+    _require_id("ev2300_read_word", instrument_id)
+    _require_i2c_addr("ev2300_read_word", i2c_addr)
+    _require_byte("ev2300_read_word", "register", register)
     dev = _get_typed(instrument_id, _EV2300_CLASSES)
     result = dev.read_word(i2c_addr, register)
     if not result.get("ok"):
@@ -812,6 +1030,10 @@ def ev2300_write_word(instrument_id: str, i2c_addr: int, register: int, value: i
     Returns:
         str: "OK"
     """
+    _require_id("ev2300_write_word", instrument_id)
+    _require_i2c_addr("ev2300_write_word", i2c_addr)
+    _require_byte("ev2300_write_word", "register", register)
+    _require_word("ev2300_write_word", "value", value)
     dev = _get_typed(instrument_id, _EV2300_CLASSES)
     result = dev.write_word(i2c_addr, register, value)
     if not result.get("ok"):
@@ -825,6 +1047,9 @@ def ev2300_read_block(instrument_id: str, i2c_addr: int, register: int) -> str:
     Returns:
         str: JSON list of integers (e.g. "[16, 32, 48]").
     """
+    _require_id("ev2300_read_block", instrument_id)
+    _require_i2c_addr("ev2300_read_block", i2c_addr)
+    _require_byte("ev2300_read_block", "register", register)
     dev = _get_typed(instrument_id, _EV2300_CLASSES)
     result = dev.read_block(i2c_addr, register)
     if not result.get("ok"):
@@ -841,8 +1066,29 @@ def ev2300_write_block(instrument_id: str, i2c_addr: int, register: int, data_js
     Returns:
         str: "OK"
     """
+    _require_id("ev2300_write_block", instrument_id)
+    _require_i2c_addr("ev2300_write_block", i2c_addr)
+    _require_byte("ev2300_write_block", "register", register)
+    _require_str("ev2300_write_block", "data_json", data_json)
+    try:
+        decoded = json.loads(data_json)
+    except json.JSONDecodeError as exc:
+        raise ValueError(
+            f"ev2300_write_block: 'data_json' must be a JSON list of byte "
+            f"integers (0..255), e.g. '[16, 32, 48]'. Got {data_json!r}; "
+            f"JSON parse error: {exc}."
+        ) from None
+    if not isinstance(decoded, list):
+        raise ValueError(
+            f"ev2300_write_block: 'data_json' must decode to a list of byte integers, got {type(decoded).__name__}."
+        )
+    for i, b in enumerate(decoded):
+        if isinstance(b, bool) or not isinstance(b, int) or not (0 <= b <= 0xFF):
+            raise ValueError(
+                f"ev2300_write_block: data_json[{i}] must be an integer 0..255, got {b!r} (type: {type(b).__name__})."
+            )
+    data = bytes(decoded)
     dev = _get_typed(instrument_id, _EV2300_CLASSES)
-    data = bytes(json.loads(data_json))
     result = dev.write_block(i2c_addr, register, data)
     if not result.get("ok"):
         raise RuntimeError(result.get("status_text", "EV2300 write_block failed"))
@@ -855,6 +1101,7 @@ def ev2300_get_device_info(instrument_id: str) -> str:
     Returns:
         str: JSON object with device info.
     """
+    _require_id("ev2300_get_device_info", instrument_id)
     dev = _get_typed(instrument_id, _EV2300_CLASSES)
     info = dev.get_device_info()
     return json.dumps(info)
@@ -871,6 +1118,9 @@ def smu_set_voltage_mode(instrument_id: str, voltage: float, current_limit: floa
     Returns:
         str: "OK"
     """
+    _require_id("smu_set_voltage_mode", instrument_id)
+    _require_number("smu_set_voltage_mode", "voltage", voltage)
+    _require_number("smu_set_voltage_mode", "current_limit", current_limit)
     dev = _get_typed(instrument_id, _SMU_CLASSES)
     dev.set_voltage_mode(voltage, current_limit)
     return "OK"
@@ -882,6 +1132,9 @@ def smu_set_current_mode(instrument_id: str, current: float, voltage_limit: floa
     Returns:
         str: "OK"
     """
+    _require_id("smu_set_current_mode", instrument_id)
+    _require_number("smu_set_current_mode", "current", current)
+    _require_number("smu_set_current_mode", "voltage_limit", voltage_limit)
     dev = _get_typed(instrument_id, _SMU_CLASSES)
     dev.set_current_mode(current, voltage_limit)
     return "OK"
@@ -893,6 +1146,8 @@ def smu_enable_output(instrument_id: str, enabled: bool) -> str:
     Returns:
         str: "OK"
     """
+    _require_id("smu_enable_output", instrument_id)
+    _require_bool("smu_enable_output", "enabled", enabled)
     dev = _get_typed(instrument_id, _SMU_CLASSES)
     dev.enable_output(enabled)
     return "OK"
@@ -900,12 +1155,14 @@ def smu_enable_output(instrument_id: str, enabled: bool) -> str:
 
 def smu_measure_voltage(instrument_id: str) -> float:
     """Measure voltage on the SMU."""
+    _require_id("smu_measure_voltage", instrument_id)
     dev = _get_typed(instrument_id, _SMU_CLASSES)
     return dev.measure_voltage()
 
 
 def smu_measure_current(instrument_id: str) -> float:
     """Measure current on the SMU."""
+    _require_id("smu_measure_current", instrument_id)
     dev = _get_typed(instrument_id, _SMU_CLASSES)
     return dev.measure_current()
 
@@ -923,6 +1180,8 @@ def send_scpi(instrument_id: str, command: str) -> str:
     Returns:
         str: "OK"
     """
+    _require_id("send_scpi", instrument_id)
+    _require_str("send_scpi", "command", command)
     dev = _get(instrument_id)
     dev.send_command(command)
     return "OK"
@@ -933,6 +1192,8 @@ def query_scpi(instrument_id: str, command: str) -> str:
 
     Note: NI_PXIe_4139 returns an IDN-like string for any query.
     """
+    _require_id("query_scpi", instrument_id)
+    _require_str("query_scpi", "command", command)
     dev = _get(instrument_id)
     return dev.query(command)
 
@@ -943,6 +1204,7 @@ def reset_instrument(instrument_id: str) -> str:
     Returns:
         str: "OK"
     """
+    _require_id("reset_instrument", instrument_id)
     dev = _get(instrument_id)
     dev.reset()
     return "OK"
@@ -954,6 +1216,7 @@ def get_instrument_type(instrument_id: str) -> str:
     Returns:
         str: "psu", "dmm", "awg", "scope", "smu", "ev2300", or "unknown"
     """
+    _require_id("get_instrument_type", instrument_id)
     dev = _get(instrument_id)
     return _CATEGORY_PREFIX.get(type(dev), "unknown")
 

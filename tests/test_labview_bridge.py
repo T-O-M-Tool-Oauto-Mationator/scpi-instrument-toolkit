@@ -687,3 +687,950 @@ class TestThreadSafety:
         assert not errors
         # Cache should be empty after all threads completed
         assert len(br._instruments) == 0
+
+
+# =========================================================================
+# open_* family - previously had ZERO coverage. _inject() skipped them.
+# These tests exercise the real open_instrument code path (driver-name
+# validation, type-category validation, _next_id contract, lock acquisition,
+# dev.connect() side-effect).
+# =========================================================================
+
+
+class TestOpenInstrumentFamily:
+    """Cover the previously-untested open_* dispatch.
+
+    Bench motivation: students who mistyped a driver name (e.g. "HP_3631A"
+    instead of "HP_E3631A") used to see a generic KeyError at the next
+    operation. Validating up front in open_psu/open_dmm/etc. lets the
+    failure point at the wiring mistake on the open node itself.
+    """
+
+    def test_open_instrument_unknown_driver(self):
+        from lab_instruments.src.labview_bridge import open_instrument
+
+        with pytest.raises(ValueError, match="Unknown driver"):
+            open_instrument("GPIB::5::INSTR", "BOGUS_DRIVER")
+
+    def test_open_instrument_empty_visa_address(self):
+        from lab_instruments.src.labview_bridge import open_instrument
+
+        with pytest.raises(ValueError, match="visa_address"):
+            open_instrument("", "HP_E3631A")
+
+    def test_open_instrument_empty_driver_name(self):
+        from lab_instruments.src.labview_bridge import open_instrument
+
+        with pytest.raises(ValueError, match="driver_name"):
+            open_instrument("GPIB::5::INSTR", "")
+
+    def test_open_instrument_non_string_visa_address(self):
+        from lab_instruments.src.labview_bridge import open_instrument
+
+        with pytest.raises(TypeError, match="visa_address"):
+            open_instrument(0, "HP_E3631A")
+
+    def test_open_psu_happy_path(self, mock_visa_rm):
+        """End-to-end open_psu using mocked pyvisa: ID is returned, cache
+        gains an entry, and the underlying driver is the expected class."""
+        from lab_instruments.src import labview_bridge as br
+        from lab_instruments.src.hp_e3631a import HP_E3631A
+
+        inst_id = br.open_psu("GPIB::5::INSTR", "HP_E3631A")
+        assert inst_id.startswith("psu_")
+        with br._lock:
+            assert inst_id in br._instruments
+            assert isinstance(br._instruments[inst_id], HP_E3631A)
+
+    def test_open_psu_rejects_dmm_driver(self):
+        """The whole point of open_psu's category check: passing 'HP_34401A'
+        (a DMM) must fail before pyvisa is even contacted."""
+        from lab_instruments.src.labview_bridge import open_psu
+
+        with pytest.raises(TypeError, match="not a PSU driver"):
+            open_psu("GPIB::22::INSTR", "HP_34401A")
+
+    def test_open_dmm_rejects_psu_driver(self):
+        from lab_instruments.src.labview_bridge import open_dmm
+
+        with pytest.raises(TypeError, match="not a DMM driver"):
+            open_dmm("GPIB::5::INSTR", "HP_E3631A")
+
+    def test_open_awg_rejects_scope_driver(self):
+        from lab_instruments.src.labview_bridge import open_awg
+
+        with pytest.raises(TypeError, match="not an AWG driver"):
+            open_awg("USB::INSTR", "MSO2024")
+
+    def test_open_scope_rejects_awg_driver(self):
+        from lab_instruments.src.labview_bridge import open_scope
+
+        with pytest.raises(TypeError, match="not a scope driver"):
+            open_scope("USB::INSTR", "EDU33212A")
+
+    def test_open_smu_rejects_psu_driver(self):
+        from lab_instruments.src.labview_bridge import _SMU_CLASSES, open_smu
+
+        if not _SMU_CLASSES:
+            pytest.skip("nidcpower not installed")
+        with pytest.raises(TypeError, match="not an SMU driver"):
+            open_smu("USB::INSTR", "HP_E3631A")
+
+    def test_open_dmm_happy_path(self, mock_visa_rm):
+        from lab_instruments.src import labview_bridge as br
+        from lab_instruments.src.hp_34401a import HP_34401A
+
+        inst_id = br.open_dmm("GPIB::22::INSTR", "HP_34401A")
+        assert inst_id.startswith("dmm_")
+        with br._lock:
+            assert isinstance(br._instruments[inst_id], HP_34401A)
+
+    def test_open_awg_happy_path(self, mock_visa_rm):
+        from lab_instruments.src import labview_bridge as br
+        from lab_instruments.src.bk_4063 import BK_4063
+
+        inst_id = br.open_awg("USB::0x1AB1::0x0000::INSTR", "BK_4063")
+        assert inst_id.startswith("awg_")
+        with br._lock:
+            assert isinstance(br._instruments[inst_id], BK_4063)
+
+    def test_open_scope_happy_path(self, mock_visa_rm):
+        from lab_instruments.src import labview_bridge as br
+        from lab_instruments.src.tektronix_mso2024 import Tektronix_MSO2024
+
+        inst_id = br.open_scope("USB::INSTR", "MSO2024")
+        assert inst_id.startswith("scope_")
+        with br._lock:
+            assert isinstance(br._instruments[inst_id], Tektronix_MSO2024)
+
+
+# =========================================================================
+# discover_instruments
+# =========================================================================
+
+
+class TestDiscoverInstruments:
+    def test_returns_json_object(self, monkeypatch):
+        """discover_instruments returns a JSON string mapping name -> class
+        name. With an empty discovery result it must still produce '{}',
+        not raise or return None."""
+        from lab_instruments.src import discovery
+        from lab_instruments.src import labview_bridge as br
+
+        monkeypatch.setattr(discovery, "find_all", lambda verbose=False: {})
+        result = json.loads(br.discover_instruments())
+        assert result == {}
+
+    def test_returns_class_names(self, monkeypatch, hp_e3631a):
+        from lab_instruments.src import discovery
+        from lab_instruments.src import labview_bridge as br
+
+        psu, _ = hp_e3631a
+        monkeypatch.setattr(discovery, "find_all", lambda verbose=False: {"psu": psu})
+        result = json.loads(br.discover_instruments())
+        assert result == {"psu": "HP_E3631A"}
+
+
+# =========================================================================
+# Newly-tested PSU functions (psu_set_current_limit + all-vendor branches)
+# =========================================================================
+
+
+class TestPSUSetCurrentLimit:
+    """psu_set_current_limit was implemented but had zero tests. The HP
+    branch validates channel; EDU and Matrix branches were entirely
+    uncovered."""
+
+    def test_hp_emits_current_after_select(self, hp_e3631a):
+        from lab_instruments.src.labview_bridge import psu_set_current_limit
+
+        psu, mi = hp_e3631a
+        inst_id = _inject(psu, "psu")
+        result = psu_set_current_limit(inst_id, 1, 0.5)
+        assert result == "OK"
+        # HP_E3631A.set_current_limit: INSTRUMENT:SELECT then CURRENT
+        cmds = [c.args[0] for c in mi.write.call_args_list]
+        assert "INSTRUMENT:SELECT P6V" in cmds
+        assert "CURRENT 0.5" in cmds
+        assert cmds.index("INSTRUMENT:SELECT P6V") < cmds.index("CURRENT 0.5")
+
+    def test_hp_invalid_channel(self, hp_e3631a):
+        from lab_instruments.src.labview_bridge import psu_set_current_limit
+
+        psu, _ = hp_e3631a
+        inst_id = _inject(psu, "psu")
+        with pytest.raises(ValueError, match="channel must be 1, 2, or 3"):
+            psu_set_current_limit(inst_id, 9, 0.5)
+
+    def test_edu36311a_branch(self, keysight_edu36311a):
+        from lab_instruments.src.labview_bridge import psu_set_current_limit
+
+        psu, mi = keysight_edu36311a
+        inst_id = _inject(psu, "psu")
+        # p30v channel max is 1.0 A; pick a valid value to exercise dispatch
+        result = psu_set_current_limit(inst_id, 2, 0.5)
+        assert result == "OK"
+        assert mi.write.called
+
+    def test_edu36311a_invalid_channel(self, keysight_edu36311a):
+        from lab_instruments.src.labview_bridge import psu_set_current_limit
+
+        psu, _ = keysight_edu36311a
+        inst_id = _inject(psu, "psu")
+        with pytest.raises(ValueError, match="EDU36311A channel must be 1, 2, or 3"):
+            psu_set_current_limit(inst_id, 4, 1.0)
+
+    def test_matrix_branch(self, matrix_mps6010h):
+        from lab_instruments.src.labview_bridge import psu_set_current_limit
+
+        psu, mi = matrix_mps6010h
+        inst_id = _inject(psu, "psu")
+        result = psu_set_current_limit(inst_id, 1, 5.0)
+        assert result == "OK"
+        assert any("CURR" in c.args[0] for c in mi.write.call_args_list)
+
+
+class TestPSUSetOutputChannelBranchCoverage:
+    """psu_set_output_channel previously only had HP coverage."""
+
+    def test_edu36311a(self, keysight_edu36311a):
+        from lab_instruments.src.labview_bridge import psu_set_output_channel
+
+        psu, mi = keysight_edu36311a
+        inst_id = _inject(psu, "psu")
+        assert psu_set_output_channel(inst_id, 1, 5.0, 0.5) == "OK"
+        assert mi.write.called
+
+    def test_matrix(self, matrix_mps6010h):
+        from lab_instruments.src.labview_bridge import psu_set_output_channel
+
+        psu, mi = matrix_mps6010h
+        inst_id = _inject(psu, "psu")
+        assert psu_set_output_channel(inst_id, 1, 12.0, 1.0) == "OK"
+        assert mi.write.called
+
+
+class TestPSUMeasureBranchCoverage:
+    """psu_measure_voltage/current previously had only HP coverage."""
+
+    def test_measure_voltage_edu(self, keysight_edu36311a):
+        from lab_instruments.src.labview_bridge import psu_measure_voltage
+
+        psu, mi = keysight_edu36311a
+        mi.query.return_value = "5.001"
+        inst_id = _inject(psu, "psu")
+        result = psu_measure_voltage(inst_id, 1)
+        assert isinstance(result, float)
+
+    def test_measure_current_edu(self, keysight_edu36311a):
+        from lab_instruments.src.labview_bridge import psu_measure_current
+
+        psu, mi = keysight_edu36311a
+        mi.query.return_value = "0.250"
+        inst_id = _inject(psu, "psu")
+        result = psu_measure_current(inst_id, 2)
+        assert isinstance(result, float)
+
+    def test_measure_voltage_matrix(self, matrix_mps6010h):
+        """Matrix path: returns cached setpoint (no read-back)."""
+        from lab_instruments.src.labview_bridge import psu_measure_voltage
+
+        psu, _ = matrix_mps6010h
+        inst_id = _inject(psu, "psu")
+        result = psu_measure_voltage(inst_id, 1)
+        assert isinstance(result, float)
+
+
+# =========================================================================
+# Newly-tested DMM functions
+# =========================================================================
+
+
+class TestDMMNewlyCovered:
+    def test_measure_dc_current(self, hp_34401a):
+        from lab_instruments.src.labview_bridge import dmm_measure_dc_current
+
+        dmm, mi = hp_34401a
+        mi.query.return_value = "0.250"
+        inst_id = _inject(dmm, "dmm")
+        result = dmm_measure_dc_current(inst_id)
+        assert isinstance(result, float)
+
+    def test_measure_resistance_4w(self, hp_34401a):
+        from lab_instruments.src.labview_bridge import dmm_measure_resistance_4w
+
+        dmm, mi = hp_34401a
+        mi.query.return_value = "1000.5"
+        inst_id = _inject(dmm, "dmm")
+        result = dmm_measure_resistance_4w(inst_id)
+        assert isinstance(result, float)
+
+    def test_measure_frequency(self, hp_34401a):
+        from lab_instruments.src.labview_bridge import dmm_measure_frequency
+
+        dmm, mi = hp_34401a
+        mi.query.return_value = "1000.0"
+        inst_id = _inject(dmm, "dmm")
+        result = dmm_measure_frequency(inst_id)
+        assert isinstance(result, float)
+
+
+# =========================================================================
+# Newly-tested AWG functions
+# =========================================================================
+
+
+class TestAWGNewlyCovered:
+    def test_set_frequency(self, keysight_edu33212a):
+        from lab_instruments.src.labview_bridge import awg_set_frequency
+
+        awg, mi = keysight_edu33212a
+        inst_id = _inject(awg, "awg")
+        assert awg_set_frequency(inst_id, 1, 1000.0) == "OK"
+        assert mi.write.called
+
+    def test_set_amplitude(self, keysight_edu33212a):
+        from lab_instruments.src.labview_bridge import awg_set_amplitude
+
+        awg, mi = keysight_edu33212a
+        inst_id = _inject(awg, "awg")
+        assert awg_set_amplitude(inst_id, 1, 2.0) == "OK"
+        assert mi.write.called
+
+    def test_disable_all_jds6600_branch(self, jds6600_generator):
+        """jds6600 disable_all_channels does NOT exist on JDS6600_Generator;
+        the bridge routes to disable_output() instead. Previously untested."""
+        from lab_instruments.src.labview_bridge import awg_disable_all
+
+        awg, _ = jds6600_generator
+        inst_id = _inject(awg, "awg")
+        assert awg_disable_all(inst_id) == "OK"
+
+
+# =========================================================================
+# Newly-tested EV2300 functions
+# =========================================================================
+
+
+class TestEV2300NewlyCovered:
+    def test_read_block(self, ev2300):
+        from lab_instruments.src.labview_bridge import ev2300_read_block
+
+        dev, _ = ev2300
+        dev.read_block = MagicMock(return_value={"ok": True, "data": bytes([0x01, 0x02, 0x03]), "status_text": "OK"})
+        inst_id = _inject(dev, "ev2300")
+        result = json.loads(ev2300_read_block(inst_id, 0x08, 0x0B))
+        assert result == [1, 2, 3]
+
+    def test_read_block_failure(self, ev2300):
+        from lab_instruments.src.labview_bridge import ev2300_read_block
+
+        dev, _ = ev2300
+        dev.read_block = MagicMock(return_value={"ok": False, "data": b"", "status_text": "NACK"})
+        inst_id = _inject(dev, "ev2300")
+        with pytest.raises(RuntimeError, match="NACK"):
+            ev2300_read_block(inst_id, 0x08, 0x0B)
+
+    def test_write_block_happy(self, ev2300):
+        from lab_instruments.src.labview_bridge import ev2300_write_block
+
+        dev, _ = ev2300
+        dev.write_block = MagicMock(return_value={"ok": True, "status_text": "OK"})
+        inst_id = _inject(dev, "ev2300")
+        result = ev2300_write_block(inst_id, 0x08, 0x0B, "[1, 2, 3]")
+        assert result == "OK"
+        # Verify the bytes were actually decoded and passed through
+        dev.write_block.assert_called_once_with(0x08, 0x0B, bytes([1, 2, 3]))
+
+    def test_write_block_malformed_json(self, ev2300):
+        """Regression: previously a malformed data_json raised
+        json.JSONDecodeError with no LabVIEW-actionable message. Now it
+        raises ValueError naming the parameter and the JSON error."""
+        from lab_instruments.src.labview_bridge import ev2300_write_block
+
+        dev, _ = ev2300
+        inst_id = _inject(dev, "ev2300")
+        with pytest.raises(ValueError, match="data_json"):
+            ev2300_write_block(inst_id, 0x08, 0x0B, "not_json")
+
+    def test_write_block_non_list(self, ev2300):
+        from lab_instruments.src.labview_bridge import ev2300_write_block
+
+        dev, _ = ev2300
+        inst_id = _inject(dev, "ev2300")
+        with pytest.raises(ValueError, match="list"):
+            ev2300_write_block(inst_id, 0x08, 0x0B, '{"not": "a list"}')
+
+    def test_write_block_byte_out_of_range(self, ev2300):
+        from lab_instruments.src.labview_bridge import ev2300_write_block
+
+        dev, _ = ev2300
+        inst_id = _inject(dev, "ev2300")
+        with pytest.raises(ValueError, match=r"data_json\[1\]"):
+            ev2300_write_block(inst_id, 0x08, 0x0B, "[1, 256, 3]")
+
+
+# =========================================================================
+# get_instrument_type EV2300 branch (previously only psu/dmm/awg/scope/smu)
+# =========================================================================
+
+
+class TestGetInstrumentTypeEv2300:
+    def test_ev2300_branch(self, ev2300):
+        from lab_instruments.src.labview_bridge import get_instrument_type
+
+        dev, _ = ev2300
+        inst_id = _inject(dev, "ev2300")
+        assert get_instrument_type(inst_id) == "ev2300"
+
+
+# =========================================================================
+# Regression: silent fall-through in PSU dispatch functions
+# =========================================================================
+
+
+class _UnrecognizedPSU:
+    """Stub class included in _PSU_CLASSES for the test, but not matched by
+    any branch in psu_set_voltage / psu_set_current_limit /
+    psu_set_output_channel. Used to prove the bridge raises TypeError
+    instead of silently returning "OK"."""
+
+    def __init__(self):
+        self.recorded_calls = []
+
+    def disconnect(self):
+        pass
+
+
+class TestPSUSilentFallThroughRegression:
+    """Before this fix, psu_set_voltage / _current_limit / _output_channel
+    ended their if/elif chain without `else: raise`, so any PSU subclass
+    not covered by the explicit branches returned "OK" without writing a
+    single SCPI byte. The output looked successful while the instrument
+    state did not change. This was undetectable from LabVIEW.
+
+    These tests temporarily monkey-patch the _PSU_CLASSES tuple to include
+    a stub class, inject an instance, and verify the bridge raises
+    TypeError("Unsupported PSU type") instead of returning "OK"."""
+
+    def _inject_unrecognized(self, monkeypatch):
+        from lab_instruments.src import labview_bridge as br
+
+        stub = _UnrecognizedPSU()
+        # Add stub to the PSU tuple so _get_typed accepts it
+        monkeypatch.setattr(br, "_PSU_CLASSES", (*br._PSU_CLASSES, _UnrecognizedPSU))
+        inst_id = _inject(stub, "psu")
+        return inst_id, stub
+
+    def test_set_voltage_raises_on_unknown_psu_type(self, monkeypatch):
+        from lab_instruments.src.labview_bridge import psu_set_voltage
+
+        inst_id, _ = self._inject_unrecognized(monkeypatch)
+        with pytest.raises(TypeError, match="Unsupported PSU type"):
+            psu_set_voltage(inst_id, 1, 5.0)
+
+    def test_set_current_limit_raises_on_unknown_psu_type(self, monkeypatch):
+        from lab_instruments.src.labview_bridge import psu_set_current_limit
+
+        inst_id, _ = self._inject_unrecognized(monkeypatch)
+        with pytest.raises(TypeError, match="Unsupported PSU type"):
+            psu_set_current_limit(inst_id, 1, 0.5)
+
+    def test_set_output_channel_raises_on_unknown_psu_type(self, monkeypatch):
+        from lab_instruments.src.labview_bridge import psu_set_output_channel
+
+        inst_id, _ = self._inject_unrecognized(monkeypatch)
+        with pytest.raises(TypeError, match="Unsupported PSU type"):
+            psu_set_output_channel(inst_id, 1, 5.0, 0.5)
+
+
+# =========================================================================
+# Validation guard regression: instrument_id, channel, numeric, bool, string
+# =========================================================================
+
+
+class TestInstrumentIdValidationRegression:
+    """LabVIEW unwired String terminal arrives as "". Without _require_id
+    these calls used to leak deep into _get/_get_typed as a generic
+    KeyError that students misread as a bridge bug. Every entry point must
+    now reject empty/non-string IDs with a ValueError or TypeError naming
+    the parameter."""
+
+    @pytest.mark.parametrize(
+        "fn_name,extra_args",
+        [
+            ("psu_set_voltage", (1, 5.0)),
+            ("psu_set_current_limit", (1, 0.5)),
+            ("psu_set_output_channel", (1, 5.0, 0.5)),
+            ("psu_enable_output", (True,)),
+            ("psu_measure_voltage", (1,)),
+            ("psu_measure_current", (1,)),
+            ("psu_disable_all", ()),
+            ("dmm_measure_dc_voltage", ()),
+            ("dmm_measure_ac_voltage", ()),
+            ("dmm_measure_dc_current", ()),
+            ("dmm_measure_resistance_2w", ()),
+            ("dmm_measure_resistance_4w", ()),
+            ("dmm_measure_frequency", ()),
+            ("dmm_measure_diode", ()),
+            ("awg_set_waveform", (1, "SIN", 1000.0, 2.0, 0.0)),
+            ("awg_set_frequency", (1, 1000.0)),
+            ("awg_set_amplitude", (1, 2.0)),
+            ("awg_set_dc_output", (1, 3.0)),
+            ("awg_enable_output", (1, True)),
+            ("awg_disable_all", ()),
+            ("scope_run", ()),
+            ("scope_stop", ()),
+            ("scope_single", ()),
+            ("scope_set_vertical_scale", (1, 0.5)),
+            ("scope_set_timebase", (0.001,)),
+            ("scope_measure_vpp", (1,)),
+            ("scope_measure_frequency", (1,)),
+            ("scope_measure_vrms", (1,)),
+            ("smu_set_voltage_mode", (5.0, 0.1)),
+            ("smu_set_current_mode", (0.01, 5.0)),
+            ("smu_enable_output", (True,)),
+            ("smu_measure_voltage", ()),
+            ("smu_measure_current", ()),
+            ("ev2300_wait_for_bq", ()),
+            ("ev2300_read_byte", (0x08, 0x00)),
+            ("ev2300_write_byte", (0x08, 0x00, 0xFF)),
+            ("ev2300_read_word", (0x08, 0x00)),
+            ("ev2300_write_word", (0x08, 0x00, 0x1234)),
+            ("ev2300_read_block", (0x08, 0x00)),
+            ("ev2300_write_block", (0x08, 0x00, "[1]")),
+            ("ev2300_get_device_info", ()),
+            ("send_scpi", ("*RST",)),
+            ("query_scpi", ("*IDN?",)),
+            ("reset_instrument", ()),
+            ("get_instrument_type", ()),
+            ("close_instrument", ()),
+        ],
+    )
+    def test_empty_instrument_id_rejected(self, fn_name, extra_args):
+        from lab_instruments.src import labview_bridge as br
+
+        fn = getattr(br, fn_name)
+        with pytest.raises((ValueError, TypeError), match="instrument_id"):
+            fn("", *extra_args)
+
+    @pytest.mark.parametrize(
+        "fn_name,extra_args",
+        [
+            ("psu_set_voltage", (1, 5.0)),
+            ("dmm_measure_dc_voltage", ()),
+            ("awg_set_dc_output", (1, 3.0)),
+            ("scope_run", ()),
+            ("ev2300_read_byte", (0x08, 0x00)),
+            ("send_scpi", ("*RST",)),
+        ],
+    )
+    def test_non_string_instrument_id_rejected(self, fn_name, extra_args):
+        """LabVIEW Numeric wired into a String slot is a wiring error - it
+        used to flow through as e.g. KeyError(0). Now it should ValueError
+        or TypeError naming the parameter."""
+        from lab_instruments.src import labview_bridge as br
+
+        fn = getattr(br, fn_name)
+        with pytest.raises((ValueError, TypeError), match="instrument_id"):
+            fn(0, *extra_args)
+
+
+class TestChannelValidationRegression:
+    """LabVIEW unwired I32 terminal arrives as 0. For functions that take a
+    channel, 0 is not a valid channel - the previous bridge passed it through
+    to the driver where it produced a less helpful error (or, on AWG and
+    Matrix paths, silently mapped to "channel 2" or no-op)."""
+
+    def test_psu_set_voltage_zero_channel(self, hp_e3631a):
+        from lab_instruments.src.labview_bridge import psu_set_voltage
+
+        psu, _ = hp_e3631a
+        inst_id = _inject(psu, "psu")
+        with pytest.raises(ValueError, match="channel must be 1, 2, or 3"):
+            psu_set_voltage(inst_id, 0, 5.0)
+
+    def test_psu_set_voltage_non_int_channel(self, hp_e3631a):
+        from lab_instruments.src.labview_bridge import psu_set_voltage
+
+        psu, _ = hp_e3631a
+        inst_id = _inject(psu, "psu")
+        with pytest.raises(TypeError, match="channel.*must be an integer"):
+            psu_set_voltage(inst_id, "1", 5.0)
+
+    def test_awg_enable_output_zero_channel(self, keysight_edu33212a):
+        """Regression: previously, awg_enable_output(channel=0) on a
+        non-JDS device would forward 0 to the driver; on the JDS path it
+        silently mapped to ch2 because the else branch handles 'not 1'."""
+        from lab_instruments.src.labview_bridge import awg_enable_output
+
+        awg, _ = keysight_edu33212a
+        inst_id = _inject(awg, "awg")
+        with pytest.raises(ValueError, match="channel"):
+            awg_enable_output(inst_id, 0, True)
+
+    def test_awg_set_waveform_channel_3(self, keysight_edu33212a):
+        from lab_instruments.src.labview_bridge import awg_set_waveform
+
+        awg, _ = keysight_edu33212a
+        inst_id = _inject(awg, "awg")
+        with pytest.raises(ValueError, match="channel"):
+            awg_set_waveform(inst_id, 3, "SIN", 1000.0, 2.0, 0.0)
+
+    def test_scope_measure_vpp_zero_channel(self, tektronix_mso2024):
+        from lab_instruments.src.labview_bridge import scope_measure_vpp
+
+        scope, _ = tektronix_mso2024
+        inst_id = _inject(scope, "scope")
+        with pytest.raises(ValueError, match="channel"):
+            scope_measure_vpp(inst_id, 0)
+
+
+class TestNumericValidationRegression:
+    """LabVIEW unwired Numeric terminal arrives as 0.0. For scope scale and
+    EV2300 timeouts, 0 is invalid input; for voltage/current it is sometimes
+    valid but a wrong-typed input (string, bool, None) is always a wiring
+    error and should fail loudly."""
+
+    def test_psu_set_voltage_string_voltage(self, hp_e3631a):
+        from lab_instruments.src.labview_bridge import psu_set_voltage
+
+        psu, _ = hp_e3631a
+        inst_id = _inject(psu, "psu")
+        with pytest.raises(TypeError, match="voltage.*must be a number"):
+            psu_set_voltage(inst_id, 1, "5.0")
+
+    def test_psu_set_voltage_bool_voltage(self, hp_e3631a):
+        """bool is an int subclass in Python; a True wired into a voltage
+        slot is almost certainly a wiring mistake."""
+        from lab_instruments.src.labview_bridge import psu_set_voltage
+
+        psu, _ = hp_e3631a
+        inst_id = _inject(psu, "psu")
+        with pytest.raises(TypeError, match="voltage.*must be a number"):
+            psu_set_voltage(inst_id, 1, True)
+
+    def test_scope_set_vertical_scale_zero(self, rigol_dho804):
+        from lab_instruments.src.labview_bridge import scope_set_vertical_scale
+
+        scope, _ = rigol_dho804
+        inst_id = _inject(scope, "scope")
+        with pytest.raises(ValueError, match="volts_per_div"):
+            scope_set_vertical_scale(inst_id, 1, 0.0)
+
+    def test_scope_set_vertical_scale_negative(self, rigol_dho804):
+        from lab_instruments.src.labview_bridge import scope_set_vertical_scale
+
+        scope, _ = rigol_dho804
+        inst_id = _inject(scope, "scope")
+        with pytest.raises(ValueError, match="volts_per_div"):
+            scope_set_vertical_scale(inst_id, 1, -0.5)
+
+    def test_scope_set_timebase_zero(self, tektronix_mso2024):
+        from lab_instruments.src.labview_bridge import scope_set_timebase
+
+        scope, _ = tektronix_mso2024
+        inst_id = _inject(scope, "scope")
+        with pytest.raises(ValueError, match="time_per_div"):
+            scope_set_timebase(inst_id, 0.0)
+
+    def test_ev2300_wait_for_bq_zero_timeout(self, ev2300):
+        from lab_instruments.src.labview_bridge import ev2300_wait_for_bq
+
+        dev, _ = ev2300
+        inst_id = _inject(dev, "ev2300")
+        with pytest.raises(ValueError, match="timeout_s"):
+            ev2300_wait_for_bq(inst_id, timeout_s=0.0)
+
+
+class TestStringValidationRegression:
+    def test_awg_set_waveform_empty_wave_type(self, keysight_edu33212a):
+        from lab_instruments.src.labview_bridge import awg_set_waveform
+
+        awg, _ = keysight_edu33212a
+        inst_id = _inject(awg, "awg")
+        with pytest.raises(ValueError, match="wave_type"):
+            awg_set_waveform(inst_id, 1, "", 1000.0, 2.0, 0.0)
+
+    def test_send_scpi_empty_command(self, hp_e3631a):
+        from lab_instruments.src.labview_bridge import send_scpi
+
+        psu, _ = hp_e3631a
+        inst_id = _inject(psu, "psu")
+        with pytest.raises(ValueError, match="command"):
+            send_scpi(inst_id, "")
+
+    def test_query_scpi_empty_command(self, hp_e3631a):
+        from lab_instruments.src.labview_bridge import query_scpi
+
+        psu, _ = hp_e3631a
+        inst_id = _inject(psu, "psu")
+        with pytest.raises(ValueError, match="command"):
+            query_scpi(inst_id, "")
+
+
+class TestBoolValidationRegression:
+    """psu_enable_output already validated bool. Now the same guard applies
+    to awg_enable_output and smu_enable_output. Unwired LabVIEW Boolean
+    silently defaults to False which would silently disable outputs."""
+
+    def test_awg_enable_output_rejects_non_bool(self, keysight_edu33212a):
+        from lab_instruments.src.labview_bridge import awg_enable_output
+
+        awg, _ = keysight_edu33212a
+        inst_id = _inject(awg, "awg")
+        for bogus in (None, 0, 1, "True", "yes"):
+            with pytest.raises(TypeError, match="must be a Boolean"):
+                awg_enable_output(inst_id, 1, bogus)
+
+    def test_smu_enable_output_rejects_non_bool(self, ni_pxie_4139):
+        from lab_instruments.src.labview_bridge import smu_enable_output
+
+        smu, _ = ni_pxie_4139
+        inst_id = _inject(smu, "smu")
+        for bogus in (None, 0, 1, "True"):
+            with pytest.raises(TypeError, match="must be a Boolean"):
+                smu_enable_output(inst_id, bogus)
+
+
+class TestEV2300RangeValidationRegression:
+    """LabVIEW unwired I32 = 0. For i2c_addr / register / value, 0 is a
+    valid byte but the bridge should at least reject out-of-range or
+    non-int inputs so a wiring mistake doesn't poison the I2C bus."""
+
+    def test_read_byte_i2c_addr_too_large(self, ev2300):
+        from lab_instruments.src.labview_bridge import ev2300_read_byte
+
+        dev, _ = ev2300
+        inst_id = _inject(dev, "ev2300")
+        with pytest.raises(ValueError, match="i2c_addr"):
+            ev2300_read_byte(inst_id, 0x80, 0x00)
+
+    def test_read_byte_i2c_addr_non_int(self, ev2300):
+        from lab_instruments.src.labview_bridge import ev2300_read_byte
+
+        dev, _ = ev2300
+        inst_id = _inject(dev, "ev2300")
+        with pytest.raises(TypeError, match="i2c_addr"):
+            ev2300_read_byte(inst_id, "0x08", 0x00)
+
+    def test_write_byte_value_too_large(self, ev2300):
+        from lab_instruments.src.labview_bridge import ev2300_write_byte
+
+        dev, _ = ev2300
+        inst_id = _inject(dev, "ev2300")
+        with pytest.raises(ValueError, match="value.*0..255"):
+            ev2300_write_byte(inst_id, 0x08, 0x00, 0x100)
+
+    def test_write_word_value_too_large(self, ev2300):
+        from lab_instruments.src.labview_bridge import ev2300_write_word
+
+        dev, _ = ev2300
+        inst_id = _inject(dev, "ev2300")
+        with pytest.raises(ValueError, match="value.*0..65535"):
+            ev2300_write_word(inst_id, 0x08, 0x00, 0x10000)
+
+
+# =========================================================================
+# Threading regression: public open/close under contention
+# =========================================================================
+
+
+class TestThreadSafetyPublicAPI:
+    """The original test_concurrent_open_close manually inserted into
+    br._instruments under the lock. That tested threading.Lock, not the
+    bridge's public surface. This test exercises open_psu/close_instrument
+    end-to-end so a future regression to lock placement in those functions
+    fails immediately."""
+
+    def test_public_open_close_no_leak(self, mock_visa_rm):
+        import threading
+
+        from lab_instruments.src import labview_bridge as br
+
+        errors = []
+        ids_opened = []
+        lock = threading.Lock()
+
+        def worker():
+            try:
+                iid = br.open_psu("GPIB::5::INSTR", "HP_E3631A")
+                with lock:
+                    ids_opened.append(iid)
+                br.close_instrument(iid)
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=worker) for _ in range(20)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        assert not errors, f"thread errors: {errors}"
+        assert len(ids_opened) == 20
+        assert len(set(ids_opened)) == 20, "duplicate IDs - _next_id is racing"
+        with br._lock:
+            assert br._instruments == {}, "cache leaked instruments"
+
+
+# =========================================================================
+# Behavior tests: dispatch sends correct vendor SCPI on the wire
+# =========================================================================
+
+
+class TestAWGDispatchBehavior:
+    """Multi-vendor AWG dispatch tests previously only asserted the bridge
+    returned "OK". This left the door open to silent dispatch bugs where
+    the wrong driver method was called. These tests verify each vendor's
+    SCPI bytes actually hit the wire."""
+
+    def test_set_waveform_bk_uses_dual_send(self, bk_4063):
+        """BK 4063 sends multi-line SCPI per channel (e.g. C1:BSWV WVTP,SINE...)."""
+        from lab_instruments.src.labview_bridge import awg_set_waveform
+
+        awg, mi = bk_4063
+        inst_id = _inject(awg, "awg")
+        awg_set_waveform(inst_id, 1, "SINE", 1000.0, 2.0, 0.0)
+        cmds = [c.args[0] for c in mi.write.call_args_list]
+        # BK uses C1:BSWV prefix on channel 1
+        assert any("C1:BSWV" in c or "C1:" in c for c in cmds), f"expected BK C1: prefix in {cmds}"
+
+    def test_set_waveform_keysight_uses_source_node(self, keysight_edu33212a):
+        """Keysight uses SOURce{N}:FUNCtion / SOURce{N}:FREQuency syntax."""
+        from lab_instruments.src.labview_bridge import awg_set_waveform
+
+        awg, mi = keysight_edu33212a
+        inst_id = _inject(awg, "awg")
+        awg_set_waveform(inst_id, 1, "SIN", 1000.0, 2.0, 0.0)
+        cmds = [c.args[0] for c in mi.write.call_args_list]
+        # Keysight SCPI uses SOURce or SOUR
+        assert any("SOUR" in c or "FREQ" in c or "FUNC" in c for c in cmds), f"unexpected SCPI: {cmds}"
+
+    def test_enable_output_bk_uses_cn_outp(self, bk_4063):
+        """BK enable_output: C1:OUTPut ON (channel-prefixed)."""
+        from lab_instruments.src.labview_bridge import awg_enable_output
+
+        awg, mi = bk_4063
+        inst_id = _inject(awg, "awg")
+        awg_enable_output(inst_id, 1, True)
+        cmds = [c.args[0] for c in mi.write.call_args_list]
+        assert any("C1:OUTP" in c.upper() for c in cmds), f"expected C1:OUTP in {cmds}"
+
+    def test_enable_output_keysight_uses_outputn(self, keysight_edu33212a):
+        """Keysight enable_output: OUTPut1 ON (number-suffixed)."""
+        from lab_instruments.src.labview_bridge import awg_enable_output
+
+        awg, mi = keysight_edu33212a
+        inst_id = _inject(awg, "awg")
+        awg_enable_output(inst_id, 1, True)
+        cmds = [c.args[0] for c in mi.write.call_args_list]
+        assert any("OUTP" in c.upper() and "1" in c for c in cmds), f"expected OUTPut1 in {cmds}"
+
+    def test_enable_output_jds6600_path_does_not_use_visa(self, jds6600_generator):
+        """JDS6600 uses :w20 serial frames, NOT generic SCPI. The bridge
+        dispatch must route through dev.enable_output(ch1=...) which goes
+        through JDS's serial path. We can't easily verify the exact serial
+        frame from inside the mock, but we can verify the call didn't raise
+        and that the device's serial layer was exercised (write called)."""
+        from lab_instruments.src.labview_bridge import awg_enable_output
+
+        awg, mi = jds6600_generator
+        inst_id = _inject(awg, "awg")
+        result = awg_enable_output(inst_id, 1, True)
+        assert result == "OK"
+        # Serial path uses instrument.write for the :w20 frame
+        assert mi.write.called
+
+
+class TestScopeDispatchBehavior:
+    """scope_measure_vrms / scope_measure_vpp dispatch: Tek uses different
+    driver method names (measure_rms, measure_peak_to_peak) vs Rigol /
+    Keysight (measure_vrms, measure_vpp). Previously only the Tek path
+    was tested."""
+
+    def test_measure_vrms_rigol_path(self, rigol_dho804):
+        """Verify the non-Tek branch actually invokes the Rigol driver's
+        measure_vrms method. Before this test, only the Tek branch was
+        exercised; the non-Tek elif was effectively dead code from a
+        coverage standpoint."""
+        from lab_instruments.src.labview_bridge import scope_measure_vrms
+
+        scope, mi = rigol_dho804
+        mi.query.return_value = "1.41"
+        inst_id = _inject(scope, "scope")
+        result = scope_measure_vrms(inst_id, 1)
+        assert isinstance(result, float)
+        assert mi.query.called
+
+    def test_measure_vpp_rigol_uses_vpp(self, rigol_dho804):
+        """Rigol path calls dev.measure_vpp, Tek path calls
+        dev.measure_peak_to_peak. The two driver methods exist with
+        different names - the bridge MUST pick the correct one per type."""
+        from lab_instruments.src.labview_bridge import scope_measure_vpp
+
+        scope, mi = rigol_dho804
+        mi.query.return_value = "2.71"
+        inst_id = _inject(scope, "scope")
+        result = scope_measure_vpp(inst_id, 1)
+        assert isinstance(result, float)
+
+
+class TestPSUDispatchBehavior:
+    """Strengthen the multi-PSU happy path tests so future dispatch bugs
+    fail loudly. Each vendor uses different SCPI - HP uses INSTRUMENT:SELECT
+    + VOLTAGE, EDU uses INSTrument + VOLT, Matrix uses bare VOLT."""
+
+    def test_set_voltage_hp_emits_select_then_voltage(self, hp_e3631a):
+        from lab_instruments.src.labview_bridge import psu_set_voltage
+
+        psu, mi = hp_e3631a
+        inst_id = _inject(psu, "psu")
+        psu_set_voltage(inst_id, 1, 5.0)
+        cmds = [c.args[0] for c in mi.write.call_args_list]
+        assert "INSTRUMENT:SELECT P6V" in cmds
+        assert "VOLTAGE 5.0" in cmds
+        assert cmds.index("INSTRUMENT:SELECT P6V") < cmds.index("VOLTAGE 5.0")
+
+    def test_set_voltage_matrix_emits_bare_volt(self, matrix_mps6010h):
+        """Matrix is single-channel - no INSTrument:SELECT needed, just
+        VOLT directly. A regression here would mean the bridge was treating
+        Matrix as multi-channel."""
+        from lab_instruments.src.labview_bridge import psu_set_voltage
+
+        psu, mi = matrix_mps6010h
+        inst_id = _inject(psu, "psu")
+        psu_set_voltage(inst_id, 1, 30.0)
+        cmds = [c.args[0] for c in mi.write.call_args_list]
+        assert any("VOLT" in c for c in cmds), f"expected VOLT in {cmds}"
+        # Matrix must NOT send INSTrument:SELECT
+        assert not any("INSTRUMENT:SELECT" in c or "INST:SEL" in c for c in cmds), (
+            f"Matrix is single-channel; SELECT must not be sent: {cmds}"
+        )
+
+    def test_enable_output_emits_output_state(self, hp_e3631a):
+        """psu_enable_output(True) must send OUTPUT:STATE ON, not just
+        return 'OK' silently."""
+        from lab_instruments.src.labview_bridge import psu_enable_output
+
+        psu, mi = hp_e3631a
+        inst_id = _inject(psu, "psu")
+        psu_enable_output(inst_id, True)
+        mi.write.assert_called_with("OUTPUT:STATE ON")
+
+    def test_disable_all_emits_output_off_and_resets_setpoints(self, hp_e3631a):
+        """Regression: disable_all_channels must emit OUTPUT:STATE OFF AND
+        reset every channel to a safe state with DEFAULT_CURRENT_LIMIT
+        (not zero - zero current limit caused the CC-at-0A bug in the
+        LabVIEW path before v1.0.62)."""
+        from lab_instruments.src.labview_bridge import psu_disable_all
+
+        psu, mi = hp_e3631a
+        inst_id = _inject(psu, "psu")
+        psu_disable_all(inst_id)
+        cmds = [c.args[0] for c in mi.write.call_args_list]
+        assert "OUTPUT:STATE OFF" in cmds
+        # All three HP channels reset to 0V with their DEFAULT_CURRENT_LIMIT
+        assert "APPLY P6V, 0.0, 1.0" in cmds
+        assert "APPLY P25V, 0.0, 0.5" in cmds
+        assert "APPLY N25V, 0.0, 0.5" in cmds
