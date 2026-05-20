@@ -2088,3 +2088,244 @@ class TestAWGGetError:
         result = awg_get_error(inst_id)
         assert "not supported" in result.lower()
         assert "JDS6600" in result
+
+
+# =========================================================================
+# BQ76920 SYS_STAT helpers (new in v1.0.66, issue #128)
+# =========================================================================
+#
+# Datasheet reference: BQ76920 SLUSBK2I, Table 8-3 (SYS_STAT, p.30).
+# Verified bit map (independently confirmed against the TI PDF):
+#   bit 7: CC_READY     bit 6: RSVD            bit 5: DEVICE_XREADY
+#   bit 4: OVRD_ALERT   bit 3: UV              bit 2: OV
+#   bit 1: SCD          bit 0: OCD
+# Write-1-to-clear: "Bits in SYS_STAT may be cleared by writing a '1' to
+# the corresponding bit. Writing a '0' does not change the state of the
+# corresponding bit." (datasheet section 8.5.1)
+
+
+class TestEv2300ReadSysStat:
+    def test_decodes_user_observed_0x84(self, ev2300):
+        """Issue #128 reproduction: user saw 0x84 after sending 25V to the
+        BQ EVM. Per datasheet that is CC_READY (bit 7) + OV (bit 2)."""
+        from lab_instruments.src.labview_bridge import ev2300_read_sys_stat
+
+        dev, _ = ev2300
+        dev.read_byte = MagicMock(return_value={"ok": True, "value": 0x84, "status_text": "OK"})
+        inst_id = _inject(dev, "ev2300")
+        result = json.loads(ev2300_read_sys_stat(inst_id))
+        assert result["raw"] == 0x84
+        assert result["raw_hex"] == "0x84"
+        assert result["bits"]["CC_READY"] is True
+        assert result["bits"]["OV"] is True
+        assert result["bits"]["UV"] is False  # critical: NOT bit 3
+        assert result["bits"]["DEVICE_XREADY"] is False
+        assert result["bits"]["SCD"] is False
+        assert result["bits"]["OCD"] is False
+        assert "OV" in result["active_faults"]
+        # CC_READY is a status flag, not a fault - must NOT appear in active_faults
+        assert "CC_READY" not in result["active_faults"]
+        assert "OV" in result["active_bits"]
+        assert "CC_READY" in result["active_bits"]
+
+    def test_all_faults_set(self, ev2300):
+        """0x3F = 0011_1111 = bits 0..5 set = DEVICE_XREADY + OVRD_ALERT +
+        UV + OV + SCD + OCD (CC_READY clear). OVRD_ALERT is not a fault,
+        so active_faults must exclude it but include everything else."""
+        from lab_instruments.src.labview_bridge import ev2300_read_sys_stat
+
+        dev, _ = ev2300
+        dev.read_byte = MagicMock(return_value={"ok": True, "value": 0x3F, "status_text": "OK"})
+        inst_id = _inject(dev, "ev2300")
+        result = json.loads(ev2300_read_sys_stat(inst_id))
+        assert result["bits"]["CC_READY"] is False
+        assert result["bits"]["DEVICE_XREADY"] is True
+        assert result["bits"]["OVRD_ALERT"] is True
+        assert result["bits"]["UV"] is True
+        assert result["bits"]["OV"] is True
+        assert result["bits"]["SCD"] is True
+        assert result["bits"]["OCD"] is True
+        # OVRD_ALERT is a status flag, not a latched fault
+        assert set(result["active_faults"]) == {"DEVICE_XREADY", "UV", "OV", "SCD", "OCD"}
+
+    def test_baseline_only_cc_ready(self, ev2300):
+        """0x80 = CC_READY alone. No faults active."""
+        from lab_instruments.src.labview_bridge import ev2300_read_sys_stat
+
+        dev, _ = ev2300
+        dev.read_byte = MagicMock(return_value={"ok": True, "value": 0x80, "status_text": "OK"})
+        inst_id = _inject(dev, "ev2300")
+        result = json.loads(ev2300_read_sys_stat(inst_id))
+        assert result["active_bits"] == ["CC_READY"]
+        assert result["active_faults"] == []
+
+    def test_uv_at_bit_3_not_bit_2(self, ev2300):
+        """Regression: UV is bit 3, OV is bit 2 per datasheet Table 8-3.
+        An off-by-one that swapped them would set UV when OV was active
+        and silently mislead students debugging overvoltage events."""
+        from lab_instruments.src.labview_bridge import ev2300_read_sys_stat
+
+        dev, _ = ev2300
+        # Only bit 3 set: should be UV (not OV)
+        dev.read_byte = MagicMock(return_value={"ok": True, "value": 0x08, "status_text": "OK"})
+        inst_id = _inject(dev, "ev2300")
+        result = json.loads(ev2300_read_sys_stat(inst_id))
+        assert result["bits"]["UV"] is True
+        assert result["bits"]["OV"] is False
+        assert "UV" in result["active_faults"]
+        assert "OV" not in result["active_faults"]
+
+    def test_reserved_bit_6_not_in_bits_dict(self, ev2300):
+        """Bit 6 is RSVD per datasheet - the decoder must not invent a
+        name for it. If a future datasheet revision adds a flag at bit 6
+        this test fails loudly and forces a deliberate update."""
+        from lab_instruments.src.labview_bridge import ev2300_read_sys_stat
+
+        dev, _ = ev2300
+        dev.read_byte = MagicMock(return_value={"ok": True, "value": 0x40, "status_text": "OK"})
+        inst_id = _inject(dev, "ev2300")
+        result = json.loads(ev2300_read_sys_stat(inst_id))
+        # bit 6 is RSVD - must not show up under any of these
+        assert len(result["bits"]) == 7  # 7 named bits, not 8
+        assert result["active_bits"] == []  # nothing in the named set is set
+        assert result["active_faults"] == []
+
+    def test_default_i2c_addr_is_0x08(self, ev2300):
+        """BQ76920 2.5V LDO variant default address per eset-453
+        python-conventions.md and bq76920_driver. The bridge default must
+        match so students don't need to remember the address."""
+        from lab_instruments.src.labview_bridge import ev2300_read_sys_stat
+
+        dev, _ = ev2300
+        dev.read_byte = MagicMock(return_value={"ok": True, "value": 0x80, "status_text": "OK"})
+        inst_id = _inject(dev, "ev2300")
+        ev2300_read_sys_stat(inst_id)  # no addr arg
+        dev.read_byte.assert_called_once_with(0x08, 0x00)
+
+    def test_failure_propagates(self, ev2300):
+        from lab_instruments.src.labview_bridge import ev2300_read_sys_stat
+
+        dev, _ = ev2300
+        dev.read_byte = MagicMock(return_value={"ok": False, "value": 0, "status_text": "NACK"})
+        inst_id = _inject(dev, "ev2300")
+        with pytest.raises(RuntimeError, match="NACK"):
+            ev2300_read_sys_stat(inst_id)
+
+    def test_rejects_empty_id(self):
+        from lab_instruments.src.labview_bridge import ev2300_read_sys_stat
+
+        with pytest.raises(ValueError, match="instrument_id"):
+            ev2300_read_sys_stat("")
+
+    def test_rejects_bad_i2c_addr(self, ev2300):
+        from lab_instruments.src.labview_bridge import ev2300_read_sys_stat
+
+        dev, _ = ev2300
+        inst_id = _inject(dev, "ev2300")
+        with pytest.raises(ValueError, match="i2c_addr"):
+            ev2300_read_sys_stat(inst_id, 0x80)
+
+
+class TestEv2300ClearBqFaults:
+    """Regression for issue #128: SYS_STAT is W1C, not normal R/W.
+    The clear_bq_faults helper writes the mask (default 0xFF) to clear
+    every latched bit. A typical user-facing flow:
+
+        sys_stat = ev2300_read_sys_stat(id)   # see what's latched
+        # drop PSU below OV_TRIP first if OV is set, then:
+        ev2300_clear_bq_faults(id)            # writes 0xFF
+        sys_stat = ev2300_read_sys_stat(id)   # confirm clean
+    """
+
+    def test_default_mask_is_full_clear(self, ev2300):
+        """Default mask=0xFF clears every bit (W1C semantics: only bits
+        set to 1 in the write get cleared, so 0xFF clears all)."""
+        from lab_instruments.src.labview_bridge import ev2300_clear_bq_faults
+
+        dev, _ = ev2300
+        dev.write_byte = MagicMock(return_value={"ok": True, "status_text": "OK"})
+        inst_id = _inject(dev, "ev2300")
+        result = ev2300_clear_bq_faults(inst_id)
+        assert result == "OK"
+        dev.write_byte.assert_called_once_with(0x08, 0x00, 0xFF)
+
+    def test_custom_mask_clears_only_named_bit(self, ev2300):
+        """mask=0x04 clears OV (bit 2) and leaves UV, DEVICE_XREADY etc.
+        untouched. Useful when you want to clear OV without disturbing
+        a deliberately latched warning."""
+        from lab_instruments.src.labview_bridge import ev2300_clear_bq_faults
+
+        dev, _ = ev2300
+        dev.write_byte = MagicMock(return_value={"ok": True, "status_text": "OK"})
+        inst_id = _inject(dev, "ev2300")
+        ev2300_clear_bq_faults(inst_id, mask=0x04)
+        dev.write_byte.assert_called_once_with(0x08, 0x00, 0x04)
+
+    def test_explicit_i2c_addr(self, ev2300):
+        from lab_instruments.src.labview_bridge import ev2300_clear_bq_faults
+
+        dev, _ = ev2300
+        dev.write_byte = MagicMock(return_value={"ok": True, "status_text": "OK"})
+        inst_id = _inject(dev, "ev2300")
+        ev2300_clear_bq_faults(inst_id, i2c_addr=0x18, mask=0xFF)
+        dev.write_byte.assert_called_once_with(0x18, 0x00, 0xFF)
+
+    def test_write_failure_propagates(self, ev2300):
+        from lab_instruments.src.labview_bridge import ev2300_clear_bq_faults
+
+        dev, _ = ev2300
+        dev.write_byte = MagicMock(return_value={"ok": False, "status_text": "Device error (0x46)"})
+        inst_id = _inject(dev, "ev2300")
+        with pytest.raises(RuntimeError, match="Device error"):
+            ev2300_clear_bq_faults(inst_id)
+
+    def test_rejects_empty_id(self):
+        from lab_instruments.src.labview_bridge import ev2300_clear_bq_faults
+
+        with pytest.raises(ValueError, match="instrument_id"):
+            ev2300_clear_bq_faults("")
+
+    def test_rejects_mask_too_large(self, ev2300):
+        from lab_instruments.src.labview_bridge import ev2300_clear_bq_faults
+
+        dev, _ = ev2300
+        inst_id = _inject(dev, "ev2300")
+        with pytest.raises(ValueError, match="mask"):
+            ev2300_clear_bq_faults(inst_id, mask=0x100)
+
+    def test_issue_128_reproduction(self, ev2300):
+        """End-to-end reproduction of issue #128 with the correct fix.
+
+        Pre-fix behavior (what the student saw):
+          ev2300_write_byte(id, 0x08, 0x00, 0x80)  # cleared only CC_READY
+          ev2300_read_byte(id, 0x08, 0x00) -> 0x84  # OV still latched
+
+        Post-fix behavior (what they should do now):
+          ev2300_clear_bq_faults(id)  # writes 0xFF, clears OV bit too
+          ev2300_read_sys_stat(id)['active_faults'] -> [] (assuming
+              cell voltage is back below OV_TRIP - otherwise OV re-latches)
+        """
+        from lab_instruments.src.labview_bridge import ev2300_clear_bq_faults, ev2300_read_sys_stat
+
+        dev, _ = ev2300
+
+        # Simulate hardware: SYS_STAT starts at 0x84, after we write 0xFF
+        # the cell voltage is back below OV_TRIP so OV stays cleared, and
+        # CC_READY re-asserts on the next CC sample so the next read shows
+        # 0x80 (just CC_READY).
+        read_responses = iter(
+            [
+                {"ok": True, "value": 0x80, "status_text": "OK"},
+            ]
+        )
+        dev.write_byte = MagicMock(return_value={"ok": True, "status_text": "OK"})
+        dev.read_byte = MagicMock(side_effect=lambda addr, reg: next(read_responses))
+
+        inst_id = _inject(dev, "ev2300")
+        ev2300_clear_bq_faults(inst_id)
+        dev.write_byte.assert_called_once_with(0x08, 0x00, 0xFF)
+
+        after = json.loads(ev2300_read_sys_stat(inst_id))
+        assert after["raw"] == 0x80
+        assert after["active_faults"] == [], "OV should be cleared after W1C"
+        assert "CC_READY" in after["active_bits"]

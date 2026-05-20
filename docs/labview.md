@@ -502,6 +502,8 @@ The `dmm_configure_*` family configures a measurement mode without triggering a 
 | `ev2300_read_block` | `(id: str, i2c_addr: int, register: int) -> str` | JSON list of ints |
 | `ev2300_write_block` | `(id: str, i2c_addr: int, register: int, data_json: str) -> str` | `"OK"` |
 | `ev2300_get_device_info` | `(id: str) -> str` | JSON device info |
+| `ev2300_read_sys_stat` | `(id: str, i2c_addr: int = 0x08) -> str` | JSON: `{raw, bits, active_faults}` |
+| `ev2300_clear_bq_faults` | `(id: str, i2c_addr: int = 0x08, mask: int = 0xFF) -> str` | `"OK"` (W1C clear of SYS_STAT) |
 
 Call `ev2300_wait_for_bq` between `open_ev2300` and the first `ev2300_read_*` call when the BQ EVM is being powered up alongside the VI. The function polls CC_CFG until the BQ ACKs, so it returns the moment you press the BOOT button (no manual timing race).
 

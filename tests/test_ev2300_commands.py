@@ -149,6 +149,158 @@ class TestEv2300Cycle:
         assert "ev2300 cycle" in out
 
 
+class TestEv2300SysStat:
+    """`ev2300 sys_stat [i2c_addr]` reads BQ76920 SYS_STAT (reg 0x00) and
+    decodes each bit. Verified against TI datasheet SLUSBK2I Table 8-3.
+
+    Bit map:
+      bit 7: CC_READY    bit 5: DEVICE_XREADY   bit 4: OVRD_ALERT
+      bit 3: UV          bit 2: OV              bit 1: SCD    bit 0: OCD
+    """
+
+    def test_decodes_0x84_as_cc_ready_plus_ov(self, ev2300_repl, capsys, monkeypatch):
+        """Issue #128 reproduction: user saw 0x84 after overvoltage event."""
+        mock = ev2300_repl.ctx.registry.devices["ev2300"]
+        monkeypatch.setattr(mock, "read_byte", lambda *a, **kw: {"ok": True, "value": 0x84})
+        ev2300_repl.onecmd("ev2300 sys_stat")
+        out = capsys.readouterr().out
+        assert "0x84" in out
+        assert "CC_READY" in out
+        assert "OV" in out
+        # UV must not appear (bit 3 is not set)
+        assert "UV" not in out or "UV=" in out  # may show in bit-list but not as fault
+
+    def test_reports_latched_faults(self, ev2300_repl, capsys, monkeypatch):
+        mock = ev2300_repl.ctx.registry.devices["ev2300"]
+        monkeypatch.setattr(mock, "read_byte", lambda *a, **kw: {"ok": True, "value": 0x84})
+        ev2300_repl.onecmd("ev2300 sys_stat")
+        out = capsys.readouterr().out
+        assert "latched fault" in out.lower()
+        assert "clear_faults" in out
+
+    def test_baseline_0x80_no_faults(self, ev2300_repl, capsys, monkeypatch):
+        mock = ev2300_repl.ctx.registry.devices["ev2300"]
+        monkeypatch.setattr(mock, "read_byte", lambda *a, **kw: {"ok": True, "value": 0x80})
+        ev2300_repl.onecmd("ev2300 sys_stat")
+        out = capsys.readouterr().out
+        assert "0x80" in out
+        assert "CC_READY" in out
+        # Make sure we're not flagging this as a latched fault
+        assert "latched faults: (none)" in out
+
+    def test_explicit_i2c_addr(self, ev2300_repl, capsys, monkeypatch):
+        mock = ev2300_repl.ctx.registry.devices["ev2300"]
+        calls = []
+
+        def fake_read(addr, reg):
+            calls.append((addr, reg))
+            return {"ok": True, "value": 0x80}
+
+        monkeypatch.setattr(mock, "read_byte", fake_read)
+        ev2300_repl.onecmd("ev2300 sys_stat 0x18")
+        assert calls == [(0x18, 0x00)]
+
+    def test_listed_in_help(self, ev2300_repl, capsys):
+        ev2300_repl.onecmd("ev2300")
+        out = capsys.readouterr().out
+        assert "sys_stat" in out
+
+    def test_help_explains_write_1_to_clear(self, ev2300_repl, capsys):
+        """The help text must explain the W1C semantics so students don't
+        repeat issue #128 by writing 0x80 to the register."""
+        ev2300_repl.onecmd("ev2300")
+        out = capsys.readouterr().out
+        assert "write-1-to-clear" in out.lower() or "w1c" in out.lower()
+
+
+class TestEv2300ClearFaults:
+    """`ev2300 clear_faults [i2c_addr] [mask]` writes mask (default 0xFF) to
+    SYS_STAT then re-reads to show what was cleared vs. what re-asserted."""
+
+    def test_default_writes_0xff(self, ev2300_repl, capsys, monkeypatch):
+        mock = ev2300_repl.ctx.registry.devices["ev2300"]
+        # Before: 0x84 (OV latched). Mock the write so we can capture the value.
+        writes = []
+        reads = iter(
+            [
+                {"ok": True, "value": 0x84},  # before-clear read
+                {"ok": True, "value": 0x80},  # after-clear read (OV gone)
+            ]
+        )
+
+        def fake_read(addr, reg):
+            return next(reads)
+
+        def fake_write(addr, reg, val):
+            writes.append((addr, reg, val))
+            return {"ok": True}
+
+        monkeypatch.setattr(mock, "read_byte", fake_read)
+        monkeypatch.setattr(mock, "write_byte", fake_write)
+        ev2300_repl.onecmd("ev2300 clear_faults")
+        out = capsys.readouterr().out
+        assert writes == [(0x08, 0x00, 0xFF)]
+        assert "0x84" in out and "0x80" in out
+        assert "cleared" in out.lower()
+        assert "OV" in out
+
+    def test_custom_mask(self, ev2300_repl, capsys, monkeypatch):
+        """mask=0x04 clears only OV bit; UV/SCD/OCD are left alone."""
+        mock = ev2300_repl.ctx.registry.devices["ev2300"]
+        writes = []
+        reads = iter(
+            [
+                {"ok": True, "value": 0x84},
+                {"ok": True, "value": 0x80},
+            ]
+        )
+        monkeypatch.setattr(mock, "read_byte", lambda a, r: next(reads))
+        monkeypatch.setattr(mock, "write_byte", lambda a, r, v: writes.append((a, r, v)) or {"ok": True})
+        ev2300_repl.onecmd("ev2300 clear_faults 0x08 0x04")
+        assert writes == [(0x08, 0x00, 0x04)]
+
+    def test_explains_when_fault_persists(self, ev2300_repl, capsys, monkeypatch):
+        """If OV re-asserts because cell voltage is still above OV_TRIP,
+        the command must point at the underlying condition (NOT lie about
+        successful clear)."""
+        mock = ev2300_repl.ctx.registry.devices["ev2300"]
+        reads = iter(
+            [
+                {"ok": True, "value": 0x84},  # OV before
+                {"ok": True, "value": 0x84},  # OV still latched after - voltage too high
+            ]
+        )
+        monkeypatch.setattr(mock, "read_byte", lambda a, r: next(reads))
+        monkeypatch.setattr(mock, "write_byte", lambda a, r, v: {"ok": True})
+        ev2300_repl.onecmd("ev2300 clear_faults")
+        out = capsys.readouterr().out
+        assert "STILL active" in out
+        assert "OV" in out
+        # The hint about underlying condition is mandatory - this is the
+        # whole point of the after-clear re-read
+        assert "OV_TRIP" in out or "cell voltage" in out.lower()
+
+    def test_write_failure_propagates(self, ev2300_repl, capsys, monkeypatch):
+        mock = ev2300_repl.ctx.registry.devices["ev2300"]
+        monkeypatch.setattr(mock, "read_byte", lambda a, r: {"ok": True, "value": 0x84})
+        monkeypatch.setattr(mock, "write_byte", lambda a, r, v: {"ok": False, "status_text": "Device error (0x46)"})
+        ev2300_repl.onecmd("ev2300 clear_faults")
+        out = capsys.readouterr().out
+        assert "failed" in out.lower()
+
+    def test_rejects_out_of_range_mask(self, ev2300_repl, capsys, monkeypatch):
+        mock = ev2300_repl.ctx.registry.devices["ev2300"]
+        monkeypatch.setattr(mock, "read_byte", lambda a, r: {"ok": True, "value": 0x80})
+        ev2300_repl.onecmd("ev2300 clear_faults 0x08 0x100")
+        out = capsys.readouterr().out
+        assert "out of range" in out.lower()
+
+    def test_listed_in_help(self, ev2300_repl, capsys):
+        ev2300_repl.onecmd("ev2300")
+        out = capsys.readouterr().out
+        assert "clear_faults" in out
+
+
 class TestEv2300I2CPower:
     """Regression: i2c_power was previously only callable via the Python API.
     Bench debugging of the BQ76920 EVM motivated exposing it interactively."""

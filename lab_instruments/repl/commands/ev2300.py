@@ -62,6 +62,10 @@ class Ev2300Command(BaseCommand):
                 self._handle_fix()
             elif cmd_name == "cycle":
                 self._handle_cycle(dev)
+            elif cmd_name == "sys_stat":
+                self._handle_sys_stat(args, dev)
+            elif cmd_name == "clear_faults":
+                self._handle_clear_faults(args, dev)
             elif cmd_name == "state":
                 if len(args) < 2:
                     self._show_help()
@@ -111,6 +115,15 @@ class Ev2300Command(BaseCommand):
                 "ev2300 cycle",
                 "  - disconnect, prompt for BOOT-button press on BQ EVM, then reconnect",
                 "  - PSU is left untouched so the BQ stays powered throughout",
+                "ev2300 sys_stat [i2c_addr]",
+                "  - read BQ76920 SYS_STAT (reg 0x00) and decode each bit",
+                "  - i2c_addr defaults to 0x08; shows which faults are latched",
+                "ev2300 clear_faults [i2c_addr] [mask]",
+                "  - clear latched faults in BQ76920 SYS_STAT (reg 0x00)",
+                "  - SYS_STAT is write-1-to-clear: writing a value REPLACES nothing,",
+                "    it CLEARS each bit set to 1. mask defaults to 0xFF (clear all)",
+                "  - example: 'ev2300 clear_faults' clears every latched fault",
+                "    after the cell voltage drops back below the OV/UV threshold",
             ]
         )
 
@@ -413,3 +426,123 @@ class Ev2300Command(BaseCommand):
                 "  retries init transparently every 2 s once the chip wakes.",
             ]
         )
+
+    # ------------------------------------------------------------------
+    # BQ76920 SYS_STAT helpers
+    # ------------------------------------------------------------------
+    #
+    # SYS_STAT (register 0x00) is write-1-to-clear per BQ76920 datasheet
+    # SLUSBK2I section 7.5. A naive ``ev2300 write_byte 0x08 0x00 0x80`` does
+    # NOT overwrite the register with 0x80 -- it clears each bit that is set
+    # to 1 in the written byte. Writing 0x80 clears only CC_READY (bit 7);
+    # the actual fault bits (OV bit 2, UV bit 3, etc.) remain latched. This
+    # is the source of issue #128: students write 0x80 expecting the
+    # overvoltage flag to disappear and are confused when the next read
+    # still shows 0x84.
+    #
+    # The handlers below give students two purpose-built tools:
+    #
+    #   ``ev2300 sys_stat`` -- decode the bit field so the user can see
+    #     exactly which faults are latched (e.g. "OV active" vs. "UV active").
+    #
+    #   ``ev2300 clear_faults`` -- write 0xFF (or a caller-supplied mask)
+    #     to SYS_STAT, then re-read so the user sees whether any fault
+    #     re-asserted (which happens when the underlying condition is still
+    #     true -- e.g. OV will re-set immediately if the cell voltage is
+    #     still above OV_TRIP).
+
+    # Bit position -> mnemonic, matches firmware bq76920.h #defines exactly
+    _BQ_SYS_STAT_BITS = {
+        7: "CC_READY",
+        5: "DEVICE_XREADY",
+        4: "OVRD_ALERT",
+        3: "UV",
+        2: "OV",
+        1: "SCD",
+        0: "OCD",
+    }
+    # Bits that represent latched faults (vs. status/alert flags)
+    _BQ_SYS_STAT_FAULT_BITS = {5, 3, 2, 1, 0}
+
+    @classmethod
+    def _decode_sys_stat(cls, value: int) -> tuple[list[str], list[str]]:
+        """Return (active_bits, active_faults) from a SYS_STAT byte."""
+        active = []
+        faults = []
+        for bit, name in sorted(cls._BQ_SYS_STAT_BITS.items(), reverse=True):
+            if value & (1 << bit):
+                active.append(name)
+                if bit in cls._BQ_SYS_STAT_FAULT_BITS:
+                    faults.append(name)
+        return active, faults
+
+    def _handle_sys_stat(self, args: list, dev: Any) -> None:
+        """Read SYS_STAT (reg 0x00) and decode each bit."""
+        addr = self._parse_int(args[1], "i2c_addr") if len(args) >= 2 else 0x08
+        result = dev.read_byte(addr, 0x00)
+        if not result.get("ok") or result.get("value") is None:
+            self._fail("read SYS_STAT", result)
+            return
+        val = result["value"]
+        bits = format(val, "08b")
+        active, faults = self._decode_sys_stat(val)
+        ColorPrinter.cyan(f"SYS_STAT (0x00) = 0x{val:02X} [{bits}]")
+        if active:
+            ColorPrinter.info(f"  bits set: {' + '.join(active)}")
+        else:
+            ColorPrinter.info("  bits set: (none)")
+        if faults:
+            ColorPrinter.warning(f"  latched faults: {', '.join(faults)}")
+            ColorPrinter.info("  -> run 'ev2300 clear_faults' once the underlying condition is gone")
+        else:
+            ColorPrinter.info("  latched faults: (none)")
+
+    def _handle_clear_faults(self, args: list, dev: Any) -> None:
+        """Clear latched faults in SYS_STAT via write-1-to-clear.
+
+        Writes ``mask`` (default 0xFF, clear all) to register 0x00 then
+        re-reads so the user immediately sees whether any fault
+        re-asserted because the underlying condition is still active
+        (e.g. OV stays set if cell voltage is still above OV_TRIP).
+        """
+        addr = self._parse_int(args[1], "i2c_addr") if len(args) >= 2 else 0x08
+        mask = self._parse_int(args[2], "mask") if len(args) >= 3 else 0xFF
+        if not (0 <= mask <= 0xFF):
+            ColorPrinter.error(f"mask 0x{mask:X} out of range 0x00..0xFF")
+            self.ctx.command_had_error = True
+            return
+
+        # Snapshot what was set BEFORE we clear, so the after-print is meaningful.
+        before = dev.read_byte(addr, 0x00)
+        if not before.get("ok"):
+            self._fail("read SYS_STAT (before clear)", before)
+            return
+        before_val = before["value"]
+        _, before_faults = self._decode_sys_stat(before_val)
+
+        write_res = dev.write_byte(addr, 0x00, mask)
+        if not write_res.get("ok"):
+            self._fail("clear_faults", write_res)
+            return
+        ColorPrinter.success(f"Wrote 0x{mask:02X} to SYS_STAT (write-1-to-clear; bits set in mask are cleared)")
+
+        after = dev.read_byte(addr, 0x00)
+        if not after.get("ok"):
+            self._fail("read SYS_STAT (after clear)", after)
+            return
+        after_val = after["value"]
+        _, after_faults = self._decode_sys_stat(after_val)
+
+        ColorPrinter.cyan(f"SYS_STAT before: 0x{before_val:02X}  ->  after: 0x{after_val:02X}")
+        cleared = set(before_faults) - set(after_faults)
+        still_active = after_faults
+        if cleared:
+            ColorPrinter.success(f"  cleared: {', '.join(sorted(cleared))}")
+        if still_active:
+            ColorPrinter.warning(
+                f"  STILL active: {', '.join(still_active)} "
+                f"(underlying condition still true -- check cell voltages / "
+                f"OV_TRIP / UV_TRIP)"
+            )
+        if not cleared and not still_active and before_faults:
+            ColorPrinter.info("  no faults were latched before the write")

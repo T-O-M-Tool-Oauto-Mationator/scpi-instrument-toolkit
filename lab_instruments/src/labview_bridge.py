@@ -1434,6 +1434,108 @@ def ev2300_get_device_info(instrument_id: str) -> str:
     return json.dumps(info)
 
 
+# BQ76920 SYS_STAT bit definitions (register 0x00, write-1-to-clear per
+# datasheet SLUSBK2I section 7.5). Mirrored from the firmware header
+# BQ76920_Bridge/Core/Inc/bq76920.h to ensure host and firmware agree.
+_BQ_SYS_STAT_BITS = {
+    7: "CC_READY",
+    5: "DEVICE_XREADY",
+    4: "OVRD_ALERT",
+    3: "UV",
+    2: "OV",
+    1: "SCD",
+    0: "OCD",
+}
+# Bits that are latched faults (vs. CC_READY which auto-asserts on next CC
+# sample, vs. OVRD_ALERT which mirrors the ALERT pin state).
+_BQ_SYS_STAT_FAULT_BITS = {5, 3, 2, 1, 0}
+
+
+def ev2300_read_sys_stat(instrument_id: str, i2c_addr: int = 0x08) -> str:
+    """Read and decode the BQ76920 SYS_STAT register (0x00).
+
+    Returns a JSON object describing every bit, e.g.::
+
+        {
+          "raw": 132,                    # 0x84
+          "raw_hex": "0x84",
+          "bits": {"CC_READY": true, "DEVICE_XREADY": false,
+                   "OVRD_ALERT": false, "UV": false, "OV": true,
+                   "SCD": false, "OCD": false},
+          "active_bits": ["CC_READY", "OV"],
+          "active_faults": ["OV"]
+        }
+
+    Bit positions per BQ76920 datasheet SLUSBK2I section 7.5. Use this from
+    LabVIEW to surface specific fault conditions instead of an opaque
+    integer.
+
+    Args:
+        instrument_id: ID returned by open_ev2300.
+        i2c_addr: BQ76920 I2C address (default 0x08; some variants 0x18).
+
+    Returns:
+        str: JSON object as documented above.
+    """
+    _require_id("ev2300_read_sys_stat", instrument_id)
+    _require_i2c_addr("ev2300_read_sys_stat", i2c_addr)
+    dev = _get_typed(instrument_id, _EV2300_CLASSES)
+    result = dev.read_byte(i2c_addr, 0x00)
+    if not result.get("ok"):
+        raise RuntimeError(result.get("status_text", "EV2300 read SYS_STAT failed"))
+    val = int(result["value"])
+    bits = {name: bool(val & (1 << bit)) for bit, name in _BQ_SYS_STAT_BITS.items()}
+    active_bits = [name for bit, name in sorted(_BQ_SYS_STAT_BITS.items(), reverse=True) if val & (1 << bit)]
+    active_faults = [
+        name
+        for bit, name in sorted(_BQ_SYS_STAT_BITS.items(), reverse=True)
+        if val & (1 << bit) and bit in _BQ_SYS_STAT_FAULT_BITS
+    ]
+    return json.dumps(
+        {
+            "raw": val,
+            "raw_hex": f"0x{val:02X}",
+            "bits": bits,
+            "active_bits": active_bits,
+            "active_faults": active_faults,
+        }
+    )
+
+
+def ev2300_clear_bq_faults(instrument_id: str, i2c_addr: int = 0x08, mask: int = 0xFF) -> str:
+    """Clear latched faults in BQ76920 SYS_STAT via write-1-to-clear.
+
+    SYS_STAT (register 0x00) is W1C per datasheet SLUSBK2I section 7.5:
+    a write byte does NOT replace the register contents, it clears each
+    bit that is set to 1 in the written value. ``mask=0xFF`` clears every
+    latched fault (and also CC_READY which simply re-asserts on the next
+    CC sample so is harmless). To clear only OV without disturbing other
+    bits, pass ``mask=0x04``.
+
+    Note that a fault bit will re-latch immediately if the underlying
+    condition is still true (e.g. OV will stay set while the cell voltage
+    is above OV_TRIP, register 0x09). Read SYS_STAT after this call -- if
+    a fault is still set, the chip is telling you the protection condition
+    has not been resolved yet.
+
+    Args:
+        instrument_id: ID returned by open_ev2300.
+        i2c_addr: BQ76920 I2C address (default 0x08).
+        mask: Bit mask of which flags to clear (default 0xFF, clear all).
+
+    Returns:
+        str: "OK"
+    """
+    _require_id("ev2300_clear_bq_faults", instrument_id)
+    _require_i2c_addr("ev2300_clear_bq_faults", i2c_addr)
+    _require_byte("ev2300_clear_bq_faults", "mask", mask)
+    dev = _get_typed(instrument_id, _EV2300_CLASSES)
+    result = dev.write_byte(i2c_addr, 0x00, mask)
+    if not result.get("ok"):
+        raise RuntimeError(result.get("status_text", "EV2300 clear_bq_faults failed"))
+    return "OK"
+
+
 # =========================================================================
 # SMU operations (NI PXIe-4139)
 # =========================================================================
