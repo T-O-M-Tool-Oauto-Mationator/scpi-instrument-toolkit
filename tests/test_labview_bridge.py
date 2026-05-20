@@ -1634,3 +1634,457 @@ class TestPSUDispatchBehavior:
         assert "APPLY P6V, 0.0, 1.0" in cmds
         assert "APPLY P25V, 0.0, 0.5" in cmds
         assert "APPLY N25V, 0.0, 0.5" in cmds
+
+
+# =========================================================================
+# DMM configure_* family (new in v1.0.65)
+# =========================================================================
+
+
+class TestDMMConfigureDCVoltage:
+    """The Lab 1 motivator: the SCPI REPL script did
+    `dmm config vdc 0.1 0.0001 nplc=10` and the LabVIEW bridge had no
+    way to express that. Now `dmm_configure_dc_voltage(id, 0.1, 0.0001, 10)`
+    emits the same SCPI."""
+
+    def test_hp_explicit_range_resolution_nplc(self, hp_34401a):
+        from lab_instruments.src.labview_bridge import dmm_configure_dc_voltage
+
+        dmm, mi = hp_34401a
+        inst_id = _inject(dmm, "dmm")
+        result = dmm_configure_dc_voltage(inst_id, 0.1, 0.0001, 10)
+        assert result == "OK"
+        cmds = [c.args[0] for c in mi.write.call_args_list]
+        # HP_34401A emits CONFigure then SENSe:VOLTage:DC:NPLCycles
+        assert any("CONF" in c.upper() and "VOLT" in c.upper() for c in cmds)
+        assert any("NPLC" in c.upper() and "10" in c for c in cmds)
+
+    def test_hp_default_sentinel_uses_def(self, hp_34401a):
+        """range_val=-1.0 means 'instrument default' and should produce
+        'DEF' in the SCPI string (not '-1' or '0')."""
+        from lab_instruments.src.labview_bridge import dmm_configure_dc_voltage
+
+        dmm, mi = hp_34401a
+        inst_id = _inject(dmm, "dmm")
+        dmm_configure_dc_voltage(inst_id, -1.0, -1.0, -1.0)
+        cmds = [c.args[0] for c in mi.write.call_args_list]
+        assert any("DEF,DEF" in c for c in cmds), f"expected DEF,DEF in {cmds}"
+        # nplc=-1 means skip NPLC altogether
+        assert not any("NPLC" in c.upper() for c in cmds)
+
+    def test_hp_zero_range_is_explicit(self, hp_34401a):
+        """range_val=0.0 should be passed through as 0 (unusual but
+        explicit), NOT translated to DEF. Sentinel for DEF is strictly
+        negative."""
+        from lab_instruments.src.labview_bridge import dmm_configure_dc_voltage
+
+        dmm, mi = hp_34401a
+        inst_id = _inject(dmm, "dmm")
+        # range_val=0.0 should not become DEF
+        dmm_configure_dc_voltage(inst_id, 0.0, -1.0, -1.0)
+        cmds = [c.args[0] for c in mi.write.call_args_list]
+        # The CONF command should mention 0 for range, DEF for resolution
+        assert any("CONF" in c.upper() and "0," in c and "DEF" in c for c in cmds), f"got {cmds}"
+
+    def test_edu34450a_ignores_nplc(self, keysight_edu34450a):
+        """EDU34450A driver doesn't accept nplc - the bridge must drop it
+        silently rather than fail."""
+        from lab_instruments.src.labview_bridge import dmm_configure_dc_voltage
+
+        dmm, mi = keysight_edu34450a
+        inst_id = _inject(dmm, "dmm")
+        result = dmm_configure_dc_voltage(inst_id, 0.1, 0.0001, 10.0)
+        assert result == "OK"
+        cmds = [c.args[0] for c in mi.write.call_args_list]
+        # CONFigure goes through; NPLC must NOT appear
+        assert any("CONF" in c.upper() and "VOLT" in c.upper() for c in cmds)
+        assert not any("NPLC" in c.upper() for c in cmds)
+
+    def test_owon_uses_only_range(self, owon_xdm1041):
+        """Owon driver takes only range_val (float | None). The bridge
+        must drop resolution and nplc."""
+        from lab_instruments.src.labview_bridge import dmm_configure_dc_voltage
+
+        dmm, _ = owon_xdm1041
+        inst_id = _inject(dmm, "dmm")
+        # Owon mock; just verify it doesn't raise
+        result = dmm_configure_dc_voltage(inst_id, 10.0, 0.001, 10.0)
+        assert result == "OK"
+
+    def test_rejects_empty_id(self):
+        from lab_instruments.src.labview_bridge import dmm_configure_dc_voltage
+
+        with pytest.raises(ValueError, match="instrument_id"):
+            dmm_configure_dc_voltage("", 0.1, 0.0001, 10.0)
+
+    def test_rejects_string_range(self, hp_34401a):
+        """LabVIEW user wires a String Constant 'DEF' instead of a Numeric
+        Constant - the bridge must reject this. The way to express 'use
+        default' is range_val=-1.0, not the string 'DEF'."""
+        from lab_instruments.src.labview_bridge import dmm_configure_dc_voltage
+
+        dmm, _ = hp_34401a
+        inst_id = _inject(dmm, "dmm")
+        with pytest.raises(TypeError, match="range_val.*must be a number"):
+            dmm_configure_dc_voltage(inst_id, "DEF", 0.0001, 10.0)
+
+
+class TestDMMConfigureOtherTypes:
+    def test_configure_ac_voltage_hp(self, hp_34401a):
+        from lab_instruments.src.labview_bridge import dmm_configure_ac_voltage
+
+        dmm, mi = hp_34401a
+        inst_id = _inject(dmm, "dmm")
+        assert dmm_configure_ac_voltage(inst_id, 1.0, 0.001) == "OK"
+        cmds = [c.args[0] for c in mi.write.call_args_list]
+        # HP_34401A uses long-form CONFigure:VOLTage:AC
+        assert any("CONF" in c.upper() and "VOLTAGE:AC" in c.upper() for c in cmds), f"got {cmds}"
+
+    def test_configure_dc_current_hp_with_nplc(self, hp_34401a):
+        from lab_instruments.src.labview_bridge import dmm_configure_dc_current
+
+        dmm, mi = hp_34401a
+        inst_id = _inject(dmm, "dmm")
+        assert dmm_configure_dc_current(inst_id, 0.1, 0.0001, 10.0) == "OK"
+        cmds = [c.args[0] for c in mi.write.call_args_list]
+        assert any("CONF" in c.upper() and "CURR" in c.upper() for c in cmds)
+        assert any("NPLC" in c.upper() and "10" in c for c in cmds)
+
+    def test_configure_ac_current_edu(self, keysight_edu34450a):
+        from lab_instruments.src.labview_bridge import dmm_configure_ac_current
+
+        dmm, mi = keysight_edu34450a
+        inst_id = _inject(dmm, "dmm")
+        assert dmm_configure_ac_current(inst_id, 0.1, 0.001) == "OK"
+        assert mi.write.called
+
+    def test_configure_resistance_2w_hp_with_nplc(self, hp_34401a):
+        from lab_instruments.src.labview_bridge import dmm_configure_resistance_2w
+
+        dmm, mi = hp_34401a
+        inst_id = _inject(dmm, "dmm")
+        assert dmm_configure_resistance_2w(inst_id, 1000.0, 0.1, 10.0) == "OK"
+        cmds = [c.args[0] for c in mi.write.call_args_list]
+        assert any("CONF" in c.upper() and "RES" in c.upper() for c in cmds)
+        assert any("NPLC" in c.upper() for c in cmds)
+
+    def test_configure_resistance_4w_hp(self, hp_34401a):
+        from lab_instruments.src.labview_bridge import dmm_configure_resistance_4w
+
+        dmm, mi = hp_34401a
+        inst_id = _inject(dmm, "dmm")
+        assert dmm_configure_resistance_4w(inst_id, 100.0, 0.001, 10.0) == "OK"
+        cmds = [c.args[0] for c in mi.write.call_args_list]
+        assert any("FRES" in c.upper() for c in cmds), f"expected FRES in {cmds}"
+
+
+class TestDMMRead:
+    """dmm_read triggers a measurement using the currently-configured mode.
+    This is the configure-then-read flow that Lab 1 needs."""
+
+    def test_read_hp(self, hp_34401a):
+        from lab_instruments.src.labview_bridge import dmm_read
+
+        dmm, mi = hp_34401a
+        mi.query.return_value = "5.0023"
+        inst_id = _inject(dmm, "dmm")
+        result = dmm_read(inst_id)
+        assert result == pytest.approx(5.0023, rel=1e-6)
+        # HP's read() issues a READ? query
+        mi.query.assert_called_with("READ?")
+
+    def test_read_owon(self, owon_xdm1041):
+        from lab_instruments.src.labview_bridge import dmm_read
+
+        dmm, mi = owon_xdm1041
+        mi.query.return_value = "1.234"
+        inst_id = _inject(dmm, "dmm")
+        result = dmm_read(inst_id)
+        assert isinstance(result, float)
+
+    def test_read_rejects_empty_id(self):
+        from lab_instruments.src.labview_bridge import dmm_read
+
+        with pytest.raises(ValueError, match="instrument_id"):
+            dmm_read("")
+
+
+class TestDMMFetch:
+    def test_fetch_hp(self, hp_34401a):
+        from lab_instruments.src.labview_bridge import dmm_fetch
+
+        dmm, mi = hp_34401a
+        mi.query.return_value = "5.0023"
+        inst_id = _inject(dmm, "dmm")
+        result = dmm_fetch(inst_id)
+        assert isinstance(result, float)
+
+    def test_fetch_owon_raises_attribute_error(self, owon_xdm1041):
+        """Owon driver does not implement fetch(); the bridge must raise a
+        clear AttributeError naming the alternative (dmm_read)."""
+        from lab_instruments.src.labview_bridge import dmm_fetch
+
+        dmm, _ = owon_xdm1041
+        inst_id = _inject(dmm, "dmm")
+        with pytest.raises(AttributeError, match="dmm_read"):
+            dmm_fetch(inst_id)
+
+
+class TestDMMGetError:
+    def test_get_error_hp(self, hp_34401a):
+        from lab_instruments.src.labview_bridge import dmm_get_error
+
+        dmm, mi = hp_34401a
+        mi.query.return_value = '+0,"No error"'
+        inst_id = _inject(dmm, "dmm")
+        result = dmm_get_error(inst_id)
+        assert isinstance(result, str)
+        assert "No error" in result
+
+    def test_get_error_owon_returns_stub(self, owon_xdm1041):
+        """Owon driver's get_error returns a 'not supported' string per the
+        SCPI driver contract."""
+        from lab_instruments.src.labview_bridge import dmm_get_error
+
+        dmm, _ = owon_xdm1041
+        inst_id = _inject(dmm, "dmm")
+        result = dmm_get_error(inst_id)
+        assert isinstance(result, str)
+
+    def test_rejects_empty_id(self):
+        from lab_instruments.src.labview_bridge import dmm_get_error
+
+        with pytest.raises(ValueError, match="instrument_id"):
+            dmm_get_error("")
+
+
+# =========================================================================
+# PSU readback wrappers (new in v1.0.65)
+# =========================================================================
+
+
+class TestPSUGetVoltageSetpoint:
+    def test_hp_emits_volt_query(self, hp_e3631a):
+        from lab_instruments.src.labview_bridge import psu_get_voltage_setpoint
+
+        psu, mi = hp_e3631a
+        mi.query.return_value = "5.000"
+        inst_id = _inject(psu, "psu")
+        result = psu_get_voltage_setpoint(inst_id, 1)
+        assert result == pytest.approx(5.0, rel=1e-6)
+        mi.query.assert_called_with("VOLTAGE?")
+
+    def test_edu36311a(self, keysight_edu36311a):
+        from lab_instruments.src.labview_bridge import psu_get_voltage_setpoint
+
+        psu, mi = keysight_edu36311a
+        mi.query.return_value = "12.000"
+        inst_id = _inject(psu, "psu")
+        result = psu_get_voltage_setpoint(inst_id, 2)
+        assert isinstance(result, float)
+
+    def test_matrix(self, matrix_mps6010h):
+        """Matrix is cached; no query is needed (driver returns the cached
+        setpoint). The bridge call must succeed and return a float."""
+        from lab_instruments.src.labview_bridge import psu_get_voltage_setpoint
+
+        psu, _ = matrix_mps6010h
+        psu.set_voltage(15.0)
+        inst_id = _inject(psu, "psu")
+        result = psu_get_voltage_setpoint(inst_id, 1)
+        assert result == pytest.approx(15.0)
+
+    def test_invalid_channel(self, hp_e3631a):
+        from lab_instruments.src.labview_bridge import psu_get_voltage_setpoint
+
+        psu, _ = hp_e3631a
+        inst_id = _inject(psu, "psu")
+        with pytest.raises(ValueError, match="channel must be 1, 2, or 3"):
+            psu_get_voltage_setpoint(inst_id, 9)
+
+    def test_rejects_empty_id(self):
+        from lab_instruments.src.labview_bridge import psu_get_voltage_setpoint
+
+        with pytest.raises(ValueError, match="instrument_id"):
+            psu_get_voltage_setpoint("", 1)
+
+
+class TestPSUGetCurrentLimit:
+    def test_hp_emits_curr_query(self, hp_e3631a):
+        from lab_instruments.src.labview_bridge import psu_get_current_limit
+
+        psu, mi = hp_e3631a
+        mi.query.return_value = "0.500"
+        inst_id = _inject(psu, "psu")
+        result = psu_get_current_limit(inst_id, 1)
+        assert result == pytest.approx(0.5)
+        mi.query.assert_called_with("CURRENT?")
+
+    def test_matrix(self, matrix_mps6010h):
+        from lab_instruments.src.labview_bridge import psu_get_current_limit
+
+        psu, _ = matrix_mps6010h
+        psu.set_current_limit(2.5)
+        inst_id = _inject(psu, "psu")
+        result = psu_get_current_limit(inst_id, 1)
+        assert result == pytest.approx(2.5)
+
+
+class TestPSUGetOutputState:
+    def test_hp_emits_output_state_query(self, hp_e3631a):
+        from lab_instruments.src.labview_bridge import psu_get_output_state
+
+        psu, mi = hp_e3631a
+        mi.query.return_value = "1"
+        inst_id = _inject(psu, "psu")
+        result = psu_get_output_state(inst_id)
+        assert result is True
+        mi.query.assert_called_with("OUTPUT:STATE?")
+
+    def test_hp_off(self, hp_e3631a):
+        from lab_instruments.src.labview_bridge import psu_get_output_state
+
+        psu, mi = hp_e3631a
+        mi.query.return_value = "0"
+        inst_id = _inject(psu, "psu")
+        result = psu_get_output_state(inst_id)
+        assert result is False
+
+    def test_matrix_cached(self, matrix_mps6010h):
+        """Matrix tracks output state in a cache (no readback)."""
+        from lab_instruments.src.labview_bridge import psu_get_output_state
+
+        psu, _ = matrix_mps6010h
+        psu.enable_output(True)
+        inst_id = _inject(psu, "psu")
+        assert psu_get_output_state(inst_id) is True
+
+
+class TestPSUGetError:
+    def test_hp(self, hp_e3631a):
+        from lab_instruments.src.labview_bridge import psu_get_error
+
+        psu, mi = hp_e3631a
+        mi.query.return_value = '+0,"No error"'
+        inst_id = _inject(psu, "psu")
+        result = psu_get_error(inst_id)
+        assert "No error" in result
+        mi.query.assert_called_with("SYSTEM:ERROR?")
+
+    def test_matrix_returns_stub(self, matrix_mps6010h):
+        from lab_instruments.src.labview_bridge import psu_get_error
+
+        psu, _ = matrix_mps6010h
+        inst_id = _inject(psu, "psu")
+        result = psu_get_error(inst_id)
+        # Matrix returns "not supported on..." per driver contract
+        assert "not supported" in result.lower()
+
+
+# =========================================================================
+# AWG state-readback + set_offset + get_error (new in v1.0.65)
+# =========================================================================
+
+
+class TestAWGSetOffset:
+    def test_bk(self, bk_4063):
+        from lab_instruments.src.labview_bridge import awg_set_offset
+
+        awg, mi = bk_4063
+        inst_id = _inject(awg, "awg")
+        assert awg_set_offset(inst_id, 1, 1.5) == "OK"
+        assert mi.write.called
+
+    def test_keysight(self, keysight_edu33212a):
+        from lab_instruments.src.labview_bridge import awg_set_offset
+
+        awg, mi = keysight_edu33212a
+        inst_id = _inject(awg, "awg")
+        assert awg_set_offset(inst_id, 1, 1.5) == "OK"
+        assert mi.write.called
+
+    def test_jds6600(self, jds6600_generator):
+        from lab_instruments.src.labview_bridge import awg_set_offset
+
+        awg, _ = jds6600_generator
+        inst_id = _inject(awg, "awg")
+        assert awg_set_offset(inst_id, 1, 1.5) == "OK"
+
+    def test_rejects_channel_3(self, keysight_edu33212a):
+        from lab_instruments.src.labview_bridge import awg_set_offset
+
+        awg, _ = keysight_edu33212a
+        inst_id = _inject(awg, "awg")
+        with pytest.raises(ValueError, match="channel"):
+            awg_set_offset(inst_id, 3, 1.0)
+
+
+class TestAWGGetters:
+    """Each get_* must return the right type and exercise the driver method."""
+
+    def test_get_amplitude_bk(self, bk_4063):
+        from lab_instruments.src.labview_bridge import awg_get_amplitude
+
+        awg, mi = bk_4063
+        mi.query.return_value = "C1:BSWV WVTP,SINE,AMP,2.00,OFST,0.00,FRQ,1000"
+        inst_id = _inject(awg, "awg")
+        result = awg_get_amplitude(inst_id, 1)
+        assert isinstance(result, float)
+
+    def test_get_offset_keysight(self, keysight_edu33212a):
+        from lab_instruments.src.labview_bridge import awg_get_offset
+
+        awg, mi = keysight_edu33212a
+        mi.query.return_value = "0.500"
+        inst_id = _inject(awg, "awg")
+        result = awg_get_offset(inst_id, 1)
+        assert result == pytest.approx(0.5)
+
+    def test_get_frequency_keysight(self, keysight_edu33212a):
+        from lab_instruments.src.labview_bridge import awg_get_frequency
+
+        awg, mi = keysight_edu33212a
+        mi.query.return_value = "1000.0"
+        inst_id = _inject(awg, "awg")
+        result = awg_get_frequency(inst_id, 1)
+        assert isinstance(result, float)
+
+    def test_get_output_state_keysight(self, keysight_edu33212a):
+        from lab_instruments.src.labview_bridge import awg_get_output_state
+
+        awg, mi = keysight_edu33212a
+        mi.query.return_value = "1"
+        inst_id = _inject(awg, "awg")
+        result = awg_get_output_state(inst_id, 1)
+        assert isinstance(result, bool)
+
+    def test_get_output_state_returns_true(self, keysight_edu33212a):
+        from lab_instruments.src.labview_bridge import awg_get_output_state
+
+        awg, mi = keysight_edu33212a
+        mi.query.return_value = "1"
+        inst_id = _inject(awg, "awg")
+        assert awg_get_output_state(inst_id, 1) is True
+
+
+class TestAWGGetError:
+    def test_keysight(self, keysight_edu33212a):
+        from lab_instruments.src.labview_bridge import awg_get_error
+
+        awg, mi = keysight_edu33212a
+        mi.query.return_value = '+0,"No error"'
+        inst_id = _inject(awg, "awg")
+        result = awg_get_error(inst_id)
+        assert "No error" in result
+
+    def test_jds6600_returns_not_supported(self, jds6600_generator):
+        """JDS6600 has no get_error method (no SCPI error queue). Bridge
+        must gracefully return a 'not supported' string instead of raising
+        AttributeError."""
+        from lab_instruments.src.labview_bridge import awg_get_error
+
+        awg, _ = jds6600_generator
+        inst_id = _inject(awg, "awg")
+        result = awg_get_error(inst_id)
+        assert "not supported" in result.lower()
+        assert "JDS6600" in result

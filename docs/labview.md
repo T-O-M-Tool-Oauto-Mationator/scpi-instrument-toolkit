@@ -432,18 +432,33 @@ You will encounter functions in your own labs that are not in this exact tutoria
 | `psu_measure_voltage` | `(id: str, channel: int) -> float` | Measured volts |
 | `psu_measure_current` | `(id: str, channel: int) -> float` | Measured amps |
 | `psu_disable_all` | `(id: str) -> str` | `"OK"` |
+| `psu_get_voltage_setpoint` | `(id: str, channel: int) -> float` | Configured volts |
+| `psu_get_current_limit` | `(id: str, channel: int) -> float` | Configured amps |
+| `psu_get_output_state` | `(id: str) -> bool` | True if output enabled |
+| `psu_get_error` | `(id: str) -> str` | SCPI error queue line |
 
 ### Digital Multimeter (DMM)
 
+The `dmm_configure_*` family configures a measurement mode without triggering a read. Pair with `dmm_read` (or one of the `dmm_measure_*` convenience functions) to take an actual measurement. **Pass `-1.0` for any of `range_val` / `resolution` / `nplc`** to request the instrument's default; an explicit `0.0` means "set the range to 0" and will likely produce an out-of-range SCPI error. The `nplc` argument is only honored by HP_34401A (others ignore it silently).
+
 | Function | Signature | Returns |
 |---|---|---|
-| `dmm_measure_dc_voltage` | `(id: str) -> float` | Volts DC |
+| `dmm_configure_dc_voltage` | `(id: str, range_val: float = -1.0, resolution: float = -1.0, nplc: float = -1.0) -> str` | `"OK"` |
+| `dmm_configure_ac_voltage` | `(id: str, range_val: float = -1.0, resolution: float = -1.0) -> str` | `"OK"` |
+| `dmm_configure_dc_current` | `(id: str, range_val: float = -1.0, resolution: float = -1.0, nplc: float = -1.0) -> str` | `"OK"` |
+| `dmm_configure_ac_current` | `(id: str, range_val: float = -1.0, resolution: float = -1.0) -> str` | `"OK"` |
+| `dmm_configure_resistance_2w` | `(id: str, range_val: float = -1.0, resolution: float = -1.0, nplc: float = -1.0) -> str` | `"OK"` |
+| `dmm_configure_resistance_4w` | `(id: str, range_val: float = -1.0, resolution: float = -1.0, nplc: float = -1.0) -> str` | `"OK"` |
+| `dmm_read` | `(id: str) -> float` | Trigger + read using current config |
+| `dmm_fetch` | `(id: str) -> float` | Last reading (no new trigger; HP/EDU only) |
+| `dmm_measure_dc_voltage` | `(id: str) -> float` | Volts DC (auto-config) |
 | `dmm_measure_ac_voltage` | `(id: str) -> float` | Volts AC |
 | `dmm_measure_dc_current` | `(id: str) -> float` | Amps DC |
 | `dmm_measure_resistance_2w` | `(id: str) -> float` | Ohms (2-wire) |
 | `dmm_measure_resistance_4w` | `(id: str) -> float` | Ohms (4-wire) |
 | `dmm_measure_frequency` | `(id: str) -> float` | Hz |
 | `dmm_measure_diode` | `(id: str) -> float` | Volts (forward) |
+| `dmm_get_error` | `(id: str) -> str` | SCPI error queue line |
 
 ### Function Generator (AWG)
 
@@ -452,9 +467,15 @@ You will encounter functions in your own labs that are not in this exact tutoria
 | `awg_set_waveform` | `(id: str, channel: int, wave_type: str, frequency: float, amplitude: float, offset: float) -> str` | `"OK"` |
 | `awg_set_frequency` | `(id: str, channel: int, frequency: float) -> str` | `"OK"` |
 | `awg_set_amplitude` | `(id: str, channel: int, amplitude: float) -> str` | `"OK"` |
+| `awg_set_offset` | `(id: str, channel: int, offset: float) -> str` | `"OK"` |
 | `awg_set_dc_output` | `(id: str, channel: int, voltage: float) -> str` | `"OK"` |
 | `awg_enable_output` | `(id: str, channel: int, enabled: bool) -> str` | `"OK"` |
 | `awg_disable_all` | `(id: str) -> str` | `"OK"` |
+| `awg_get_amplitude` | `(id: str, channel: int) -> float` | Vpp |
+| `awg_get_offset` | `(id: str, channel: int) -> float` | DC offset volts |
+| `awg_get_frequency` | `(id: str, channel: int) -> float` | Hz |
+| `awg_get_output_state` | `(id: str, channel: int) -> bool` | True if output enabled |
+| `awg_get_error` | `(id: str) -> str` | SCPI error queue line (`"not supported on JDS6600_Generator"` for JDS) |
 
 ### Oscilloscope
 

@@ -668,6 +668,71 @@ def psu_disable_all(instrument_id: str) -> str:
     return "OK"
 
 
+def psu_get_voltage_setpoint(instrument_id: str, channel: int) -> float:
+    """Read back the configured voltage setpoint without enabling output.
+
+    Useful before psu_enable_output to verify what will be applied.
+
+    Returns:
+        float: Voltage setpoint in volts.
+    """
+    _require_id("psu_get_voltage_setpoint", instrument_id)
+    _require_channel("psu_get_voltage_setpoint", channel)
+    dev = _get_typed(instrument_id, _PSU_CLASSES)
+    if isinstance(dev, HP_E3631A):
+        ch = _HP_CHANNEL_MAP.get(channel)
+        if ch is None:
+            raise ValueError(f"HP_E3631A channel must be 1, 2, or 3. Got {channel!r} (type: {type(channel).__name__}).")
+        return float(dev.get_voltage_setpoint(ch))
+    if isinstance(dev, Keysight_EDU36311A):
+        ch_key = _EDU_CHANNEL_MAP.get(channel)
+        if ch_key is None:
+            raise ValueError(f"EDU36311A channel must be 1, 2, or 3. Got {channel!r} (type: {type(channel).__name__}).")
+        return float(dev.get_voltage_setpoint(ch_key))
+    if isinstance(dev, MATRIX_MPS6010H) or (NI_PXIe_4139 is not None and isinstance(dev, NI_PXIe_4139)):
+        return float(dev.get_voltage_setpoint())
+    raise TypeError(f"Unsupported PSU type: {type(dev).__name__}")
+
+
+def psu_get_current_limit(instrument_id: str, channel: int) -> float:
+    """Read back the configured current limit. Returns amps."""
+    _require_id("psu_get_current_limit", instrument_id)
+    _require_channel("psu_get_current_limit", channel)
+    dev = _get_typed(instrument_id, _PSU_CLASSES)
+    if isinstance(dev, HP_E3631A):
+        ch = _HP_CHANNEL_MAP.get(channel)
+        if ch is None:
+            raise ValueError(f"HP_E3631A channel must be 1, 2, or 3. Got {channel!r} (type: {type(channel).__name__}).")
+        return float(dev.get_current_limit(ch))
+    if isinstance(dev, Keysight_EDU36311A):
+        ch_key = _EDU_CHANNEL_MAP.get(channel)
+        if ch_key is None:
+            raise ValueError(f"EDU36311A channel must be 1, 2, or 3. Got {channel!r} (type: {type(channel).__name__}).")
+        return float(dev.get_current_limit(ch_key))
+    if isinstance(dev, MATRIX_MPS6010H) or (NI_PXIe_4139 is not None and isinstance(dev, NI_PXIe_4139)):
+        return float(dev.get_current_limit())
+    raise TypeError(f"Unsupported PSU type: {type(dev).__name__}")
+
+
+def psu_get_output_state(instrument_id: str) -> bool:
+    """Read back whether the PSU output is enabled. True == enabled.
+
+    For multi-channel PSUs this is the master output state (shared by all
+    channels on HP_E3631A and EDU36311A).
+    """
+    _require_id("psu_get_output_state", instrument_id)
+    dev = _get_typed(instrument_id, _PSU_CLASSES)
+    return bool(dev.get_output_state())
+
+
+def psu_get_error(instrument_id: str) -> str:
+    """Read and clear the PSU SCPI error queue. Returns a vendor-specific
+    string (e.g. '+0,"No error"' on HP/Keysight)."""
+    _require_id("psu_get_error", instrument_id)
+    dev = _get_typed(instrument_id, _PSU_CLASSES)
+    return str(dev.get_error())
+
+
 # =========================================================================
 # DMM operations
 # =========================================================================
@@ -720,6 +785,214 @@ def dmm_measure_diode(instrument_id: str) -> float:
     _require_id("dmm_measure_diode", instrument_id)
     dev = _get_typed(instrument_id, _DMM_CLASSES)
     return dev.measure_diode()
+
+
+# DMM configure_* family
+#
+# The drivers have heterogeneous signatures:
+#   HP_34401A         -> configure_*(range_val="DEF", resolution="DEF", nplc=None)
+#   Keysight_EDU34450A-> configure_*(range_val="DEF", resolution="DEF)
+#   Owon_XDM1041      -> configure_*(range_val=None)
+#
+# LabVIEW Numeric terminals can't easily pass the "DEF" string sentinel, so
+# the bridge wrappers accept floats with a `-1.0` sentinel meaning
+# "instrument default". Pass an actual numeric range (e.g. 0.1 for the 100mV
+# range) or -1.0 for autorange.
+
+
+def _dmm_def(value: float):
+    """Translate the -1.0 sentinel into the 'DEF' string SCPI keyword.
+
+    LabVIEW unwired DBL terminal -> 0.0 - which means "explicit 0 range",
+    not "instrument default". The bridge requires -1.0 as the explicit
+    "use instrument default" sentinel. Anything strictly less than zero
+    becomes "DEF"; anything >= 0 is passed through as a float.
+    """
+    return value if value >= 0 else "DEF"
+
+
+def _dmm_nplc(value: float):
+    """Translate -1.0 sentinel into None (skip NPLC configuration)."""
+    return value if value > 0 else None
+
+
+def _dmm_owon_range(value: float):
+    """Owon driver expects float | None - translate -1 / 0 sentinel."""
+    return value if value > 0 else None
+
+
+def dmm_configure_dc_voltage(
+    instrument_id: str,
+    range_val: float = -1.0,
+    resolution: float = -1.0,
+    nplc: float = -1.0,
+) -> str:
+    """Configure DMM for DC voltage measurement.
+
+    Args:
+        instrument_id: ID returned by open_dmm.
+        range_val: Voltage range in volts (e.g. 0.1 for 100 mV, 10.0 for 10 V).
+            Pass -1.0 for instrument default (typically autorange).
+        resolution: Resolution in volts (e.g. 0.0001 for 100 uV). Pass -1.0
+            for instrument default. Ignored on Owon XDM1041.
+        nplc: Integration time in Power Line Cycles (0.02, 0.2, 1, 10, 100).
+            Higher = more noise rejection, slower. Pass -1.0 to skip NPLC
+            configuration. Only takes effect on HP_34401A; ignored on
+            Keysight_EDU34450A and Owon_XDM1041 which don't expose NPLC.
+
+    Returns:
+        str: "OK"
+    """
+    _require_id("dmm_configure_dc_voltage", instrument_id)
+    _require_number("dmm_configure_dc_voltage", "range_val", range_val)
+    _require_number("dmm_configure_dc_voltage", "resolution", resolution)
+    _require_number("dmm_configure_dc_voltage", "nplc", nplc)
+    dev = _get_typed(instrument_id, _DMM_CLASSES)
+    if isinstance(dev, HP_34401A):
+        dev.configure_dc_voltage(range_val=_dmm_def(range_val), resolution=_dmm_def(resolution), nplc=_dmm_nplc(nplc))
+    elif isinstance(dev, Keysight_EDU34450A):
+        dev.configure_dc_voltage(range_val=_dmm_def(range_val), resolution=_dmm_def(resolution))
+    elif isinstance(dev, Owon_XDM1041):
+        dev.configure_dc_voltage(range_val=_dmm_owon_range(range_val))
+    else:
+        raise TypeError(f"Unsupported DMM type: {type(dev).__name__}")
+    return "OK"
+
+
+def dmm_configure_ac_voltage(instrument_id: str, range_val: float = -1.0, resolution: float = -1.0) -> str:
+    """Configure DMM for AC voltage measurement. See dmm_configure_dc_voltage
+    for argument semantics. AC paths do not accept NPLC on any of the
+    supported DMMs."""
+    _require_id("dmm_configure_ac_voltage", instrument_id)
+    _require_number("dmm_configure_ac_voltage", "range_val", range_val)
+    _require_number("dmm_configure_ac_voltage", "resolution", resolution)
+    dev = _get_typed(instrument_id, _DMM_CLASSES)
+    if isinstance(dev, (HP_34401A, Keysight_EDU34450A)):
+        dev.configure_ac_voltage(range_val=_dmm_def(range_val), resolution=_dmm_def(resolution))
+    elif isinstance(dev, Owon_XDM1041):
+        dev.configure_ac_voltage(range_val=_dmm_owon_range(range_val))
+    else:
+        raise TypeError(f"Unsupported DMM type: {type(dev).__name__}")
+    return "OK"
+
+
+def dmm_configure_dc_current(
+    instrument_id: str,
+    range_val: float = -1.0,
+    resolution: float = -1.0,
+    nplc: float = -1.0,
+) -> str:
+    """Configure DMM for DC current measurement. See dmm_configure_dc_voltage
+    for argument semantics."""
+    _require_id("dmm_configure_dc_current", instrument_id)
+    _require_number("dmm_configure_dc_current", "range_val", range_val)
+    _require_number("dmm_configure_dc_current", "resolution", resolution)
+    _require_number("dmm_configure_dc_current", "nplc", nplc)
+    dev = _get_typed(instrument_id, _DMM_CLASSES)
+    if isinstance(dev, HP_34401A):
+        dev.configure_dc_current(range_val=_dmm_def(range_val), resolution=_dmm_def(resolution), nplc=_dmm_nplc(nplc))
+    elif isinstance(dev, Keysight_EDU34450A):
+        dev.configure_dc_current(range_val=_dmm_def(range_val), resolution=_dmm_def(resolution))
+    elif isinstance(dev, Owon_XDM1041):
+        dev.configure_dc_current(range_val=_dmm_owon_range(range_val))
+    else:
+        raise TypeError(f"Unsupported DMM type: {type(dev).__name__}")
+    return "OK"
+
+
+def dmm_configure_ac_current(instrument_id: str, range_val: float = -1.0, resolution: float = -1.0) -> str:
+    """Configure DMM for AC current measurement."""
+    _require_id("dmm_configure_ac_current", instrument_id)
+    _require_number("dmm_configure_ac_current", "range_val", range_val)
+    _require_number("dmm_configure_ac_current", "resolution", resolution)
+    dev = _get_typed(instrument_id, _DMM_CLASSES)
+    if isinstance(dev, (HP_34401A, Keysight_EDU34450A)):
+        dev.configure_ac_current(range_val=_dmm_def(range_val), resolution=_dmm_def(resolution))
+    elif isinstance(dev, Owon_XDM1041):
+        dev.configure_ac_current(range_val=_dmm_owon_range(range_val))
+    else:
+        raise TypeError(f"Unsupported DMM type: {type(dev).__name__}")
+    return "OK"
+
+
+def dmm_configure_resistance_2w(
+    instrument_id: str,
+    range_val: float = -1.0,
+    resolution: float = -1.0,
+    nplc: float = -1.0,
+) -> str:
+    """Configure DMM for 2-wire resistance measurement."""
+    _require_id("dmm_configure_resistance_2w", instrument_id)
+    _require_number("dmm_configure_resistance_2w", "range_val", range_val)
+    _require_number("dmm_configure_resistance_2w", "resolution", resolution)
+    _require_number("dmm_configure_resistance_2w", "nplc", nplc)
+    dev = _get_typed(instrument_id, _DMM_CLASSES)
+    if isinstance(dev, HP_34401A):
+        dev.configure_resistance_2wire(
+            range_val=_dmm_def(range_val), resolution=_dmm_def(resolution), nplc=_dmm_nplc(nplc)
+        )
+    elif isinstance(dev, Keysight_EDU34450A):
+        dev.configure_resistance_2wire(range_val=_dmm_def(range_val), resolution=_dmm_def(resolution))
+    elif isinstance(dev, Owon_XDM1041):
+        dev.configure_resistance_2wire(range_val=_dmm_owon_range(range_val))
+    else:
+        raise TypeError(f"Unsupported DMM type: {type(dev).__name__}")
+    return "OK"
+
+
+def dmm_configure_resistance_4w(
+    instrument_id: str,
+    range_val: float = -1.0,
+    resolution: float = -1.0,
+    nplc: float = -1.0,
+) -> str:
+    """Configure DMM for 4-wire (Kelvin) resistance measurement."""
+    _require_id("dmm_configure_resistance_4w", instrument_id)
+    _require_number("dmm_configure_resistance_4w", "range_val", range_val)
+    _require_number("dmm_configure_resistance_4w", "resolution", resolution)
+    _require_number("dmm_configure_resistance_4w", "nplc", nplc)
+    dev = _get_typed(instrument_id, _DMM_CLASSES)
+    if isinstance(dev, HP_34401A):
+        dev.configure_resistance_4wire(
+            range_val=_dmm_def(range_val), resolution=_dmm_def(resolution), nplc=_dmm_nplc(nplc)
+        )
+    elif isinstance(dev, Keysight_EDU34450A):
+        dev.configure_resistance_4wire(range_val=_dmm_def(range_val), resolution=_dmm_def(resolution))
+    elif isinstance(dev, Owon_XDM1041):
+        dev.configure_resistance_4wire(range_val=_dmm_owon_range(range_val))
+    else:
+        raise TypeError(f"Unsupported DMM type: {type(dev).__name__}")
+    return "OK"
+
+
+def dmm_read(instrument_id: str) -> float:
+    """Trigger a measurement using the currently-configured DMM mode and
+    return the result. Use after dmm_configure_*."""
+    _require_id("dmm_read", instrument_id)
+    dev = _get_typed(instrument_id, _DMM_CLASSES)
+    if hasattr(dev, "read"):
+        return float(dev.read())
+    if hasattr(dev, "measure"):
+        return float(dev.measure())
+    raise AttributeError(f"DMM {type(dev).__name__} exposes neither read() nor measure().")
+
+
+def dmm_fetch(instrument_id: str) -> float:
+    """Return the last measurement without triggering a new one. Only
+    supported on HP_34401A and Keysight_EDU34450A; raises on Owon."""
+    _require_id("dmm_fetch", instrument_id)
+    dev = _get_typed(instrument_id, _DMM_CLASSES)
+    if not hasattr(dev, "fetch"):
+        raise AttributeError(f"DMM {type(dev).__name__} does not support fetch(). Use dmm_read instead.")
+    return float(dev.fetch())
+
+
+def dmm_get_error(instrument_id: str) -> str:
+    """Read and clear the DMM's SCPI error queue. Returns a vendor-specific
+    string. Useful from LabVIEW for first-failure debugging."""
+    _require_id("dmm_get_error", instrument_id)
+    dev = _get_typed(instrument_id, _DMM_CLASSES)
+    return str(dev.get_error())
 
 
 # =========================================================================
@@ -841,6 +1114,60 @@ def awg_disable_all(instrument_id: str) -> str:
     else:
         dev.disable_all_channels()
     return "OK"
+
+
+def awg_set_offset(instrument_id: str, channel: int, offset: float) -> str:
+    """Set DC offset (volts) on an AWG channel independently of the
+    current waveform settings."""
+    _require_id("awg_set_offset", instrument_id)
+    _require_channel("awg_set_offset", channel, valid=(1, 2))
+    _require_number("awg_set_offset", "offset", offset)
+    dev = _get_typed(instrument_id, _AWG_CLASSES)
+    dev.set_offset(channel, offset)
+    return "OK"
+
+
+def awg_get_amplitude(instrument_id: str, channel: int) -> float:
+    """Read back the amplitude (Vpp) on an AWG channel."""
+    _require_id("awg_get_amplitude", instrument_id)
+    _require_channel("awg_get_amplitude", channel, valid=(1, 2))
+    dev = _get_typed(instrument_id, _AWG_CLASSES)
+    return float(dev.get_amplitude(channel))
+
+
+def awg_get_offset(instrument_id: str, channel: int) -> float:
+    """Read back the DC offset on an AWG channel."""
+    _require_id("awg_get_offset", instrument_id)
+    _require_channel("awg_get_offset", channel, valid=(1, 2))
+    dev = _get_typed(instrument_id, _AWG_CLASSES)
+    return float(dev.get_offset(channel))
+
+
+def awg_get_frequency(instrument_id: str, channel: int) -> float:
+    """Read back the frequency on an AWG channel."""
+    _require_id("awg_get_frequency", instrument_id)
+    _require_channel("awg_get_frequency", channel, valid=(1, 2))
+    dev = _get_typed(instrument_id, _AWG_CLASSES)
+    return float(dev.get_frequency(channel))
+
+
+def awg_get_output_state(instrument_id: str, channel: int) -> bool:
+    """Read back whether the AWG output for a channel is enabled."""
+    _require_id("awg_get_output_state", instrument_id)
+    _require_channel("awg_get_output_state", channel, valid=(1, 2))
+    dev = _get_typed(instrument_id, _AWG_CLASSES)
+    return bool(dev.get_output_state(channel))
+
+
+def awg_get_error(instrument_id: str) -> str:
+    """Read and clear the AWG SCPI error queue. Returns a vendor-specific
+    string. JDS6600 has no error queue so this returns a 'not supported'
+    string for that device."""
+    _require_id("awg_get_error", instrument_id)
+    dev = _get_typed(instrument_id, _AWG_CLASSES)
+    if not hasattr(dev, "get_error"):
+        return f"not supported on {type(dev).__name__}"
+    return str(dev.get_error())
 
 
 # =========================================================================
@@ -1224,9 +1551,25 @@ def get_instrument_type(instrument_id: str) -> str:
 def get_version() -> str:
     """Return the scpi-instrument-toolkit package version.
 
+    Reads from importlib.metadata so the returned value always matches what
+    pip installed - the package's ``__init__.py`` ``__version__`` was
+    historically allowed to drift from ``pyproject.toml``, which meant
+    LabVIEW students could see a stale version after upgrading. Falls back
+    to ``__version__`` when running from source without an installed dist
+    (e.g. inside a fresh clone with no ``pip install``).
+
     Returns:
-        str: Version string (e.g. "0.1.153").
+        str: Version string (e.g. "1.0.65").
     """
+    try:
+        from importlib.metadata import PackageNotFoundError, version
+
+        try:
+            return version("scpi-instrument-toolkit")
+        except PackageNotFoundError:
+            pass
+    except ImportError:
+        pass
     from .. import __version__
 
     return __version__

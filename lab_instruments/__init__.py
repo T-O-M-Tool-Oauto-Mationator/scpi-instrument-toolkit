@@ -1,6 +1,6 @@
 import logging as _logging
 
-__version__ = "0.1.143"
+__version__ = "1.0.65"
 __author__ = "Brighton Sikarskie, Cesar Magana"
 
 from .enums import CouplingMode, DMMMode, SMUSourceMode, TriggerEdge, TriggerMode, WaveformType
