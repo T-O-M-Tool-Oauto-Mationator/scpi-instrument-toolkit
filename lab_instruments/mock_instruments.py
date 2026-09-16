@@ -749,7 +749,7 @@ class MockDSOX1204G(MockScope):
     def set_manual_cursor_source(self, source):
         pass
 
-    def set_manual_cursor_positions(self, x1=None, y1=None, x2=None, y2=None):
+    def set_manual_cursor_positions(self, x1=None, y1=None, x2=None, y2=None, ax=None, ay=None, bx=None, by=None):
         pass
 
     def get_manual_cursor_values(self):

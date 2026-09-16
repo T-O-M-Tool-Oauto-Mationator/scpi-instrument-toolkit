@@ -8,6 +8,7 @@ Based on InfiniiVision 1000 X-Series Programmer's Guide
 
 import contextlib
 import logging
+import re
 import time
 
 import numpy as np
@@ -1653,15 +1654,37 @@ class Keysight_DSOX1204G(DeviceManager):
 
     _CURSOR_MODE_ALLOWLIST = ("OFF", "MANual", "WAVeform", "MEASurement")
 
+    # Upper-cased user input -> canonical SCPI token, so callers can pass any
+    # casing ('MANUAL', 'manual', 'MANual') and still hit the right token.
+    _CURSOR_MODE_ALIASES = {
+        "OFF": "OFF",
+        "MANUAL": "MANual",
+        "MAN": "MANual",
+        "WAVEFORM": "WAVeform",
+        "WAV": "WAVeform",
+        "MEASUREMENT": "MEASurement",
+        "MEAS": "MEASurement",
+    }
+
+    @classmethod
+    def _normalize_cursor_mode(cls, mode: str) -> str:
+        """Map a user-supplied cursor mode onto its canonical SCPI token."""
+        if not isinstance(mode, str):
+            raise ValueError(f"Cursor mode must be one of {cls._CURSOR_MODE_ALLOWLIST}, got '{mode}'")
+        normalized = cls._CURSOR_MODE_ALIASES.get(mode.strip().upper())
+        if normalized is None:
+            raise ValueError(f"Cursor mode must be one of {cls._CURSOR_MODE_ALLOWLIST}, got '{mode}'")
+        return normalized
+
     def set_cursor_mode(self, mode: str) -> None:
         """
         Set cursor mode.
 
         Args:
-            mode: 'OFF', 'MANual', 'WAVeform', or 'MEASurement'
+            mode: 'OFF', 'MANual', 'WAVeform', or 'MEASurement'. Matching is
+                case-insensitive, so 'MANUAL' and 'manual' are accepted too.
         """
-        if mode not in self._CURSOR_MODE_ALLOWLIST:
-            raise ValueError(f"Cursor mode must be one of {self._CURSOR_MODE_ALLOWLIST}, got '{mode}'")
+        mode = self._normalize_cursor_mode(mode)
         self._write(f":MARKer:MODE {mode}", cursor_mode=mode)
         logger.info(f"Cursor mode: {mode}")
 
@@ -1702,22 +1725,95 @@ class Keysight_DSOX1204G(DeviceManager):
         response = self.instrument.query(":MARKer:YDELta?")
         return float(response.strip())
 
+    _MANUAL_CURSOR_TYPES = ("X", "Y", "XY", "TIME", "AMPLITUDE")
+
+    def set_manual_cursor_type(self, cursor_type: str) -> None:
+        """
+        Validate a manual cursor type, for cross-model compatibility.
+
+        The Keysight :MARKer subsystem has no separate cursor-type command: X
+        and Y markers are both available once manual mode is on, and the type
+        is implied by which positions you set. This method exists so shared
+        code (the REPL, test scripts) can drive Rigol and Keysight scopes with
+        the same calls. It validates the value and is otherwise a no-op.
+
+        Args:
+            cursor_type: 'X', 'Y', 'XY', 'TIME', or 'AMPLITUDE' (case-insensitive)
+
+        Raises:
+            ValueError: If the cursor type is not recognized
+        """
+        if not isinstance(cursor_type, str) or cursor_type.strip().upper() not in self._MANUAL_CURSOR_TYPES:
+            raise ValueError(f"Cursor type must be one of {self._MANUAL_CURSOR_TYPES}, got '{cursor_type}'")
+        logger.debug(f"Manual cursor type '{cursor_type}' accepted (no-op on the Keysight :MARKer subsystem)")
+
+    def set_manual_cursor_source(self, source) -> None:
+        """
+        Set the manual cursor source from a channel name or number.
+
+        Accepts the forms used across the toolkit: 'CHAN1', 'CHANnel1', 'CH1',
+        '1', or 1. Delegates to set_cursor_source().
+
+        Args:
+            source: Channel identifier (1-4)
+
+        Raises:
+            ValueError: If the source cannot be read as channel 1-4
+        """
+        if isinstance(source, bool):
+            raise ValueError(f"Cursor source must be channel 1-4, got '{source}'")
+        if isinstance(source, int):
+            channel = source
+        else:
+            match = re.fullmatch(r"(?:CHAN(?:NEL)?|CH)?\s*([1-4])", str(source).strip().upper())
+            if match is None:
+                raise ValueError(f"Cursor source must be channel 1-4, got '{source}'")
+            channel = int(match.group(1))
+        self.set_cursor_source(channel)
+
     def set_manual_cursor_positions(
         self,
         x1: float = None,
         y1: float = None,
         x2: float = None,
         y2: float = None,
+        ax: float = None,
+        ay: float = None,
+        bx: float = None,
+        by: float = None,
     ) -> None:
         """
         Set one or more cursor positions at once.
 
+        Accepts both the Keysight naming (x1/y1/x2/y2) and the Rigol naming
+        (ax/ay/bx/by), so shared code works against either driver. A maps to
+        cursor 1, B maps to cursor 2.
+
         Args:
-            x1: X1 cursor position in seconds
-            y1: Y1 cursor position in volts
-            x2: X2 cursor position in seconds
-            y2: Y2 cursor position in volts
+            x1: X1 cursor position in seconds (alias: ax)
+            y1: Y1 cursor position in volts (alias: ay)
+            x2: X2 cursor position in seconds (alias: bx)
+            y2: Y2 cursor position in volts (alias: by)
+
+        Raises:
+            ValueError: If an alias conflicts with its Keysight-named equivalent
         """
+        for primary_name, primary, alias_name, alias in (
+            ("x1", x1, "ax", ax),
+            ("y1", y1, "ay", ay),
+            ("x2", x2, "bx", bx),
+            ("y2", y2, "by", by),
+        ):
+            if primary is not None and alias is not None and primary != alias:
+                raise ValueError(
+                    f"Conflicting values for {primary_name} ({primary}) and {alias_name} ({alias})"
+                )
+
+        x1 = x1 if x1 is not None else ax
+        y1 = y1 if y1 is not None else ay
+        x2 = x2 if x2 is not None else bx
+        y2 = y2 if y2 is not None else by
+
         if x1 is not None:
             self.set_cursor_x1_position(x1)
         if y1 is not None:

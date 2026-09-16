@@ -355,3 +355,34 @@ class TestKeysightHelp:
     def test_unknown_cmd(self, repl):
         """Unknown subcommand should print a warning, not crash."""
         repl.onecmd("scope nonexistent_command")
+
+
+class TestKeysightCursorRepl:
+    """Issue #130: REPL cursor commands against the Keysight driver."""
+
+    def test_cursor_manual_xy(self, repl, capsys):
+        repl.onecmd("scope cursor manual xy 1")
+        out = capsys.readouterr().out
+        assert "ERROR" not in out.upper()
+        assert "Manual cursor" in out
+
+    def test_cursor_manual_default_source(self, repl, capsys):
+        repl.onecmd("scope cursor manual x")
+        out = capsys.readouterr().out
+        assert "ERROR" not in out.upper()
+
+    def test_cursor_off(self, repl, capsys):
+        repl.onecmd("scope cursor off")
+        out = capsys.readouterr().out
+        assert "Cursors disabled" in out
+
+    def test_cursor_set_positions(self, repl, capsys):
+        repl.onecmd("scope cursor set -0.001 -0.5 0.001 0.5")
+        out = capsys.readouterr().out
+        assert "ERROR" not in out.upper()
+        assert "Cursor positions set" in out
+
+    def test_cursor_read(self, repl, capsys):
+        repl.onecmd("scope cursor read")
+        out = capsys.readouterr().out
+        assert "ERROR" not in out.upper()
