@@ -1231,6 +1231,69 @@ class TestCursorCommands:
         assert ":MARKer:X1Position 0.001" in cmds
         assert ":MARKer:X2Position 0.002" in cmds
 
+    def test_set_manual_cursor_positions_rigol_aliases(self, scope):
+        """Issue #130: REPL passes Rigol-style ax/ay/bx/by kwargs."""
+        dev, mi = scope
+        dev.set_manual_cursor_positions(ax=-0.001, ay=-0.5, bx=0.001, by=0.5)
+        cmds = _writes(mi)
+        assert ":MARKer:X1Position -0.001" in cmds
+        assert ":MARKer:Y1Position -0.5" in cmds
+        assert ":MARKer:X2Position 0.001" in cmds
+        assert ":MARKer:Y2Position 0.5" in cmds
+
+    def test_set_manual_cursor_positions_conflicting_alias_raises(self, scope):
+        dev, _ = scope
+        with pytest.raises(ValueError, match="Conflicting values"):
+            dev.set_manual_cursor_positions(x1=0.001, ax=0.002)
+
+    @pytest.mark.parametrize(
+        "given,expected",
+        [
+            ("MANUAL", "MANual"),
+            ("manual", "MANual"),
+            ("MANual", "MANual"),
+            ("off", "OFF"),
+            ("WAVEFORM", "WAVeform"),
+            ("measurement", "MEASurement"),
+        ],
+    )
+    def test_set_cursor_mode_is_case_insensitive(self, scope, given, expected):
+        """Issue #130: 'MANUAL' was rejected against the mixed-case allowlist."""
+        dev, mi = scope
+        dev.set_cursor_mode(given)
+        mi.write.assert_called_with(f":MARKer:MODE {expected}")
+
+    def test_set_cursor_mode_rejects_unknown(self, scope):
+        dev, _ = scope
+        with pytest.raises(ValueError, match="Cursor mode must be one of"):
+            dev.set_cursor_mode("SPARKLE")
+
+    @pytest.mark.parametrize("source", ["CHAN2", "CHANnel2", "CH2", "2", 2])
+    def test_set_manual_cursor_source_accepts_common_forms(self, scope, source):
+        """Issue #130: REPL calls set_manual_cursor_source, Keysight had no such method."""
+        dev, mi = scope
+        dev.set_manual_cursor_source(source)
+        cmds = _writes(mi)
+        assert ":MARKer:X1Y1source CHANnel2" in cmds
+        assert ":MARKer:X2Y2source CHANnel2" in cmds
+
+    @pytest.mark.parametrize("source", ["CHAN9", "MATH1", "", None])
+    def test_set_manual_cursor_source_rejects_bad_input(self, scope, source):
+        dev, _ = scope
+        with pytest.raises(ValueError, match="Cursor source must be channel 1-4"):
+            dev.set_manual_cursor_source(source)
+
+    @pytest.mark.parametrize("cursor_type", ["X", "y", "XY", "TIME", "amplitude"])
+    def test_set_manual_cursor_type_accepts_known_types(self, scope, cursor_type):
+        dev, mi = scope
+        dev.set_manual_cursor_type(cursor_type)
+        assert mi.write.call_count == 0
+
+    def test_set_manual_cursor_type_rejects_unknown(self, scope):
+        dev, _ = scope
+        with pytest.raises(ValueError, match="Cursor type must be one of"):
+            dev.set_manual_cursor_type("DIAGONAL")
+
     def test_get_manual_cursor_values(self, scope):
         dev, mi = scope
         mi.query.side_effect = ["0.001", "1.0", "0.002", "2.0", "0.001", "1.0"]

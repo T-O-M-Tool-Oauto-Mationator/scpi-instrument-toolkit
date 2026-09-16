@@ -1,6 +1,7 @@
 """Scope command handler for the REPL."""
 
 import contextlib
+import inspect
 import os
 import time
 from typing import Any
@@ -870,6 +871,33 @@ class ScopeCommand(BaseCommand):
     # Scope cursor sub-handler
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _call_optional(dev, method_name: str, *call_args) -> None:
+        """Call a driver method when the connected model implements it."""
+        method = getattr(dev, method_name, None)
+        if method is None:
+            return
+        method(*call_args)
+
+    @staticmethod
+    def _cursor_position_kwargs(dev, kwargs: dict) -> dict:
+        """
+        Translate cursor position kwargs to whatever the driver accepts.
+
+        Rigol drivers take (ax, ay, bx, by); Keysight takes (x1, y1, x2, y2).
+        Inspect the signature and map the names rather than assuming either.
+        """
+        try:
+            params = inspect.signature(dev.set_manual_cursor_positions).parameters
+        except (TypeError, ValueError):
+            return kwargs
+
+        if any(name in params for name in ("ax", "ay", "bx", "by")):
+            return kwargs
+
+        rename = {"ax": "x1", "ay": "y1", "bx": "x2", "by": "y2"}
+        return {rename.get(key, key): value for key, value in kwargs.items()}
+
     def _handle_scope_cursor(self, dev, args) -> None:
         """Handle oscilloscope cursor commands."""
         if not args:
@@ -898,21 +926,14 @@ class ScopeCommand(BaseCommand):
                 cursor_type = args[1].upper()
                 source = args[2].upper() if len(args) >= 3 else "CH1"
                 dev.set_cursor_mode("MANUAL")
-                dev.set_manual_cursor_type(cursor_type)
-                dev.set_manual_cursor_source(source)
+                self._call_optional(dev, "set_manual_cursor_type", cursor_type)
+                self._call_optional(dev, "set_manual_cursor_source", source)
                 ColorPrinter.success(f"Manual cursor: {cursor_type} on {source}")
 
             elif cmd == "set" and len(args) >= 2:
-                kwargs = {}
-                if len(args) >= 2:
-                    kwargs["ax"] = float(args[1])
-                if len(args) >= 3:
-                    kwargs["ay"] = float(args[2])
-                if len(args) >= 4:
-                    kwargs["bx"] = float(args[3])
-                if len(args) >= 5:
-                    kwargs["by"] = float(args[4])
-                dev.set_manual_cursor_positions(**kwargs)
+                values = [float(arg) for arg in args[1:5]]
+                kwargs = dict(zip(("ax", "ay", "bx", "by"), values))
+                dev.set_manual_cursor_positions(**self._cursor_position_kwargs(dev, kwargs))
                 ColorPrinter.success("Cursor positions set")
 
             elif cmd == "read":
